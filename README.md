@@ -1,4 +1,4 @@
-#🌿 Terrarium
+# 🌿 Terrarium
 
 Terrarium is an upcoming open-source project.
 We’re putting the final touches on it — the code and documentation will be released soon. Stay tuned! 👀
