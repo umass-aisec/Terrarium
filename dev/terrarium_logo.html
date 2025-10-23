@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0; display:flex; justify-content:center; align-items:center; height:100vh; background:#ffffff">
+  <svg width="900" height="250" xmlns="http://www.w3.org/2000/svg">
+  </svg>
+  <script>
+    const svg = document.querySelector('svg');
+    const ps = 12; // larger pixel size for more pixelated look
+
+    // Forest green color palette with shading
+    const forestGreen = '#228B22';
+    const darkGreen = '#1a6b1a';
+    const darkerGreen = '#0f4d0f';
+    const lightGreen = '#2ea02e';
+
+    // Pixel font - each letter is 7x7 pixels (thicker/bolder)
+    const letters = {
+      T: [[1,1,1,1,1,1,1],[1,1,1,1,1,1,1],[0,0,1,1,1,0,0],[0,0,1,1,1,0,0],[0,0,1,1,1,0,0],[0,0,1,1,1,0,0],[0,0,1,1,1,0,0]],
+      E: [[1,1,1,1,1,1,1],[1,1,1,1,1,1,1],[1,1,0,0,0,0,0],[1,1,1,1,1,1,0],[1,1,0,0,0,0,0],[1,1,1,1,1,1,1],[1,1,1,1,1,1,1]],
+      R: [[1,1,1,1,1,1,0],[1,1,1,1,1,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,0],[1,1,0,0,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1]],
+      A: [[0,0,1,1,1,0,0],[0,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,1,1,1,1,1],[1,1,1,1,1,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1]],
+      I: [[1,1,1,1,1,1,1],[1,1,1,1,1,1,1],[0,0,0,1,1,0,0],[0,0,0,1,1,0,0],[0,0,0,1,1,0,0],[1,1,1,1,1,1,1],[1,1,1,1,1,1,1]],
+      U: [[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,1],[0,1,1,1,1,1,0]],
+      M: [[1,1,0,0,0,1,1],[1,1,1,0,1,1,1],[1,1,1,1,1,1,1],[1,1,0,1,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1]]
+    };
+
+    const word = 'TERRARIUM';
+    const letterSpacing = 1;
+    let startX = 30;
+
+    let html = '';
+
+    // Draw each letter with multi-layer shading
+    for(let i = 0; i < word.length; i++) {
+      const letter = letters[word[i]];
+      let x = startX + i * (7 + letterSpacing) * ps;
+
+      for(let row = 0; row < 7; row++) {
+        for(let col = 0; col < 7; col++) {
+          if(letter[row][col]) {
+            const pixelX = x + col * ps;
+            const pixelY = 60 + row * ps;
+
+            // Bottom/right shadow layers for depth (3 layers)
+            html += `<rect x="${pixelX + 4}" y="${pixelY + 4}" width="${ps}" height="${ps}" fill="${darkerGreen}"/>`;
+            html += `<rect x="${pixelX + 3}" y="${pixelY + 3}" width="${ps}" height="${ps}" fill="${darkGreen}"/>`;
+            html += `<rect x="${pixelX + 2}" y="${pixelY + 2}" width="${ps}" height="${ps}" fill="${darkGreen}" opacity="0.7"/>`;
+
+            // Main pixel
+            html += `<rect x="${pixelX}" y="${pixelY}" width="${ps}" height="${ps}" fill="${forestGreen}"/>`;
+
+            // Top-left highlight for dimension
+            html += `<rect x="${pixelX}" y="${pixelY}" width="${ps/3}" height="${ps/3}" fill="${lightGreen}" opacity="0.6"/>`;
+          }
+        }
+      }
+    }
+
+    svg.innerHTML = html;
+  </script>
+</body>
+</html>

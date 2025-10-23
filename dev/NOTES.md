@@ -1,0 +1,2 @@
+- GPT-5 is too slow for function calling. Instead, use gpt-4.1 or a similar model
+- GPT-4.1-nano does not work too well for , so use GPT-4.1-mini
