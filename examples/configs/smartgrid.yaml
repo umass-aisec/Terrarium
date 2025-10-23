@@ -1,0 +1,61 @@
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 3
+  enable_agent_blackboard_actions: true
+  n_simulations: 1
+  parallelization:
+    enabled: true
+    max_workers: 1
+  tag: baseline
+environment:
+  name: SmartGrid
+  catalog_path: envs/dcops/CoLLAB/SmartGrid/data/devices.json
+  T: 24
+  n_homes: 8
+  tasks_per_home:
+  - 2
+  - 4
+  allowed_window_len:
+  - 2
+  - 6
+  S_pattern: sin
+  S_base: 12.0
+  S_amp: 2.5
+  S_min_clip: 0.0
+  rng_seed: 42
+llm:
+  # Provider: "openai", "anthropic", "gemini", or "vllm"
+  provider: "openai"
+  openai:
+    model: "gpt-4.1-mini-2025-04-14"
+  anthropic:
+    model: "claude-3-5-sonnet-20241022"
+  gemini:
+    model: "gemini-2.0-flash-lite"
+  # TODO: Get vLLM configuration working
+  vllm:
+    model_name: /data/huggingface/models--Qwen--Qwen3-235B-A22B-Thinking-2507/snapshots/d24ea3047182ca7b02f8b9f5d4e06f7be78c6885
+    host: localhost
+    port: 8000
+    prefer_existing_server: true
+    auto_start_server: true
+    trust_remote_code: true
+    connection_timeout: 30
+    max_retries: 4
+    max_model_len: 65536
+    gpu_memory_utilization: 0.8
+    tensor_parallel_size: 8
+    additional_args: []
+notes:
+- SmartGrid baseline configuration (no attacks)
+- SmartGrid creates a single global blackboard for all homes to coordinate power usage
+- SmartGrid environment coordinates power-consuming task scheduling across homes
+- Homes coordinate via blackboards to minimize total main grid draw
+- Each home has 2-4 power-consuming tasks from the device catalog
+- Tasks must be scheduled within their allowed time windows
+- Sustainable capacity varies sinusoidally over 24-hour period
+- 'Objective: Minimize peak consumption and main grid energy usage'
+- Simulation stops when all tasks scheduled optimally or max iterations reached
+- Device catalog includes EVs, appliances, and various home devices with realistic
+  power consumption
