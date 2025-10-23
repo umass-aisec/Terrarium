@@ -1,0 +1,125 @@
+{
+  "count": 10,
+  "instances": [
+    {
+      "i": 0,
+      "seed": 0,
+      "dir": "instance_000",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 1,
+      "seed": 1,
+      "dir": "instance_001",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 2,
+      "seed": 2,
+      "dir": "instance_002",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 3,
+      "seed": 3,
+      "dir": "instance_003",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 4,
+      "seed": 4,
+      "dir": "instance_004",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 5,
+      "seed": 5,
+      "dir": "instance_005",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 6,
+      "seed": 6,
+      "dir": "instance_006",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 7,
+      "seed": 7,
+      "dir": "instance_007",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 8,
+      "seed": 8,
+      "dir": "instance_008",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    },
+    {
+      "i": 9,
+      "seed": 9,
+      "dir": "instance_009",
+      "files": {
+        "instance": "instance.json",
+        "prompts": "monolithic.json",
+        "starts": "starts.json",
+        "eval": "eval.json",
+        "viz_dir": "images/homes"
+      }
+    }
+  ]
+}

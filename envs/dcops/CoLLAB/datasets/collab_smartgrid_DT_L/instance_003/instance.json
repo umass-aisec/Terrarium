@@ -1,0 +1,673 @@
+{
+  "T": 24,
+  "S_cap": [
+    12.044,
+    12.928,
+    13.649,
+    13.598,
+    14.069,
+    14.091,
+    14.127,
+    14.7,
+    14.393,
+    13.408,
+    13.111,
+    12.256,
+    11.705,
+    11.089,
+    10.82,
+    10.555,
+    9.909,
+    9.603,
+    9.26,
+    9.673,
+    9.953,
+    10.117,
+    11.085,
+    11.083
+  ],
+  "homes": [
+    {
+      "id": "H0",
+      "tasks": [
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 1,
+          "allowed_starts": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "AirPurifier",
+          "consumption": 0.09,
+          "duration": 6,
+          "allowed_starts": [
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "id": "Washer",
+          "consumption": 0.5,
+          "duration": 2,
+          "allowed_starts": [
+            17,
+            18,
+            19,
+            20,
+            21
+          ]
+        },
+        {
+          "id": "WaterBoost",
+          "consumption": 4.5,
+          "duration": 2,
+          "allowed_starts": [
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "id": "Sauna_1",
+          "consumption": 6.0,
+          "duration": 1,
+          "allowed_starts": [
+            16,
+            17,
+            18
+          ]
+        },
+        {
+          "id": "Dehumid",
+          "consumption": 0.7,
+          "duration": 3,
+          "allowed_starts": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H1",
+      "tasks": [
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 2,
+          "allowed_starts": [
+            12,
+            13,
+            14,
+            15,
+            16
+          ]
+        },
+        {
+          "id": "EV_48A",
+          "consumption": 11.5,
+          "duration": 7,
+          "allowed_starts": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ]
+        },
+        {
+          "id": "Dishwasher",
+          "consumption": 1.0,
+          "duration": 2,
+          "allowed_starts": [
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "id": "EV_48A_1",
+          "consumption": 11.5,
+          "duration": 5,
+          "allowed_starts": [
+            15,
+            16,
+            17
+          ]
+        },
+        {
+          "id": "Dishwasher_1",
+          "consumption": 1.0,
+          "duration": 2,
+          "allowed_starts": [
+            13,
+            14,
+            15,
+            16
+          ]
+        },
+        {
+          "id": "Dehumid",
+          "consumption": 0.7,
+          "duration": 3,
+          "allowed_starts": [
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H2",
+      "tasks": [
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 1,
+          "allowed_starts": [
+            19,
+            20,
+            21,
+            22
+          ]
+        },
+        {
+          "id": "WaterBoost",
+          "consumption": 4.5,
+          "duration": 1,
+          "allowed_starts": [
+            17,
+            18,
+            19,
+            20
+          ]
+        },
+        {
+          "id": "AirPurifier",
+          "consumption": 0.09,
+          "duration": 3,
+          "allowed_starts": [
+            18,
+            19,
+            20
+          ]
+        },
+        {
+          "id": "Sauna_1",
+          "consumption": 6.0,
+          "duration": 2,
+          "allowed_starts": [
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "id": "PoolPump",
+          "consumption": 1.1,
+          "duration": 3,
+          "allowed_starts": [
+            15,
+            16,
+            17,
+            18,
+            19
+          ]
+        },
+        {
+          "id": "Sauna_2",
+          "consumption": 6.0,
+          "duration": 1,
+          "allowed_starts": [
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "Dryer",
+          "consumption": 2.8,
+          "duration": 3,
+          "allowed_starts": [
+            0,
+            1,
+            2
+          ]
+        },
+        {
+          "id": "WaterBoost_1",
+          "consumption": 4.5,
+          "duration": 2,
+          "allowed_starts": [
+            13,
+            14,
+            15,
+            16,
+            17
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H3",
+      "tasks": [
+        {
+          "id": "EV_48A",
+          "consumption": 11.5,
+          "duration": 7,
+          "allowed_starts": [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 2,
+          "allowed_starts": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ]
+        },
+        {
+          "id": "Sauna_1",
+          "consumption": 6.0,
+          "duration": 1,
+          "allowed_starts": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "id": "EV_48A_1",
+          "consumption": 11.5,
+          "duration": 5,
+          "allowed_starts": [
+            17,
+            18
+          ]
+        },
+        {
+          "id": "PoolPump",
+          "consumption": 1.1,
+          "duration": 3,
+          "allowed_starts": [
+            13,
+            14,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H4",
+      "tasks": [
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 2,
+          "allowed_starts": [
+            12,
+            13,
+            14
+          ]
+        },
+        {
+          "id": "Dishwasher",
+          "consumption": 1.0,
+          "duration": 3,
+          "allowed_starts": [
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        },
+        {
+          "id": "Washer",
+          "consumption": 0.5,
+          "duration": 3,
+          "allowed_starts": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "id": "VacDock",
+          "consumption": 0.18,
+          "duration": 2,
+          "allowed_starts": [
+            7,
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "id": "EV_48A",
+          "consumption": 11.5,
+          "duration": 6,
+          "allowed_starts": [
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "id": "WaterBoost",
+          "consumption": 4.5,
+          "duration": 2,
+          "allowed_starts": [
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        {
+          "id": "WaterBoost_1",
+          "consumption": 4.5,
+          "duration": 1,
+          "allowed_starts": [
+            18,
+            19,
+            20,
+            21,
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H5",
+      "tasks": [
+        {
+          "id": "EV_48A",
+          "consumption": 11.5,
+          "duration": 7,
+          "allowed_starts": [
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "id": "PoolPump",
+          "consumption": 1.1,
+          "duration": 4,
+          "allowed_starts": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 2,
+          "allowed_starts": [
+            18,
+            19
+          ]
+        },
+        {
+          "id": "Sauna_1",
+          "consumption": 6.0,
+          "duration": 1,
+          "allowed_starts": [
+            11,
+            12
+          ]
+        },
+        {
+          "id": "Ebike",
+          "consumption": 0.48,
+          "duration": 3,
+          "allowed_starts": [
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "Washer",
+          "consumption": 0.5,
+          "duration": 3,
+          "allowed_starts": [
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "EV_48A_1",
+          "consumption": 11.5,
+          "duration": 5,
+          "allowed_starts": [
+            11,
+            12,
+            13,
+            14
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H6",
+      "tasks": [
+        {
+          "id": "Dishwasher",
+          "consumption": 1.0,
+          "duration": 2,
+          "allowed_starts": [
+            16,
+            17,
+            18,
+            19
+          ]
+        },
+        {
+          "id": "PoolPump",
+          "consumption": 1.1,
+          "duration": 3,
+          "allowed_starts": [
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "id": "EV_32A",
+          "consumption": 7.7,
+          "duration": 7,
+          "allowed_starts": [
+            13,
+            14,
+            15
+          ]
+        },
+        {
+          "id": "EV_48A",
+          "consumption": 11.5,
+          "duration": 7,
+          "allowed_starts": [
+            3,
+            4
+          ]
+        },
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 2,
+          "allowed_starts": [
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "id": "Ebike",
+          "consumption": 0.48,
+          "duration": 3,
+          "allowed_starts": [
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "VacDock",
+          "consumption": 0.18,
+          "duration": 2,
+          "allowed_starts": [
+            18,
+            19,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H7",
+      "tasks": [
+        {
+          "id": "Dishwasher",
+          "consumption": 1.0,
+          "duration": 2,
+          "allowed_starts": [
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "Dryer",
+          "consumption": 2.8,
+          "duration": 4,
+          "allowed_starts": [
+            19,
+            20
+          ]
+        },
+        {
+          "id": "EV_32A",
+          "consumption": 7.7,
+          "duration": 7,
+          "allowed_starts": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "id": "EV_48A",
+          "consumption": 11.5,
+          "duration": 6,
+          "allowed_starts": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "id": "AirPurifier",
+          "consumption": 0.09,
+          "duration": 6,
+          "allowed_starts": [
+            13,
+            14,
+            15,
+            16
+          ]
+        },
+        {
+          "id": "Dryer_1",
+          "consumption": 2.8,
+          "duration": 3,
+          "allowed_starts": [
+            13,
+            14,
+            15,
+            16,
+            17
+          ]
+        },
+        {
+          "id": "WaterBoost",
+          "consumption": 4.5,
+          "duration": 1,
+          "allowed_starts": [
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "id": "Sauna",
+          "consumption": 6.0,
+          "duration": 1,
+          "allowed_starts": [
+            15,
+            16
+          ]
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "name": "Neighborhood-PowerLite",
+    "single_factor": true,
+    "catalog_path": "envs/SmartGrid/data/devices.json"
+  }
+}

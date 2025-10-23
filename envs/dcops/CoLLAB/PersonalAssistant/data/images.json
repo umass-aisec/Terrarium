@@ -1,0 +1,45 @@
+{
+  "images": [
+    {"color": "blue",  "article": "t-shirt", "filename": "blue_t-shirt.png"},
+    {"color": "blue",  "article": "hoodie", "filename": "blue_hoodie.png"},
+    {"color": "blue",  "article": "blouse", "filename": "blue_blouse.png"},
+    {"color": "blue",  "article": "dress",  "filename": "blue_dress.png"},
+    {"color": "blue",  "article": "suit",   "filename": "blue_suit.png"},
+    {"color": "blue",  "article": "shirt",  "filename": "blue_shirt.png"},
+
+    {"color": "black", "article": "t-shirt", "filename": "black_t-shirt.png"},
+    {"color": "black", "article": "hoodie",  "filename": "black_hoodie.png"},
+    {"color": "black", "article": "blouse",  "filename": "black_blouse.png"},
+    {"color": "black", "article": "dress",   "filename": "black_dress.png"},
+    {"color": "black", "article": "suit",    "filename": "black_suit.png"},
+    {"color": "black", "article": "shirt",   "filename": "black_shirt.png"},
+
+    {"color": "white", "article": "t-shirt", "filename": "white_t-shirt.png"},
+    {"color": "white", "article": "hoodie",  "filename": "white_hoodie.png"},
+    {"color": "white", "article": "blouse",  "filename": "white_blouse.png"},
+    {"color": "white", "article": "dress",   "filename": "white_dress.png"},
+    {"color": "white", "article": "suit",    "filename": "white_suit.png"},
+    {"color": "white", "article": "shirt",   "filename": "white_shirt.png"},
+
+    {"color": "red",   "article": "t-shirt", "filename": "red_t-shirt.png"},
+    {"color": "red",   "article": "hoodie",  "filename": "red_hoodie.png"},
+    {"color": "red",   "article": "blouse",  "filename": "red_blouse.png"},
+    {"color": "red",   "article": "dress",   "filename": "red_dress.png"},
+    {"color": "red",   "article": "suit",    "filename": "red_suit.png"},
+    {"color": "red",   "article": "shirt",   "filename": "red_shirt.png"},
+
+    {"color": "pink",  "article": "t-shirt", "filename": "pink_t-shirt.png"},
+    {"color": "pink",  "article": "hoodie",  "filename": "pink_hoodie.png"},
+    {"color": "pink",  "article": "blouse",  "filename": "pink_blouse.png"},
+    {"color": "pink",  "article": "dress",   "filename": "pink_dress.png"},
+    {"color": "pink",  "article": "suit",    "filename": "pink_suit.png"},
+    {"color": "pink",  "article": "shirt",   "filename": "pink_shirt.png"},
+
+    {"color": "green", "article": "t-shirt", "filename": "green_t-shirt.png"},
+    {"color": "green", "article": "hoodie",  "filename": "green_hoodie.png"},
+    {"color": "green", "article": "blouse",  "filename": "green_blouse.png"},
+    {"color": "green", "article": "dress",   "filename": "green_dress.png"},
+    {"color": "green", "article": "suit",    "filename": "green_suit.png"},
+    {"color": "green", "article": "shirt",   "filename": "green_shirt.png"}
+  ]
+}

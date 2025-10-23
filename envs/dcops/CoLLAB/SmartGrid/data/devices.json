@@ -1,0 +1,16 @@
+{
+  "devices": [
+    { "id": "EV_48A",      "description": "Electric vehicle charging at 48A; high draw, flexible.",        "consumption_kw": 11.5, "duration_slots": [5, 7] },
+    { "id": "EV_32A",      "description": "Electric vehicle charging at 32A; moderate draw.",             "consumption_kw": 7.7,  "duration_slots": [5, 9] },
+    { "id": "Washer",      "description": "Clothes washer cycle.",                                        "consumption_kw": 0.5,  "duration_slots": [2, 3] },
+    { "id": "Dryer",       "description": "Clothes dryer cycle.",                                         "consumption_kw": 2.8,  "duration_slots": [2, 4] },
+    { "id": "Dishwasher",  "description": "Dishwasher wash cycle.",                                       "consumption_kw": 1.0,  "duration_slots": [2, 3] },
+    { "id": "WaterBoost",  "description": "Electric water heater boost cycle.",                           "consumption_kw": 4.5,  "duration_slots": [1, 2] },
+    { "id": "PoolPump",    "description": "Pool circulation pump.",                                       "consumption_kw": 1.1,  "duration_slots": [3, 5] },
+    { "id": "Dehumid",     "description": "Basement dehumidifier run.",                                   "consumption_kw": 0.7,  "duration_slots": [2, 3] },
+    { "id": "AirPurifier", "description": "Air purifier high run.",                                       "consumption_kw": 0.09, "duration_slots": [3, 6] },
+    { "id": "Sauna",       "description": "Sauna heating cycle.",                                         "consumption_kw": 6.0,  "duration_slots": [1, 2] },
+    { "id": "Ebike",       "description": "E-bike charger.",                                              "consumption_kw": 0.48, "duration_slots": [2, 4] },
+    { "id": "VacDock",     "description": "Robot vacuum dock charging.",                                  "consumption_kw": 0.18, "duration_slots": [1, 2] }
+  ]
+}
