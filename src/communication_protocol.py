@@ -28,7 +28,8 @@ class CommunicationProtocol:
     """
 
     def __init__(self, config: Dict[str, Any],
-                 tool_logger, mcp_client):
+                 tool_logger, mcp_client,
+                 run_timestamp: Optional[str] = None):
         """
         Initialize the communication protocol.
 
@@ -42,7 +43,8 @@ class CommunicationProtocol:
         self.simulation_config = config["simulation"]
         # self.blackboard_manager = Megaboard()
         self.tool_logger = tool_logger
-        self.blackboard_logger = BlackboardLogger(self.config)
+        self.run_timestamp = run_timestamp
+        self.blackboard_logger = BlackboardLogger(self.config, run_timestamp=self.run_timestamp)
         self.blackboard_logger.clear_blackboard_logs()
         self.mcp_client = mcp_client
         self.environment = None

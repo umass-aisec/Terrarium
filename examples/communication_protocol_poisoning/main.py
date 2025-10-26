@@ -14,13 +14,15 @@ import argparse
 import random
 from typing import Any, Dict
 from tqdm import tqdm
+from datetime import datetime
+
 from src.agent import Agent
 from src.communication_protocol import CommunicationProtocol
-from src.logger import ToolCallLogger, AgentTrajectoryLogger
+from src.logger import ToolCallLogger, AgentTrajectoryLogger, AttackLogger
 from src.utils import load_config, get_client_instance, create_environment, get_model_name
 import asyncio
 from fastmcp import Client
-from attack_module.attack_modules import CommunicationProtocolPoisoningAttack
+from attack_module.framework import AttackManager
 
 mcp_client = Client("http://localhost:8000/mcp")
 
@@ -37,6 +39,10 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
     """
     try:
         seed = config["environment"]["rng_seed"]
+        run_timestamp = config.get("simulation", {}).get("run_timestamp")
+        if not run_timestamp:
+            run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            config.setdefault("simulation", {})["run_timestamp"] = run_timestamp
         print(f"\n{'='*60}")
         print(f"SIMULATION - SEED: {seed}")
         print(f"{'='*60}")
@@ -45,10 +51,11 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         environment_name = config["environment"]["name"]
 
         # Initialize loggers
-        tool_logger = ToolCallLogger(environment_name, seed, config)
-        trajectory_logger = AgentTrajectoryLogger(environment_name, seed, config)
+        tool_logger = ToolCallLogger(environment_name, seed, config, run_timestamp=run_timestamp)
+        trajectory_logger = AgentTrajectoryLogger(environment_name, seed, config, run_timestamp=run_timestamp)
+        attack_logger = AttackLogger(environment_name, seed, config, run_timestamp=run_timestamp)
 
-        communication_protocol = CommunicationProtocol(config, tool_logger, mcp_client)
+        communication_protocol = CommunicationProtocol(config, tool_logger, mcp_client, run_timestamp=run_timestamp)
         environment = create_environment(communication_protocol, environment_name, config, tool_logger)
 
         # Initialize environment-specific tools on the MCP server
@@ -59,6 +66,8 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         # Reset tool call log for new simulation
         environment.tool_logger.reset_log()
         await environment.async_init()
+
+        attack_manager = AttackManager(config.get("attacks"), attack_logger=attack_logger)
 
         # Initialize agents
         agent_names = environment.get_agent_names()
@@ -76,14 +85,15 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         for name in agent_names:
             client = get_client_instance(llm_config)
             print(f"Initializing Agent: {name} with {provider} - {model_name}")
-            agent = Agent(
-                client,
-                name,
-                model_name,
-                max_conversation_steps,
-                tool_logger,
-                trajectory_logger,
-                environment_name  # Pass environment name so agent can discover correct tools
+            agent = attack_manager.create_agent(
+                base_class=Agent,
+                client=client,
+                name=name,
+                model_name=model_name,
+                max_conversation_steps=max_conversation_steps,
+                tool_logger=tool_logger,
+                trajectory_logger=trajectory_logger,
+                environment_name=environment_name,
             )
             agents.append(agent)
         # Shuffle initial agent order, and maintain order through simulation
@@ -100,8 +110,13 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
                 if not environment.should_continue_simulation(current_iteration):
                     print(f"Environment requested simulation stop at iteration {current_iteration}")
                     break
-                ## Poisoning the blackboard before the planning turn
-                await CommunicationProtocolPoisoningAttack.pre_planning_turn_poisoning(communication_protocol)
+                ## Protocol-level attacks (e.g., poisoning blackboards) before the planning turn
+                await attack_manager.run_protocol_hooks(
+                    "pre_planning",
+                    communication_protocol,
+                    iteration=iteration,
+                    phase="planning",
+                )
                 # Planning Phase with progress bar
                 for planning_round in tqdm(range(1, max_planning_rounds + 1), desc="  Planning", position=1, leave=False, ncols=80):
                     # Use consistent agent order for this iteration
@@ -140,4 +155,3 @@ if __name__ == "__main__":
 
     # For running a single simulation
     asyncio.run(run_simulation(config))
-

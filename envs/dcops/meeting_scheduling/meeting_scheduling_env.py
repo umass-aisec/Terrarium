@@ -19,7 +19,14 @@ from envs.dcops.CoLLAB.MeetingScheduling.generate import build_meeting_env
 # Import abstract environment interface and loggers
 from envs.abstract_environment import AbstractEnvironment
 from envs.dcops.plotter import ScorePlotter
-from src.utils import clear_seed_directories, extract_model_info, get_tag_model_subdir
+from src.utils import (
+    clear_seed_directories,
+    extract_model_info,
+    get_tag_model_subdir,
+    get_run_timestamp,
+    build_log_dir,
+    build_plots_dir,
+)
 from .meeting_scheduling_prompts import MeetingSchedulingPrompts
 
 class MeetingSchedulingEnvironment(AbstractEnvironment):
@@ -44,6 +51,7 @@ class MeetingSchedulingEnvironment(AbstractEnvironment):
         self.agent_names: List[str] = []  # Meeting owners (agents)
         self.communication_protocol = communication_protocol
         self.communication_protocol.environment = self # Add bidirectional reference
+        self.run_timestamp = get_run_timestamp(self.full_config)
         self.current_iteration = 0
         self.max_iterations = self.simulation_config.get("max_iterations", None)
         self.max_planning_rounds = self.simulation_config.get("max_planning_rounds", None)        
@@ -82,8 +90,8 @@ class MeetingSchedulingEnvironment(AbstractEnvironment):
 
         # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        plots_dir = f"plots/MeetingScheduling/{tag_model}/seed_{self.current_seed}"
-        self.score_plotter = ScorePlotter(save_dir=plots_dir)
+        plots_dir = build_plots_dir("MeetingScheduling", tag_model, self.current_seed, self.run_timestamp)
+        self.score_plotter = ScorePlotter(save_dir=str(plots_dir))
 
         print(f"MeetingScheduling environment initialized with {len(self.agent_names)} agents")
         print(f"Agents (meeting owners): {', '.join(self.agent_names)}")
@@ -291,7 +299,7 @@ class MeetingSchedulingEnvironment(AbstractEnvironment):
         # Create logs directory with seed subdirectory
         # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        log_dir = Path("logs") / "MeetingScheduling" / tag_model / f"seed_{self.current_seed}"
+        log_dir = build_log_dir("MeetingScheduling", tag_model, self.current_seed, self.run_timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Log scores to JSON

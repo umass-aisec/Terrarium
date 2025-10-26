@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terrarium Attack Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f5f6fa;
+        --fg: #1f2430;
+        --panel: #ffffff;
+        --border: #e4e7ec;
+        --muted: #5f6b7c;
+        --success: #1f9254;
+        --success-bg: #e8f7ef;
+        --failure: #b42318;
+        --failure-bg: #fde8e8;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      header {
+        background: var(--fg);
+        color: #fff;
+        padding: 24px;
+      }
+      header h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      header .meta {
+        font-size: 14px;
+        opacity: 0.85;
+      }
+      main {
+        padding: 24px;
+      }
+      section {
+        background: var(--panel);
+        padding: 20px;
+        margin-bottom: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+      }
+      h2 {
+        margin-top: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      pre {
+        background: #0f172a;
+        color: #dee4ff;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 13px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th, td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+      }
+      th [data-sortable] {
+        cursor: pointer;
+      }
+      .badge {
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        align-items: center;
+      }
+      .badge.success {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+      .badge.failure {
+        background: var(--failure-bg);
+        color: var(--failure);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .run-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        background: #fff;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      .filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .filters input, .filters select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/javascript">
+      const { useState, useEffect, useMemo } = React;
+
+      const Badge = ({ success }) => (
+        React.createElement('span', { className: `badge ${success ? 'success' : 'failure'}` }, success ? 'success' : 'failure')
+      );
+
+      const ConfigPanel = ({ config }) => {
+        if (!config || Object.keys(config).length === 0) {
+          return React.createElement('p', { className: 'muted' }, 'No configuration embedded in this data bundle.');
+        }
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement('div', { className: 'grid' }, [
+            React.createElement('div', { key: 'env' }, [
+              React.createElement('h3', null, 'Environment'),
+              React.createElement('pre', null, JSON.stringify(config.environment, null, 2)),
+            ]),
+            React.createElement('div', { key: 'sim' }, [
+              React.createElement('h3', null, 'Simulation'),
+              React.createElement('pre', null, JSON.stringify(config.simulation, null, 2)),
+            ]),
+            React.createElement('div', { key: 'llm' }, [
+              React.createElement('h3', null, 'LLM'),
+              React.createElement('pre', null, JSON.stringify(config.llm, null, 2)),
+            ]),
+          ]),
+          React.createElement('h3', null, 'Attack Definitions'),
+          React.createElement('div', { className: 'scroll' },
+            React.createElement('table', null, [
+              React.createElement('thead', { key: 'head' },
+                React.createElement('tr', null, [
+                  React.createElement('th', { key: 'idx' }, '#'),
+                  React.createElement('th', { key: 'type' }, 'Type'),
+                  React.createElement('th', { key: 'targets' }, 'Targets'),
+                  React.createElement('th', { key: 'trigger' }, 'Trigger'),
+                  React.createElement('th', { key: 'details' }, 'Details'),
+                ])),
+              React.createElement('tbody', { key: 'body' },
+                (config.attacks || []).map((attack, idx) => (
+                  React.createElement('tr', { key: idx }, [
+                    React.createElement('td', null, idx + 1),
+                    React.createElement('td', null, attack.type),
+                    React.createElement('td', null, attack.agents || attack.agent || '-'),
+                    React.createElement('td', null, attack.trigger || 'agent'),
+                    React.createElement('td', null, React.createElement('pre', null, JSON.stringify(attack, null, 2))),
+                  ])
+                ))
+              )
+            ])
+          )
+        );
+      };
+
+      const RunsGrid = ({ runs, filter }) => {
+        if (!runs.length) {
+          return React.createElement('p', { className: 'muted' }, 'No attack runs discovered.');
+        }
+        const filtered = runs.filter((run) => {
+          if (!filter) return true;
+          const f = filter.toLowerCase();
+          return (
+            run.environment.toLowerCase().includes(f) ||
+            run.tag_model.toLowerCase().includes(f) ||
+            String(run.seed).includes(f) ||
+            (run.run_timestamp || '').toLowerCase().includes(f)
+          );
+        });
+        return React.createElement('div', { className: 'grid' },
+          filtered.map((run, idx) => (
+            React.createElement('div', { className: 'run-card', key: idx }, [
+              React.createElement('h3', null, `${run.environment} · ${run.tag_model}`),
+              React.createElement('p', { className: 'muted' }, `Seed ${run.seed} · Run ${run.run_timestamp} · ${run.log_dir}`),
+              React.createElement('p', null, `Total attack events: ${run.events.length}`),
+              React.createElement('ul', null,
+                Object.entries(run.attack_counts || {}).map(([attackType, counts]) => {
+                  const total = (counts.success || 0) + (counts.failure || 0);
+                  const rate = total ? ((counts.success || 0) / total * 100).toFixed(1) : '0.0';
+                  return React.createElement('li', { key: attackType }, [
+                    React.createElement('strong', null, attackType), ' — ',
+                    React.createElement('span', { className: 'badge success' }, `${counts.success || 0} success`), ' ',
+                    React.createElement('span', { className: 'badge failure' }, `${counts.failure || 0} failure`), ' ',
+                    React.createElement('span', { className: 'muted' }, `(${rate}%)`),
+                  ]);
+                })
+              )
+            ])
+          ))
+        );
+      };
+
+      const EventsTable = ({ runs, filter }) => {
+        if (!runs.length) {
+          return React.createElement('p', { className: 'muted' }, 'No events.');
+        }
+        const rows = [];
+        const f = filter ? filter.toLowerCase() : '';
+        runs.forEach((run) => {
+          run.events.forEach((event) => {
+            const text = `${event.attack_type} ${event.attacker} ${run.environment} ${run.tag_model} ${run.run_timestamp}`.toLowerCase();
+            if (!f || text.includes(f)) {
+              rows.push({ run, event });
+            }
+          });
+        });
+        return React.createElement('div', { className: 'scroll' },
+          React.createElement('table', null, [
+            React.createElement('thead', { key: 'head' },
+              React.createElement('tr', null, [
+                React.createElement('th', null, 'Timestamp'),
+                React.createElement('th', null, 'Environment'),
+                React.createElement('th', null, 'Seed'),
+                React.createElement('th', null, 'Category'),
+                React.createElement('th', null, 'Type'),
+                React.createElement('th', null, 'Attacker'),
+                React.createElement('th', null, 'Target'),
+                React.createElement('th', null, 'Phase'),
+                React.createElement('th', null, 'Iter'),
+                React.createElement('th', null, 'Run'),
+                React.createElement('th', null, 'Success'),
+                React.createElement('th', null, 'Metadata'),
+              ])
+            ),
+            React.createElement('tbody', { key: 'body' },
+              rows.map(({ run, event }, idx) => (
+                React.createElement('tr', { key: idx }, [
+                  React.createElement('td', null, event.timestamp),
+                  React.createElement('td', null, run.environment),
+                  React.createElement('td', null, run.seed),
+                  React.createElement('td', null, event.category),
+                  React.createElement('td', null, event.attack_type),
+                  React.createElement('td', null, event.attacker),
+                  React.createElement('td', null, event.target || '-'),
+                  React.createElement('td', null, event.phase || '-'),
+                  React.createElement('td', null, event.iteration || '-'),
+                  React.createElement('td', null, run.run_timestamp || '-'),
+                  React.createElement('td', null, React.createElement(Badge, { success: event.success })),
+                  React.createElement('td', null, React.createElement('pre', null, JSON.stringify(event.metadata || {}, null, 2))),
+                ])
+              ))
+            )
+          ])
+        );
+      };
+
+      const useChart = (canvasRef, chartData) => {
+        useEffect(() => {
+          if (!canvasRef.current || !chartData.labels.length) return;
+          const chart = new Chart(canvasRef.current, {
+            type: 'bar',
+            data: {
+              labels: chartData.labels,
+              datasets: [
+                { label: 'Success', backgroundColor: '#1f9254', data: chartData.success },
+                { label: 'Failure', backgroundColor: '#b42318', data: chartData.failure },
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+            }
+          });
+          return () => chart.destroy();
+        }, [canvasRef, chartData]);
+      };
+
+      const ChartPanel = ({ chartData }) => {
+        const canvasRef = React.useRef(null);
+        useChart(canvasRef, chartData);
+        if (!chartData.labels.length) {
+          return React.createElement('p', { className: 'muted' }, 'No attack logs discovered.');
+        }
+        return React.createElement('canvas', { ref: canvasRef, height: 160 });
+      };
+
+      const ScoreTimeline = ({ runs }) => {
+        const [selectedRun, setSelectedRun] = useState(runs.length ? 0 : null);
+        const canvasRef = React.useRef(null);
+
+        const chartPayload = useMemo(() => {
+          if (selectedRun === null || !runs[selectedRun]) return null;
+          const run = runs[selectedRun];
+          const scores = (run.scores || []).filter((s) => s.global_score !== undefined && s.global_score !== null);
+          if (!scores.length) return { hasData: false, run };
+          const scorePoints = scores.map((entry) => ({ x: entry.iteration ?? 0, y: entry.global_score ?? 0 }));
+          const scoreMap = new Map(scores.map((entry) => [entry.iteration ?? 0, entry.global_score ?? 0]));
+          const attackPoints = (run.events || [])
+            .filter((event) => event.iteration !== undefined && event.iteration !== null)
+            .map((event) => {
+              const iteration = event.iteration ?? 0;
+              const y = scoreMap.has(iteration)
+                ? scoreMap.get(iteration)
+                : scorePoints.length
+                  ? scorePoints[scorePoints.length - 1].y
+                  : 0;
+              return {
+                x: iteration,
+                y,
+                attack_type: event.attack_type,
+                attacker: event.attacker,
+                timestamp: event.timestamp,
+                success: event.success,
+              };
+            });
+          return {
+            hasData: true,
+            run,
+            datasets: [
+              {
+                type: 'line',
+                label: 'Global Score',
+                data: scorePoints,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37,99,235,0.15)',
+                tension: 0.2,
+                fill: true,
+              },
+              {
+                type: 'scatter',
+                label: 'Attack Event',
+                data: attackPoints,
+                pointBackgroundColor: '#b42318',
+                pointBorderColor: '#fff',
+                pointRadius: 6,
+              }
+            ],
+          };
+        }, [runs, selectedRun]);
+
+        useEffect(() => {
+          if (!chartPayload || !chartPayload.hasData || !canvasRef.current) return;
+          const chart = new Chart(canvasRef.current, {
+            data: { datasets: chartPayload.datasets },
+            options: {
+              responsive: true,
+              interaction: { mode: 'nearest', intersect: false },
+              scales: {
+                x: { title: { display: true, text: 'Iteration' }, ticks: { precision: 0 } },
+                y: { title: { display: true, text: 'Global Score' } },
+              },
+              plugins: {
+                tooltip: {
+                  callbacks: {
+                    label(context) {
+                      const raw = context.raw || {};
+                      if (context.dataset.label === 'Attack Event') {
+                        return `${raw.attack_type || 'attack'} by ${raw.attacker || '?'}`;
+                      }
+                      return `score: ${context.parsed.y}`;
+                    },
+                  },
+                },
+              },
+            },
+          });
+          return () => chart.destroy();
+        }, [chartPayload]);
+
+        if (!runs.length) {
+          return React.createElement('p', { className: 'muted' }, 'No runs available.');
+        }
+
+        return React.createElement(React.Fragment, null, [
+          React.createElement('div', { className: 'filters', key: 'selector' },
+            React.createElement('select', {
+              value: selectedRun ?? '',
+              onChange: (e) => setSelectedRun(e.target.value === '' ? null : Number(e.target.value)),
+            },
+              runs.map((run, idx) => (
+                React.createElement('option', { value: idx, key: idx },
+                  `${run.environment} · ${run.tag_model} · seed ${run.seed} · run ${run.run_timestamp}`
+                )
+              ))
+            )
+          ),
+          chartPayload && chartPayload.hasData
+            ? React.createElement('canvas', { ref: canvasRef, height: 200, key: 'canvas' })
+            : React.createElement('p', { className: 'muted' }, 'Selected run does not contain score logs.'),
+        ]);
+      };
+
+      const App = () => {
+        const [data, setData] = useState(null);
+        const [filter, setFilter] = useState('');
+        const [loading, setLoading] = useState(true);
+        const [error, setError] = useState(null);
+
+        useEffect(() => {
+          fetch('attack_data.json')
+            .then((res) => {
+              if (!res.ok) throw new Error('Unable to load attack_data.json');
+              return res.json();
+            })
+            .then((json) => {
+              setData(json);
+              setLoading(false);
+            })
+            .catch((err) => {
+              setError(err.message);
+              setLoading(false);
+            });
+        }, []);
+
+        if (loading) {
+          return React.createElement('main', null, 'Loading attack data...');
+        }
+        if (error) {
+          return React.createElement('main', null,
+            React.createElement('p', { className: 'muted' }, error)
+          );
+        }
+        return React.createElement(React.Fragment, null, [
+          React.createElement('header', { key: 'hdr' }, [
+            React.createElement('h1', null, 'Terrarium Attack Dashboard (Static)'),
+            React.createElement('div', { className: 'meta' }, `Logs root: ${data.logs_root}`),
+          ]),
+          React.createElement('main', { key: 'main' }, [
+          React.createElement('section', { key: 'config' }, [
+            React.createElement('h2', null, 'Simulation & Attack Configuration'),
+            React.createElement(ConfigPanel, { config: data.config }),
+          ]),
+          React.createElement('section', { key: 'howto' }, [
+            React.createElement('h2', null, 'How to Read These Results'),
+            React.createElement('p', null, [
+              'This dashboard summarizes every adversarial run recorded in the timestamped log folders ',
+              React.createElement('code', { key: 'path' }, 'logs/<env>/<tag_model>/<run_timestamp>/seed_<seed>'),
+              '. Each run keeps the full configuration, attack definitions, and attack telemetry, so you can reconstruct how the agents behaved.'
+            ]),
+            React.createElement('ul', null, [
+              React.createElement('li', { key: 'cfg' }, 'Configuration: The first panel shows exactly what scenario was executed (environment parameters, simulation limits, LLM choice, and the attacks block). This is the “ground truth” of what each malicious agent or protocol hook was supposed to do.'),
+              React.createElement('li', { key: 'chart' }, 'Chart: Success/failure bars are simple counts of injected attacks that changed a tool call. They tell you if an attacker managed to overwrite messages, leak secrets, or flood context—not whether the environment score dropped (check score logs if you need that).'),
+              React.createElement('li', { key: 'runs' }, 'Runs grid: Each card corresponds to one seed/run timestamp. Use it to compare different configs or seeds: are information-leak attacks always succeeding? Does communication poisoning fail in some runs?'),
+              React.createElement('li', { key: 'events' }, 'Event stream: Every row is a single tool-call rewrite or protocol injection with timestamps, attacker, phase, target blackboard, and the payload preview. This is the primary evidence when you want to inspect what an attacker actually wrote.'),
+              React.createElement('li', { key: 'metrics' }, 'Success semantics: “Success” means the attack modified the outgoing payload (e.g., the message posted to a blackboard). Use the environment’s score logs to correlate these events with downstream utility loss or completion-rate drops.'),
+            ]),
+            React.createElement('p', { className: 'muted' }, 'Tip: Filter runs or events using the search box (environment name, tag, seed, timestamp, or attack type) to focus on a subset of interest, such as only the communication-poisoning shots in one timestamp.'),
+          ]),
+            React.createElement('section', { key: 'chart' }, [
+              React.createElement('h2', null, 'Attack Success vs Failure'),
+              React.createElement(ChartPanel, { chartData: data.chart_data }),
+            ]),
+            React.createElement('section', { key: 'scores' }, [
+              React.createElement('h2', null, 'Score Timeline vs Attack Events'),
+              React.createElement('p', { className: 'muted' }, 'Use this chart to see whether global scores changed around the time attacks fired. Each point on the line is an environment score log; red markers show individual attack events happening during that iteration.'),
+              React.createElement(ScoreTimeline, { runs: data.runs }),
+            ]),
+            React.createElement('section', { key: 'runs' }, [
+              React.createElement('div', { className: 'filters' }, [
+                React.createElement('input', {
+                  key: 'filter',
+                  value: filter,
+                  placeholder: 'Filter runs/events (env, tag, seed, timestamp, attack...)',
+                  onChange: (e) => setFilter(e.target.value),
+                }),
+              ]),
+              React.createElement('h2', null, 'Runs'),
+              React.createElement(RunsGrid, { runs: data.runs, filter }),
+            ]),
+            React.createElement('section', { key: 'events' }, [
+              React.createElement('h2', null, 'Attack Event Stream'),
+              React.createElement(EventsTable, { runs: data.runs, filter }),
+            ]),
+          ])
+        ]);
+      };
+
+      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+    </script>
+  </body>
+</html>

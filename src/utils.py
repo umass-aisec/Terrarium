@@ -8,7 +8,7 @@ and components of the multi-agent communication protocol system.
 import shutil
 import yaml
 from pathlib import Path
-from typing import Union, Any, Dict, List
+from typing import Union, Any, Dict, List, Optional
 
 
 def load_config(config_file) -> Dict[str, Any]:
@@ -176,6 +176,37 @@ def get_tag_model_subdir(full_config: Dict[str, Any]) -> str:
     return f"{tag}_{model_name}"
 
 
+def get_run_timestamp(full_config: Dict[str, Any], default: Optional[str] = None) -> Optional[str]:
+    """Return the run timestamp stored in the simulation config, if any."""
+
+    return full_config.get("simulation", {}).get("run_timestamp", default)
+
+
+def _build_run_directory(root: str, environment_name: str, tag_model: str,
+                         seed: Union[int, str], run_timestamp: Optional[str]) -> Path:
+    parts = [Path(root), environment_name]
+    if tag_model:
+        parts.append(tag_model)
+    if run_timestamp:
+        parts.append(run_timestamp)
+    parts.append(f"seed_{seed}")
+    return Path(*parts)
+
+
+def build_log_dir(environment_name: str, tag_model: str,
+                  seed: Union[int, str], run_timestamp: Optional[str] = None) -> Path:
+    """Build the filesystem path for log artifacts."""
+
+    return _build_run_directory("logs", environment_name, tag_model, seed, run_timestamp)
+
+
+def build_plots_dir(environment_name: str, tag_model: str,
+                    seed: Union[int, str], run_timestamp: Optional[str] = None) -> Path:
+    """Build the filesystem path for plot artifacts."""
+
+    return _build_run_directory("plots", environment_name, tag_model, seed, run_timestamp)
+
+
 def clear_seed_directories(environment_name: str, seed: Union[int, str], full_config: Dict[str, Any]) -> None:
     """
     Clear existing seed directories for both logs and plots to ensure clean state.
@@ -189,13 +220,15 @@ def clear_seed_directories(environment_name: str, seed: Union[int, str], full_co
     tag_model = get_tag_model_subdir(full_config)
 
     # Clear plots directory for this seed
-    plots_seed_dir = Path(f"plots/{environment_name}/{tag_model}/seed_{seed}")
+    run_timestamp = get_run_timestamp(full_config)
+
+    plots_seed_dir = build_plots_dir(environment_name, tag_model, seed, run_timestamp)
     if plots_seed_dir.exists():
         shutil.rmtree(plots_seed_dir)
         print(f"Cleared plots directory: {plots_seed_dir}")
 
     # Clear logs directory for this seed
-    logs_seed_dir = Path(f"logs/{environment_name}/{tag_model}/seed_{seed}")
+    logs_seed_dir = build_log_dir(environment_name, tag_model, seed, run_timestamp)
     if logs_seed_dir.exists():
         shutil.rmtree(logs_seed_dir)
         print(f"Cleared logs directory: {logs_seed_dir}")
