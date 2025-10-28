@@ -30,7 +30,7 @@ class AnthropicClient(AbstractClient):
                 "Install with: pip install anthropic"
             ) from e
 
-        load_dotenv()
+        load_dotenv(override=True)
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError(

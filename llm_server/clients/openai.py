@@ -16,7 +16,7 @@ class OpenAIClient(AbstractClient):
     """
     
     def __init__(self):
-        load_dotenv()
+        load_dotenv(override=True)
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY in .env file")
