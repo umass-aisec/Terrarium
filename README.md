@@ -68,8 +68,11 @@ python src/server.py
 python3 examples/base/main.py --config <yaml_config_path>
 ```
 
-## Examples
-For examples on how Terrarium can be used, such as attacks, see the `examples/` directory.
+## Attack Examples
+The repo currently contains 3 attacks. 
+1. Agent Poisoning
+2. Communication Poisoning
+3. Context Overflow
 
 ## Quick Tips
 - When working with Terrarium, use sublass definitions (e.g., A2ACommunicationProtocol, EvilAgent) of the base module classes (e.g., CommunicationProtocol, Agent) rather than directly changing the base module classes.
