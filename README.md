@@ -70,9 +70,17 @@ python3 examples/base/main.py --config <yaml_config_path>
 
 ## Attack Examples
 The repo currently contains 3 attacks. 
-1. Agent Poisoning
-2. Communication Poisoning
-3. Context Overflow
+1. Agent Poisoning (agent_poisoning)
+2. Communication Poisoning (communication_protocol_poisoning)
+3. Context Overflow. (context_overflow)
+
+The implementation of the attack modules can be found in /attack_module. Here is an example:
+```bash
+python3 examples/attacks/main.py --config examples/configs/meeting_scheduling.yaml --poison_payload examples/configs/attack_config.yaml --attack_type context_overflow 
+```
+
+examples/attacks shows examples on how to run the attack. To test the attack you need to provide attack config file alongside the attack type.
+
 
 ## Quick Tips
 - When working with Terrarium, use sublass definitions (e.g., A2ACommunicationProtocol, EvilAgent) of the base module classes (e.g., CommunicationProtocol, Agent) rather than directly changing the base module classes.
