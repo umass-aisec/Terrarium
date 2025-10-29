@@ -27,6 +27,8 @@ Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/
 
 Follow the quick guide provided below for basic testing.
 
+## Quick Start
+
 **Requirements**: Python 3.11+
 
 1. Clone the repository:
