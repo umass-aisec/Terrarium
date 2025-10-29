@@ -76,7 +76,7 @@ Terrarium ships three reference attacks that exercise different points in the st
 | --- | --- | --- | --- |
 | Agent poisoning | Replaces every `post_message` payload from the compromised agent before it reaches the blackboard. | `examples/attacks/main.py --attack_type agent_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
 | Context overflow | Appends a large filler block to agent messages to force downstream context truncation. | `examples/attacks/main.py --attack_type context_overflow` | `examples/configs/attack_config.yaml` (`header`, `filler_token`, `repeat`, `max_chars`) |
-| Communication protocol poisoning | Injects malicious system messages into every blackboard via the MCP layer. | `examples/communication_protocol_poisoning/main.py` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+| Communication protocol poisoning | Injects malicious system messages into every blackboard via the MCP layer. | `examples/attacks/main.py --communication_protocol_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
 
 ### Running agent-side attacks
 
