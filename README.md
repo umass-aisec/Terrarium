@@ -68,20 +68,33 @@ python src/server.py
 python3 examples/base/main.py --config <yaml_config_path>
 ```
 
-## Attack Examples
-The repo currently contains 3 attacks. 
-1. Agent Poisoning (agent_poisoning)
-2. Communication Poisoning (communication_protocol_poisoning)
-3. Context Overflow. (context_overflow)
+## Attack Scenarios
 
-The implementation of the attack modules can be found in /attack_module. Here is an example:
+Terrarium ships three reference attacks that exercise different points in the stack. Implementations live in `attack_module/attack_modules.py` and can be mixed into any simulation via the provided runners.
+
+| Attack | What it targets | Entry point | Payload config |
+| --- | --- | --- | --- |
+| Agent poisoning | Replaces every `post_message` payload from the compromised agent before it reaches the blackboard. | `examples/attacks/main.py --attack_type agent_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+| Context overflow | Appends a large filler block to agent messages to force downstream context truncation. | `examples/attacks/main.py --attack_type context_overflow` | `examples/configs/attack_config.yaml` (`header`, `filler_token`, `repeat`, `max_chars`) |
+| Communication protocol poisoning | Injects malicious system messages into every blackboard via the MCP layer. | `examples/communication_protocol_poisoning/main.py` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+
+### Running agent-side attacks
+
+Use the unified driver to launch both the standard run and the selected attack:
+
 ```bash
-python3 examples/attacks/main.py --config examples/configs/meeting_scheduling.yaml --poison_payload examples/configs/attack_config.yaml --attack_type context_overflow 
+# Agent poisoning example
+python examples/attacks/main.py \
+  --config examples/configs/meeting_scheduling.yaml \
+  --poison_payload examples/configs/attack_config.yaml \
+  --attack_type agent_poisoning
+
+# Context overflow example
+python examples/attacks/main.py \
+  --config examples/configs/meeting_scheduling.yaml \
+  --poison_payload examples/configs/attack_config.yaml \
+  --attack_type context_overflow
 ```
-
-examples/attacks shows examples on how to run the attack. To test the attack you need to provide attack config file alongside the attack type.
-
-Full Documentation provides details on how to construct your own attacks.
 
 
 ## Quick Tips
