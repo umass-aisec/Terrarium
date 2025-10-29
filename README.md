@@ -21,9 +21,11 @@ This repo is under active development :gear:, so please raise an issue for new f
   - PersonalAssistant - An assistant agent chooses outfits for a human while meeting social norm preferences, the preferences of the human, and constrained outfit selection (Uses fully synthetic data)
 <!-- - **One Stochastic Game Environment (Trading)**: A simple trading environment where agents trade and buy items to maximize their personal cumulative inventory utility. Agents trade items (e.g., TV, phone, banana) and negotiate with each other given limited resources. This environment allows multi-step simulation with multiple evaluation steps. -->
 
-## Quick Start
+## Documentation 
 
-### Installation
+Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/docs) for detailed instructions about on how to use the framework. 
+
+Follow the quick guide provided below for basic testing.
 
 **Requirements**: Python 3.11+
 
