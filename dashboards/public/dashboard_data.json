@@ -1,12 +1,63 @@
 {
-  "config": {},
+  "config": {
+    "environment": {
+      "name": "MeetingScheduling",
+      "n_agents": 5,
+      "n_meetings": 2,
+      "max_attendees_per_meeting": 4,
+      "p_zoom": 0.3,
+      "min_prefs_per_agent": 3,
+      "max_prefs_per_agent": 6,
+      "time_match_weight": 1.0,
+      "rng_seed": 42
+    },
+    "simulation": {
+      "max_iterations": 1,
+      "max_planning_rounds": 3,
+      "max_conversation_steps": 6,
+      "enable_agent_blackboard_actions": true,
+      "n_simulations": 2,
+      "parallelization": {
+        "enabled": true,
+        "max_workers": 2
+      },
+      "tag": "baseline"
+    },
+    "llm": {
+      "provider": "openai",
+      "openai": {
+        "model": "gpt-4.1-mini-2025-04-14"
+      },
+      "anthropic": {
+        "model": "claude-3-5-sonnet-20241022"
+      },
+      "gemini": {
+        "model": "gemini-2.0-flash-lite"
+      },
+      "vllm": {
+        "model": "/data/huggingface/models--Qwen--Qwen3-235B-A22B-Thinking-2507/snapshots/d24ea3047182ca7b02f8b9f5d4e06f7be78c6885",
+        "host": "localhost",
+        "port": 8000,
+        "prefer_existing_server": true,
+        "auto_start_server": true,
+        "trust_remote_code": true,
+        "connection_timeout": 30,
+        "max_retries": 4,
+        "max_model_len": 65536,
+        "gpu_memory_utilization": 0.8,
+        "tensor_parallel_size": 8,
+        "additional_args": []
+      }
+    },
+    "scenarios": []
+  },
   "runs": [
     {
       "environment": "MeetingScheduling",
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-161550",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-161550/seed_42",
       "scores": [
@@ -32,7 +83,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-164629",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-164629/seed_42",
       "scores": [],
@@ -49,7 +100,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-164645",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-164645/seed_42",
       "scores": [],
@@ -69,7 +120,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-164932",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-164932/seed_42",
       "scores": [],
@@ -86,7 +137,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-165118",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-165118/seed_42",
       "scores": [
@@ -112,7 +163,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-231637",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-231637/seed_42",
       "scores": [],
@@ -129,7 +180,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-233004",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-233004/seed_42",
       "scores": [
@@ -155,7 +206,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-235750",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-235750/seed_42",
       "scores": [],
@@ -172,7 +223,7 @@
       "tag_model": "baseline_gpt-4.1-mini-2025-04-14",
       "seed": "42",
       "run_timestamp": "20251028-235817",
-      "attack_counts": {},
+      "event_counts": {},
       "events": [],
       "log_dir": "logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-235817/seed_42",
       "scores": [],
@@ -185,6 +236,7 @@
       }
     }
   ],
+  "event_totals": {},
   "aggregate_counts": {},
   "chart_data": {
     "labels": [],

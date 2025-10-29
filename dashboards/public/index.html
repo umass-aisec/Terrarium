@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Terrarium Attack Dashboard</title>
+  <title>Terrarium Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -317,7 +317,7 @@
 
       const RunsGrid = ({ runs, filter }) => {
         if (!runs.length) {
-          return React.createElement('p', { className: 'muted' }, 'No attack runs discovered.');
+          return React.createElement('p', { className: 'muted' }, 'No runs discovered.');
         }
         const filtered = runs.filter((run) => {
           if (!filter) return true;
@@ -338,11 +338,11 @@
               React.createElement('h3', null, `${run.environment} · ${run.tag_model}`),
               React.createElement('p', { className: 'muted' }, `Seed ${run.seed} · Run ${run.run_timestamp} · ${run.log_dir}`),
               React.createElement('ul', null,
-                Object.entries(run.attack_counts || {}).map(([attackType, counts]) => {
+                Object.entries(run.event_counts || {}).map(([eventType, counts]) => {
                   const total = (counts.success || 0) + (counts.failure || 0);
                   const rate = total ? ((counts.success || 0) / total * 100).toFixed(1) : '0.0';
-                  return React.createElement('li', { key: attackType }, [
-                    React.createElement('strong', null, attackType), ' — ',
+                  return React.createElement('li', { key: eventType }, [
+                    React.createElement('strong', null, eventType), ' — ',
                     React.createElement('span', { className: 'badge success' }, `${counts.success || 0} success`), ' ',
                     React.createElement('span', { className: 'badge failure' }, `${counts.failure || 0} failure`), ' ',
                     React.createElement('span', { className: 'muted' }, `(${rate}%)`),
@@ -573,9 +573,9 @@
         const [sortMode, setSortMode] = useState('env-model');
 
         useEffect(() => {
-          fetch('attack_data.json')
+          fetch('dashboard_data.json')
             .then((res) => {
-              if (!res.ok) throw new Error('Unable to load attack_data.json');
+              if (!res.ok) throw new Error('Unable to load dashboard_data.json');
               return res.json();
             })
             .then((json) => {
@@ -594,7 +594,7 @@
         );
 
         if (loading) {
-          return React.createElement('main', null, 'Loading attack data...');
+          return React.createElement('main', null, 'Loading dashboard data...');
         }
         if (error) {
           return React.createElement('main', null,
@@ -618,7 +618,7 @@
                 React.createElement('input', {
                   key: 'filter',
                   value: filter,
-                  placeholder: 'Filter runs (env, tag, seed, timestamp, attack...)',
+                  placeholder: 'Filter runs (env, tag, seed, timestamp, event...)',
                   onChange: (e) => setFilter(e.target.value),
                 }),
                 React.createElement('select', {

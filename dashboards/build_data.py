@@ -1,4 +1,4 @@
-"""Generate attack dashboard data as a static JSON bundle."""
+"""Generate dashboard data as a static JSON bundle."""
 
 from __future__ import annotations
 
@@ -27,11 +27,11 @@ def summarize_config(config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         "environment": config.get("environment", {}),
         "simulation": config.get("simulation", {}),
         "llm": config.get("llm", {}),
-        "attacks": config.get("attacks", []),
+        "scenarios": config.get("scenarios", config.get("attacks", [])),
     }
 
 
-def load_attack_runs(log_root: Path) -> List[Dict[str, Any]]:
+def load_runs(log_root: Path) -> List[Dict[str, Any]]:
     runs: List[Dict[str, Any]] = []
     if not log_root.exists():
         return runs
@@ -127,7 +127,7 @@ def load_attack_runs(log_root: Path) -> List[Dict[str, Any]]:
                         "tag_model": tag_dir.name,
                         "seed": summary.get("seed", seed_dir.name.replace("seed_", "")),
                         "run_timestamp": summary.get("run_timestamp", run_timestamp),
-                        "attack_counts": summary.get("attack_counts", {}),
+                        "event_counts": summary.get("attack_counts", {}),
                         "events": events,
                         "log_dir": str(seed_dir),
                         "scores": scores,
@@ -136,44 +136,45 @@ def load_attack_runs(log_root: Path) -> List[Dict[str, Any]]:
     return runs
 
 
-def aggregate_counts(runs: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
+def aggregate_event_counts(runs: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
     aggregate: Dict[str, Dict[str, int]] = defaultdict(lambda: {"success": 0, "failure": 0})
     for run in runs:
-        for attack_type, counts in run.get("attack_counts", {}).items():
-            aggregate[attack_type]["success"] += counts.get("success", 0)
-            aggregate[attack_type]["failure"] += counts.get("failure", 0)
+        for category, counts in run.get("event_counts", {}).items():
+            aggregate[category]["success"] += counts.get("success", 0)
+            aggregate[category]["failure"] += counts.get("failure", 0)
     return aggregate
 
 
 def compute_chart_payload(counts: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
     labels, success, failure = [], [], []
-    for attack_type, metrics in sorted(counts.items()):
-        labels.append(attack_type)
+    for category, metrics in sorted(counts.items()):
+        labels.append(category)
         success.append(metrics.get("success", 0))
         failure.append(metrics.get("failure", 0))
     return {"labels": labels, "success": success, "failure": failure}
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build static data for the attack dashboard")
+    parser = argparse.ArgumentParser(description="Build static data for the dashboard")
     parser.add_argument("--logs-root", type=Path, default=Path("logs"))
     parser.add_argument("--config", type=Path, default=None,
                         help="Optional YAML config to embed")
-    parser.add_argument("--output", type=Path, default=Path("dashboards/attack_dashboard/public/attack_data.json"))
+    parser.add_argument("--output", type=Path, default=Path("dashboards/public/dashboard_data.json"))
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    runs = load_attack_runs(args.logs_root)
+    runs = load_runs(args.logs_root)
     config = load_config(args.config) if args.config else None
-    aggregate = aggregate_counts(runs)
+    aggregate = aggregate_event_counts(runs)
     chart_payload = compute_chart_payload(aggregate)
 
     data_bundle = {
         "config": summarize_config(config),
         "runs": runs,
-        "aggregate_counts": aggregate,
+        "event_totals": aggregate,
+        "aggregate_counts": aggregate,  # legacy key for compatibility
         "chart_data": chart_payload,
         "logs_root": str(args.logs_root.resolve()),
     }

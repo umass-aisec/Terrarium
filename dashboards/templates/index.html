@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Terrarium Attack Dashboard</title>
+  <title>Terrarium Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,13 +46,13 @@
         <div class="run-card">
           <h3>{{ run.environment }} · {{ run.tag_model }}</h3>
           <p class="muted">Seed {{ run.seed }} · Run {{ run.run_timestamp or 'legacy' }} · {{ run.log_dir }}</p>
-          <p>Total attack events: {{ run.events|length }}</p>
+          <p>Total events: {{ run.events|length }}</p>
           <ul>
-            {% for attack_type, counts in run.attack_counts.items() %}
+            {% for event_type, counts in run.event_counts.items() %}
             {% set total = counts.success + counts.failure %}
             {% set rate = (counts.success / total * 100) if total else 0 %}
             <li>
-              <strong>{{ attack_type }}</strong> —
+              <strong>{{ event_type }}</strong> —
               <span class="badge success">{{ counts.success }} success</span>
               <span class="badge failure">{{ counts.failure }} failure</span>
               <span class="muted">({{ rate|round(1) }}%)</span>
@@ -63,7 +63,7 @@
         {% endfor %}
       </div>
       {% else %}
-      <p class="muted">No attack runs discovered.</p>
+      <p class="muted">No runs discovered.</p>
       {% endif %}
     </section>
 

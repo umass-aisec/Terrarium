@@ -52,6 +52,29 @@ class AttackLogger:
         self.text_path.write_text("", encoding="utf-8")
         self.stats = {}
         self._flush_summary()
+        self._snapshot_config()
+
+    def _snapshot_config(self) -> None:
+        """Persist a copy of the source config alongside the run logs."""
+        config_path = self.config.get("_config_path")
+        if not config_path:
+            return
+        source = Path(config_path)
+        if not source.exists():
+            return
+        destination = self.log_dir / source.name
+        try:
+            if source.resolve() == destination.resolve():
+                return
+        except OSError:
+            # Fall back to string comparison if resolution fails
+            if source == destination:
+                return
+        try:
+            shutil.copy2(source, destination)
+        except OSError:
+            # Silently continue if we cannot copy; logging should not fail the run
+            pass
 
     def log_agent_attack(
         self,

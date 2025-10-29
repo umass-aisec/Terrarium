@@ -42,6 +42,12 @@ def load_config(config_file) -> Dict[str, Any]:
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
 
+    # Track the source config path for downstream logging/snapshots
+    try:
+        config["_config_path"] = str(config_path.resolve())
+    except OSError:
+        config["_config_path"] = str(config_path)
+
     # Validate config structure
     validate_config(config)
 
