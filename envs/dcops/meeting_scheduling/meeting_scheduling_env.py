@@ -75,7 +75,12 @@ class MeetingSchedulingEnvironment(AbstractEnvironment):
         self.global_score_history: List[float] = []
         self.local_scores_history: Dict[str, List[float]] = {}
         self.score_plotter: Optional[ScorePlotter] = None
-        self.agent_names = list(set(meeting.owner for meeting in self.instance.graph.meetings.values()))
+        # Only include agents who actually participate in at least one meeting
+        # (some agents may not be selected as attendees in any meeting)
+        self.agent_names = list(set(
+            agent for meeting in self.instance.graph.meetings.values()
+            for agent in meeting.attendees
+        ))
         self.agents: List['Agent'] = []
 
         # Clear seed directories FIRST to ensure clean state for this run

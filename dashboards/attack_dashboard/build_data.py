@@ -46,13 +46,13 @@ def load_attack_runs(log_root: Path) -> List[Dict[str, Any]]:
                 run_timestamp = timestamp_dir.name
                 seed_dirs = sorted(p for p in timestamp_dir.glob("seed_*") if p.is_dir())
                 for seed_dir in seed_dirs:
+                    summary: Dict[str, Any] = {}
                     summary_path = seed_dir / "attack_summary.json"
-                    if not summary_path.exists():
-                        continue
-                    try:
-                        summary = json.loads(summary_path.read_text(encoding="utf-8"))
-                    except json.JSONDecodeError:
-                        continue
+                    if summary_path.exists():
+                        try:
+                            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                        except json.JSONDecodeError:
+                            summary = {}
 
                     events: List[Dict[str, Any]] = []
                     events_path = seed_dir / "attack_events.jsonl"
@@ -80,6 +80,48 @@ def load_attack_runs(log_root: Path) -> List[Dict[str, Any]]:
                         })
                     scores.sort(key=lambda s: (s.get("iteration") is None, s.get("iteration")))
 
+                    logs_bundle = {
+                        "blackboards": {},
+                        "tool_calls": None,
+                        "agent_prompts_json": None,
+                        "agent_prompts_markdown": None,
+                        "agent_trajectories": None,
+                    }
+
+                    for blackboard_file in sorted(seed_dir.glob("blackboard_*.txt")):
+                        try:
+                            logs_bundle["blackboards"][blackboard_file.name] = blackboard_file.read_text(encoding="utf-8")
+                        except OSError:
+                            continue
+
+                    tool_calls_path = seed_dir / "tool_calls.json"
+                    if tool_calls_path.exists():
+                        try:
+                            logs_bundle["tool_calls"] = tool_calls_path.read_text(encoding="utf-8")
+                        except OSError:
+                            pass
+
+                    prompts_json_path = seed_dir / "agent_prompts.json"
+                    if prompts_json_path.exists():
+                        try:
+                            logs_bundle["agent_prompts_json"] = prompts_json_path.read_text(encoding="utf-8")
+                        except OSError:
+                            pass
+
+                    prompts_md_path = seed_dir / "agent_prompts.md"
+                    if prompts_md_path.exists():
+                        try:
+                            logs_bundle["agent_prompts_markdown"] = prompts_md_path.read_text(encoding="utf-8")
+                        except OSError:
+                            pass
+
+                    trajectories_path = seed_dir / "agent_trajectories.json"
+                    if trajectories_path.exists():
+                        try:
+                            logs_bundle["agent_trajectories"] = trajectories_path.read_text(encoding="utf-8")
+                        except OSError:
+                            pass
+
                     runs.append({
                         "environment": summary.get("environment", env_dir.name),
                         "tag_model": tag_dir.name,
@@ -89,6 +131,7 @@ def load_attack_runs(log_root: Path) -> List[Dict[str, Any]]:
                         "events": events,
                         "log_dir": str(seed_dir),
                         "scores": scores,
+                        "logs": logs_bundle,
                     })
     return runs
 

@@ -24,7 +24,14 @@ import asyncio
 from fastmcp import Client
 from attack_module.framework import AttackManager
 
-mcp_client = Client("http://localhost:8000/mcp")
+from requests.exceptions import ConnectionError
+
+try:
+    mcp_client = Client("http://localhost:8000/mcp")
+except ConnectionError as exc:
+    raise RuntimeError(
+        "MCP server is not running. Start it with `python src/server.py` before retrying."
+    ) from exc
 
 
 async def run_simulation(config: Dict[str, Any]) -> bool:

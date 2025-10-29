@@ -7,12 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: 'Inter', sans-serif; margin: 0; background: #f5f6fa; color: #1f2430; }
     header { background: #1f2430; color: #fff; padding: 24px; }
     header h1 { margin: 0 0 8px 0; font-size: 24px; }
     header .meta { font-size: 14px; opacity: 0.8; }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .logo-image { height: 52px; width: auto; border-radius: 12px; box-shadow: 0 6px 16px rgba(15,23,42,0.25); }
     main { padding: 24px; }
     section { background: #fff; padding: 20px; margin-bottom: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(15,23,42,0.1); }
     h2 { margin-top: 0; font-size: 20px; }
@@ -31,70 +32,12 @@
 </head>
 <body>
   <header>
-    <h1>Terrarium Attack Dashboard</h1>
+    <div class="logo-wrap">
+      <img src="terrarium_logo_rounded.png" alt="Terrarium logo" class="logo-image" />
+    </div>
     <div class="meta">Logs root: {{ data.logs_root }}</div>
   </header>
   <main>
-    <section>
-      <h2>Simulation & Attack Configuration</h2>
-      {% if data.config %}
-      <div class="grid">
-        <div>
-          <h3>Environment</h3>
-          <pre>{{ data.config.environment | tojson(indent=2) }}</pre>
-        </div>
-        <div>
-          <h3>Simulation</h3>
-          <pre>{{ data.config.simulation | tojson(indent=2) }}</pre>
-        </div>
-        <div>
-          <h3>LLM</h3>
-          <pre>{{ data.config.llm | tojson(indent=2) }}</pre>
-        </div>
-      </div>
-      <h3>Attack Definitions</h3>
-      <div class="scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Type</th>
-              <th>Targets</th>
-              <th>Trigger</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for attack in data.config.attacks %}
-            <tr>
-              <td>{{ loop.index }}</td>
-              <td>{{ attack.type }}</td>
-              <td>
-                {% if attack.agents %}{{ attack.agents }}
-                {% elif attack.agent %}{{ attack.agent }}
-                {% else %}-{% endif %}
-              </td>
-              <td>{{ attack.trigger or 'agent' }}</td>
-              <td><pre>{{ attack | tojson(indent=2) }}</pre></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="muted">No configuration provided. Launch with <code>--config path/to/config.yaml</code> to display settings.</p>
-      {% endif %}
-    </section>
-
-    <section>
-      <h2>Attack Success vs Failure</h2>
-      {% if data.chart_data.labels %}
-      <canvas id="attackChart" height="160"></canvas>
-      {% else %}
-      <p class="muted">No attack logs discovered under {{ data.logs_root }}.</p>
-      {% endif %}
-    </section>
-
     <section>
       <h2>Runs</h2>
       {% if data.runs %}
@@ -124,91 +67,6 @@
       {% endif %}
     </section>
 
-    <section>
-      <h2>Attack Event Stream</h2>
-      {% if data.runs %}
-      <div class="scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Environment</th>
-              <th>Seed</th>
-              <th>Category</th>
-              <th>Type</th>
-              <th>Attacker</th>
-              <th>Target</th>
-              <th>Phase</th>
-              <th>Iter</th>
-              <th>Run</th>
-              <th>Success</th>
-              <th>Metadata</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for run in data.runs %}
-              {% for event in run.events %}
-              <tr>
-                <td>{{ event.timestamp }}</td>
-                <td>{{ run.environment }}</td>
-                <td>{{ run.seed }}</td>
-                <td>{{ event.category }}</td>
-                <td>{{ event.attack_type }}</td>
-                <td>{{ event.attacker }}</td>
-                <td>{{ event.target or '-' }}</td>
-                <td>{{ event.phase or '-' }}</td>
-                <td>{{ event.iteration or '-' }}</td>
-                <td>{{ run.run_timestamp or 'legacy' }}</td>
-                <td>
-                  {% if event.success %}
-                    <span class="badge success">success</span>
-                  {% else %}
-                    <span class="badge failure">failure</span>
-                  {% endif %}
-                </td>
-                <td><pre>{{ event.metadata | tojson(indent=2) }}</pre></td>
-              </tr>
-              {% endfor %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="muted">No events.</p>
-      {% endif %}
-    </section>
   </main>
-
-  <script>
-    const chartData = {{ data.chart_data | tojson }};
-    if (chartData.labels && chartData.labels.length) {
-      const ctx = document.getElementById('attackChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: chartData.labels,
-          datasets: [
-            {
-              label: 'Success',
-              backgroundColor: '#1f9254',
-              data: chartData.success,
-            },
-            {
-              label: 'Failure',
-              backgroundColor: '#b42318',
-              data: chartData.failure,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: { stacked: true },
-            y: { stacked: true, beginAtZero: true }
-          }
-        }
-      });
-    }
-  </script>
 </body>
 </html>

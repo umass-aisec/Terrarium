@@ -12,7 +12,6 @@
     />
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       :root {
         color-scheme: light dark;
@@ -44,6 +43,18 @@
       header .meta {
         font-size: 14px;
         opacity: 0.85;
+      }
+      .logo-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .logo-image {
+        height: 52px;
+        width: auto;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
       }
       main {
         padding: 24px;
@@ -125,6 +136,132 @@
         border: 1px solid var(--border);
         font-size: 14px;
       }
+      .filters select {
+        background: var(--panel);
+      }
+      .sort-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .tab-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 16px 0 12px;
+      }
+      .tab-button {
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(15, 23, 42, 0.35);
+        color: #f8fafc;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+      .tab-button:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .tab-button.active {
+        background: rgba(82, 112, 255, 0.65);
+        border-color: rgba(82, 112, 255, 0.85);
+      }
+      .subtab-bar {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        margin-bottom: 12px;
+      }
+      .subtab-button {
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(15, 23, 42, 0.25);
+        color: #f8fafc;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .subtab-button.active {
+        background: rgba(82, 112, 255, 0.55);
+        border-color: rgba(82, 112, 255, 0.75);
+      }
+      .log-panel {
+        background: linear-gradient(135deg, #1f2430, #3b4765);
+        color: #f8fafc;
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+        height: 60vh;
+        min-height: 520px;
+        resize: vertical;
+        overflow: auto;
+        position: relative;
+      }
+      .log-sticky {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: linear-gradient(135deg, rgba(31, 36, 48, 0.95), rgba(59, 71, 101, 0.92));
+        border-radius: 12px;
+        padding: 12px;
+        margin: -6px -6px 12px;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+        backdrop-filter: blur(6px);
+      }
+      .log-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 13px;
+        opacity: 0.85;
+      }
+      .log-meta strong {
+        font-weight: 600;
+        color: #fff;
+      }
+      .log-header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .log-content {
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+        max-height: none;
+        overflow-y: auto;
+        font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        color: #e2e8f0;
+      }
+      .log-body {
+        padding-top: 8px;
+      }
+      .empty-log {
+        color: rgba(226, 232, 240, 0.8);
+        font-size: 13px;
+        margin: 18px 0 0;
+      }
+      .log-selectors {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .log-selectors select {
+        background: rgba(15, 23, 42, 0.35);
+        color: #f8fafc;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
     </style>
   </head>
   <body>
@@ -133,57 +270,50 @@
     <script type="text/javascript">
       const { useState, useEffect, useMemo } = React;
 
+      const runKey = (run) => `${run.environment || ''}::${run.tag_model || ''}::${run.seed || ''}::${run.run_timestamp || ''}`;
+      const compareStrings = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
+      const compareNumbers = (a, b) => (Number(a) || 0) - (Number(b) || 0);
+      const sortRuns = (runs, mode) => {
+        const copy = [...runs];
+        copy.sort((a, b) => {
+          const envCmp = compareStrings(a.environment || '', b.environment || '');
+          const modelCmp = compareStrings(a.tag_model || '', b.tag_model || '');
+          const seedCmp = compareNumbers(a.seed, b.seed);
+          const timestampCmp = compareStrings(a.run_timestamp || '', b.run_timestamp || '');
+          switch (mode) {
+            case 'model-env':
+              return modelCmp || envCmp || seedCmp || timestampCmp;
+            case 'timestamp-desc':
+              return compareStrings(b.run_timestamp || '', a.run_timestamp || '') || envCmp || modelCmp || seedCmp;
+            default:
+              return envCmp || modelCmp || seedCmp || timestampCmp;
+          }
+        });
+        return copy;
+      };
+
+      const formatMaybeJson = (text) => {
+        if (!text) return '';
+        try {
+          const parsed = JSON.parse(text);
+          return JSON.stringify(parsed, null, 2);
+        } catch (err) {
+          return text;
+        }
+      };
+
+      const formatBlackboardTitle = (name) => {
+        if (!name) return 'Blackboard';
+        const match = name.match(/(\d+)/);
+        if (match) {
+          return `Blackboard ${match[1]}`;
+        }
+        return name;
+      };
+
       const Badge = ({ success }) => (
         React.createElement('span', { className: `badge ${success ? 'success' : 'failure'}` }, success ? 'success' : 'failure')
       );
-
-      const ConfigPanel = ({ config }) => {
-        if (!config || Object.keys(config).length === 0) {
-          return React.createElement('p', { className: 'muted' }, 'No configuration embedded in this data bundle.');
-        }
-        return React.createElement(
-          React.Fragment,
-          null,
-          React.createElement('div', { className: 'grid' }, [
-            React.createElement('div', { key: 'env' }, [
-              React.createElement('h3', null, 'Environment'),
-              React.createElement('pre', null, JSON.stringify(config.environment, null, 2)),
-            ]),
-            React.createElement('div', { key: 'sim' }, [
-              React.createElement('h3', null, 'Simulation'),
-              React.createElement('pre', null, JSON.stringify(config.simulation, null, 2)),
-            ]),
-            React.createElement('div', { key: 'llm' }, [
-              React.createElement('h3', null, 'LLM'),
-              React.createElement('pre', null, JSON.stringify(config.llm, null, 2)),
-            ]),
-          ]),
-          React.createElement('h3', null, 'Attack Definitions'),
-          React.createElement('div', { className: 'scroll' },
-            React.createElement('table', null, [
-              React.createElement('thead', { key: 'head' },
-                React.createElement('tr', null, [
-                  React.createElement('th', { key: 'idx' }, '#'),
-                  React.createElement('th', { key: 'type' }, 'Type'),
-                  React.createElement('th', { key: 'targets' }, 'Targets'),
-                  React.createElement('th', { key: 'trigger' }, 'Trigger'),
-                  React.createElement('th', { key: 'details' }, 'Details'),
-                ])),
-              React.createElement('tbody', { key: 'body' },
-                (config.attacks || []).map((attack, idx) => (
-                  React.createElement('tr', { key: idx }, [
-                    React.createElement('td', null, idx + 1),
-                    React.createElement('td', null, attack.type),
-                    React.createElement('td', null, attack.agents || attack.agent || '-'),
-                    React.createElement('td', null, attack.trigger || 'agent'),
-                    React.createElement('td', null, React.createElement('pre', null, JSON.stringify(attack, null, 2))),
-                  ])
-                ))
-              )
-            ])
-          )
-        );
-      };
 
       const RunsGrid = ({ runs, filter }) => {
         if (!runs.length) {
@@ -199,12 +329,14 @@
             (run.run_timestamp || '').toLowerCase().includes(f)
           );
         });
+        if (!filtered.length) {
+          return React.createElement('p', { className: 'muted' }, 'No runs match the current filter.');
+        }
         return React.createElement('div', { className: 'grid' },
           filtered.map((run, idx) => (
             React.createElement('div', { className: 'run-card', key: idx }, [
               React.createElement('h3', null, `${run.environment} · ${run.tag_model}`),
               React.createElement('p', { className: 'muted' }, `Seed ${run.seed} · Run ${run.run_timestamp} · ${run.log_dir}`),
-              React.createElement('p', null, `Total attack events: ${run.events.length}`),
               React.createElement('ul', null,
                 Object.entries(run.attack_counts || {}).map(([attackType, counts]) => {
                   const total = (counts.success || 0) + (counts.failure || 0);
@@ -222,193 +354,214 @@
         );
       };
 
-      const EventsTable = ({ runs, filter }) => {
-        if (!runs.length) {
-          return React.createElement('p', { className: 'muted' }, 'No events.');
-        }
-        const rows = [];
-        const f = filter ? filter.toLowerCase() : '';
-        runs.forEach((run) => {
-          run.events.forEach((event) => {
-            const text = `${event.attack_type} ${event.attacker} ${run.environment} ${run.tag_model} ${run.run_timestamp}`.toLowerCase();
-            if (!f || text.includes(f)) {
-              rows.push({ run, event });
-            }
-          });
-        });
-        return React.createElement('div', { className: 'scroll' },
-          React.createElement('table', null, [
-            React.createElement('thead', { key: 'head' },
-              React.createElement('tr', null, [
-                React.createElement('th', null, 'Timestamp'),
-                React.createElement('th', null, 'Environment'),
-                React.createElement('th', null, 'Seed'),
-                React.createElement('th', null, 'Category'),
-                React.createElement('th', null, 'Type'),
-                React.createElement('th', null, 'Attacker'),
-                React.createElement('th', null, 'Target'),
-                React.createElement('th', null, 'Phase'),
-                React.createElement('th', null, 'Iter'),
-                React.createElement('th', null, 'Run'),
-                React.createElement('th', null, 'Success'),
-                React.createElement('th', null, 'Metadata'),
-              ])
-            ),
-            React.createElement('tbody', { key: 'body' },
-              rows.map(({ run, event }, idx) => (
-                React.createElement('tr', { key: idx }, [
-                  React.createElement('td', null, event.timestamp),
-                  React.createElement('td', null, run.environment),
-                  React.createElement('td', null, run.seed),
-                  React.createElement('td', null, event.category),
-                  React.createElement('td', null, event.attack_type),
-                  React.createElement('td', null, event.attacker),
-                  React.createElement('td', null, event.target || '-'),
-                  React.createElement('td', null, event.phase || '-'),
-                  React.createElement('td', null, event.iteration || '-'),
-                  React.createElement('td', null, run.run_timestamp || '-'),
-                  React.createElement('td', null, React.createElement(Badge, { success: event.success })),
-                  React.createElement('td', null, React.createElement('pre', null, JSON.stringify(event.metadata || {}, null, 2))),
-                ])
-              ))
-            )
-          ])
-        );
-      };
-
-      const useChart = (canvasRef, chartData) => {
-        useEffect(() => {
-          if (!canvasRef.current || !chartData.labels.length) return;
-          const chart = new Chart(canvasRef.current, {
-            type: 'bar',
-            data: {
-              labels: chartData.labels,
-              datasets: [
-                { label: 'Success', backgroundColor: '#1f9254', data: chartData.success },
-                { label: 'Failure', backgroundColor: '#b42318', data: chartData.failure },
-              ]
-            },
-            options: {
-              responsive: true,
-              scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
-            }
-          });
-          return () => chart.destroy();
-        }, [canvasRef, chartData]);
-      };
-
-      const ChartPanel = ({ chartData }) => {
-        const canvasRef = React.useRef(null);
-        useChart(canvasRef, chartData);
-        if (!chartData.labels.length) {
-          return React.createElement('p', { className: 'muted' }, 'No attack logs discovered.');
-        }
-        return React.createElement('canvas', { ref: canvasRef, height: 160 });
-      };
-
-      const ScoreTimeline = ({ runs }) => {
-        const [selectedRun, setSelectedRun] = useState(runs.length ? 0 : null);
-        const canvasRef = React.useRef(null);
-
-        const chartPayload = useMemo(() => {
-          if (selectedRun === null || !runs[selectedRun]) return null;
-          const run = runs[selectedRun];
-          const scores = (run.scores || []).filter((s) => s.global_score !== undefined && s.global_score !== null);
-          if (!scores.length) return { hasData: false, run };
-          const scorePoints = scores.map((entry) => ({ x: entry.iteration ?? 0, y: entry.global_score ?? 0 }));
-          const scoreMap = new Map(scores.map((entry) => [entry.iteration ?? 0, entry.global_score ?? 0]));
-          const attackPoints = (run.events || [])
-            .filter((event) => event.iteration !== undefined && event.iteration !== null)
-            .map((event) => {
-              const iteration = event.iteration ?? 0;
-              const y = scoreMap.has(iteration)
-                ? scoreMap.get(iteration)
-                : scorePoints.length
-                  ? scorePoints[scorePoints.length - 1].y
-                  : 0;
-              return {
-                x: iteration,
-                y,
-                attack_type: event.attack_type,
-                attacker: event.attacker,
-                timestamp: event.timestamp,
-                success: event.success,
-              };
-            });
-          return {
-            hasData: true,
-            run,
-            datasets: [
-              {
-                type: 'line',
-                label: 'Global Score',
-                data: scorePoints,
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37,99,235,0.15)',
-                tension: 0.2,
-                fill: true,
-              },
-              {
-                type: 'scatter',
-                label: 'Attack Event',
-                data: attackPoints,
-                pointBackgroundColor: '#b42318',
-                pointBorderColor: '#fff',
-                pointRadius: 6,
-              }
-            ],
-          };
-        }, [runs, selectedRun]);
-
-        useEffect(() => {
-          if (!chartPayload || !chartPayload.hasData || !canvasRef.current) return;
-          const chart = new Chart(canvasRef.current, {
-            data: { datasets: chartPayload.datasets },
-            options: {
-              responsive: true,
-              interaction: { mode: 'nearest', intersect: false },
-              scales: {
-                x: { title: { display: true, text: 'Iteration' }, ticks: { precision: 0 } },
-                y: { title: { display: true, text: 'Global Score' } },
-              },
-              plugins: {
-                tooltip: {
-                  callbacks: {
-                    label(context) {
-                      const raw = context.raw || {};
-                      if (context.dataset.label === 'Attack Event') {
-                        return `${raw.attack_type || 'attack'} by ${raw.attacker || '?'}`;
-                      }
-                      return `score: ${context.parsed.y}`;
-                    },
-                  },
-                },
-              },
-            },
-          });
-          return () => chart.destroy();
-        }, [chartPayload]);
+      const RunLogExplorer = ({ runs }) => {
+        const logTabs = [
+          { key: 'blackboards', label: 'Blackboards' },
+          { key: 'tool_calls', label: 'Tool Calls' },
+          { key: 'agent_prompts_json', label: 'Agent Prompts (JSON)' },
+          { key: 'agent_prompts_markdown', label: 'Agent Prompts (Markdown)' },
+          { key: 'agent_trajectories', label: 'Agent Trajectories' },
+        ];
+        const ALL_ENVS = '__all__';
 
         if (!runs.length) {
           return React.createElement('p', { className: 'muted' }, 'No runs available.');
         }
 
-        return React.createElement(React.Fragment, null, [
-          React.createElement('div', { className: 'filters', key: 'selector' },
-            React.createElement('select', {
-              value: selectedRun ?? '',
-              onChange: (e) => setSelectedRun(e.target.value === '' ? null : Number(e.target.value)),
-            },
-              runs.map((run, idx) => (
-                React.createElement('option', { value: idx, key: idx },
-                  `${run.environment} · ${run.tag_model} · seed ${run.seed} · run ${run.run_timestamp}`
-                )
-              ))
+        const envOptions = useMemo(() => (
+          Array.from(new Set(runs.map((run) => run.environment || ''))).sort(compareStrings)
+        ), [runs]);
+
+        const [selectedEnv, setSelectedEnv] = useState(ALL_ENVS);
+        const [selectedRunKey, setSelectedRunKey] = useState(() => (runs.length ? runKey(runs[0]) : ''));
+        const [activeTab, setActiveTab] = useState('blackboards');
+        const [activeBlackboard, setActiveBlackboard] = useState('');
+
+        useEffect(() => {
+          if (!runs.length) {
+            setSelectedEnv(ALL_ENVS);
+            return;
+          }
+          if (selectedEnv !== ALL_ENVS && !envOptions.includes(selectedEnv)) {
+            setSelectedEnv(envOptions[0] || ALL_ENVS);
+          }
+        }, [runs, envOptions, selectedEnv]);
+
+        const runsForEnv = useMemo(() => {
+          if (selectedEnv === ALL_ENVS) return runs;
+          return runs.filter((run) => run.environment === selectedEnv);
+        }, [runs, selectedEnv]);
+
+        useEffect(() => {
+          if (!runsForEnv.length) {
+            setSelectedRunKey('');
+            return;
+          }
+          const existing = runsForEnv.find((run) => runKey(run) === selectedRunKey);
+          if (!existing) {
+            setSelectedRunKey(runKey(runsForEnv[0]));
+          }
+        }, [runsForEnv, selectedRunKey]);
+
+        const selectedRun = useMemo(() => {
+          if (!selectedRunKey) return runsForEnv[0] || null;
+          return runs.find((run) => runKey(run) === selectedRunKey) || runsForEnv[0] || null;
+        }, [runs, selectedRunKey, runsForEnv]);
+
+        useEffect(() => {
+          if (!selectedRun) {
+            setActiveBlackboard('');
+            return;
+          }
+          const names = Object.keys((selectedRun.logs && selectedRun.logs.blackboards) || {});
+          if (!names.length) {
+            setActiveBlackboard('');
+            return;
+          }
+          if (!names.includes(activeBlackboard)) {
+            setActiveBlackboard(names[0]);
+          }
+        }, [selectedRun, activeBlackboard]);
+
+        const emptyMessages = {
+          tool_calls: 'No tool call logs recorded for this run.',
+          agent_prompts_json: 'No agent prompt JSON logs recorded for this run.',
+          agent_prompts_markdown: 'No agent prompt markdown logs recorded for this run.',
+          agent_trajectories: 'No agent trajectory logs recorded for this run.',
+        };
+
+        const renderBlackboards = () => {
+          if (!selectedRun) {
+            return {
+              tabBar: null,
+              content: React.createElement('p', { className: 'empty-log' }, 'Select a run to inspect logs.'),
+            };
+          }
+          const boards = Object.entries((selectedRun.logs && selectedRun.logs.blackboards) || {});
+          if (!boards.length) {
+            return {
+              tabBar: null,
+              content: React.createElement('p', { className: 'empty-log' }, 'No blackboard logs recorded for this run.'),
+            };
+          }
+          const activeEntry = boards.find(([name]) => name === activeBlackboard) || boards[0];
+          const [activeName, activeText] = activeEntry;
+          const tabBar = React.createElement('div', { className: 'subtab-bar', key: 'subtabs' },
+            boards.map(([name]) =>
+              React.createElement('button', {
+                key: name,
+                className: `subtab-button ${name === (activeEntry ? activeEntry[0] : '') ? 'active' : ''}`,
+                onClick: () => setActiveBlackboard(name),
+              }, formatBlackboardTitle(name))
             )
-          ),
-          chartPayload && chartPayload.hasData
-            ? React.createElement('canvas', { ref: canvasRef, height: 200, key: 'canvas' })
-            : React.createElement('p', { className: 'muted' }, 'Selected run does not contain score logs.'),
+          );
+          const content = React.createElement('pre', { className: 'log-content', key: `${activeName}-content` }, activeText || '(empty blackboard)');
+          return { tabBar, content };
+        };
+
+        const renderPlainLog = (key, tryJson) => {
+          if (!selectedRun) {
+            return React.createElement('p', { className: 'empty-log' }, 'Select a run to inspect logs.');
+          }
+          const raw = selectedRun.logs ? selectedRun.logs[key] : null;
+          if (!raw) {
+            return React.createElement('p', { className: 'empty-log' }, emptyMessages[key] || 'No logs recorded for this run.');
+          }
+          const text = tryJson ? formatMaybeJson(raw) : raw;
+          return React.createElement('pre', { className: 'log-content' }, text);
+        };
+
+        let additionalSticky = null;
+        let bodyNode = null;
+
+        if (activeTab === 'blackboards') {
+          const { tabBar, content } = renderBlackboards();
+          additionalSticky = tabBar;
+          bodyNode = content;
+        } else {
+          switch (activeTab) {
+            case 'tool_calls':
+              bodyNode = renderPlainLog('tool_calls', true);
+              break;
+            case 'agent_prompts_json':
+              bodyNode = renderPlainLog('agent_prompts_json', true);
+              break;
+            case 'agent_prompts_markdown':
+              bodyNode = renderPlainLog('agent_prompts_markdown', false);
+              break;
+            case 'agent_trajectories':
+              bodyNode = renderPlainLog('agent_trajectories', true);
+              break;
+            default:
+              bodyNode = React.createElement('p', { className: 'empty-log' }, 'Select a log view.');
+              break;
+          }
+        }
+
+        const stickyChildren = [
+          React.createElement('div', { className: 'log-selectors', key: 'selectors' }, [
+            React.createElement('label', { className: 'sort-label', key: 'env-label' }, [
+              'Environment',
+              React.createElement('select', {
+                value: selectedEnv,
+                onChange: (e) => setSelectedEnv(e.target.value),
+              },
+                [
+                  React.createElement('option', { value: ALL_ENVS, key: ALL_ENVS }, 'All environments'),
+                  ...envOptions.map((env) => React.createElement('option', { value: env, key: env || 'unknown' }, env || 'Unknown environment')),
+                ]
+              ),
+            ]),
+            React.createElement('label', { className: 'sort-label', key: 'run-label' }, [
+              'Run',
+              React.createElement('select', {
+                value: selectedRun ? runKey(selectedRun) : selectedRunKey,
+                onChange: (e) => setSelectedRunKey(e.target.value),
+                disabled: !runsForEnv.length,
+              },
+                runsForEnv.map((run) =>
+                  React.createElement('option', { value: runKey(run), key: runKey(run) },
+                    `${run.environment || 'Unknown environment'} · ${run.tag_model || 'Unknown model'} · seed ${run.seed} · ${run.run_timestamp || 'legacy'}`
+                  )
+                )
+              ),
+            ]),
+          ]),
+        ];
+
+        if (selectedRun) {
+          stickyChildren.push(
+            React.createElement('div', { className: 'log-header', key: 'meta' }, [
+              React.createElement('div', { className: 'log-meta', key: 'meta-line' }, [
+                React.createElement('span', { key: 'env' }, [React.createElement('strong', { key: 's' }, 'Environment:'), ` ${selectedRun.environment || 'Unknown environment'}`]),
+                React.createElement('span', { key: 'model' }, [React.createElement('strong', { key: 's' }, 'Model:'), ` ${selectedRun.tag_model || 'Unknown model'}`]),
+                React.createElement('span', { key: 'seed' }, [React.createElement('strong', { key: 's' }, 'Seed:'), ` ${selectedRun.seed}`]),
+                React.createElement('span', { key: 'ts' }, [React.createElement('strong', { key: 's' }, 'Run:'), ` ${selectedRun.run_timestamp || 'legacy'}`]),
+              ]),
+            ])
+          );
+          stickyChildren.push(
+            React.createElement('div', { className: 'tab-bar', key: 'tabs' },
+              logTabs.map((tab) =>
+                React.createElement('button', {
+                  key: tab.key,
+                  className: `tab-button ${activeTab === tab.key ? 'active' : ''}`,
+                  onClick: () => setActiveTab(tab.key),
+                }, tab.label)
+              )
+            )
+          );
+        } else {
+          stickyChildren.push(React.createElement('p', { className: 'empty-log', key: 'meta-empty' }, 'Select a run to inspect logs.'));
+        }
+
+        if (additionalSticky) {
+          stickyChildren.push(additionalSticky);
+        }
+
+        return React.createElement('div', { className: 'log-panel' }, [
+          React.createElement('div', { className: 'log-sticky', key: 'sticky' }, stickyChildren),
+          React.createElement('div', { className: 'log-body', key: 'body' }, bodyNode),
         ]);
       };
 
@@ -417,6 +570,7 @@
         const [filter, setFilter] = useState('');
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState(null);
+        const [sortMode, setSortMode] = useState('env-model');
 
         useEffect(() => {
           fetch('attack_data.json')
@@ -434,6 +588,11 @@
             });
         }, []);
 
+        const sortedRuns = useMemo(
+          () => sortRuns(((data && data.runs) || []), sortMode),
+          [data, sortMode]
+        );
+
         if (loading) {
           return React.createElement('main', null, 'Loading attack data...');
         }
@@ -444,54 +603,41 @@
         }
         return React.createElement(React.Fragment, null, [
           React.createElement('header', { key: 'hdr' }, [
-            React.createElement('h1', null, 'Terrarium Attack Dashboard (Static)'),
+            React.createElement('div', { className: 'logo-wrap', key: 'logo' },
+              React.createElement('img', {
+                src: 'terrarium_logo_rounded.png',
+                alt: 'Terrarium logo',
+                className: 'logo-image',
+              })
+            ),
             React.createElement('div', { className: 'meta' }, `Logs root: ${data.logs_root}`),
           ]),
           React.createElement('main', { key: 'main' }, [
-          React.createElement('section', { key: 'config' }, [
-            React.createElement('h2', null, 'Simulation & Attack Configuration'),
-            React.createElement(ConfigPanel, { config: data.config }),
-          ]),
-          React.createElement('section', { key: 'howto' }, [
-            React.createElement('h2', null, 'How to Read These Results'),
-            React.createElement('p', null, [
-              'This dashboard summarizes every adversarial run recorded in the timestamped log folders ',
-              React.createElement('code', { key: 'path' }, 'logs/<env>/<tag_model>/<run_timestamp>/seed_<seed>'),
-              '. Each run keeps the full configuration, attack definitions, and attack telemetry, so you can reconstruct how the agents behaved.'
-            ]),
-            React.createElement('ul', null, [
-              React.createElement('li', { key: 'cfg' }, 'Configuration: The first panel shows exactly what scenario was executed (environment parameters, simulation limits, LLM choice, and the attacks block). This is the “ground truth” of what each malicious agent or protocol hook was supposed to do.'),
-              React.createElement('li', { key: 'chart' }, 'Chart: Success/failure bars are simple counts of injected attacks that changed a tool call. They tell you if an attacker managed to overwrite messages, leak secrets, or flood context—not whether the environment score dropped (check score logs if you need that).'),
-              React.createElement('li', { key: 'runs' }, 'Runs grid: Each card corresponds to one seed/run timestamp. Use it to compare different configs or seeds: are information-leak attacks always succeeding? Does communication poisoning fail in some runs?'),
-              React.createElement('li', { key: 'events' }, 'Event stream: Every row is a single tool-call rewrite or protocol injection with timestamps, attacker, phase, target blackboard, and the payload preview. This is the primary evidence when you want to inspect what an attacker actually wrote.'),
-              React.createElement('li', { key: 'metrics' }, 'Success semantics: “Success” means the attack modified the outgoing payload (e.g., the message posted to a blackboard). Use the environment’s score logs to correlate these events with downstream utility loss or completion-rate drops.'),
-            ]),
-            React.createElement('p', { className: 'muted' }, 'Tip: Filter runs or events using the search box (environment name, tag, seed, timestamp, or attack type) to focus on a subset of interest, such as only the communication-poisoning shots in one timestamp.'),
-          ]),
-            React.createElement('section', { key: 'chart' }, [
-              React.createElement('h2', null, 'Attack Success vs Failure'),
-              React.createElement(ChartPanel, { chartData: data.chart_data }),
-            ]),
-            React.createElement('section', { key: 'scores' }, [
-              React.createElement('h2', null, 'Score Timeline vs Attack Events'),
-              React.createElement('p', { className: 'muted' }, 'Use this chart to see whether global scores changed around the time attacks fired. Each point on the line is an environment score log; red markers show individual attack events happening during that iteration.'),
-              React.createElement(ScoreTimeline, { runs: data.runs }),
-            ]),
             React.createElement('section', { key: 'runs' }, [
               React.createElement('div', { className: 'filters' }, [
                 React.createElement('input', {
                   key: 'filter',
                   value: filter,
-                  placeholder: 'Filter runs/events (env, tag, seed, timestamp, attack...)',
+                  placeholder: 'Filter runs (env, tag, seed, timestamp, attack...)',
                   onChange: (e) => setFilter(e.target.value),
                 }),
+                React.createElement('select', {
+                  key: 'sort',
+                  value: sortMode,
+                  onChange: (e) => setSortMode(e.target.value),
+                }, [
+                  React.createElement('option', { value: 'env-model', key: 'env-model' }, 'Sort: Environment → Model'),
+                  React.createElement('option', { value: 'model-env', key: 'model-env' }, 'Sort: Model → Environment'),
+                  React.createElement('option', { value: 'timestamp-desc', key: 'timestamp-desc' }, 'Sort: Newest Run First'),
+                ]),
               ]),
               React.createElement('h2', null, 'Runs'),
-              React.createElement(RunsGrid, { runs: data.runs, filter }),
+              React.createElement(RunsGrid, { runs: sortedRuns, filter }),
             ]),
-            React.createElement('section', { key: 'events' }, [
-              React.createElement('h2', null, 'Attack Event Stream'),
-              React.createElement(EventsTable, { runs: data.runs, filter }),
+            React.createElement('section', { key: 'logs' }, [
+              React.createElement('h2', null, 'Run Log Explorer'),
+              React.createElement('p', { className: 'muted' }, 'Inspect the underlying blackboards, prompts, tool calls, and agent trajectories for any run.'),
+              React.createElement(RunLogExplorer, { runs: sortedRuns }),
             ]),
           ])
         ]);

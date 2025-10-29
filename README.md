@@ -144,7 +144,7 @@ Terrarium incorporates a set of loggers for prompts, tool usage, agent trajector
 - [ ] Add multi-step negotiation environments
 
 ## Paper Citation
-```
+```bibtex
 @article{nakamura2025terrarium,
   title={Terrarium: Revisiting the Blackboard for Multi-Agent Safety, Privacy, and Security Studies},
   author={Nakamura, Mason and Kumar, Abhinav and Mahmud, Saaduddin and Abdelnabi, Sahar and Zilberstein, Shlomo and Bagdasarian, Eugene},

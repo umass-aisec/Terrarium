@@ -21,11 +21,17 @@ from src.communication_protocol import CommunicationProtocol
 from src.utils import load_config, get_client_instance, create_environment, get_model_name
 import asyncio
 from fastmcp import Client
+from requests.exceptions import ConnectionError
 from src.logger import ToolCallLogger, AgentTrajectoryLogger, AttackLogger
 from attack_module.framework import AttackManager
 
 # Run src.server.py to initialzie MCP server before running main.py
-mcp_client = Client("http://localhost:8000/mcp")
+try:
+    mcp_client = Client("http://localhost:8000/mcp")
+except ConnectionError as exc:
+    raise RuntimeError(
+        "MCP server is not running. Start it with `python src/server.py` before retrying."
+    ) from exc
 
 async def run_simulation(config: Dict[str, Any]) -> bool:
     """
