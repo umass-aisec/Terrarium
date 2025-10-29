@@ -22,8 +22,7 @@ from src.utils import load_config, get_client_instance, create_environment, get_
 import asyncio
 from fastmcp import Client
 from requests.exceptions import ConnectionError
-from src.logger import ToolCallLogger, AgentTrajectoryLogger, AttackLogger
-from attack_module.framework import AttackManager
+from src.logger import ToolCallLogger, AgentTrajectoryLogger
 
 # Run src.server.py to initialzie MCP server before running main.py
 try:
@@ -59,7 +58,6 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         # Initialize loggers
         tool_logger = ToolCallLogger(environment_name, seed, config, run_timestamp=run_timestamp)
         trajectory_logger = AgentTrajectoryLogger(environment_name, seed, config, run_timestamp=run_timestamp)
-        attack_logger = AttackLogger(environment_name, seed, config, run_timestamp=run_timestamp)
 
         communication_protocol = CommunicationProtocol(config, tool_logger, mcp_client, run_timestamp=run_timestamp)
         environment = create_environment(communication_protocol, environment_name, config, tool_logger)
@@ -72,9 +70,6 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         # Reset tool call log for new simulation
         environment.tool_logger.reset_log()
         await environment.async_init()
-
-        # Initialize attack manager (handles agent + protocol level attacks)
-        attack_manager = AttackManager(config.get("attacks"), attack_logger=attack_logger)
 
         # Initialize agents
         agent_names = environment.get_agent_names()
@@ -92,15 +87,14 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         for name in agent_names:
             client = get_client_instance(llm_config)
             print(f"Initializing Agent: {name} with {provider} - {model_name}")
-            agent = attack_manager.create_agent(
-                base_class=Agent,
-                client=client,
-                name=name,
-                model_name=model_name,
-                max_conversation_steps=max_conversation_steps,
-                tool_logger=tool_logger,
-                trajectory_logger=trajectory_logger,
-                environment_name=environment_name,
+            agent = Agent(
+                client,
+                name,
+                model_name,
+                max_conversation_steps,
+                tool_logger,
+                trajectory_logger,
+                environment_name  # Pass environment name so agent can discover correct tools
             )
             agents.append(agent)
         # Shuffle initial agent order, and maintain order through simulation
@@ -116,14 +110,6 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
                 if not environment.should_continue_simulation(current_iteration):
                     print(f"Environment requested simulation stop at iteration {current_iteration}")
                     break
-                # Allow protocol-level attacks (e.g., communication poisoning) before planning
-                await attack_manager.run_protocol_hooks(
-                    "pre_planning",
-                    communication_protocol,
-                    iteration=iteration,
-                    phase="planning",
-                )
-
                 # Planning Phase with progress bar
                 for planning_round in tqdm(range(1, max_planning_rounds + 1), desc="  Planning", position=1, leave=False, ncols=80):
                     # Use consistent agent order for this iteration

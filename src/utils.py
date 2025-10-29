@@ -42,7 +42,6 @@ def load_config(config_file) -> Dict[str, Any]:
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
 
-    # Track the source config path for downstream logging/snapshots
     try:
         config["_config_path"] = str(config_path.resolve())
     except OSError:
@@ -52,7 +51,6 @@ def load_config(config_file) -> Dict[str, Any]:
     validate_config(config)
 
     return config
-
 
 def load_seeds(seeds_file: str = "seeds.txt") -> List[int]:
     """Load simulation seeds from text file for reproducibility."""
@@ -234,7 +232,7 @@ def clear_seed_directories(environment_name: str, seed: Union[int, str], full_co
         print(f"Cleared plots directory: {plots_seed_dir}")
 
     # Clear logs directory for this seed
-    logs_seed_dir = build_log_dir(environment_name, tag_model, seed, run_timestamp)
+    logs_seed_dir = Path(f"logs/{environment_name}/{tag_model}/seed_{seed}")
     if logs_seed_dir.exists():
         shutil.rmtree(logs_seed_dir)
         print(f"Cleared logs directory: {logs_seed_dir}")

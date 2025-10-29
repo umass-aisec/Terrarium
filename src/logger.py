@@ -242,11 +242,15 @@ class BlackboardLogger:
         Clear all blackboard log files and reset tracking.
         Called at the start of each simulation.
         """
-        if self.log_root.exists():
-            shutil.rmtree(self.log_root)
-        self.log_root.mkdir(parents=True, exist_ok=True)
+        if not self.log_root.exists():
+            self.log_root.mkdir(parents=True, exist_ok=True)
+        # Remove only blackboard-specific files so other artifacts remain intact.
+        for path in self.log_root.glob("blackboard_*.txt"):
+            try:
+                path.unlink()
+            except OSError:
+                pass
         self.blackboard_log_files.clear()
-        print(f"Cleared blackboard logs directory: {self.log_root}")
 
     def _initialize_log(self, log_file: str, blackboard_id: str = ""):
         """Initialize log file with header."""
@@ -632,8 +636,9 @@ class ToolCallLogger:
         """
         self.environment_name = environment_name
         self.seed = seed
-        tag_model = get_tag_model_subdir(config or {})
-        self.run_timestamp = _resolve_run_timestamp(config, run_timestamp)
+        self.config = config or {}
+        tag_model = get_tag_model_subdir(self.config)
+        self.run_timestamp = _resolve_run_timestamp(self.config, run_timestamp)
         self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file_path = self.log_dir / "tool_calls.json"
@@ -641,6 +646,7 @@ class ToolCallLogger:
         if not self.log_file_path.exists():
             with self.log_file_path.open('w') as f:
                 json.dump([], f)
+        self._snapshot_config()
 
     def log_tool_call(self,
                      agent_name: str,
@@ -705,6 +711,22 @@ class ToolCallLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         with self.log_file_path.open('w') as f:
             json.dump([], f)
+        self._snapshot_config()
+
+    def _snapshot_config(self) -> None:
+        config_path = (self.config or {}).get("_config_path")
+        if not config_path:
+            return
+        source = Path(config_path)
+        if not source.exists():
+            return
+        destination = self.log_dir / source.name
+        if destination.exists():
+            return
+        try:
+            shutil.copy2(source, destination)
+        except OSError:
+            pass
 
     def log_adversarial_agent_action(self, agent_name: str, original_message: str,
                                      replaced_message: str, phase: str,
