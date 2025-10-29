@@ -23,7 +23,14 @@ from envs.dcops.CoLLAB.SmartGrid.generate import generate_instance_from_catalog
 # Import abstract environment interface and logger
 from envs.abstract_environment import AbstractEnvironment
 from envs.dcops.plotter import ScorePlotter
-from src.utils import clear_seed_directories, extract_model_info, get_tag_model_subdir
+from src.utils import (
+    clear_seed_directories,
+    extract_model_info,
+    get_tag_model_subdir,
+    get_run_timestamp,
+    build_log_dir,
+    build_plots_dir,
+)
 
 # Import SmartGrid tools and prompts
 from .smartgrid_prompts import SmartGridPrompts
@@ -51,6 +58,7 @@ class SmartGridEnvironment(AbstractEnvironment):
         self.config = config["environment"]  # Extract environment-specific config
         self.communication_protocol = communication_protocol
         self.communication_protocol.environment = self
+        self.run_timestamp = get_run_timestamp(self.full_config)
         self.tool_logger = tool_logger
 
         # Get the correct seed from environment config
@@ -108,8 +116,8 @@ class SmartGridEnvironment(AbstractEnvironment):
 
         # Get tag_model subdirectory for plots
         tag_model = get_tag_model_subdir(self.full_config)
-        plots_dir = f"plots/SmartGrid/{tag_model}/seed_{self.current_seed}"
-        self.score_plotter = ScorePlotter(save_dir=plots_dir)
+        plots_dir = build_plots_dir("SmartGrid", tag_model, self.current_seed, self.run_timestamp)
+        self.score_plotter = ScorePlotter(save_dir=str(plots_dir))
 
         print(f"SmartGrid environment initialized with {len(self.agents_list)} homes")
         print(f"Homes: {', '.join(self.agents_list)}")
@@ -311,7 +319,7 @@ class SmartGridEnvironment(AbstractEnvironment):
         # Create logs directory with seed subdirectory
         # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        log_dir = Path("logs") / "SmartGrid" / tag_model / f"seed_{self.current_seed}"
+        log_dir = build_log_dir("SmartGrid", tag_model, self.current_seed, self.run_timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Log scores to JSON

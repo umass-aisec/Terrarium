@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terrarium Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f5f6fa;
+        --fg: #1f2430;
+        --panel: #ffffff;
+        --border: #e4e7ec;
+        --muted: #5f6b7c;
+        --success: #1f9254;
+        --success-bg: #e8f7ef;
+        --failure: #b42318;
+        --failure-bg: #fde8e8;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      header {
+        background: var(--fg);
+        color: #fff;
+        padding: 24px;
+      }
+      header h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      header .meta {
+        font-size: 14px;
+        opacity: 0.85;
+      }
+      .logo-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .logo-image {
+        height: 52px;
+        width: auto;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+      }
+      main {
+        padding: 24px;
+      }
+      section {
+        background: var(--panel);
+        padding: 20px;
+        margin-bottom: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+      }
+      h2 {
+        margin-top: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      pre {
+        background: #0f172a;
+        color: #dee4ff;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 13px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th, td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+      }
+      th [data-sortable] {
+        cursor: pointer;
+      }
+      .badge {
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        align-items: center;
+      }
+      .badge.success {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+      .badge.failure {
+        background: var(--failure-bg);
+        color: var(--failure);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .run-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        background: #fff;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      .filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .filters input, .filters select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        font-size: 14px;
+      }
+      .filters select {
+        background: var(--panel);
+      }
+      .sort-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .tab-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 16px 0 12px;
+      }
+      .tab-button {
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(15, 23, 42, 0.35);
+        color: #f8fafc;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+      .tab-button:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .tab-button.active {
+        background: rgba(82, 112, 255, 0.65);
+        border-color: rgba(82, 112, 255, 0.85);
+      }
+      .subtab-bar {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        margin-bottom: 12px;
+      }
+      .subtab-button {
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(15, 23, 42, 0.25);
+        color: #f8fafc;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .subtab-button.active {
+        background: rgba(82, 112, 255, 0.55);
+        border-color: rgba(82, 112, 255, 0.75);
+      }
+      .log-panel {
+        background: linear-gradient(135deg, #1f2430, #3b4765);
+        color: #f8fafc;
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+        height: 60vh;
+        min-height: 520px;
+        resize: vertical;
+        overflow: auto;
+        position: relative;
+      }
+      .log-sticky {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: linear-gradient(135deg, rgba(31, 36, 48, 0.95), rgba(59, 71, 101, 0.92));
+        border-radius: 12px;
+        padding: 12px;
+        margin: -6px -6px 12px;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+        backdrop-filter: blur(6px);
+      }
+      .log-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 13px;
+        opacity: 0.85;
+      }
+      .log-meta strong {
+        font-weight: 600;
+        color: #fff;
+      }
+      .log-header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .log-content {
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+        max-height: none;
+        overflow-y: auto;
+        font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        color: #e2e8f0;
+      }
+      .log-body {
+        padding-top: 8px;
+      }
+      .empty-log {
+        color: rgba(226, 232, 240, 0.8);
+        font-size: 13px;
+        margin: 18px 0 0;
+      }
+      .log-selectors {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .log-selectors select {
+        background: rgba(15, 23, 42, 0.35);
+        color: #f8fafc;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/javascript">
+      const { useState, useEffect, useMemo } = React;
+
+      const runKey = (run) => `${run.environment || ''}::${run.tag_model || ''}::${run.seed || ''}::${run.run_timestamp || ''}`;
+      const compareStrings = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
+      const compareNumbers = (a, b) => (Number(a) || 0) - (Number(b) || 0);
+      const sortRuns = (runs, mode) => {
+        const copy = [...runs];
+        copy.sort((a, b) => {
+          const envCmp = compareStrings(a.environment || '', b.environment || '');
+          const modelCmp = compareStrings(a.tag_model || '', b.tag_model || '');
+          const seedCmp = compareNumbers(a.seed, b.seed);
+          const timestampCmp = compareStrings(a.run_timestamp || '', b.run_timestamp || '');
+          switch (mode) {
+            case 'model-env':
+              return modelCmp || envCmp || seedCmp || timestampCmp;
+            case 'timestamp-desc':
+              return compareStrings(b.run_timestamp || '', a.run_timestamp || '') || envCmp || modelCmp || seedCmp;
+            default:
+              return envCmp || modelCmp || seedCmp || timestampCmp;
+          }
+        });
+        return copy;
+      };
+
+      const formatMaybeJson = (text) => {
+        if (!text) return '';
+        try {
+          const parsed = JSON.parse(text);
+          return JSON.stringify(parsed, null, 2);
+        } catch (err) {
+          return text;
+        }
+      };
+
+      const formatBlackboardTitle = (name) => {
+        if (!name) return 'Blackboard';
+        const match = name.match(/(\d+)/);
+        if (match) {
+          return `Blackboard ${match[1]}`;
+        }
+        return name;
+      };
+
+      const Badge = ({ success }) => (
+        React.createElement('span', { className: `badge ${success ? 'success' : 'failure'}` }, success ? 'success' : 'failure')
+      );
+
+      const RunsGrid = ({ runs, filter }) => {
+        if (!runs.length) {
+          return React.createElement('p', { className: 'muted' }, 'No runs discovered.');
+        }
+        const filtered = runs.filter((run) => {
+          if (!filter) return true;
+          const f = filter.toLowerCase();
+          return (
+            run.environment.toLowerCase().includes(f) ||
+            run.tag_model.toLowerCase().includes(f) ||
+            String(run.seed).includes(f) ||
+            (run.run_timestamp || '').toLowerCase().includes(f)
+          );
+        });
+        if (!filtered.length) {
+          return React.createElement('p', { className: 'muted' }, 'No runs match the current filter.');
+        }
+        return React.createElement('div', { className: 'grid' },
+          filtered.map((run, idx) => (
+            React.createElement('div', { className: 'run-card', key: idx }, [
+              React.createElement('h3', null, `${run.environment} · ${run.tag_model}`),
+              React.createElement('p', { className: 'muted' }, `Seed ${run.seed} · Run ${run.run_timestamp} · ${run.log_dir}`),
+              React.createElement('ul', null,
+                Object.entries(run.event_counts || {}).map(([eventType, counts]) => {
+                  const total = (counts.success || 0) + (counts.failure || 0);
+                  const rate = total ? ((counts.success || 0) / total * 100).toFixed(1) : '0.0';
+                  return React.createElement('li', { key: eventType }, [
+                    React.createElement('strong', null, eventType), ' — ',
+                    React.createElement('span', { className: 'badge success' }, `${counts.success || 0} success`), ' ',
+                    React.createElement('span', { className: 'badge failure' }, `${counts.failure || 0} failure`), ' ',
+                    React.createElement('span', { className: 'muted' }, `(${rate}%)`),
+                  ]);
+                })
+              )
+            ])
+          ))
+        );
+      };
+
+      const RunLogExplorer = ({ runs }) => {
+        const logTabs = [
+          { key: 'blackboards', label: 'Blackboards' },
+          { key: 'tool_calls', label: 'Tool Calls' },
+          { key: 'agent_prompts_json', label: 'Agent Prompts (JSON)' },
+          { key: 'agent_prompts_markdown', label: 'Agent Prompts (Markdown)' },
+          { key: 'agent_trajectories', label: 'Agent Trajectories' },
+        ];
+        const ALL_ENVS = '__all__';
+
+        if (!runs.length) {
+          return React.createElement('p', { className: 'muted' }, 'No runs available.');
+        }
+
+        const envOptions = useMemo(() => (
+          Array.from(new Set(runs.map((run) => run.environment || ''))).sort(compareStrings)
+        ), [runs]);
+
+        const [selectedEnv, setSelectedEnv] = useState(ALL_ENVS);
+        const [selectedRunKey, setSelectedRunKey] = useState(() => (runs.length ? runKey(runs[0]) : ''));
+        const [activeTab, setActiveTab] = useState('blackboards');
+        const [activeBlackboard, setActiveBlackboard] = useState('');
+
+        useEffect(() => {
+          if (!runs.length) {
+            setSelectedEnv(ALL_ENVS);
+            return;
+          }
+          if (selectedEnv !== ALL_ENVS && !envOptions.includes(selectedEnv)) {
+            setSelectedEnv(envOptions[0] || ALL_ENVS);
+          }
+        }, [runs, envOptions, selectedEnv]);
+
+        const runsForEnv = useMemo(() => {
+          if (selectedEnv === ALL_ENVS) return runs;
+          return runs.filter((run) => run.environment === selectedEnv);
+        }, [runs, selectedEnv]);
+
+        useEffect(() => {
+          if (!runsForEnv.length) {
+            setSelectedRunKey('');
+            return;
+          }
+          const existing = runsForEnv.find((run) => runKey(run) === selectedRunKey);
+          if (!existing) {
+            setSelectedRunKey(runKey(runsForEnv[0]));
+          }
+        }, [runsForEnv, selectedRunKey]);
+
+        const selectedRun = useMemo(() => {
+          if (!selectedRunKey) return runsForEnv[0] || null;
+          return runs.find((run) => runKey(run) === selectedRunKey) || runsForEnv[0] || null;
+        }, [runs, selectedRunKey, runsForEnv]);
+
+        useEffect(() => {
+          if (!selectedRun) {
+            setActiveBlackboard('');
+            return;
+          }
+          const names = Object.keys((selectedRun.logs && selectedRun.logs.blackboards) || {});
+          if (!names.length) {
+            setActiveBlackboard('');
+            return;
+          }
+          if (!names.includes(activeBlackboard)) {
+            setActiveBlackboard(names[0]);
+          }
+        }, [selectedRun, activeBlackboard]);
+
+        const emptyMessages = {
+          tool_calls: 'No tool call logs recorded for this run.',
+          agent_prompts_json: 'No agent prompt JSON logs recorded for this run.',
+          agent_prompts_markdown: 'No agent prompt markdown logs recorded for this run.',
+          agent_trajectories: 'No agent trajectory logs recorded for this run.',
+        };
+
+        const renderBlackboards = () => {
+          if (!selectedRun) {
+            return {
+              tabBar: null,
+              content: React.createElement('p', { className: 'empty-log' }, 'Select a run to inspect logs.'),
+            };
+          }
+          const boards = Object.entries((selectedRun.logs && selectedRun.logs.blackboards) || {});
+          if (!boards.length) {
+            return {
+              tabBar: null,
+              content: React.createElement('p', { className: 'empty-log' }, 'No blackboard logs recorded for this run.'),
+            };
+          }
+          const activeEntry = boards.find(([name]) => name === activeBlackboard) || boards[0];
+          const [activeName, activeText] = activeEntry;
+          const tabBar = React.createElement('div', { className: 'subtab-bar', key: 'subtabs' },
+            boards.map(([name]) =>
+              React.createElement('button', {
+                key: name,
+                className: `subtab-button ${name === (activeEntry ? activeEntry[0] : '') ? 'active' : ''}`,
+                onClick: () => setActiveBlackboard(name),
+              }, formatBlackboardTitle(name))
+            )
+          );
+          const content = React.createElement('pre', { className: 'log-content', key: `${activeName}-content` }, activeText || '(empty blackboard)');
+          return { tabBar, content };
+        };
+
+        const renderPlainLog = (key, tryJson) => {
+          if (!selectedRun) {
+            return React.createElement('p', { className: 'empty-log' }, 'Select a run to inspect logs.');
+          }
+          const raw = selectedRun.logs ? selectedRun.logs[key] : null;
+          if (!raw) {
+            return React.createElement('p', { className: 'empty-log' }, emptyMessages[key] || 'No logs recorded for this run.');
+          }
+          const text = tryJson ? formatMaybeJson(raw) : raw;
+          return React.createElement('pre', { className: 'log-content' }, text);
+        };
+
+        let additionalSticky = null;
+        let bodyNode = null;
+
+        if (activeTab === 'blackboards') {
+          const { tabBar, content } = renderBlackboards();
+          additionalSticky = tabBar;
+          bodyNode = content;
+        } else {
+          switch (activeTab) {
+            case 'tool_calls':
+              bodyNode = renderPlainLog('tool_calls', true);
+              break;
+            case 'agent_prompts_json':
+              bodyNode = renderPlainLog('agent_prompts_json', true);
+              break;
+            case 'agent_prompts_markdown':
+              bodyNode = renderPlainLog('agent_prompts_markdown', false);
+              break;
+            case 'agent_trajectories':
+              bodyNode = renderPlainLog('agent_trajectories', true);
+              break;
+            default:
+              bodyNode = React.createElement('p', { className: 'empty-log' }, 'Select a log view.');
+              break;
+          }
+        }
+
+        const stickyChildren = [
+          React.createElement('div', { className: 'log-selectors', key: 'selectors' }, [
+            React.createElement('label', { className: 'sort-label', key: 'env-label' }, [
+              'Environment',
+              React.createElement('select', {
+                value: selectedEnv,
+                onChange: (e) => setSelectedEnv(e.target.value),
+              },
+                [
+                  React.createElement('option', { value: ALL_ENVS, key: ALL_ENVS }, 'All environments'),
+                  ...envOptions.map((env) => React.createElement('option', { value: env, key: env || 'unknown' }, env || 'Unknown environment')),
+                ]
+              ),
+            ]),
+            React.createElement('label', { className: 'sort-label', key: 'run-label' }, [
+              'Run',
+              React.createElement('select', {
+                value: selectedRun ? runKey(selectedRun) : selectedRunKey,
+                onChange: (e) => setSelectedRunKey(e.target.value),
+                disabled: !runsForEnv.length,
+              },
+                runsForEnv.map((run) =>
+                  React.createElement('option', { value: runKey(run), key: runKey(run) },
+                    `${run.environment || 'Unknown environment'} · ${run.tag_model || 'Unknown model'} · seed ${run.seed} · ${run.run_timestamp || 'legacy'}`
+                  )
+                )
+              ),
+            ]),
+          ]),
+        ];
+
+        if (selectedRun) {
+          stickyChildren.push(
+            React.createElement('div', { className: 'log-header', key: 'meta' }, [
+              React.createElement('div', { className: 'log-meta', key: 'meta-line' }, [
+                React.createElement('span', { key: 'env' }, [React.createElement('strong', { key: 's' }, 'Environment:'), ` ${selectedRun.environment || 'Unknown environment'}`]),
+                React.createElement('span', { key: 'model' }, [React.createElement('strong', { key: 's' }, 'Model:'), ` ${selectedRun.tag_model || 'Unknown model'}`]),
+                React.createElement('span', { key: 'seed' }, [React.createElement('strong', { key: 's' }, 'Seed:'), ` ${selectedRun.seed}`]),
+                React.createElement('span', { key: 'ts' }, [React.createElement('strong', { key: 's' }, 'Run:'), ` ${selectedRun.run_timestamp || 'legacy'}`]),
+              ]),
+            ])
+          );
+          stickyChildren.push(
+            React.createElement('div', { className: 'tab-bar', key: 'tabs' },
+              logTabs.map((tab) =>
+                React.createElement('button', {
+                  key: tab.key,
+                  className: `tab-button ${activeTab === tab.key ? 'active' : ''}`,
+                  onClick: () => setActiveTab(tab.key),
+                }, tab.label)
+              )
+            )
+          );
+        } else {
+          stickyChildren.push(React.createElement('p', { className: 'empty-log', key: 'meta-empty' }, 'Select a run to inspect logs.'));
+        }
+
+        if (additionalSticky) {
+          stickyChildren.push(additionalSticky);
+        }
+
+        return React.createElement('div', { className: 'log-panel' }, [
+          React.createElement('div', { className: 'log-sticky', key: 'sticky' }, stickyChildren),
+          React.createElement('div', { className: 'log-body', key: 'body' }, bodyNode),
+        ]);
+      };
+
+      const App = () => {
+        const [data, setData] = useState(null);
+        const [filter, setFilter] = useState('');
+        const [loading, setLoading] = useState(true);
+        const [error, setError] = useState(null);
+        const [sortMode, setSortMode] = useState('env-model');
+
+        useEffect(() => {
+          fetch('dashboard_data.json')
+            .then((res) => {
+              if (!res.ok) throw new Error('Unable to load dashboard_data.json');
+              return res.json();
+            })
+            .then((json) => {
+              setData(json);
+              setLoading(false);
+            })
+            .catch((err) => {
+              setError(err.message);
+              setLoading(false);
+            });
+        }, []);
+
+        const sortedRuns = useMemo(
+          () => sortRuns(((data && data.runs) || []), sortMode),
+          [data, sortMode]
+        );
+
+        if (loading) {
+          return React.createElement('main', null, 'Loading dashboard data...');
+        }
+        if (error) {
+          return React.createElement('main', null,
+            React.createElement('p', { className: 'muted' }, error)
+          );
+        }
+        return React.createElement(React.Fragment, null, [
+          React.createElement('header', { key: 'hdr' }, [
+            React.createElement('div', { className: 'logo-wrap', key: 'logo' },
+              React.createElement('img', {
+                src: 'terrarium_logo_rounded.png',
+                alt: 'Terrarium logo',
+                className: 'logo-image',
+              })
+            ),
+            React.createElement('div', { className: 'meta' }, `Logs root: ${data.logs_root}`),
+          ]),
+          React.createElement('main', { key: 'main' }, [
+            React.createElement('section', { key: 'runs' }, [
+              React.createElement('div', { className: 'filters' }, [
+                React.createElement('input', {
+                  key: 'filter',
+                  value: filter,
+                  placeholder: 'Filter runs (env, tag, seed, timestamp, event...)',
+                  onChange: (e) => setFilter(e.target.value),
+                }),
+                React.createElement('select', {
+                  key: 'sort',
+                  value: sortMode,
+                  onChange: (e) => setSortMode(e.target.value),
+                }, [
+                  React.createElement('option', { value: 'env-model', key: 'env-model' }, 'Sort: Environment → Model'),
+                  React.createElement('option', { value: 'model-env', key: 'model-env' }, 'Sort: Model → Environment'),
+                  React.createElement('option', { value: 'timestamp-desc', key: 'timestamp-desc' }, 'Sort: Newest Run First'),
+                ]),
+              ]),
+              React.createElement('h2', null, 'Runs'),
+              React.createElement(RunsGrid, { runs: sortedRuns, filter }),
+            ]),
+            React.createElement('section', { key: 'logs' }, [
+              React.createElement('h2', null, 'Run Log Explorer'),
+              React.createElement('p', { className: 'muted' }, 'Inspect the underlying blackboards, prompts, tool calls, and agent trajectories for any run.'),
+              React.createElement(RunLogExplorer, { runs: sortedRuns }),
+            ]),
+          ])
+        ]);
+      };
+
+      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+    </script>
+  </body>
+</html>

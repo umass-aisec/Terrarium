@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Terrarium Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #f5f6fa; color: #1f2430; }
+    header { background: #1f2430; color: #fff; padding: 24px; }
+    header h1 { margin: 0 0 8px 0; font-size: 24px; }
+    header .meta { font-size: 14px; opacity: 0.8; }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .logo-image { height: 52px; width: auto; border-radius: 12px; box-shadow: 0 6px 16px rgba(15,23,42,0.25); }
+    main { padding: 24px; }
+    section { background: #fff; padding: 20px; margin-bottom: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(15,23,42,0.1); }
+    h2 { margin-top: 0; font-size: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e4e7ec; }
+    th { background: #f0f2f7; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+    .badge.success { background: #e8f7ef; color: #1f9254; }
+    .badge.failure { background: #fde8e8; color: #b42318; }
+    .run-card { border: 1px solid #e4e7ec; border-radius: 10px; padding: 12px; background: #fff; }
+    .muted { color: #5f6b7c; font-size: 13px; }
+    pre { background: #0f172a; color: #f8fafc; padding: 16px; border-radius: 10px; overflow-x: auto; font-size: 13px; }
+    .scroll { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-wrap">
+      <img src="terrarium_logo_rounded.png" alt="Terrarium logo" class="logo-image" />
+    </div>
+    <div class="meta">Logs root: {{ data.logs_root }}</div>
+  </header>
+  <main>
+    <section>
+      <h2>Runs</h2>
+      {% if data.runs %}
+      <div class="grid">
+        {% for run in data.runs %}
+        <div class="run-card">
+          <h3>{{ run.environment }} · {{ run.tag_model }}</h3>
+          <p class="muted">Seed {{ run.seed }} · Run {{ run.run_timestamp or 'legacy' }} · {{ run.log_dir }}</p>
+          <p>Total events: {{ run.events|length }}</p>
+          <ul>
+            {% for event_type, counts in run.event_counts.items() %}
+            {% set total = counts.success + counts.failure %}
+            {% set rate = (counts.success / total * 100) if total else 0 %}
+            <li>
+              <strong>{{ event_type }}</strong> —
+              <span class="badge success">{{ counts.success }} success</span>
+              <span class="badge failure">{{ counts.failure }} failure</span>
+              <span class="muted">({{ rate|round(1) }}%)</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">No runs discovered.</p>
+      {% endif %}
+    </section>
+
+  </main>
+</body>
+</html>

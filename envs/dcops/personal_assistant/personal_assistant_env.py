@@ -20,7 +20,14 @@ from envs.dcops.CoLLAB.PersonalAssistant.prompt_maker import make_prompts_vanill
 # Import abstract environment interface and logger
 from envs.abstract_environment import AbstractEnvironment
 from envs.dcops.plotter import ScorePlotter
-from src.utils import clear_seed_directories, extract_model_info, get_tag_model_subdir
+from src.utils import (
+    clear_seed_directories,
+    extract_model_info,
+    get_tag_model_subdir,
+    get_run_timestamp,
+    build_log_dir,
+    build_plots_dir,
+)
 from .personal_assistant_tools import PersonalAssistantTools
 from .personal_assistant_prompts import PersonalAssistantPrompts
 
@@ -50,6 +57,7 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         self.agent_names: List[str] = []  # Agent names (renamed from agents_list)
         self.communication_protocol = communication_protocol
         self.communication_protocol.environment = self
+        self.run_timestamp = get_run_timestamp(self.full_config)
         self.current_iteration = 0
         self.simulation_config = config["simulation"]
         self.max_iterations = self.simulation_config.get("max_iterations", None)
@@ -99,8 +107,8 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
 
         # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        plots_dir = f"plots/PersonalAssistant/{tag_model}/seed_{self.current_seed}"
-        self.score_plotter = ScorePlotter(save_dir=plots_dir)
+        plots_dir = build_plots_dir("PersonalAssistant", tag_model, self.current_seed, self.run_timestamp)
+        self.score_plotter = ScorePlotter(save_dir=str(plots_dir))
 
         print(f"PersonalAssistant environment initialized with {len(self.agent_names)} agents")
         print(f"Agents: {', '.join(self.agent_names)}")
@@ -269,7 +277,7 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         # Create logs directory with seed subdirectory
         # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        log_dir = Path("logs") / "PersonalAssistant" / tag_model / f"seed_{self.current_seed}"
+        log_dir = build_log_dir("PersonalAssistant", tag_model, self.current_seed, self.run_timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Log scores to JSON
@@ -450,4 +458,3 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
                 for agent, outfit in self.outfit_selections.items()
             }
         }
-

@@ -2,11 +2,6 @@ simulation:
   max_iterations: 1
   max_planning_rounds: 3
   max_conversation_steps: 3
-  enable_agent_blackboard_actions: true
-  n_simulations: 1
-  parallelization:
-    enabled: true
-    max_workers: 1
   tag: baseline
 environment:
   name: PersonalAssistant

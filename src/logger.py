@@ -1,11 +1,204 @@
 import time
 import os
 import json
+import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from dataclasses import asdict
 from .blackboard import Event, Blackboard
-from .utils import get_tag_model_subdir
+from .utils import get_tag_model_subdir, get_run_timestamp, build_log_dir
+
+
+def _resolve_run_timestamp(config: Optional[Dict[str, Any]], run_timestamp: Optional[str]) -> Optional[str]:
+    if run_timestamp:
+        return run_timestamp
+    if config:
+        return get_run_timestamp(config)
+    return None
+
+
+class AttackLogger:
+    """Structured logger for attack executions and outcomes."""
+
+    def __init__(
+        self,
+        environment_name: str,
+        seed: int,
+        config: Dict[str, Any],
+        run_timestamp: Optional[str] = None,
+    ):
+        self.environment_name = environment_name
+        self.seed = seed
+        self.config = config
+        self.tag_model = get_tag_model_subdir(config or {})
+        self.run_timestamp = _resolve_run_timestamp(config, run_timestamp)
+        self.log_dir = build_log_dir(
+            self.environment_name,
+            self.tag_model,
+            self.seed,
+            self.run_timestamp,
+        )
+        self.events_path = self.log_dir / "attack_events.jsonl"
+        self.text_path = self.log_dir / "attack_events.log"
+        self.summary_path = self.log_dir / "attack_summary.json"
+        self.stats: Dict[str, Dict[str, int]] = {}
+        self.reset_log()
+
+    def reset_log(self) -> None:
+        """Reset attack logs for a fresh simulation run."""
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.events_path.write_text("", encoding="utf-8")
+        self.text_path.write_text("", encoding="utf-8")
+        self.stats = {}
+        self._flush_summary()
+        self._snapshot_config()
+
+    def _snapshot_config(self) -> None:
+        """Persist a copy of the source config alongside the run logs."""
+        config_path = self.config.get("_config_path")
+        if not config_path:
+            return
+        source = Path(config_path)
+        if not source.exists():
+            return
+        destination = self.log_dir / source.name
+        try:
+            if source.resolve() == destination.resolve():
+                return
+        except OSError:
+            # Fall back to string comparison if resolution fails
+            if source == destination:
+                return
+        try:
+            shutil.copy2(source, destination)
+        except OSError:
+            # Silently continue if we cannot copy; logging should not fail the run
+            pass
+
+    def log_agent_attack(
+        self,
+        attack_type: str,
+        attacker: str,
+        *,
+        target: Optional[Any] = None,
+        target_type: Optional[str] = None,
+        success: bool = True,
+        phase: Optional[str] = None,
+        iteration: Optional[int] = None,
+        round_num: Optional[int] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        entry = {
+            "category": "agent",
+            "attack_type": attack_type,
+            "attacker": attacker,
+            "target": target,
+            "target_type": target_type,
+            "success": success,
+            "phase": phase,
+            "iteration": iteration,
+            "round": round_num,
+            "metadata": metadata or {},
+        }
+        self._log_event(entry)
+
+    def log_protocol_attack(
+        self,
+        attack_type: str,
+        *,
+        attacker: str,
+        target: Optional[Any],
+        success: bool,
+        trigger: Optional[str],
+        iteration: Optional[int],
+        phase: Optional[str],
+        round_num: Optional[int] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        entry = {
+            "category": "protocol",
+            "attack_type": attack_type,
+            "attacker": attacker,
+            "target": target,
+            "target_type": "blackboard" if target is not None else None,
+            "success": success,
+            "phase": phase,
+            "iteration": iteration,
+            "round": round_num,
+            "trigger": trigger,
+            "metadata": metadata or {},
+        }
+        self._log_event(entry)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _log_event(self, entry: Dict[str, Any]) -> None:
+        timestamp = datetime.now().isoformat()
+        entry["timestamp"] = timestamp
+
+        # JSON line log
+        with self.events_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        # Human-readable log line
+        text_line = self._format_text_entry(entry)
+        with self.text_path.open("a", encoding="utf-8") as f:
+            f.write(text_line + "\n")
+
+        self._update_stats(entry.get("attack_type"), bool(entry.get("success")))
+
+    def _format_text_entry(self, entry: Dict[str, Any], metadata_limit: int = 4) -> str:
+        meta_preview = self._format_metadata(entry.get("metadata") or {}, metadata_limit)
+        parts = [
+            f"[{entry['timestamp']}]",
+            f"cat={entry.get('category')}",
+            f"attack={entry.get('attack_type')}",
+            f"attacker={entry.get('attacker','-')}",
+            f"target={entry.get('target','-')}",
+            f"phase={entry.get('phase','unknown')}",
+            f"iter={entry.get('iteration')}",
+            f"round={entry.get('round')}",
+            f"success={entry.get('success')}",
+        ]
+        if trigger := entry.get("trigger"):
+            parts.append(f"trigger={trigger}")
+        if meta_preview:
+            parts.append(f"metrics={meta_preview}")
+        return " ".join(parts)
+
+    @staticmethod
+    def _format_metadata(metadata: Dict[str, Any], limit: int) -> str:
+        if not metadata:
+            return ""
+        items = []
+        for idx, (key, value) in enumerate(metadata.items()):
+            if idx >= limit:
+                items.append("…")
+                break
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value, ensure_ascii=False)
+            items.append(f"{key}={value}")
+        return ", ".join(items)
+
+    def _update_stats(self, attack_type: Optional[str], success: bool) -> None:
+        if not attack_type:
+            return
+        stats = self.stats.setdefault(attack_type, {"success": 0, "failure": 0})
+        stats["success" if success else "failure"] += 1
+        self._flush_summary()
+
+    def _flush_summary(self) -> None:
+        payload = {
+            "environment": self.environment_name,
+            "seed": self.seed,
+            "run_timestamp": self.run_timestamp,
+            "updated_at": datetime.now().isoformat(),
+            "attack_counts": self.stats,
+        }
+        with self.summary_path.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
 
 
 
@@ -18,7 +211,7 @@ class BlackboardLogger:
     Now supports multiple blackboards with separate log files.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], run_timestamp: Optional[str] = None):
         """
         Initialize the blackboard logger.
 
@@ -31,6 +224,15 @@ class BlackboardLogger:
         self.config = config
         self.environment_name = self.config["environment"]["name"]
         self.seed = self.config["environment"]["rng_seed"]
+        self.tag_model = get_tag_model_subdir(self.config)
+        self.run_timestamp = _resolve_run_timestamp(self.config, run_timestamp)
+        self.log_root = build_log_dir(
+            self.environment_name,
+            self.tag_model,
+            self.seed,
+            self.run_timestamp,
+        )
+        self.log_root.mkdir(parents=True, exist_ok=True)
 
         # Track log files for each blackboard
         self.blackboard_log_files: Dict[str, str] = {}
@@ -40,22 +242,15 @@ class BlackboardLogger:
         Clear all blackboard log files and reset tracking.
         Called at the start of each simulation.
         """
-        import shutil
-        # Get tag_model subdirectory
-        tag_model = get_tag_model_subdir(self.config)
-        blackboards_dir = f"logs/{self.environment_name}/{tag_model}/seed_{self.seed}"
-
-        # Remove the seed-specific blackboards directory if it exists
-        if os.path.exists(blackboards_dir):
-            shutil.rmtree(blackboards_dir)
-
-        # Create a fresh blackboards directory for this seed
-        os.makedirs(blackboards_dir, exist_ok=True)
-
-        # Reset the log files tracking
+        if not self.log_root.exists():
+            self.log_root.mkdir(parents=True, exist_ok=True)
+        # Remove only blackboard-specific files so other artifacts remain intact.
+        for path in self.log_root.glob("blackboard_*.txt"):
+            try:
+                path.unlink()
+            except OSError:
+                pass
         self.blackboard_log_files.clear()
-
-        print(f"Cleared blackboard logs directory: {blackboards_dir}")
 
     def _initialize_log(self, log_file: str, blackboard_id: str = ""):
         """Initialize log file with header."""
@@ -91,17 +286,11 @@ class BlackboardLogger:
             Path to the log file for this blackboard
         """
         if blackboard_id not in self.blackboard_log_files:
-            # Get tag_model subdirectory
-            tag_model = get_tag_model_subdir(self.config)
-            # Create separate log file for each blackboard using environment and seed-specific paths
-            log_dir = f"logs/{self.environment_name}/{tag_model}/seed_{self.seed}"
-            log_file = os.path.join(log_dir, f"blackboard_{blackboard_id}.txt")
+            log_file = self.log_root / f"blackboard_{blackboard_id}.txt"
+            self.blackboard_log_files[blackboard_id] = str(log_file)
 
-            self.blackboard_log_files[blackboard_id] = log_file
-
-            # Initialize the log file if it doesn't exist
-            if not os.path.exists(log_file):
-                self._initialize_log(log_file, blackboard_id)
+            if not log_file.exists():
+                self._initialize_log(str(log_file), blackboard_id)
 
         return self.blackboard_log_files[blackboard_id]
 
@@ -430,7 +619,13 @@ class ToolCallLogger:
     function name, parameters, result, and timing information.
     """
 
-    def __init__(self, environment_name: str = "Unknown", seed: int = 0, config: Dict[str, Any] = None):
+    def __init__(
+        self,
+        environment_name: str = "Unknown",
+        seed: int = 0,
+        config: Dict[str, Any] = None,
+        run_timestamp: Optional[str] = None,
+    ):
         """
         Initialize the tool call logger.
 
@@ -441,14 +636,17 @@ class ToolCallLogger:
         """
         self.environment_name = environment_name
         self.seed = seed
-        tag_model = get_tag_model_subdir(config or {})
-        self.log_file_path = f"logs/{environment_name}/{tag_model}/seed_{seed}/tool_calls.json"
+        self.config = config or {}
+        tag_model = get_tag_model_subdir(self.config)
+        self.run_timestamp = _resolve_run_timestamp(self.config, run_timestamp)
+        self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.log_file_path = self.log_dir / "tool_calls.json"
 
-        # Create logs directory and initialize empty log file
-        os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        if not os.path.exists(self.log_file_path):
-            with open(self.log_file_path, 'w') as f:
+        if not self.log_file_path.exists():
+            with self.log_file_path.open('w') as f:
                 json.dump([], f)
+        self._snapshot_config()
 
     def log_tool_call(self,
                      agent_name: str,
@@ -495,14 +693,14 @@ class ToolCallLogger:
 
             # Read existing entries, append new one, and write back
             try:
-                with open(self.log_file_path, 'r') as f:
+                with self.log_file_path.open('r') as f:
                     entries = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 entries = []
 
             entries.append(log_entry)
 
-            with open(self.log_file_path, 'w') as f:
+            with self.log_file_path.open('w') as f:
                 json.dump(entries, f, indent=2)
 
         except Exception as e:
@@ -510,9 +708,25 @@ class ToolCallLogger:
 
     def reset_log(self):
         """Reset the tool call log by clearing all entries."""
-        os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        with open(self.log_file_path, 'w') as f:
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        with self.log_file_path.open('w') as f:
             json.dump([], f)
+        self._snapshot_config()
+
+    def _snapshot_config(self) -> None:
+        config_path = (self.config or {}).get("_config_path")
+        if not config_path:
+            return
+        source = Path(config_path)
+        if not source.exists():
+            return
+        destination = self.log_dir / source.name
+        if destination.exists():
+            return
+        try:
+            shutil.copy2(source, destination)
+        except OSError:
+            pass
 
     def log_adversarial_agent_action(self, agent_name: str, original_message: str,
                                      replaced_message: str, phase: str,
@@ -533,12 +747,12 @@ class ToolCallLogger:
                 "seed": self.seed
             }
             try:
-                with open(self.log_file_path, 'r') as f:
+                with self.log_file_path.open('r') as f:
                     entries = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 entries = []
             entries.append(log_entry)
-            with open(self.log_file_path, 'w') as f:
+            with self.log_file_path.open('w') as f:
                 json.dump(entries, f, indent=2)
         except Exception as e:
             print(f"ERROR: Failed to log adversarial_agent action: {e}")
@@ -547,23 +761,30 @@ class ToolCallLogger:
 class PromptLogger:
     """Logger for capturing agent prompts (system and user) in both JSON and Markdown formats."""
 
-    def __init__(self, environment_name: str = "Unknown", seed: int = 0, config: Dict[str, Any] = None):
+    def __init__(
+        self,
+        environment_name: str = "Unknown",
+        seed: int = 0,
+        config: Dict[str, Any] = None,
+        run_timestamp: Optional[str] = None,
+    ):
         self.environment_name = environment_name
         self.seed = seed
         tag_model = get_tag_model_subdir(config or {})
+        self.run_timestamp = _resolve_run_timestamp(config, run_timestamp)
+        self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
         # JSON log for programmatic access
-        self.log_file_path = f"logs/{environment_name}/{tag_model}/seed_{seed}/agent_prompts.json"
+        self.log_file_path = self.log_dir / "agent_prompts.json"
         # Markdown log for human readability
-        self.md_log_path = f"logs/{environment_name}/{tag_model}/seed_{seed}/agent_prompts.md"
+        self.md_log_path = self.log_dir / "agent_prompts.md"
 
-        # Create logs directory and initialize empty log files
-        os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        if not os.path.exists(self.log_file_path):
-            with open(self.log_file_path, 'w') as f:
+        if not self.log_file_path.exists():
+            with self.log_file_path.open('w') as f:
                 json.dump([], f)
-        if not os.path.exists(self.md_log_path):
-            with open(self.md_log_path, 'w') as f:
+        if not self.md_log_path.exists():
+            with self.md_log_path.open('w') as f:
                 f.write(f"# Agent Prompts Log - {environment_name} (Seed: {seed})\n\n")
 
     def log_prompts(self, agent_name: str, system_prompt: str, user_prompt: str,
@@ -585,14 +806,14 @@ class PromptLogger:
 
             # Write to JSON file (for programmatic access)
             try:
-                with open(self.log_file_path, 'r') as f:
+                with self.log_file_path.open('r') as f:
                     entries = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 entries = []
 
             entries.append(log_entry)
 
-            with open(self.log_file_path, 'w') as f:
+            with self.log_file_path.open('w') as f:
                 json.dump(entries, f, indent=2)
 
             # Write to Markdown file (for human readability)
@@ -623,7 +844,7 @@ class PromptLogger:
 """
 
             # Append to markdown file
-            with open(self.md_log_path, 'a') as f:
+            with self.md_log_path.open('a') as f:
                 f.write(md_entry)
 
         except Exception as e:
@@ -631,14 +852,12 @@ class PromptLogger:
 
     def reset_log(self):
         """Reset both JSON and Markdown prompt logs by clearing all entries."""
-        os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        # Reset JSON log
-        with open(self.log_file_path, 'w') as f:
+        with self.log_file_path.open('w') as f:
             json.dump([], f)
 
-        # Reset Markdown log with header
-        with open(self.md_log_path, 'w') as f:
+        with self.md_log_path.open('w') as f:
             f.write(f"# Agent Prompts Log - {self.environment_name} (Seed: {self.seed})\n\n")
 
 
@@ -652,7 +871,13 @@ class AgentTrajectoryLogger:
     - Organized by agent → iteration → phase → trajectory steps
     """
 
-    def __init__(self, environment_name: str = "Unknown", seed: int = 0, config: Dict[str, Any] = None):
+    def __init__(
+        self,
+        environment_name: str = "Unknown",
+        seed: int = 0,
+        config: Dict[str, Any] = None,
+        run_timestamp: Optional[str] = None,
+    ):
         """
         Initialize the agent trajectory logger.
 
@@ -664,12 +889,13 @@ class AgentTrajectoryLogger:
         self.environment_name = environment_name
         self.seed = seed
         tag_model = get_tag_model_subdir(config or {})
-        self.log_file_path = f"logs/{environment_name}/{tag_model}/seed_{seed}/agent_trajectories.json"
+        self.run_timestamp = _resolve_run_timestamp(config, run_timestamp)
+        self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.log_file_path = self.log_dir / "agent_trajectories.json"
 
-        # Create logs directory and initialize empty log file
-        os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        if not os.path.exists(self.log_file_path):
-            with open(self.log_file_path, 'w') as f:
+        if not self.log_file_path.exists():
+            with self.log_file_path.open('w') as f:
                 json.dump({}, f)
 
     def log_trajectory(self,
@@ -694,7 +920,7 @@ class AgentTrajectoryLogger:
         try:
             # Read existing data
             try:
-                with open(self.log_file_path, 'r') as f:
+                with self.log_file_path.open('r') as f:
                     data = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 data = {}
@@ -728,7 +954,7 @@ class AgentTrajectoryLogger:
                 data[agent_name][iteration_key][phase]["trajectory"].update(trajectory_dict)
 
             # Write back to file
-            with open(self.log_file_path, 'w') as f:
+            with self.log_file_path.open('w') as f:
                 json.dump(data, f, indent=2)
 
         except Exception as e:

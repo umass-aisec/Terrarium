@@ -21,9 +21,13 @@ This repo is under active development :gear:, so please raise an issue for new f
   - PersonalAssistant - An assistant agent chooses outfits for a human while meeting social norm preferences, the preferences of the human, and constrained outfit selection (Uses fully synthetic data)
 <!-- - **One Stochastic Game Environment (Trading)**: A simple trading environment where agents trade and buy items to maximize their personal cumulative inventory utility. Agents trade items (e.g., TV, phone, banana) and negotiate with each other given limited resources. This environment allows multi-step simulation with multiple evaluation steps. -->
 
-## Quick Start
+## Documentation 
 
-### Installation
+Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/docs) for detailed instructions about on how to use the framework. 
+
+Follow the quick guide provided below for basic testing.
+
+## Quick Start
 
 **Requirements**: Python 3.11+
 
@@ -68,15 +72,64 @@ python src/server.py
 python3 examples/base/main.py --config <yaml_config_path>
 ```
 
-## Examples
-For examples on how Terrarium can be used, such as attacks, see the `examples/` directory.
+## Attack Scenarios
+
+Terrarium ships three reference attacks that exercise different points in the stack. Implementations live in `attack_module/attack_modules.py` and can be mixed into any simulation via the provided runners.
+
+| Attack | What it targets | Entry point | Payload config |
+| --- | --- | --- | --- |
+| Agent poisoning | Replaces every `post_message` payload from the compromised agent before it reaches the blackboard. | `examples/attacks/main.py --attack_type agent_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+| Context overflow | Appends a large filler block to agent messages to force downstream context truncation. | `examples/attacks/main.py --attack_type context_overflow` | `examples/configs/attack_config.yaml` (`header`, `filler_token`, `repeat`, `max_chars`) |
+| Communication protocol poisoning | Injects malicious system messages into every blackboard via the MCP layer. | `examples/attacks/main.py --communication_protocol_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+
+### Running agent-side attacks
+
+Use the unified driver to launch both the standard run and the selected attack:
+
+```bash
+# Agent poisoning example
+python examples/attacks/main.py \
+  --config examples/configs/meeting_scheduling.yaml \
+  --poison_payload examples/configs/attack_config.yaml \
+  --attack_type agent_poisoning
+
+# Context overflow example
+python examples/attacks/main.py \
+  --config examples/configs/meeting_scheduling.yaml \
+  --poison_payload examples/configs/attack_config.yaml \
+  --attack_type context_overflow
+```
+
 
 ## Quick Tips
 - When working with Terrarium, use sublass definitions (e.g., A2ACommunicationProtocol, EvilAgent) of the base module classes (e.g., CommunicationProtocol, Agent) rather than directly changing the base module classes.
 - When creating new environments, ensure they inherit the AbstractEnvironment class and all methods are properly defined.
 - Keep in mind some models (e.g., gpt-4.1-nano) are not capable enough of utilizing tools to take actions in the environment, so track the completion rate such as `Meeting completion: 15/15 (100.0%)` for MeetingScheduling.
 
-## Tooling
+## Dashboard (Experimental)
+
+Consolidates runs and logs into a static dashboard for easier navigation:
+
+1. Export the data bundle (runs + config):
+
+   ```bash
+   python dashboards/build_data.py \
+     --logs-root logs \
+     --config examples/configs/meeting_scheduling.yaml \
+     --output dashboards/public/dashboard_data.json
+   ```
+
+2. Serve the static front-end (or simply open the file via your browser if it allows `file://` fetches – a local server is recommended):
+
+   ```bash
+   python -m http.server 5050 --directory dashboards/public
+   ```
+
+3. Navigate to <http://127.0.0.1:5050> to inspect the raw event logs parsed directly from `dashboard_data.json` in the browser (no backend required).
+
+4. New runs? Simply repeat step (1.) and refresh the website (No need to restart the server)
+
+## Tooling (MCP Servers)
 
 To standardize tool usage among different model providers, we employ an MCP server using FastMCP. Each environment has their own set of MCP tools that are readily available to the agent with the functionality of permitting certain tools by the communication protocol. Some examples of environment tools are MeetingScheduling -> schedule_meeting(.), PersonalAssistant -> choose_outfit(.), and SmartGrid -> schedule_task(.).
 
@@ -89,13 +142,17 @@ Terrarium incorporates a set of loggers for prompts, tool usage, agent trajector
 - PromptLogger -- Shows exact system and user prompts used (Useful for debugging F-string formatted prompts)
 - AgentTrajectoryLogger -- Logs the multi-step conversation of each agent showing their pseudo-reasoning traces (Useful for approximately evaluating the internal reasoning of agents and their associated tool calls)
 
+All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed>/`, including a snapshot of the config used for that run.
+
 ## TODOs
-- [ ] Get parallelized simulations working on multiple seeds
-- [ ] Implement vLLM client
-- [ ] Add multi-step negotiation environments
+- [ ] !! Get parallelized simulations working on multiple seeds
+- [ ] !! Implement vLLM client
+- [ ] ! Add multi-step negotiation environments (e.g., Trading)
+- [ ] ! Update the CoLLAB environments
+- [ ] Improve the Dashboard UI
 
 ## Paper Citation
-```
+```bibtex
 @article{nakamura2025terrarium,
   title={Terrarium: Revisiting the Blackboard for Multi-Agent Safety, Privacy, and Security Studies},
   author={Nakamura, Mason and Kumar, Abhinav and Mahmud, Saaduddin and Abdelnabi, Sahar and Zilberstein, Shlomo and Bagdasarian, Eugene},
@@ -107,3 +164,7 @@ Terrarium incorporates a set of loggers for prompts, tool usage, agent trajector
 ## License
 
 MIT
+
+## Contributing
+
+We welcome pull requests and issues that improve Terrarium’s tooling, environments, docs, or general ecosystem. Before opening a PR, start a brief issue or discussion outlining the change so we can coordinate scope and avoid overlap. If you are unsure whether an idea fits, just ask.

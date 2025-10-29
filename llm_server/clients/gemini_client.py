@@ -30,7 +30,7 @@ class GeminiClient(AbstractClient):
                 "Install with: pip install google-generativeai"
             ) from e
 
-        load_dotenv()
+        load_dotenv(override=True)
         self.api_key = os.getenv("GOOGLE_API_KEY")
         if not self.api_key:
             raise ValueError(

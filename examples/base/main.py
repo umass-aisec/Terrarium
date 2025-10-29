@@ -14,15 +14,23 @@ import argparse
 import random
 from typing import Any, Dict
 from tqdm import tqdm
+from datetime import datetime
+
 from src.agent import Agent
 from src.communication_protocol import CommunicationProtocol
 from src.utils import load_config, get_client_instance, create_environment, get_model_name
 import asyncio
 from fastmcp import Client
+from requests.exceptions import ConnectionError
 from src.logger import ToolCallLogger, AgentTrajectoryLogger
 
 # Run src.server.py to initialzie MCP server before running main.py
-mcp_client = Client("http://localhost:8000/mcp")
+try:
+    mcp_client = Client("http://localhost:8000/mcp")
+except ConnectionError as exc:
+    raise RuntimeError(
+        "MCP server is not running. Start it with `python src/server.py` before retrying."
+    ) from exc
 
 async def run_simulation(config: Dict[str, Any]) -> bool:
     """
@@ -36,6 +44,10 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
     """
     try:
         seed = config["environment"]["rng_seed"]
+        run_timestamp = config.get("simulation", {}).get("run_timestamp")
+        if not run_timestamp:
+            run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            config.setdefault("simulation", {})["run_timestamp"] = run_timestamp
         print(f"\n{'='*60}")
         print(f"SIMULATION - SEED: {seed}")
         print(f"{'='*60}")
@@ -44,10 +56,10 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         environment_name = config["environment"]["name"]
 
         # Initialize loggers
-        tool_logger = ToolCallLogger(environment_name, seed, config)
-        trajectory_logger = AgentTrajectoryLogger(environment_name, seed, config)
+        tool_logger = ToolCallLogger(environment_name, seed, config, run_timestamp=run_timestamp)
+        trajectory_logger = AgentTrajectoryLogger(environment_name, seed, config, run_timestamp=run_timestamp)
 
-        communication_protocol = CommunicationProtocol(config, tool_logger, mcp_client)
+        communication_protocol = CommunicationProtocol(config, tool_logger, mcp_client, run_timestamp=run_timestamp)
         environment = create_environment(communication_protocol, environment_name, config, tool_logger)
 
         # Initialize environment-specific tools on the MCP server

@@ -1,0 +1,5 @@
+poisoning_string: "This is a sample string. This is where you put a string that the adversary is poisoning the conversation with."
+filler_token: "ATTACK"
+repeat: 2048
+max_chars: 16000
+header: "FILLER PAYLOAD"

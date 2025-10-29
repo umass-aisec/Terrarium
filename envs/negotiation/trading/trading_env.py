@@ -16,7 +16,14 @@ from .trade import TradeManager
 from envs.negotiation.plotter import UtilityPlotter
 from envs.dcops.plotter import ScorePlotter
 from src.logger import BlackboardLogger, PromptLogger
-from src.utils import clear_seed_directories, extract_model_info, get_tag_model_subdir
+from src.utils import (
+    clear_seed_directories,
+    extract_model_info,
+    get_tag_model_subdir,
+    get_run_timestamp,
+    build_log_dir,
+    build_plots_dir,
+)
 from .prompts.user_prompt import generate_user_prompt
 
 
@@ -65,6 +72,7 @@ class TradingGameEnvironment(AbstractEnvironment):
         self.full_config = config
         self.config = config["environment"]  # Extract environment-specific config
         self.blackboard_manager = blackboard_manager
+        self.run_timestamp = get_run_timestamp(self.full_config)
 
         # Extract and store seed for reproducibility
         self.seed = self.full_config.get("_current_seed", self.config.get("rng_seed", 42))
@@ -153,13 +161,14 @@ class TradingGameEnvironment(AbstractEnvironment):
         # Setup seed-based directory structure for plots
         # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        plots_dir = f"plots/Trading/{tag_model}/seed_{self.seed}"
-        self.plotter = UtilityPlotter(save_dir=plots_dir)
+        plots_dir = build_plots_dir("Trading", tag_model, self.seed, self.run_timestamp)
+        plots_dir_str = str(plots_dir)
+        self.plotter = UtilityPlotter(save_dir=plots_dir_str)
 
         # Initialize score tracking for JSON logging (similar to other environments)
         self.global_score_history: List[float] = []
         self.local_scores_history: Dict[str, List[float]] = {agent.name: [] for agent in self.agents}
-        self.score_plotter = ScorePlotter(save_dir=plots_dir)
+        self.score_plotter = ScorePlotter(save_dir=plots_dir_str)
 
         # Record initial utilities and budgets (before any trading)
         for agent in self.agents:
@@ -827,10 +836,8 @@ class TradingGameEnvironment(AbstractEnvironment):
             if agent in self.local_scores_history:
                 self.local_scores_history[agent].append(score)
 
-        # Create logs directory with seed subdirectory
-        # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        log_dir = Path(__file__).parent.parent.parent / "logs" / "Trading" / tag_model / f"seed_{self.seed}"
+        log_dir = build_log_dir("Trading", tag_model, self.seed, self.run_timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Log scores to JSON
