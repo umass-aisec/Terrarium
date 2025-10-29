@@ -81,6 +81,8 @@ python3 examples/attacks/main.py --config examples/configs/meeting_scheduling.ya
 
 examples/attacks shows examples on how to run the attack. To test the attack you need to provide attack config file alongside the attack type.
 
+Full Documentation provides details on how to construct your own attacks.
+
 
 ## Quick Tips
 - When working with Terrarium, use sublass definitions (e.g., A2ACommunicationProtocol, EvilAgent) of the base module classes (e.g., CommunicationProtocol, Agent) rather than directly changing the base module classes.
