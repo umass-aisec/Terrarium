@@ -22,7 +22,7 @@ from src.logger import ToolCallLogger, AgentTrajectoryLogger
 from src.utils import load_config, get_client_instance, create_environment, get_model_name
 import asyncio
 from fastmcp import Client
-from attack_module.attack_modules import AgentPoisoningAttack, CommunicationProtocolPoisoningAttack
+from attack_module.attack_modules import AgentPoisoningAttack, CommunicationProtocolPoisoningAttack, ContextOverflowAttack
 
 from requests.exceptions import ConnectionError
 
@@ -89,7 +89,7 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         for idx, name in enumerate(agent_names):
             client = get_client_instance(llm_config)
             print(f"Initializing Agent: {name} with {provider} - {model_name}")
-            if idx == 0:
+            if args.attack_type == "agent_poisoning":
                 agent = AgentPoisoningAttack(
                     client,
                     name,
@@ -98,12 +98,24 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
                     tool_logger,
                     trajectory_logger,
                     environment_name,
+                    args.poison_payload,
+                )
+            elif args.attack_type == "context_overflow":
+                agent = ContextOverflowAttack(
+                    client,
+                    name,
+                    model_name, 
+                    max_conversation_steps,
+                    tool_logger,
+                    trajectory_logger,
+                    environment_name,
+                    args.poison_payload,
                 )
             else:
                 agent = Agent(
                     client,
                     name,
-                    model_name,
+                    model_name, 
                     max_conversation_steps,
                     tool_logger,
                     trajectory_logger,
@@ -114,7 +126,8 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         random.shuffle(agents)
         environment.set_agent_clients(agents)
 
-        protocol_attack = CommunicationProtocolPoisoningAttack()
+        if args.attack_type == "communication_protocol_poisoning":
+            protocol_attack = CommunicationProtocolPoisoningAttack(args.poison_payload)
 
         max_iterations = config["simulation"].get("max_iterations", 1)
         max_planning_rounds = config["simulation"].get("max_planning_rounds", 1)
@@ -125,10 +138,7 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
                 if not environment.should_continue_simulation(current_iteration):
                     print(f"Environment requested simulation stop at iteration {current_iteration}")
                     break
-                await protocol_attack.inject(
-                    communication_protocol,
-                    {"phase": "planning", "iteration": iteration},
-                )
+                    
                 # Planning Phase with progress bar
                 for planning_round in tqdm(range(1, max_planning_rounds + 1), desc="  Planning", position=1, leave=False, ncols=80):
                     # Use consistent agent order for this iteration
@@ -161,7 +171,8 @@ if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Run a multi-agent simulation")
     parser.add_argument("--config", type=str)
-
+    parser.add_argument("--poison_payload", type=str)
+    parser.add_argument("--attack_type", type=str)
     args = parser.parse_args()
     config = load_config(args.config)
 
