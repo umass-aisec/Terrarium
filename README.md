@@ -44,9 +44,15 @@ conda activate terrarium
 ```
 
 3. Install dependencies (recommended to use Conda env):
+Use uv for fast dependency installation
 ```bash
 uv pip install -e .
 ```
+or just 
+```bash
+pip install -e .
+```
+
 
 <!-- 3a. (If using vLLM for servicing) Start the vLLM server (Read `server/docs/USAGE.md` before using vLLM):
 ```bash
