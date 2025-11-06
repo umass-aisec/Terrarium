@@ -7,14 +7,22 @@ Shows two blackboards with agents coordinating meetings through chat.
 import json
 import os
 import re
-import unicodedata
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import List, Dict, Tuple, Union
-from PIL import Image, ImageDraw, ImageFont
-from fontTools.ttLib import TTFont
-import imageio
+from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
+from fontTools.ttLib import TTFont, TTLibError
+
+RESAMPLING_NAMESPACE = getattr(Image, "Resampling", Image)
+RESAMPLING_LANCZOS = getattr(RESAMPLING_NAMESPACE, "LANCZOS", None)
+if RESAMPLING_LANCZOS is None:
+    RESAMPLING_LANCZOS = getattr(Image, "LANCZOS", None)
+if RESAMPLING_LANCZOS is None:
+    RESAMPLING_LANCZOS = getattr(RESAMPLING_NAMESPACE, "BICUBIC", None)
+if RESAMPLING_LANCZOS is None:
+    RESAMPLING_LANCZOS = getattr(Image, "BICUBIC", None)
+if RESAMPLING_LANCZOS is None:
+    RESAMPLING_LANCZOS = getattr(Image, "NEAREST", 0)
 
 # Configuration
 WIDTH = 1280
@@ -25,6 +33,25 @@ PLAYBACK_SPEED = 1.5  # 50% faster playback
 CHARS_PER_FRAME = 3  # Typing speed
 MIN_CHARS_PER_FRAME = 1.0
 TYPING_SPEED_BOOST = 1.05
+
+
+# Configuration
+# WIDTH = 1000
+# HEIGHT = 1000
+# FPS = 25
+# TOTAL_DURATION = 10  # seconds (base timeline before playback speed multiplier)
+# PLAYBACK_SPEED = 0.85  # slow the playback slightly for clarity
+# CHARS_PER_FRAME = 45  # Typing speed
+# MIN_CHARS_PER_FRAME = 15
+# TYPING_SPEED_BOOST = 1.05
+# FINAL_HOLD_SECONDS = 0.75
+# BLACKBOARD_SPEED_MULTIPLIERS = {
+#     0: 1.0,
+#     1: 1.3,
+# }
+# GIF_MAX_COLORS = 160
+# GIF_SIZE_LIMIT_BYTES = 5 * 1024 * 1024
+# FRAME_STEP_CANDIDATES = [1, 2, 3, 4, 5, 6, 8, 10]
 
 # Professional color scheme
 COLORS = {
@@ -78,8 +105,8 @@ def is_skin_tone_modifier(ch: str) -> bool:
     return 0x1F3FB <= code <= 0x1F3FF
 
 
-def split_graphemes(text: str) -> List[str]:
-    clusters: List[str] = []
+def split_graphemes(text: str) -> list[str]:
+    clusters: list[str] = []
     cluster = ''
     for ch in text:
         if not cluster:
@@ -128,7 +155,7 @@ def cluster_width(cluster: str, font: ImageFont.FreeTypeFont) -> int:
     return max(0, bbox[2] - bbox[0])
 
 
-def get_bitmap_emoji(cluster: str, fonts: Dict[str, ImageFont.FreeTypeFont], target_height: int) -> Union[Image.Image, None]:
+def get_bitmap_emoji(cluster: str, fonts: dict[str, ImageFont.FreeTypeFont], target_height: int) -> Image.Image | None:
     cache = fonts.get('emoji_bitmap_cache')
     tt_font = fonts.get('emoji_bitmap')
     strike = fonts.get('emoji_bitmap_strike')
@@ -163,7 +190,7 @@ def get_bitmap_emoji(cluster: str, fonts: Dict[str, ImageFont.FreeTypeFont], tar
 
     try:
         img = Image.open(BytesIO(bitmap.imageData)).convert('RGBA')
-    except Exception:
+    except (OSError, UnidentifiedImageError, ValueError):
         cache[key] = None
         return None
 
@@ -172,16 +199,15 @@ def get_bitmap_emoji(cluster: str, fonts: Dict[str, ImageFont.FreeTypeFont], tar
         new_width = max(1, int(img.width * scale))
         new_height = max(1, int(img.height * scale))
         if (new_width, new_height) != img.size:
-            img = img.resize((new_width, new_height), Image.LANCZOS)
+            img = img.resize((new_width, new_height), RESAMPLING_LANCZOS)
 
     cache[key] = img
     return img
 
 
-def measure_text(text: str, fonts: Dict[str, ImageFont.FreeTypeFont]) -> int:
+def measure_text(text: str, fonts: dict[str, ImageFont.FreeTypeFont]) -> int:
     base_font = fonts['small']
     emoji_font = fonts.get('emoji')
-    emoji_embedded = fonts.get('emoji_embedded', False)
     target_height = base_font.getbbox('Hg')[3] - base_font.getbbox('Hg')[1]
 
     total = 0
@@ -199,15 +225,12 @@ def measure_text(text: str, fonts: Dict[str, ImageFont.FreeTypeFont]) -> int:
     return total
 
 
-def wrap_text(text: str, fonts: Dict[str, ImageFont.FreeTypeFont], max_width: int) -> List[str]:
-    base_font = fonts['small']
-    emoji_font = fonts.get('emoji')
-
+def wrap_text(text: str, fonts: dict[str, ImageFont.FreeTypeFont], max_width: int) -> list[str]:
     if not text:
         return ['']
 
     words = text.split(' ')
-    lines: List[str] = []
+    lines: list[str] = []
     current = ''
 
     for word in words:
@@ -242,8 +265,8 @@ def wrap_text(text: str, fonts: Dict[str, ImageFont.FreeTypeFont], max_width: in
     return lines if lines else ['']
 
 
-def draw_text_with_fallback(draw: ImageDraw.Draw, image: Image.Image, position: Tuple[int, int], text: str,
-                            fonts: Dict[str, ImageFont.FreeTypeFont], fill: Tuple[int, int, int]):
+def draw_text_with_fallback(draw: ImageDraw.Draw, image: Image.Image, position: tuple[int, int], text: str,
+                            fonts: dict[str, ImageFont.FreeTypeFont], fill: tuple[int, int, int]):
     base_font = fonts['small']
     emoji_font = fonts.get('emoji')
     emoji_embedded = fonts.get('emoji_embedded', False)
@@ -279,7 +302,7 @@ def draw_text_with_fallback(draw: ImageDraw.Draw, image: Image.Image, position: 
 
 class MeetingEvent:
     """Represents a single event in the meeting coordination."""
-    def __init__(self, timestamp: Union[str, float], agent: str, blackboard: int,
+    def __init__(self, timestamp: str | float, agent: str, blackboard: int,
                  message: str, event_type: str, round_num: str = None):
         self.timestamp = timestamp
         self.agent = agent
@@ -290,11 +313,14 @@ class MeetingEvent:
         self.is_tool_call = False
         self.has_tool_indicator = False  # Whether to show tool indicator before this message
         self.tool_name = None  # Name of tool used (if any)
+        # Initialized here to avoid attribute-defined-outside-init
+        self.time_value: float = 0.0
+        self.sequence: int = 0
 
 
 class ToolCallEvent:
     """Represents a tool call made by an agent."""
-    def __init__(self, timestamp: Union[str, float], agent: str, blackboard: int,
+    def __init__(self, timestamp: str | float, agent: str, blackboard: int,
                  tool_name: str, round_num: str = None, params: dict = None):
         self.timestamp = timestamp
         self.agent = agent
@@ -304,6 +330,9 @@ class ToolCallEvent:
         self.params = params or {}
         self.is_tool_call = True
         self.emoji = EMOJI_ICON_MAP.get(tool_name, DEFAULT_EMOJI_ICON)
+        # Initialized here to avoid attribute-defined-outside-init
+        self.time_value: float = 0.0
+        self.sequence: int = 0
         # Create display message based on tool type
         if tool_name == 'get_blackboard_events':
             base_msg = f"checking blackboard {blackboard}..."
@@ -376,7 +405,7 @@ EMOJI_FONT_CANDIDATES = [
 ]
 
 
-def _get_sf_pro_search_dirs() -> List[Path]:
+def _get_sf_pro_search_dirs() -> list[Path]:
     """Collect directories to search for SF Pro fonts."""
     env_dirs = []
     for env_var in ("SF_PRO_FONT_DIR", "SF_PRO_DIR", "SFPRO_FONT_DIR"):
@@ -391,7 +420,7 @@ def _get_sf_pro_search_dirs() -> List[Path]:
         Path('/System/Library/AssetsV2/com_apple_MobileAsset_Font6'),
     ]
 
-    dirs: List[Path] = []
+    dirs: list[Path] = []
     for directory in env_dirs + candidate_dirs:
         if directory and directory.exists():
             resolved = directory.resolve()
@@ -400,7 +429,7 @@ def _get_sf_pro_search_dirs() -> List[Path]:
     return dirs
 
 
-def _find_sf_pro_font(patterns: List[str]) -> Union[str, None]:
+def _find_sf_pro_font(patterns: list[str]) -> str | None:
     """Return the first SF Pro font path matching the provided patterns."""
     for directory in _get_sf_pro_search_dirs():
         for pattern in patterns:
@@ -414,9 +443,9 @@ def _find_sf_pro_font(patterns: List[str]) -> Union[str, None]:
     return None
 
 
-def _try_load_font(path: str, size: int) -> Union[ImageFont.FreeTypeFont, None]:
+def _try_load_font(path: str, size: int) -> ImageFont.FreeTypeFont | None:
     """Attempt to load a font with multiple layout engines."""
-    layout_engines: List[int] = []
+    layout_engines: list[int] = []
     basic = getattr(ImageFont, 'LAYOUT_BASIC', None)
     if basic is not None:
         layout_engines.append(basic)
@@ -436,7 +465,7 @@ def _try_load_font(path: str, size: int) -> Union[ImageFont.FreeTypeFont, None]:
     return None
 
 
-def _load_font_from_candidates(candidates: List[str], size: int) -> Tuple[Union[ImageFont.FreeTypeFont, None], Union[str, None]]:
+def _load_font_from_candidates(candidates: list[str], size: int) -> tuple[ImageFont.FreeTypeFont | None, str | None]:
     """Attempt to load the first working font from candidates."""
     for path in candidates:
         font = _try_load_font(path, size)
@@ -445,9 +474,9 @@ def _load_font_from_candidates(candidates: List[str], size: int) -> Tuple[Union[
     return None, None
 
 
-def load_fonts() -> Dict[str, ImageFont.FreeTypeFont]:
+def load_fonts() -> dict[str, ImageFont.FreeTypeFont]:
     """Load fonts, preferring SF Pro when available."""
-    fonts: Dict[str, ImageFont.FreeTypeFont] = {}
+    fonts: dict[str, ImageFont.FreeTypeFont] = {}
 
     font_sizes = {
         'title': 32,
@@ -456,10 +485,8 @@ def load_fonts() -> Dict[str, ImageFont.FreeTypeFont]:
         'small': 18,
     }
 
-    font_paths: Dict[str, str] = {}
-
     for key, size in font_sizes.items():
-        candidates: List[str] = []
+        candidates: list[str] = []
         sf_candidate = _find_sf_pro_font(SF_PRO_FONT_PATTERNS.get(key, []))
         if sf_candidate:
             candidates.append(sf_candidate)
@@ -471,12 +498,10 @@ def load_fonts() -> Dict[str, ImageFont.FreeTypeFont]:
             font = ImageFont.load_default()
             font_path = None
         fonts[key] = font
-        if font_path:
-            font_paths[key] = font_path
-            if sf_candidate and 'SF' in Path(font_path).name:
-                print(f"Loaded SF Pro font for '{key}' from {font_path}")
+        if font_path and sf_candidate and 'SF' in Path(font_path).name:
+            print(f"Loaded SF Pro font for '{key}' from {font_path}")
 
-    emoji_candidates: List[str] = []
+    emoji_candidates: list[str] = []
     env_emoji = os.environ.get('EMOJI_FONT_PATH')
     if env_emoji:
         emoji_candidates.append(env_emoji)
@@ -506,7 +531,7 @@ def load_fonts() -> Dict[str, ImageFont.FreeTypeFont]:
             emoji_bitmap_cmap = emoji_bitmap_font.getBestCmap()
             strikes = emoji_bitmap_font['CBDT'].strikeData
             emoji_bitmap_strike = strikes[0] if strikes else None
-        except Exception:
+        except (TTLibError, KeyError, OSError, AttributeError):
             emoji_bitmap_font = None
             emoji_bitmap_cmap = None
             emoji_bitmap_strike = None
@@ -519,13 +544,13 @@ def load_fonts() -> Dict[str, ImageFont.FreeTypeFont]:
     return fonts
 
 
-def parse_logs(log_dir: str) -> List[Union[MeetingEvent, ToolCallEvent]]:
+def parse_logs(log_dir: str) -> list[MeetingEvent | ToolCallEvent]:
     """Parse log files and extract events chronologically."""
     log_path = Path(log_dir) / "seed_42"
 
     # First, parse tool calls and create a lookup dict
     tool_calls_by_agent_time = {}  # Key: (agent, time, blackboard) -> tool info
-    tool_events: List[ToolCallEvent] = []
+    tool_events: list[ToolCallEvent] = []
     sequence_counter = 0
 
     def time_to_float(dt_obj: datetime) -> float:
@@ -538,8 +563,8 @@ def parse_logs(log_dir: str) -> List[Union[MeetingEvent, ToolCallEvent]]:
         )
 
     try:
-        with open(log_path / "tool_calls.json", 'r') as f:
-            tool_calls_data = json.load(f)
+        with open(log_path / "tool_calls.json", 'r', encoding='utf-8') as tool_calls_file:
+            tool_calls_data = json.load(tool_calls_file)
 
         for call in tool_calls_data:
             tool_name = call.get('tool_name')
@@ -614,15 +639,15 @@ def parse_logs(log_dir: str) -> List[Union[MeetingEvent, ToolCallEvent]]:
             tool_event.sequence = sequence_counter
             sequence_counter += 1
             tool_events.append(tool_event)
-    except Exception as e:
+    except (OSError, FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Warning: Could not load tool_calls.json: {e}")
 
     # Parse blackboard files for message events
     events = []
     for blackboard_id in [0, 1]:
         blackboard_file = log_path / f"blackboard_{blackboard_id}.txt"
-        with open(blackboard_file, 'r') as f:
-            content = f.read()
+        with open(blackboard_file, 'r', encoding='utf-8') as blackboard_file_handle:
+            content = blackboard_file_handle.read()
 
         # Parse events from blackboard - new format
         # [Event #X, Iteration: Y] [HH:MM:SS] [Phase] Agent (event_type)  Content/Message: ...
@@ -804,14 +829,14 @@ def parse_logs(log_dir: str) -> List[Union[MeetingEvent, ToolCallEvent]]:
     return events
 
 
-def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
+def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     """Convert hex color to RGB tuple."""
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 
-def calculate_message_height(event: Union[MeetingEvent, ToolCallEvent], fonts: Dict,
-                            message_width: int, visible_chars: int = None) -> int:
+def calculate_message_height(event: MeetingEvent | ToolCallEvent, fonts: dict,
+                            message_width: int, visible_chars: int | None = None) -> int:
     """Calculate the height a message will take when rendered."""
     message = event.message if visible_chars is None else event.message[:visible_chars]
 
@@ -837,11 +862,11 @@ def calculate_message_height(event: Union[MeetingEvent, ToolCallEvent], fonts: D
     return num_lines * 30 + 10  # 30 per line + 10 spacing
 
 
-def create_frame(completed_events: List[Union[MeetingEvent, ToolCallEvent]],
-                typing_events: Dict[int, Tuple[Union[MeetingEvent, ToolCallEvent, None], int]],
-                scroll_offsets: Dict[int, int],
+def create_frame(completed_events: list[MeetingEvent | ToolCallEvent],
+                typing_events: dict[int, tuple[MeetingEvent | ToolCallEvent | None, int]],
+                scroll_offsets: dict[int, int],
                 current_round: str,
-                fonts: Dict) -> Image.Image:
+                fonts: dict) -> Image.Image:
     """Create a single frame of the animation.
 
     Args:
@@ -964,13 +989,12 @@ def create_frame(completed_events: List[Union[MeetingEvent, ToolCallEvent]],
                 fill=hex_to_rgb(COLORS['system']),
                 font=fonts['small']
             )
-        
+
         agent_y = bubble_bottom + 18
 
         # Agent names
         agents = MEETING_PARTICIPANTS[board_id]
 
-        agent_text = "Participants: " + " • ".join(agents)
         # Draw each agent name in their color
         x_pos = x_offset + 40
         draw.text((x_pos, agent_y), "Participants: ",
@@ -1017,7 +1041,7 @@ def create_frame(completed_events: List[Union[MeetingEvent, ToolCallEvent]],
 
         for i, event in enumerate(all_board_events):
             # Determine if this is the typing event
-            is_typing = (event == board_typing)
+            is_typing = event == board_typing
             visible_text = event.message[:board_typing_chars] if is_typing else event.message
 
             # Skip if completely above viewport
@@ -1138,7 +1162,9 @@ def generate_gif(log_dir: str, output_path: str):
             chars_per_frame_board[board_id] = 0.0
         else:
             avg_required = (total_chars_board / total_frames) * TYPING_SPEED_BOOST
-            chars_per_frame_board[board_id] = max(MIN_CHARS_PER_FRAME, avg_required)
+            speed_multiplier = BLACKBOARD_SPEED_MULTIPLIERS.get(board_id, 1.0)
+            target_chars = avg_required * speed_multiplier
+            chars_per_frame_board[board_id] = max(MIN_CHARS_PER_FRAME, target_chars)
 
     print(f"Generating {total_frames} frames at {FPS} FPS (playback {playback_fps:.2f} FPS)...")
     print(
@@ -1219,7 +1245,6 @@ def generate_gif(log_dir: str, output_path: str):
         scroll_offsets = {}
         for board_id in [0, 1]:
             state = board_state[board_id]
-            board_events_list = events_by_board[board_id]
 
             # Get all events for this board (completed + typing)
             board_completed = state['completed_events']
@@ -1252,20 +1277,70 @@ def generate_gif(log_dir: str, output_path: str):
         if (frame_num + 1) % 50 == 0:
             print(f"  Generated {frame_num + 1}/{total_frames} frames...")
 
-    # Hold last frame for 2 seconds
-    hold_frame_count = max(1, int(playback_fps * 2))
-    for _ in range(hold_frame_count):
-        frames.append(frames[-1])
+    frame_duration = 1.0 / playback_fps if playback_fps else 0.0
+    durations = [frame_duration] * len(frames)
+    if durations:
+        durations[-1] = FINAL_HOLD_SECONDS
 
-    print(f"Saving GIF to {output_path}...")
-    imageio.mimsave(output_path, frames, fps=playback_fps, loop=0)
+    durations_ms = [max(1, int(round(d * 1000))) for d in durations]
 
-    file_size = os.path.getsize(output_path) / (1024 * 1024)
-    print(f"Done! GIF saved ({file_size:.2f} MB)")
+    frame_step_options = FRAME_STEP_CANDIDATES if FRAME_STEP_CANDIDATES else [1]
+    file_size_bytes = 0
+    total_generated_frames = len(frames)
+
+    for step in frame_step_options:
+        if step <= 0:
+            continue
+
+        export_frames: list[Image.Image] = []
+        export_durations: list[int] = []
+
+        for start_idx in range(0, total_generated_frames, step):
+            end_idx = min(start_idx + step, total_generated_frames)
+            frame = frames[start_idx]
+            if GIF_MAX_COLORS:
+                frame = frame.convert("P", palette=Image.ADAPTIVE, colors=GIF_MAX_COLORS)
+            export_frames.append(frame)
+            chunk_duration = sum(durations_ms[start_idx:end_idx])
+            export_durations.append(max(1, chunk_duration))
+
+        if not export_frames:
+            continue
+
+        first_frame, *rest_frames = export_frames
+        reduced_count = len(export_frames)
+        print(
+            f"Saving GIF ({GIF_MAX_COLORS} colors, frame step {step}, "
+            f"{reduced_count} frames) to {output_path}..."
+        )
+        first_frame.save(
+            output_path,
+            save_all=True,
+            append_images=rest_frames,
+            loop=0,
+            duration=export_durations,
+            disposal=2,
+            optimize=True,
+        )
+
+        file_size_bytes = os.path.getsize(output_path)
+        file_size_mb = file_size_bytes / (1024 * 1024)
+        print(f"Done! GIF saved ({file_size_mb:.2f} MB)")
+
+        if file_size_bytes <= GIF_SIZE_LIMIT_BYTES:
+            break
+
+    file_size_mb = file_size_bytes / (1024 * 1024) if file_size_bytes else 0.0
+    if file_size_bytes > GIF_SIZE_LIMIT_BYTES:
+        limit_mb = GIF_SIZE_LIMIT_BYTES / (1024 * 1024)
+        print(
+            f"Warning: GIF size {file_size_mb:.2f} MB exceeds limit of {limit_mb:.2f} MB "
+            "after applying frame stepping."
+        )
 
 
 if __name__ == '__main__':
-    log_dir = 'logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-165118'
-    output_path = os.path.join(log_dir, 'meeting_animation.gif')
+    DEFAULT_LOG_DIR = 'logs/MeetingScheduling/baseline_gpt-4.1-mini-2025-04-14/20251028-165118'
+    DEFAULT_OUTPUT_PATH = os.path.join(DEFAULT_LOG_DIR, 'meeting_animation_small.gif')
 
-    generate_gif(log_dir, output_path)
+    generate_gif(DEFAULT_LOG_DIR, DEFAULT_OUTPUT_PATH)
