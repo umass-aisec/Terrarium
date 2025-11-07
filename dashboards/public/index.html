@@ -12,18 +12,64 @@
     />
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.5/dist/chart.umd.min.js" crossorigin></script>
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #f5f6fa;
-        --fg: #1f2430;
+        color-scheme: light;
+        --bg: #f8fafc;
+        --fg: #0f172a;
         --panel: #ffffff;
-        --border: #e4e7ec;
-        --muted: #5f6b7c;
+        --border: #dfe4ef;
+        --muted: #4e6078;
         --success: #1f9254;
-        --success-bg: #e8f7ef;
+        --success-bg: #e6f6ee;
         --failure: #b42318;
-        --failure-bg: #fde8e8;
+        --failure-bg: #fdecec;
+        --header-bg: #ffffff;
+        --header-fg: #0f172a;
+        --chip-bg: #f1f4ff;
+        --chart-surface-bg: linear-gradient(130deg, #ffffff, #eff2ff);
+        --chart-empty-bg: rgba(244, 245, 249, 0.65);
+        --log-panel-bg: #ffffff;
+        --log-panel-inner-bg: rgba(255, 255, 255, 0.92);
+        --log-panel-text: #0f172a;
+        --log-sticky-bg: rgba(255, 255, 255, 0.92);
+        --log-sticky-border: rgba(15, 23, 42, 0.08);
+        --code-bg: #101828;
+        --code-fg: #f8fafc;
+        --pill-bg: rgba(82, 112, 255, 0.1);
+        --pill-border: rgba(82, 112, 255, 0.25);
+        --pill-bg-active: rgba(82, 112, 255, 0.25);
+        --pill-border-active: rgba(82, 112, 255, 0.4);
+        --chart-grid-color: rgba(31, 36, 48, 0.12);
+      }
+
+      body.dark-mode {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --fg: #e2e8f0;
+        --panel: #141c2d;
+        --border: #273046;
+        --muted: #94a3b8;
+        --success-bg: rgba(31, 146, 84, 0.15);
+        --failure-bg: rgba(180, 35, 24, 0.2);
+        --header-bg: #111a2b;
+        --header-fg: #f8fafc;
+        --chip-bg: rgba(255, 255, 255, 0.08);
+        --chart-surface-bg: linear-gradient(130deg, #1c253c, #0d1424);
+        --chart-empty-bg: rgba(15, 23, 42, 0.65);
+        --log-panel-bg: #141c2d;
+        --log-panel-inner-bg: rgba(15, 23, 42, 0.55);
+        --log-panel-text: #e2e8f0;
+        --log-sticky-bg: rgba(15, 23, 42, 0.92);
+        --log-sticky-border: rgba(255, 255, 255, 0.08);
+        --code-bg: #0f172a;
+        --code-fg: #f8fafc;
+        --pill-bg: rgba(255, 255, 255, 0.08);
+        --pill-border: rgba(255, 255, 255, 0.18);
+        --pill-bg-active: rgba(82, 112, 255, 0.5);
+        --pill-border-active: rgba(82, 112, 255, 0.7);
+        --chart-grid-color: rgba(226, 232, 240, 0.25);
       }
       body {
         font-family: 'Inter', sans-serif;
@@ -32,9 +78,11 @@
         color: var(--fg);
       }
       header {
-        background: var(--fg);
-        color: #fff;
+        background: var(--header-bg);
+        color: var(--header-fg);
         padding: 24px;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+        position: relative;
       }
       header h1 {
         margin: 0 0 8px;
@@ -42,7 +90,20 @@
       }
       header .meta {
         font-size: 14px;
-        opacity: 0.85;
+        color: var(--muted);
+      }
+      .header-content {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding-right: 140px;
+      }
+      .header-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
       .logo-wrap {
         display: flex;
@@ -55,6 +116,25 @@
         width: auto;
         border-radius: 12px;
         box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+      }
+      .theme-toggle-btn {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        background: var(--pill-bg);
+        border: 1px solid var(--pill-border);
+        color: var(--fg);
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+      }
+      .theme-toggle-btn:hover {
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
+        transform: translateY(-1px);
       }
       main {
         padding: 24px;
@@ -75,8 +155,8 @@
         gap: 16px;
       }
       pre {
-        background: #0f172a;
-        color: #dee4ff;
+        background: var(--code-bg);
+        color: var(--code-fg);
         padding: 12px;
         border-radius: 8px;
         overflow-x: auto;
@@ -119,7 +199,7 @@
         border: 1px solid var(--border);
         border-radius: 10px;
         padding: 14px;
-        background: #fff;
+        background: var(--panel);
       }
       .scroll {
         overflow-x: auto;
@@ -135,9 +215,290 @@
         border-radius: 6px;
         border: 1px solid var(--border);
         font-size: 14px;
+        background: var(--panel);
+        color: var(--fg);
       }
       .filters select {
         background: var(--panel);
+      }
+      .stat-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 8px 0 0;
+      }
+      .stat-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--fg);
+      }
+      .stat-chip .stat-label {
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .chart-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .chart-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--chip-bg);
+        border-radius: 999px;
+        padding: 6px 12px;
+        border: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .chart-chip select {
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        color: var(--fg);
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 2px 4px;
+        appearance: none;
+      }
+      .chart-chip select:focus {
+        outline: none;
+      }
+      .note-pill {
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: var(--fg);
+        font-size: 13px;
+        display: inline-flex;
+        gap: 8px;
+        align-items: flex-start;
+        white-space: pre-wrap;
+      }
+      .note-pill strong {
+        color: var(--muted);
+      }
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0;
+      }
+      .tag-badge {
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        color: #fff;
+      }
+      .rich-blackboard {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 14px;
+        margin-bottom: 12px;
+        color: var(--fg);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      body.dark-mode .rich-blackboard {
+        background: rgba(14, 20, 32, 0.85);
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+      .agent-chip-inline {
+        display: inline-flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--agent-color, #475569);
+        margin: 0 4px;
+      }
+      body.dark-mode .agent-chip-inline {
+        color: var(--agent-color, #cbd5f5);
+      }
+      .tool-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.12);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        font-size: 12px;
+        margin: 0 4px;
+        color: #94a3b8;
+      }
+      .clean-blackboard-wrapper, .raw-blackboard-wrapper {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 12px;
+        margin-bottom: 16px;
+        background: rgba(248, 250, 252, 0.9);
+      }
+      body.dark-mode .clean-blackboard-wrapper,
+      body.dark-mode .raw-blackboard-wrapper {
+        background: rgba(15, 23, 42, 0.9);
+        border-color: rgba(148, 163, 184, 0.25);
+      }
+      .clean-blackboard-title, .raw-blackboard-title {
+        margin: 0 0 8px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      body.dark-mode .clean-blackboard-title,
+      body.dark-mode .raw-blackboard-title {
+        color: #cbd5f5;
+      }
+      .timeline-entry {
+        display: flex;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      }
+      .timeline-entry:last-child {
+        border-bottom: none;
+      }
+      .timeline-timestamp {
+        min-width: 80px;
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      body.dark-mode .timeline-timestamp {
+        color: #cbd5f5;
+      }
+      .timeline-body {
+        flex: 1;
+      }
+      .tool-entry-inline {
+        color: #94a3b8;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .tool-entry-inline strong {
+        color: var(--fg);
+      }
+      .clean-blackboard-wrapper,
+      .raw-blackboard-wrapper {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 12px;
+        margin-bottom: 16px;
+        background: rgba(248, 250, 252, 0.85);
+      }
+      body.dark-mode .clean-blackboard-wrapper,
+      body.dark-mode .raw-blackboard-wrapper {
+        background: rgba(15, 23, 42, 0.85);
+        border-color: rgba(148, 163, 184, 0.2);
+      }
+      .clean-blackboard-title,
+      .raw-blackboard-title {
+        margin: 0 0 8px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      body.dark-mode .clean-blackboard-title,
+      body.dark-mode .raw-blackboard-title {
+        color: #cbd5f5;
+      }
+      .tool-feed {
+        margin-top: 12px;
+        border-top: 1px dashed rgba(148, 163, 184, 0.4);
+        padding-top: 10px;
+      }
+      .tool-feed-title {
+        margin: 0 0 6px;
+        font-size: 12px;
+        color: #94a3b8;
+        letter-spacing: 0.05em;
+      }
+      .tool-entry {
+        font-size: 12px;
+        color: #94a3b8;
+        margin: 2px 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .tool-entry strong {
+        color: var(--fg);
+      }
+      .tool-emoji {
+        font-size: 14px;
+      }
+      .tool-status-pass {
+        color: #38bdf8;
+      }
+      .tool-status-fail {
+        color: #f87171;
+      }
+      .chart-tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: rgba(15, 23, 42, 0.95);
+        color: #f8fafc;
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 12px;
+        min-width: 220px;
+        z-index: 20;
+      }
+      .chart-tooltip h4 {
+        margin: 0 0 6px;
+        font-size: 13px;
+      }
+      .chart-tooltip p {
+        margin: 0 0 4px;
+        line-height: 1.4;
+      }
+      .chart-surface {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        padding: 16px;
+        background: var(--chart-surface-bg);
+        min-height: 360px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      }
+      .chart-surface canvas {
+        width: 100%;
+        min-height: 320px;
+        max-height: 420px;
+        border-radius: 12px;
+      }
+      .chart-note {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .chart-empty {
+        margin: 0;
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px dashed var(--border);
+        background: var(--chart-empty-bg);
+        color: var(--muted);
+        text-align: center;
       }
       .sort-label {
         display: flex;
@@ -153,9 +514,9 @@
         margin: 16px 0 12px;
       }
       .tab-button {
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        background: rgba(15, 23, 42, 0.35);
-        color: #f8fafc;
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        color: var(--fg);
         padding: 6px 12px;
         border-radius: 999px;
         font-size: 13px;
@@ -164,11 +525,13 @@
       }
       .tab-button:hover {
         transform: translateY(-1px);
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
       }
       .tab-button.active {
-        background: rgba(82, 112, 255, 0.65);
-        border-color: rgba(82, 112, 255, 0.85);
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
+        color: var(--header-fg);
       }
       .subtab-bar {
         display: flex;
@@ -178,9 +541,9 @@
         margin-bottom: 12px;
       }
       .subtab-button {
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        background: rgba(15, 23, 42, 0.25);
-        color: #f8fafc;
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        color: var(--fg);
         padding: 4px 10px;
         border-radius: 8px;
         font-size: 12px;
@@ -188,31 +551,37 @@
         white-space: nowrap;
       }
       .subtab-button.active {
-        background: rgba(82, 112, 255, 0.55);
-        border-color: rgba(82, 112, 255, 0.75);
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
+        color: var(--header-fg);
+      }
+      .log-panel-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .log-toolbar {
+        background: var(--panel);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 16px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
       .log-panel {
-        background: linear-gradient(135deg, #1f2430, #3b4765);
-        color: #f8fafc;
+        background: var(--log-panel-bg);
+        color: var(--log-panel-text);
         border-radius: 14px;
         padding: 18px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
         height: 60vh;
         min-height: 520px;
         resize: vertical;
         overflow: auto;
         position: relative;
-      }
-      .log-sticky {
-        position: sticky;
-        top: 0;
-        z-index: 5;
-        background: linear-gradient(135deg, rgba(31, 36, 48, 0.95), rgba(59, 71, 101, 0.92));
-        border-radius: 12px;
-        padding: 12px;
-        margin: -6px -6px 12px;
-        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
-        backdrop-filter: blur(6px);
+        overscroll-behavior: contain;
       }
       .log-meta {
         display: flex;
@@ -223,7 +592,7 @@
       }
       .log-meta strong {
         font-weight: 600;
-        color: #fff;
+        color: var(--header-fg);
       }
       .log-header {
         display: flex;
@@ -231,8 +600,8 @@
         gap: 8px;
       }
       .log-content {
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--log-panel-inner-bg);
+        border: 1px solid var(--log-sticky-border);
         border-radius: 10px;
         padding: 12px;
         max-height: none;
@@ -241,13 +610,13 @@
         font-size: 13px;
         line-height: 1.5;
         white-space: pre-wrap;
-        color: #e2e8f0;
+        color: var(--log-panel-text);
       }
       .log-body {
         padding-top: 8px;
       }
       .empty-log {
-        color: rgba(226, 232, 240, 0.8);
+        color: var(--muted);
         font-size: 13px;
         margin: 18px 0 0;
       }
@@ -258,9 +627,10 @@
         margin-bottom: 12px;
       }
       .log-selectors select {
-        background: rgba(15, 23, 42, 0.35);
-        color: #f8fafc;
-        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: var(--panel);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
       }
     </style>
   </head>
@@ -268,16 +638,168 @@
     <div id="root"></div>
 
     <script type="text/javascript">
-      const { useState, useEffect, useMemo } = React;
+      const { useState, useEffect, useMemo, useRef } = React;
 
-      const runKey = (run) => `${run.environment || ''}::${run.tag_model || ''}::${run.seed || ''}::${run.run_timestamp || ''}`;
+      const runKey = (run) => `${run.environment || ''}::${run.model_info || run.tag_model || ''}::${run.seed || ''}::${run.run_timestamp || ''}`;
+      const getModelLabel = (run) => (run && (run.model_info || run.tag_model || 'Unknown model'));
+
+      const hashStringToInt = (value) => {
+        let hash = 0;
+        const text = value || '';
+        for (let i = 0; i < text.length; i += 1) {
+          hash = ((hash << 5) - hash) + text.charCodeAt(i);
+          hash |= 0; // convert to 32-bit integer
+        }
+        return Math.abs(hash);
+      };
+
+      const getRunColor = (run) => {
+        const baseKey = `${run.environment || ''}|${run.model_info || run.tag_model || ''}`;
+        const variantKey = `${run.seed || ''}|${run.run_timestamp || ''}`;
+        const hue = hashStringToInt(baseKey) % 360;
+        const saturation = 55 + (hashStringToInt(variantKey) % 25); // 55-79%
+        const lightness = 45 + (hashStringToInt(`${baseKey}|${variantKey}`) % 20); // 45-64%
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      };
+
+      const getTagColor = (tag) => {
+        const hue = hashStringToInt(tag || '') % 360;
+        return `hsl(${hue}, 70%, 45%)`;
+      };
+
+      const parseToolCalls = (run) => {
+        if (!run || !run.logs || !run.logs.tool_calls) {
+          return [];
+        }
+        try {
+          const parsed = JSON.parse(run.logs.tool_calls);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          return [];
+        }
+      };
+      const getAgentColor = (agent) => {
+        const hue = hashStringToInt(agent || '') % 360;
+        return `hsl(${hue}, 65%, 45%)`;
+      };
+      const toolEmojiMap = {
+        schedule_meeting: '📅',
+        post_message: '✍️',
+        get_blackboard_events: '📖',
+        fetch_calendar: '🗓️',
+        default: '🔧',
+      };
+      const escapeHtml = (text) => text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+      const enhanceBlackboardText = (raw, agentNames) => {
+        if (!raw) return '';
+        let html = escapeHtml(raw);
+        const sortedAgents = [...(agentNames || [])].sort((a, b) => b.length - a.length);
+        sortedAgents.forEach((agent) => {
+          const color = getAgentColor(agent);
+          const escaped = agent.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp(`(?<![A-Za-z0-9_])${escaped}(?![A-Za-z0-9_])`, 'g');
+          html = html.replace(regex, `<span class="agent-chip-inline" style="--agent-color:${color};">${agent}</span>`);
+        });
+        Object.entries(toolEmojiMap).forEach(([tool, emoji]) => {
+          const regex = new RegExp(tool.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+          html = html.replace(regex, `<span class="tool-pill">${emoji} ${tool}</span>`);
+        });
+        html = html.replace(/\n/g, '<br />');
+        return html;
+      };
+
+      const collectAgentNames = (text, targetSet) => {
+        if (!text) return;
+        const addName = (name) => {
+          if (!name) return;
+          const cleaned = name.trim().replace(/[^A-Za-z0-9_\- ]+/g, '');
+          if (!cleaned || cleaned.length > 50) return;
+          targetSet.add(cleaned);
+        };
+        const participantsRegex = /Participants:\s*([^\n]+)/gi;
+        let match;
+        while ((match = participantsRegex.exec(text))) {
+          match[1].split(/[,|]/).forEach(addName);
+        }
+        const byAgentRegex = /By Agent:\s*([^\n]+)/gi;
+        while ((match = byAgentRegex.exec(text))) {
+          match[1].split(/,/).forEach((token) => addName(token.replace(/\([^)]*\)/g, '')));
+        }
+        const lastAgentRegex = /Last Agent:\s*([^\n]+)/gi;
+        while ((match = lastAgentRegex.exec(text))) {
+          addName(match[1]);
+        }
+        const eventAgentRegex = /\]\s*([A-Z][A-Za-z0-9_\-]{1,40})\s*\(/g;
+        while ((match = eventAgentRegex.exec(text))) {
+          addName(match[1]);
+        }
+      };
+
+      const timestampToMs = (value) => {
+        if (!value) return null;
+        const date = new Date(value);
+        if (!Number.isNaN(date.getTime())) return date.getTime();
+        const timeMatch = value.match(/(\d{2}):(\d{2}):(\d{2})/);
+        if (timeMatch) {
+          const hours = Number(timeMatch[1]) || 0;
+          const minutes = Number(timeMatch[2]) || 0;
+          const seconds = Number(timeMatch[3]) || 0;
+          return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+        }
+        return null;
+      };
+
+      const buildTimeline = (blackboardText, toolEntries, agentNames) => {
+        const events = [];
+        if (blackboardText) {
+          const eventRegex = /(\[Event #[\s\S]*?)(?=\n\[Event #|$)/g;
+          let match;
+          while ((match = eventRegex.exec(blackboardText))) {
+            const block = match[1].trim();
+            if (!block) continue;
+            const timeMatch = block.match(/\[(\d{2}:\d{2}:\d{2})\]/);
+            events.push({
+              type: 'blackboard',
+              timestamp: timeMatch ? timeMatch[1] : null,
+              tsMs: timestampToMs(timeMatch ? timeMatch[1] : null),
+              content: block,
+            });
+          }
+          if (!events.length) {
+            events.push({ type: 'blackboard', timestamp: null, tsMs: null, content: blackboardText });
+          }
+        }
+
+        (toolEntries || []).forEach((entry) => {
+          events.push({
+            type: 'tool',
+            timestamp: entry.timestamp || null,
+            tsMs: timestampToMs(entry.timestamp),
+            content: entry,
+          });
+        });
+
+        events.sort((a, b) => {
+          const aMs = a.tsMs ?? Number.MAX_SAFE_INTEGER;
+          const bMs = b.tsMs ?? Number.MAX_SAFE_INTEGER;
+          return aMs - bMs;
+        });
+
+        return events;
+      };
       const compareStrings = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
       const compareNumbers = (a, b) => (Number(a) || 0) - (Number(b) || 0);
       const sortRuns = (runs, mode) => {
         const copy = [...runs];
         copy.sort((a, b) => {
           const envCmp = compareStrings(a.environment || '', b.environment || '');
-          const modelCmp = compareStrings(a.tag_model || '', b.tag_model || '');
+          const modelCmp = compareStrings(getModelLabel(a), getModelLabel(b));
           const seedCmp = compareNumbers(a.seed, b.seed);
           const timestampCmp = compareStrings(a.run_timestamp || '', b.run_timestamp || '');
           switch (mode) {
@@ -311,6 +833,441 @@
         return name;
       };
 
+      const parseTimestampToMs = (value) => {
+        if (!value) return null;
+        if (/^\d{8}-\d{6}$/.test(value)) {
+          const year = value.slice(0, 4);
+          const month = value.slice(4, 6);
+          const day = value.slice(6, 8);
+          const hour = value.slice(9, 11);
+          const minute = value.slice(11, 13);
+          const second = value.slice(13, 15);
+          const isoGuess = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+          const parsed = Date.parse(isoGuess);
+          if (!Number.isNaN(parsed)) {
+            return parsed;
+          }
+        }
+        const fallback = Date.parse(value);
+        return Number.isNaN(fallback) ? null : fallback;
+      };
+
+      const getEventAggregates = (run) => {
+        const totals = { success: 0, failure: 0 };
+        if (!run || !run.event_counts) {
+          return totals;
+        }
+        Object.values(run.event_counts).forEach((counts) => {
+          totals.success += Number(counts.success) || 0;
+          totals.failure += Number(counts.failure) || 0;
+        });
+        return totals;
+      };
+
+      const getTotalEvents = (run) => {
+        const totals = getEventAggregates(run);
+        const aggregate = totals.success + totals.failure;
+        return aggregate || null;
+      };
+
+      const getCompletionStats = (run) => {
+        const summary = (run && (run.action_success || run.success_summary)) || {};
+        const completedRaw = summary.completed ?? summary.meetings_scheduled ?? summary.total_meetings_scheduled;
+        const totalRaw = summary.total ?? summary.total_meetings;
+        const completed = Number.isFinite(Number(completedRaw)) ? Number(completedRaw) : null;
+        const total = Number.isFinite(Number(totalRaw)) ? Number(totalRaw) : null;
+        let rate = typeof summary.rate === 'number' ? summary.rate : null;
+        if ((rate === null || Number.isNaN(rate)) && completed !== null && total) {
+          rate = (completed / total) * 100;
+        }
+        const label = summary.label || 'Action completion';
+        return { completed, total, rate, label };
+      };
+
+      const getFallbackSuccessRate = (run) => {
+        const totals = getEventAggregates(run);
+        const aggregate = totals.success + totals.failure;
+        if (!aggregate) return null;
+        return (totals.success / aggregate) * 100;
+      };
+
+      const getSuccessRate = (run) => {
+        if (!run) return null;
+        if (typeof run.success_rate === 'number' && !Number.isNaN(run.success_rate)) {
+          return run.success_rate;
+        }
+        const completion = getCompletionStats(run);
+        if (completion.rate !== null && completion.rate !== undefined && !Number.isNaN(completion.rate)) {
+          return completion.rate;
+        }
+        return getFallbackSuccessRate(run);
+      };
+
+      const formatSuccessRateText = (value) => {
+        if (value === null || value === undefined || Number.isNaN(value)) return 'n/a';
+        return `${value.toFixed(1)}%`;
+      };
+
+      const deriveExperimentName = (run) => {
+        if (!run) return 'Experiment';
+        if (run.log_dir) {
+          const parts = run.log_dir.split('/').filter(Boolean);
+          if (parts.length >= 2) {
+            return `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+          }
+          return parts[parts.length - 1];
+        }
+        const env = run.environment || 'Experiment';
+        const ts = run.run_timestamp || 'legacy';
+        const seed = run.seed ? `seed ${run.seed}` : '';
+        return `${env} ${ts} ${seed}`.trim();
+      };
+
+      const METRIC_OPTIONS = [
+        {
+          value: 'global_score',
+          label: 'Global Score',
+          accessor: (run) => {
+            const scores = Array.isArray(run.scores)
+              ? run.scores.filter((entry) => typeof entry.global_score === 'number')
+              : [];
+            if (!scores.length) return null;
+            return Number(scores[scores.length - 1].global_score);
+          },
+          formatter: (value) => `${value}`,
+        },
+        {
+          value: 'success_rate',
+          label: 'Success Rate (%)',
+          accessor: (run) => getSuccessRate(run),
+          formatter: (value) => `${value.toFixed(1)}%`,
+          enforceZero: true,
+        },
+        {
+          value: 'total_events',
+          label: 'Total Event Count',
+          accessor: (run) => getTotalEvents(run),
+          formatter: (value) => `${value} events`,
+          enforceZero: true,
+        },
+      ];
+
+      const X_AXIS_OPTIONS = [
+        {
+          value: 'run_timestamp',
+          label: 'Run Timestamp',
+          type: 'linear',
+          accessor: (run) => parseTimestampToMs(run.run_timestamp),
+          formatter: (value, run) => {
+            if (run && run.run_timestamp) {
+              return run.run_timestamp;
+            }
+            if (value === null || value === undefined) {
+              return 'legacy';
+            }
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return 'legacy';
+            return date.toLocaleString();
+          },
+          tickFormatter: (value) => {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          },
+        },
+        {
+          value: 'seed',
+          label: 'Seed',
+          type: 'linear',
+          accessor: (run) => {
+            const numeric = Number(run.seed);
+            return Number.isNaN(numeric) ? null : numeric;
+          },
+          formatter: (value) => `Seed ${value}`,
+        },
+        {
+          value: 'environment',
+          label: 'Environment',
+          type: 'category',
+          accessor: (run) => run.environment || 'Unknown environment',
+          formatter: (value) => value,
+        },
+        {
+          value: 'model_info',
+          label: 'Model (Provider)',
+          type: 'category',
+          accessor: (run) => run.model_info || run.tag_model || 'Unknown model',
+          formatter: (value) => value || 'Unknown model',
+        },
+      ];
+
+      const buildScatterPayload = (runs, axisDef, metricDef) => {
+        const points = [];
+        const categories = [];
+        const categorySet = new Set();
+
+        runs.forEach((run) => {
+          const metricValue = metricDef.accessor(run);
+          if (metricValue === null || metricValue === undefined || Number.isNaN(metricValue)) {
+            return;
+          }
+          const axisRaw = axisDef.accessor(run);
+          if (axisRaw === null || axisRaw === undefined || axisRaw === '') {
+            return;
+          }
+          const completion = getCompletionStats(run);
+          const color = getRunColor(run);
+          if (axisDef.type === 'category' && !categorySet.has(axisRaw)) {
+            categorySet.add(axisRaw);
+            categories.push(axisRaw);
+          }
+          const axisLabel = axisDef.formatter ? axisDef.formatter(axisRaw, run) : axisRaw;
+          const metricLabel = metricDef.formatter ? metricDef.formatter(metricValue, run) : metricValue;
+          points.push({
+            x: axisDef.type === 'category' ? axisRaw : axisRaw,
+            y: metricValue,
+            color,
+            meta: {
+              axisLabel,
+              metricLabel,
+              environment: run.environment || 'Unknown environment',
+              model: getModelLabel(run),
+              seed: run.seed || '–',
+              timestamp: run.run_timestamp || 'legacy',
+              logDir: run.log_dir || '',
+              experimentName: deriveExperimentName(run),
+              completion,
+              note: run.note || '',
+              tags: Array.isArray(run.tags) ? run.tags : [],
+            },
+          });
+        });
+
+        return { points, categories };
+      };
+
+      const EvaluationScatter = ({ runs }) => {
+        const [metricField, setMetricField] = useState(METRIC_OPTIONS[0].value);
+        const [xAxisField, setXAxisField] = useState(X_AXIS_OPTIONS[0].value);
+        const canvasRef = useRef(null);
+        const chartRef = useRef(null);
+
+        const metricDef = useMemo(
+          () => METRIC_OPTIONS.find((opt) => opt.value === metricField) || METRIC_OPTIONS[0],
+          [metricField]
+        );
+        const axisDef = useMemo(
+          () => X_AXIS_OPTIONS.find((opt) => opt.value === xAxisField) || X_AXIS_OPTIONS[0],
+          [xAxisField]
+        );
+
+        const scatterPayload = useMemo(
+          () => buildScatterPayload(runs, axisDef, metricDef),
+          [runs, axisDef, metricDef]
+        );
+
+        const tooltipElRef = useRef(null);
+        const [gridColor, setGridColor] = useState(() => getComputedStyle(document.body).getPropertyValue('--chart-grid-color')?.trim() || 'rgba(31, 36, 48, 0.12)');
+
+        useEffect(() => {
+          const observer = new MutationObserver(() => {
+            const color = getComputedStyle(document.body).getPropertyValue('--chart-grid-color')?.trim();
+            if (color && color !== gridColor) {
+              setGridColor(color);
+            }
+          });
+          observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+          return () => observer.disconnect();
+        }, [gridColor]);
+
+        const getOrCreateTooltip = () => {
+          if (tooltipElRef.current) return tooltipElRef.current;
+          const el = document.createElement('div');
+          el.className = 'chart-tooltip';
+          el.style.opacity = 0;
+          document.body.appendChild(el);
+          tooltipElRef.current = el;
+          return el;
+        };
+
+        useEffect(() => {
+          if (!window.Chart) return;
+
+          if (!scatterPayload.points.length) {
+            if (chartRef.current) {
+              chartRef.current.destroy();
+              chartRef.current = null;
+            }
+            return;
+          }
+
+          if (!canvasRef.current) return;
+
+          if (chartRef.current) {
+            chartRef.current.destroy();
+          }
+
+          const pointColors = scatterPayload.points.map((point) => point.color || '#526fff');
+
+          const ctx = canvasRef.current.getContext('2d');
+          const chart = new window.Chart(ctx, {
+            type: 'scatter',
+            data: {
+              datasets: [
+                {
+                  label: metricDef.label,
+                  data: scatterPayload.points,
+                  backgroundColor: pointColors,
+                  borderColor: pointColors,
+                  pointBackgroundColor: pointColors,
+                  pointBorderColor: '#ffffff',
+                  pointRadius: 6,
+                  pointHoverRadius: 8,
+                  pointHitRadius: 12,
+                  pointBorderWidth: 2,
+                  pointHoverBorderWidth: 2,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              layout: { padding: 8 },
+              scales: {
+                x: axisDef.type === 'category'
+                  ? {
+                      type: 'category',
+                      labels: scatterPayload.categories,
+                      title: { display: true, text: axisDef.label },
+                      grid: { borderDash: [4, 4], color: gridColor },
+                      ticks: {
+                        autoSkip: scatterPayload.categories.length > 8,
+                        maxRotation: 35,
+                        minRotation: 0,
+                      },
+                    }
+                  : {
+                      type: 'linear',
+                      title: { display: true, text: axisDef.label },
+                      grid: { borderDash: [4, 4], color: gridColor },
+                      ticks: axisDef.tickFormatter
+                        ? {
+                            callback: axisDef.tickFormatter,
+                          }
+                        : undefined,
+                    },
+                y: {
+                  beginAtZero: !!metricDef.enforceZero,
+                  title: { display: true, text: metricDef.label },
+                  grid: { borderDash: [4, 4], color: gridColor },
+                },
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  enabled: false,
+                  external: (context) => {
+                    const tooltipModel = context.tooltip;
+                    const tooltipEl = getOrCreateTooltip();
+                    if (!tooltipModel || tooltipModel.opacity === 0) {
+                      tooltipEl.style.opacity = 0;
+                      return;
+                    }
+
+                    const dataPoint = tooltipModel.dataPoints[0];
+                    const meta = (dataPoint && dataPoint.raw && dataPoint.raw.meta) || {};
+                    const completion = meta.completion || {};
+                    const completionLabel = completion.label || 'Completion';
+                    const hasTotals = Number.isFinite(completion.total) && completion.total > 0;
+                    const rateText = completion.rate == null || Number.isNaN(completion.rate)
+                      ? 'n/a'
+                      : `${completion.rate.toFixed(1)}%`;
+                    const completionText = hasTotals
+                      ? `${completion.completed ?? 0}/${completion.total} (${rateText})`
+                      : 'data unavailable';
+
+                    const tagBadges = (meta.tags || []).map((tag) => {
+                      const color = getTagColor(tag);
+                      return `<span class="tag-badge" style="background-color:${color};border-color:${color}">${tag}</span>`;
+                    }).join('');
+
+                    tooltipEl.innerHTML = `
+                      <h4>${meta.experimentName || 'Experiment'}</h4>
+                      <p><strong>${metricDef.label}:</strong> ${meta.metricLabel || dataPoint.formattedValue}</p>
+                      <p><strong>${axisDef.label}:</strong> ${meta.axisLabel || dataPoint.raw.x}</p>
+                      <p><strong>Environment:</strong> ${meta.environment || 'Unknown environment'}</p>
+                      <p><strong>Model:</strong> ${meta.model || 'Unknown model'}</p>
+                      <p><strong>Seed:</strong> ${meta.seed || '–'}</p>
+                      <p><strong>Run:</strong> ${meta.timestamp || 'legacy'}</p>
+                      <p><strong>${completionLabel}:</strong> ${completionText}</p>
+                      ${meta.note ? `<p><strong>Note:</strong> ${meta.note}</p>` : ''}
+                      ${tagBadges ? `<div class="tag-list">${tagBadges}</div>` : ''}
+                    `;
+
+                    const rect = context.chart.canvas.getBoundingClientRect();
+                    const left = rect.left + window.scrollX + tooltipModel.caretX + 12;
+                    const top = rect.top + window.scrollY + tooltipModel.caretY + 12;
+                    tooltipEl.style.opacity = 1;
+                    tooltipEl.style.left = `${left}px`;
+                    tooltipEl.style.top = `${top}px`;
+                  },
+                },
+              },
+            },
+          });
+
+          chartRef.current = chart;
+          return () => {
+            if (chartRef.current) {
+              chartRef.current.destroy();
+              chartRef.current = null;
+            }
+            if (tooltipElRef.current) {
+              tooltipElRef.current.remove();
+              tooltipElRef.current = null;
+            }
+          };
+        }, [scatterPayload, axisDef, metricDef, gridColor]);
+
+        const plottedRuns = scatterPayload.points.length;
+        const totalRuns = runs.length;
+
+        return React.createElement(React.Fragment, null, [
+          React.createElement('div', { className: 'chart-controls', key: 'controls' }, [
+            React.createElement('label', { className: 'chart-chip', key: 'metric-chip' }, [
+              'Y axis',
+              React.createElement('select', {
+                value: metricField,
+                onChange: (e) => setMetricField(e.target.value),
+              },
+                METRIC_OPTIONS.map((option) =>
+                  React.createElement('option', { value: option.value, key: option.value }, option.label)
+                )
+              ),
+            ]),
+            React.createElement('label', { className: 'chart-chip', key: 'x-chip' }, [
+              'X axis',
+              React.createElement('select', {
+                value: xAxisField,
+                onChange: (e) => setXAxisField(e.target.value),
+              },
+                X_AXIS_OPTIONS.map((option) =>
+                  React.createElement('option', { value: option.value, key: option.value }, option.label)
+                )
+              ),
+            ]),
+          ]),
+          scatterPayload.points.length
+            ? React.createElement('div', { className: 'chart-surface', key: 'chart-surface' },
+                React.createElement('canvas', { ref: canvasRef, height: 360 })
+              )
+            : React.createElement('p', { className: 'chart-empty', key: 'chart-empty' }, 'No runs have the selected metric yet.'),
+          React.createElement('p', { className: 'chart-note', key: 'chart-note' },
+            `${plottedRuns} of ${totalRuns} runs plotted - hover any point to inspect metadata.`
+          ),
+        ]);
+      };
+
       const Badge = ({ success }) => (
         React.createElement('span', { className: `badge ${success ? 'success' : 'failure'}` }, success ? 'success' : 'failure')
       );
@@ -324,7 +1281,7 @@
           const f = filter.toLowerCase();
           return (
             run.environment.toLowerCase().includes(f) ||
-            run.tag_model.toLowerCase().includes(f) ||
+            (getModelLabel(run).toLowerCase().includes(f)) ||
             String(run.seed).includes(f) ||
             (run.run_timestamp || '').toLowerCase().includes(f)
           );
@@ -333,10 +1290,42 @@
           return React.createElement('p', { className: 'muted' }, 'No runs match the current filter.');
         }
         return React.createElement('div', { className: 'grid' },
-          filtered.map((run, idx) => (
-            React.createElement('div', { className: 'run-card', key: idx }, [
-              React.createElement('h3', null, `${run.environment} · ${run.tag_model}`),
+          filtered.map((run, idx) => {
+            const completion = getCompletionStats(run);
+            const completionLine = completion.total
+              ? `${completion.completed ?? 0}/${completion.total} (${formatSuccessRateText(completion.rate)})`
+              : 'Completion data unavailable';
+            const tags = Array.isArray(run.tags) ? run.tags : [];
+            const modelLabel = getModelLabel(run);
+            return React.createElement('div', { className: 'run-card', key: idx }, [
+              React.createElement('h3', null, `${run.environment} · ${modelLabel}`),
               React.createElement('p', { className: 'muted' }, `Seed ${run.seed} · Run ${run.run_timestamp} · ${run.log_dir}`),
+              tags.length
+                ? React.createElement('div', { className: 'tag-list', key: 'tags' },
+                    tags.map((tag) =>
+                      React.createElement('span', {
+                        className: 'tag-badge',
+                        key: tag,
+                        style: {
+                          backgroundColor: getTagColor(tag),
+                          borderColor: getTagColor(tag),
+                        },
+                      }, tag)
+                    )
+                  )
+                : null,
+              run.note
+                ? React.createElement('div', { className: 'note-pill' }, [
+                    React.createElement('strong', null, 'Note'),
+                    React.createElement('span', null, run.note),
+                  ])
+                : null,
+              React.createElement('div', { className: 'stat-row' },
+                React.createElement('span', { className: 'stat-chip' }, [
+                  React.createElement('span', { className: 'stat-label' }, completion.label || 'Completion'),
+                  completionLine,
+                ])
+              ),
               React.createElement('ul', null,
                 Object.entries(run.event_counts || {}).map(([eventType, counts]) => {
                   const total = (counts.success || 0) + (counts.failure || 0);
@@ -349,8 +1338,8 @@
                   ]);
                 })
               )
-            ])
-          ))
+            ]);
+          })
         );
       };
 
@@ -408,6 +1397,21 @@
           return runs.find((run) => runKey(run) === selectedRunKey) || runsForEnv[0] || null;
         }, [runs, selectedRunKey, runsForEnv]);
 
+        const toolCalls = useMemo(() => parseToolCalls(selectedRun), [selectedRun]);
+
+        const agentNames = useMemo(() => {
+          const nameSet = new Set();
+          if (selectedRun && selectedRun.logs && selectedRun.logs.blackboards) {
+            Object.values(selectedRun.logs.blackboards).forEach((text) => collectAgentNames(text, nameSet));
+          }
+          (toolCalls || []).forEach((call) => {
+            if (call && call.agent_name) {
+              nameSet.add(String(call.agent_name));
+            }
+          });
+          return Array.from(nameSet);
+        }, [selectedRun, toolCalls]);
+
         useEffect(() => {
           if (!selectedRun) {
             setActiveBlackboard('');
@@ -455,7 +1459,45 @@
               }, formatBlackboardTitle(name))
             )
           );
-          const content = React.createElement('pre', { className: 'log-content', key: `${activeName}-content` }, activeText || '(empty blackboard)');
+          const timeline = buildTimeline(activeText, toolCalls, agentNames);
+          const timelineNodes = timeline.length
+            ? timeline.map((entry, idx) => {
+                const timeLabel = entry.timestamp || '—';
+                if (entry.type === 'tool') {
+                  const tool = entry.content || {};
+                  const emoji = toolEmojiMap[tool.tool_name] || toolEmojiMap.default;
+                  const statusClass = tool.success === false ? 'tool-status-fail' : 'tool-status-pass';
+                  const statusLabel = tool.success === false ? 'failure' : 'success';
+                  const description = `${tool.tool_name || 'tool'} by ${tool.agent_name || 'unknown'}`;
+                  return React.createElement('div', { className: 'timeline-entry', key: `tl-tool-${idx}` }, [
+                    React.createElement('div', { className: 'timeline-timestamp', key: 'ts' }, timeLabel),
+                    React.createElement('div', { className: 'timeline-body', key: 'body' },
+                      React.createElement('div', { className: 'tool-entry-inline', key: 'inline' }, [
+                        React.createElement('span', { className: 'tool-emoji', key: 'emoji' }, emoji),
+                        React.createElement('strong', { key: 'label' }, description),
+                        React.createElement('span', { className: statusClass, key: 'status' }, statusLabel),
+                      ])
+                    ),
+                  ]);
+                }
+                const html = enhanceBlackboardText(entry.content, agentNames) || '<em>No entry</em>';
+                return React.createElement('div', { className: 'timeline-entry', key: `tl-bb-${idx}` }, [
+                  React.createElement('div', { className: 'timeline-timestamp', key: 'ts' }, timeLabel),
+                  React.createElement('div', { className: 'timeline-body', key: 'body', dangerouslySetInnerHTML: { __html: html } }),
+                ]);
+              })
+            : [React.createElement('em', { key: 'empty' }, 'No entries logged')];
+          const rawBlock = React.createElement('pre', { className: 'log-content', key: `${activeName}-content` }, activeText || '(empty blackboard)');
+          const content = React.createElement(React.Fragment, null, [
+            React.createElement('div', { className: 'clean-blackboard-wrapper', key: 'clean-wrapper' }, [
+              React.createElement('div', { className: 'clean-blackboard-title', key: 'clean-title' }, 'Clean blackboard'),
+              ...timelineNodes,
+            ]),
+            React.createElement('div', { className: 'raw-blackboard-wrapper', key: 'raw-wrapper' }, [
+              React.createElement('div', { className: 'raw-blackboard-title', key: 'raw-title' }, 'Raw blackboard'),
+              rawBlock,
+            ]),
+          ]);
           return { tabBar, content };
         };
 
@@ -471,12 +1513,12 @@
           return React.createElement('pre', { className: 'log-content' }, text);
         };
 
-        let additionalSticky = null;
+        let additionalToolbar = null;
         let bodyNode = null;
 
         if (activeTab === 'blackboards') {
           const { tabBar, content } = renderBlackboards();
-          additionalSticky = tabBar;
+          additionalToolbar = tabBar;
           bodyNode = content;
         } else {
           switch (activeTab) {
@@ -498,7 +1540,7 @@
           }
         }
 
-        const stickyChildren = [
+        const toolbarChildren = [
           React.createElement('div', { className: 'log-selectors', key: 'selectors' }, [
             React.createElement('label', { className: 'sort-label', key: 'env-label' }, [
               'Environment',
@@ -521,7 +1563,7 @@
               },
                 runsForEnv.map((run) =>
                   React.createElement('option', { value: runKey(run), key: runKey(run) },
-                    `${run.environment || 'Unknown environment'} · ${run.tag_model || 'Unknown model'} · seed ${run.seed} · ${run.run_timestamp || 'legacy'}`
+                    `${run.environment || 'Unknown environment'} · ${getModelLabel(run)} · seed ${run.seed} · ${run.run_timestamp || 'legacy'}`
                   )
                 )
               ),
@@ -530,17 +1572,47 @@
         ];
 
         if (selectedRun) {
-          stickyChildren.push(
+          const completion = getCompletionStats(selectedRun);
+          const completionSummary = completion.total
+            ? `${completion.completed ?? 0}/${completion.total} (${formatSuccessRateText(completion.rate)})`
+            : 'Completion data unavailable';
+          toolbarChildren.push(
             React.createElement('div', { className: 'log-header', key: 'meta' }, [
               React.createElement('div', { className: 'log-meta', key: 'meta-line' }, [
                 React.createElement('span', { key: 'env' }, [React.createElement('strong', { key: 's' }, 'Environment:'), ` ${selectedRun.environment || 'Unknown environment'}`]),
-                React.createElement('span', { key: 'model' }, [React.createElement('strong', { key: 's' }, 'Model:'), ` ${selectedRun.tag_model || 'Unknown model'}`]),
+                React.createElement('span', { key: 'model' }, [React.createElement('strong', { key: 's' }, 'Model:'), ` ${getModelLabel(selectedRun)}`]),
                 React.createElement('span', { key: 'seed' }, [React.createElement('strong', { key: 's' }, 'Seed:'), ` ${selectedRun.seed}`]),
                 React.createElement('span', { key: 'ts' }, [React.createElement('strong', { key: 's' }, 'Run:'), ` ${selectedRun.run_timestamp || 'legacy'}`]),
+                React.createElement('span', { key: 'success' }, [React.createElement('strong', { key: 's' }, `${completion.label || 'Completion'}:`), ` ${completionSummary}`]),
               ]),
             ])
           );
-          stickyChildren.push(
+          if (selectedRun.note) {
+            toolbarChildren.push(
+              React.createElement('div', { className: 'note-pill', key: 'note-pill' }, [
+                React.createElement('strong', null, 'Note'),
+                React.createElement('span', null, selectedRun.note),
+              ])
+            );
+          }
+          const selectedTags = Array.isArray(selectedRun.tags) ? selectedRun.tags : [];
+          if (selectedTags.length) {
+            toolbarChildren.push(
+              React.createElement('div', { className: 'tag-list', key: 'tag-list' },
+                selectedTags.map((tag) =>
+                  React.createElement('span', {
+                    className: 'tag-badge',
+                    key: tag,
+                    style: {
+                      backgroundColor: getTagColor(tag),
+                      borderColor: getTagColor(tag),
+                    },
+                  }, tag)
+                )
+              )
+            );
+          }
+          toolbarChildren.push(
             React.createElement('div', { className: 'tab-bar', key: 'tabs' },
               logTabs.map((tab) =>
                 React.createElement('button', {
@@ -552,16 +1624,18 @@
             )
           );
         } else {
-          stickyChildren.push(React.createElement('p', { className: 'empty-log', key: 'meta-empty' }, 'Select a run to inspect logs.'));
+          toolbarChildren.push(React.createElement('p', { className: 'empty-log', key: 'meta-empty' }, 'Select a run to inspect logs.'));
         }
 
-        if (additionalSticky) {
-          stickyChildren.push(additionalSticky);
+        if (additionalToolbar) {
+          toolbarChildren.push(additionalToolbar);
         }
 
-        return React.createElement('div', { className: 'log-panel' }, [
-          React.createElement('div', { className: 'log-sticky', key: 'sticky' }, stickyChildren),
-          React.createElement('div', { className: 'log-body', key: 'body' }, bodyNode),
+        return React.createElement('div', { className: 'log-panel-wrap' }, [
+          React.createElement('div', { className: 'log-toolbar', key: 'toolbar' }, toolbarChildren),
+          React.createElement('div', { className: 'log-panel', key: 'panel' },
+            React.createElement('div', { className: 'log-body', key: 'body' }, bodyNode)
+          ),
         ]);
       };
 
@@ -571,6 +1645,24 @@
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState(null);
         const [sortMode, setSortMode] = useState('env-model');
+        const [theme, setTheme] = useState('light');
+
+        useEffect(() => {
+          if (typeof window === 'undefined') return;
+          const storedTheme = window.localStorage.getItem('terrarium-theme');
+          if (storedTheme === 'dark' || storedTheme === 'light') {
+            setTheme(storedTheme);
+          }
+        }, []);
+
+        useEffect(() => {
+          if (typeof document !== 'undefined') {
+            document.body.classList.toggle('dark-mode', theme === 'dark');
+          }
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('terrarium-theme', theme);
+          }
+        }, [theme]);
 
         useEffect(() => {
           fetch('dashboard_data.json')
@@ -592,6 +1684,9 @@
           () => sortRuns(((data && data.runs) || []), sortMode),
           [data, sortMode]
         );
+        const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+        const themeButtonLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+        const themeButtonText = theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
 
         if (loading) {
           return React.createElement('main', null, 'Loading dashboard data...');
@@ -602,17 +1697,32 @@
           );
         }
         return React.createElement(React.Fragment, null, [
-          React.createElement('header', { key: 'hdr' }, [
-            React.createElement('div', { className: 'logo-wrap', key: 'logo' },
-              React.createElement('img', {
-                src: 'terrarium_logo_rounded.png',
-                alt: 'Terrarium logo',
-                className: 'logo-image',
-              })
-            ),
-            React.createElement('div', { className: 'meta' }, `Logs root: ${data.logs_root}`),
-          ]),
+          React.createElement('header', { key: 'hdr' },
+            React.createElement('div', { className: 'header-content' }, [
+              React.createElement('div', { className: 'header-info', key: 'header-info' }, [
+                React.createElement('div', { className: 'logo-wrap', key: 'logo' },
+                  React.createElement('img', {
+                    src: 'terrarium_logo_rounded.png',
+                    alt: 'Terrarium logo',
+                    className: 'logo-image',
+                  })
+                ),
+                React.createElement('div', { className: 'meta', key: 'meta' }, `Logs root: ${data.logs_root}`),
+              ]),
+              React.createElement('button', {
+                type: 'button',
+                className: 'theme-toggle-btn',
+                onClick: toggleTheme,
+                'aria-pressed': theme === 'dark',
+                title: themeButtonLabel,
+              }, themeButtonText),
+            ])
+          ),
           React.createElement('main', { key: 'main' }, [
+            React.createElement('section', { key: 'scatter' }, [
+              React.createElement('h2', null, 'Evaluation Metrics'),
+              React.createElement(EvaluationScatter, { runs: sortedRuns }),
+            ]),
             React.createElement('section', { key: 'runs' }, [
               React.createElement('div', { className: 'filters' }, [
                 React.createElement('input', {

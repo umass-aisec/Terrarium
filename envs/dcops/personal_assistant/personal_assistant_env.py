@@ -293,6 +293,7 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
             "full_config": self.full_config,
             "metadata": {
                 "total_agents": len(local_scores),
+                "total_outfits_selected": len(self.outfit_selections),
                 "average_local_score": sum(local_scores.values()) / len(local_scores) if local_scores else 0
             }
         }

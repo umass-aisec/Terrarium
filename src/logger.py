@@ -197,6 +197,13 @@ class AttackLogger:
             "updated_at": datetime.now().isoformat(),
             "attack_counts": self.stats,
         }
+        simulation_meta = ((self.config or {}).get("simulation") or {})
+        note = simulation_meta.get("note")
+        if note:
+            payload["note"] = note
+        tags = simulation_meta.get("tags")
+        if tags:
+            payload["tags"] = tags
         with self.summary_path.open("w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
 
@@ -642,11 +649,13 @@ class ToolCallLogger:
         self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file_path = self.log_dir / "tool_calls.json"
+        self.note_path = self.log_dir / "experiment_note.txt"
 
         if not self.log_file_path.exists():
             with self.log_file_path.open('w') as f:
                 json.dump([], f)
         self._snapshot_config()
+        self._write_experiment_note()
 
     def log_tool_call(self,
                      agent_name: str,
@@ -712,6 +721,7 @@ class ToolCallLogger:
         with self.log_file_path.open('w') as f:
             json.dump([], f)
         self._snapshot_config()
+        self._write_experiment_note()
 
     def _snapshot_config(self) -> None:
         config_path = (self.config or {}).get("_config_path")
@@ -725,6 +735,16 @@ class ToolCallLogger:
             return
         try:
             shutil.copy2(source, destination)
+        except OSError:
+            pass
+
+    def _write_experiment_note(self) -> None:
+        note = ((self.config or {}).get("simulation") or {}).get("note")
+        try:
+            if note:
+                self.note_path.write_text(str(note).strip() + "\n", encoding="utf-8")
+            elif self.note_path.exists():
+                self.note_path.unlink()
         except OSError:
             pass
 

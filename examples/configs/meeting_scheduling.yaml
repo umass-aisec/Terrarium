@@ -2,7 +2,9 @@ simulation:
   max_iterations: 1
   max_planning_rounds: 1
   max_conversation_steps: 3
-  tag: baseline
+  tags:
+    - baseline
+  note: ""
 environment:
   name: MeetingScheduling
   n_agents: 10

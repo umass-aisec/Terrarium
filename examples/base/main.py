@@ -141,9 +141,13 @@ if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Run a multi-agent simulation")
     parser.add_argument("--config", type=str)
+    parser.add_argument("--note", type=str, default=None,
+                        help="Optional experiment note to record alongside logs")
 
     args = parser.parse_args()
     config = load_config(args.config)
+    if args.note:
+        config.setdefault("simulation", {})["note"] = args.note
 
     # For running a single simulation
     asyncio.run(run_simulation(config))

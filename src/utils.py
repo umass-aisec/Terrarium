@@ -50,6 +50,22 @@ def load_config(config_file) -> Dict[str, Any]:
     # Validate config structure
     validate_config(config)
 
+    # Normalize simulation tag metadata to support multiple tags only
+    simulation = config.get("simulation", {})
+    raw_tags = simulation.get("tags")
+    if isinstance(raw_tags, str):
+        tags = [raw_tags]
+    elif isinstance(raw_tags, list):
+        tags = [str(tag) for tag in raw_tags if tag is not None and str(tag).strip()]
+    else:
+        tags = []
+
+    legacy_tag = simulation.pop("tag", None)
+    if legacy_tag and not tags:
+        tags = [legacy_tag]
+
+    simulation["tags"] = tags
+
     return config
 
 def load_seeds(seeds_file: str = "seeds.txt") -> List[int]:
@@ -172,12 +188,20 @@ def get_tag_model_subdir(full_config: Dict[str, Any]) -> str:
         return "unknown_unknown"
 
     # Get tag from simulation config
-    tag = full_config.get("simulation", {}).get("tag", "unknown")
+    simulation = full_config.get("simulation", {})
+    tags = simulation.get("tags")
+    primary_tag = None
+    if isinstance(tags, list) and tags:
+        primary_tag = tags[0]
+    elif isinstance(tags, str):
+        primary_tag = tags
+    if not primary_tag:
+        primary_tag = "unknown"
 
     # Get model name using existing function
     model_name = extract_model_info(full_config)
 
-    return f"{tag}_{model_name}"
+    return f"{primary_tag}_{model_name}"
 
 
 def get_run_timestamp(full_config: Dict[str, Any], default: Optional[str] = None) -> Optional[str]:

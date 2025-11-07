@@ -323,6 +323,10 @@ class SmartGridEnvironment(AbstractEnvironment):
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Log scores to JSON
+        total_tasks = 0
+        if self.instance and getattr(self.instance, 'homes', None):
+            total_tasks = sum(len(home.tasks) for home in self.instance.homes)
+
         score_entry = {
             "environment": "SmartGrid",
             "iteration": iteration,
@@ -334,6 +338,7 @@ class SmartGridEnvironment(AbstractEnvironment):
             "metadata": {
                 "total_homes": len(local_scores),
                 "total_tasks_scheduled": len(self.task_schedules),
+                "total_tasks": total_tasks,
                 "time_horizon": self.instance.T if self.instance else 0
             }
         }
