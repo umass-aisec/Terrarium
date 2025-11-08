@@ -27,3 +27,4 @@ coverage/
 *.tar.gz
 *.egg
 *.iml
+dashboards/public/dashboard_data.json

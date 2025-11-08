@@ -77,6 +77,8 @@ def load_runs(log_root: Path) -> List[Dict[str, Any]]:
                             "iteration": score_data.get("iteration"),
                             "global_score": score_data.get("global_score"),
                             "timestamp": score_data.get("timestamp"),
+                            "model_info": score_data.get("model_info"),
+                            "metadata": score_data.get("metadata"),
                         })
                     scores.sort(key=lambda s: (s.get("iteration") is None, s.get("iteration")))
 
@@ -93,6 +95,28 @@ def load_runs(log_root: Path) -> List[Dict[str, Any]]:
                             logs_bundle["blackboards"][blackboard_file.name] = blackboard_file.read_text(encoding="utf-8")
                         except OSError:
                             continue
+
+                    note_text: Optional[str] = summary.get("note")
+                    tags: List[str] = []
+                    raw_tags = summary.get("tags")
+                    if isinstance(raw_tags, str):
+                        tags = [raw_tags]
+                    elif isinstance(raw_tags, list):
+                        tags = [str(tag) for tag in raw_tags if tag]
+
+                    note_path = seed_dir / "experiment_note.txt"
+                    if note_path.exists():
+                        try:
+                            file_note = note_path.read_text(encoding="utf-8").strip()
+                            if file_note:
+                                note_text = file_note
+                        except OSError:
+                            pass
+
+                    if not tags and tag_dir.name:
+                        fallback = tag_dir.name.split("_")[0]
+                        if fallback:
+                            tags = [fallback]
 
                     tool_calls_path = seed_dir / "tool_calls.json"
                     if tool_calls_path.exists():
@@ -122,15 +146,53 @@ def load_runs(log_root: Path) -> List[Dict[str, Any]]:
                         except OSError:
                             pass
 
+                    completion_summary: Optional[Dict[str, Any]] = None
+                    success_rate: Optional[float] = None
+                    environment_name = summary.get("environment", env_dir.name)
+                    completion_specs = {
+                        "MeetingScheduling": ("total_meetings_scheduled", "total_meetings", "Meeting completion"),
+                        "PersonalAssistant": ("total_outfits_selected", "total_agents", "Outfit completion"),
+                        "SmartGrid": ("total_tasks_scheduled", "total_tasks", "Task completion"),
+                    }
+                    spec = completion_specs.get(environment_name)
+                    if spec and scores:
+                        completed_key, total_key, label = spec
+                        for score_entry in reversed(scores):
+                            metadata = score_entry.get("metadata") or {}
+                            completed_raw = metadata.get(completed_key)
+                            total_raw = metadata.get(total_key)
+                            if total_raw is None:
+                                continue
+                            try:
+                                completed_val = int(completed_raw) if completed_raw is not None else 0
+                                total_val = int(total_raw)
+                            except (TypeError, ValueError):
+                                continue
+                            if total_val <= 0:
+                                continue
+                            success_rate = (completed_val / total_val) * 100
+                            completion_summary = {
+                                "label": label,
+                                "completed": completed_val,
+                                "total": total_val,
+                                "rate": success_rate,
+                            }
+                            break
+
                     runs.append({
-                        "environment": summary.get("environment", env_dir.name),
+                        "environment": environment_name,
                         "tag_model": tag_dir.name,
+                        "model_info": next((score.get("model_info") for score in reversed(scores) if score.get("model_info")), None),
                         "seed": summary.get("seed", seed_dir.name.replace("seed_", "")),
                         "run_timestamp": summary.get("run_timestamp", run_timestamp),
                         "event_counts": summary.get("attack_counts", {}),
                         "events": events,
                         "log_dir": str(seed_dir),
                         "scores": scores,
+                        "action_success": completion_summary,
+                        "success_rate": success_rate,
+                        "note": note_text,
+                        "tags": tags,
                         "logs": logs_bundle,
                     })
     return runs

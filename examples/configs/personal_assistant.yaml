@@ -2,7 +2,9 @@ simulation:
   max_iterations: 1
   max_planning_rounds: 3
   max_conversation_steps: 3
-  tag: baseline
+  tags:
+    - baseline
+  note: ""
 environment:
   name: PersonalAssistant
   n_agents: 6

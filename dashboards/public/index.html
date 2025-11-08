@@ -12,18 +12,64 @@
     />
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.5/dist/chart.umd.min.js" crossorigin></script>
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #f5f6fa;
-        --fg: #1f2430;
+        color-scheme: light;
+        --bg: #f8fafc;
+        --fg: #0f172a;
         --panel: #ffffff;
-        --border: #e4e7ec;
-        --muted: #5f6b7c;
+        --border: #dfe4ef;
+        --muted: #4e6078;
         --success: #1f9254;
-        --success-bg: #e8f7ef;
+        --success-bg: #e6f6ee;
         --failure: #b42318;
-        --failure-bg: #fde8e8;
+        --failure-bg: #fdecec;
+        --header-bg: #ffffff;
+        --header-fg: #0f172a;
+        --chip-bg: #f1f4ff;
+        --chart-surface-bg: linear-gradient(130deg, #ffffff, #eff2ff);
+        --chart-empty-bg: rgba(244, 245, 249, 0.65);
+        --log-panel-bg: #ffffff;
+        --log-panel-inner-bg: rgba(255, 255, 255, 0.92);
+        --log-panel-text: #0f172a;
+        --log-sticky-bg: rgba(255, 255, 255, 0.92);
+        --log-sticky-border: rgba(15, 23, 42, 0.08);
+        --code-bg: #101828;
+        --code-fg: #f8fafc;
+        --pill-bg: rgba(82, 112, 255, 0.1);
+        --pill-border: rgba(82, 112, 255, 0.25);
+        --pill-bg-active: rgba(82, 112, 255, 0.25);
+        --pill-border-active: rgba(82, 112, 255, 0.4);
+        --chart-grid-color: rgba(31, 36, 48, 0.12);
+      }
+
+      body.dark-mode {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --fg: #e2e8f0;
+        --panel: #141c2d;
+        --border: #273046;
+        --muted: #94a3b8;
+        --success-bg: rgba(31, 146, 84, 0.15);
+        --failure-bg: rgba(180, 35, 24, 0.2);
+        --header-bg: #111a2b;
+        --header-fg: #f8fafc;
+        --chip-bg: rgba(255, 255, 255, 0.08);
+        --chart-surface-bg: linear-gradient(130deg, #1c253c, #0d1424);
+        --chart-empty-bg: rgba(15, 23, 42, 0.65);
+        --log-panel-bg: #141c2d;
+        --log-panel-inner-bg: rgba(15, 23, 42, 0.55);
+        --log-panel-text: #e2e8f0;
+        --log-sticky-bg: rgba(15, 23, 42, 0.92);
+        --log-sticky-border: rgba(255, 255, 255, 0.08);
+        --code-bg: #0f172a;
+        --code-fg: #f8fafc;
+        --pill-bg: rgba(255, 255, 255, 0.08);
+        --pill-border: rgba(255, 255, 255, 0.18);
+        --pill-bg-active: rgba(82, 112, 255, 0.5);
+        --pill-border-active: rgba(82, 112, 255, 0.7);
+        --chart-grid-color: rgba(226, 232, 240, 0.25);
       }
       body {
         font-family: 'Inter', sans-serif;
@@ -32,9 +78,11 @@
         color: var(--fg);
       }
       header {
-        background: var(--fg);
-        color: #fff;
+        background: var(--header-bg);
+        color: var(--header-fg);
         padding: 24px;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+        position: relative;
       }
       header h1 {
         margin: 0 0 8px;
@@ -42,7 +90,20 @@
       }
       header .meta {
         font-size: 14px;
-        opacity: 0.85;
+        color: var(--muted);
+      }
+      .header-content {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding-right: 140px;
+      }
+      .header-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
       .logo-wrap {
         display: flex;
@@ -55,6 +116,25 @@
         width: auto;
         border-radius: 12px;
         box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+      }
+      .theme-toggle-btn {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        background: var(--pill-bg);
+        border: 1px solid var(--pill-border);
+        color: var(--fg);
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+      }
+      .theme-toggle-btn:hover {
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
+        transform: translateY(-1px);
       }
       main {
         padding: 24px;
@@ -75,8 +155,8 @@
         gap: 16px;
       }
       pre {
-        background: #0f172a;
-        color: #dee4ff;
+        background: var(--code-bg);
+        color: var(--code-fg);
         padding: 12px;
         border-radius: 8px;
         overflow-x: auto;
@@ -94,6 +174,79 @@
       }
       th [data-sortable] {
         cursor: pointer;
+      }
+      .sortable-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: none;
+        color: inherit;
+        font: inherit;
+        text-transform: inherit;
+        cursor: pointer;
+        padding: 0;
+      }
+      .sortable-header:focus-visible {
+        outline: 1px solid var(--pill-border-active);
+        border-radius: 4px;
+        box-shadow: 0 0 0 1px var(--pill-border-active);
+      }
+      .sort-indicator {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--panel);
+      }
+      .runs-table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .runs-table thead th {
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.4);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      .runs-table tbody tr:hover {
+        background: rgba(82, 111, 255, 0.04);
+      }
+      .runs-table tbody tr.selected {
+        background: rgba(82, 111, 255, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(82, 111, 255, 0.35);
+      }
+      .runs-table td {
+        vertical-align: top;
+      }
+      .runs-table .run-main {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .runs-table .run-meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .runs-table .event-summary {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+      .runs-table .tag-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
       .badge {
         display: inline-flex;
@@ -119,7 +272,7 @@
         border: 1px solid var(--border);
         border-radius: 10px;
         padding: 14px;
-        background: #fff;
+        background: var(--panel);
       }
       .scroll {
         overflow-x: auto;
@@ -135,9 +288,335 @@
         border-radius: 6px;
         border: 1px solid var(--border);
         font-size: 14px;
+        background: var(--panel);
+        color: var(--fg);
       }
       .filters select {
         background: var(--panel);
+      }
+      .stat-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 8px 0 0;
+      }
+      .stat-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--fg);
+      }
+      .stat-chip .stat-label {
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .chart-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .chart-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--chip-bg);
+        border-radius: 999px;
+        padding: 6px 12px;
+        border: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .chart-chip select {
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        color: var(--fg);
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 2px 4px;
+        appearance: none;
+      }
+      .chart-chip select:focus {
+        outline: none;
+      }
+      .note-pill {
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: var(--fg);
+        font-size: 13px;
+        display: inline-flex;
+        gap: 8px;
+        align-items: flex-start;
+        white-space: pre-wrap;
+      }
+      .note-pill strong {
+        color: var(--muted);
+      }
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0;
+      }
+      .tag-badge {
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        color: #fff;
+      }
+      .rich-blackboard {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 14px;
+        margin-bottom: 12px;
+        color: var(--fg);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      body.dark-mode .rich-blackboard {
+        background: rgba(14, 20, 32, 0.85);
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+      .agent-chip-inline {
+        display: inline-flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--agent-color, #475569);
+        margin: 0 4px;
+      }
+      body.dark-mode .agent-chip-inline {
+        color: var(--agent-color, #cbd5f5);
+      }
+      .tool-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.12);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        font-size: 12px;
+        margin: 0 4px;
+        color: #94a3b8;
+      }
+      .clean-blackboard-wrapper, .raw-blackboard-wrapper {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 12px;
+        margin-bottom: 16px;
+        background: rgba(248, 250, 252, 0.9);
+      }
+      body.dark-mode .clean-blackboard-wrapper,
+      body.dark-mode .raw-blackboard-wrapper {
+        background: rgba(15, 23, 42, 0.9);
+        border-color: rgba(148, 163, 184, 0.25);
+      }
+      .clean-blackboard-title, .raw-blackboard-title {
+        margin: 0 0 8px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      body.dark-mode .clean-blackboard-title,
+      body.dark-mode .raw-blackboard-title {
+        color: #cbd5f5;
+      }
+      .timeline-entry {
+        display: flex;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      }
+      .timeline-entry:last-child {
+        border-bottom: none;
+      }
+      .timeline-timestamp {
+        min-width: 130px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      body.dark-mode .timeline-timestamp {
+        color: #cbd5f5;
+      }
+      .timestamp-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .timestamp-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #94a3b8;
+      }
+      body.dark-mode .timestamp-label {
+        color: #cbd5f5;
+      }
+      .timestamp-event {
+        font-size: 11px;
+        font-weight: 600;
+        color: #526fff;
+        background: rgba(82, 111, 255, 0.12);
+        border-radius: 999px;
+        padding: 2px 8px;
+      }
+      body.dark-mode .timestamp-event {
+        color: #aab3ff;
+        background: rgba(170, 179, 255, 0.15);
+      }
+      .timestamp-meta {
+        font-size: 11px;
+        color: #94a3b8;
+        line-height: 1.3;
+      }
+      body.dark-mode .timestamp-meta {
+        color: #a5b4cf;
+      }
+      .timeline-body {
+        flex: 1;
+      }
+      .timeline-message-line {
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--fg);
+        white-space: normal;
+      }
+      .timeline-agent-label {
+        font-weight: 600;
+        margin-right: 8px;
+      }
+      .tool-entry-inline {
+        color: #94a3b8;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .tool-entry-inline strong {
+        color: var(--fg);
+      }
+      .timeline-entry.tool-entry {
+        opacity: 0.65;
+      }
+      .clean-blackboard-wrapper,
+      .raw-blackboard-wrapper {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 12px;
+        margin-bottom: 16px;
+        background: rgba(248, 250, 252, 0.85);
+      }
+      body.dark-mode .clean-blackboard-wrapper,
+      body.dark-mode .raw-blackboard-wrapper {
+        background: rgba(15, 23, 42, 0.85);
+        border-color: rgba(148, 163, 184, 0.2);
+      }
+      .clean-blackboard-title,
+      .raw-blackboard-title {
+        margin: 0 0 8px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      body.dark-mode .clean-blackboard-title,
+      body.dark-mode .raw-blackboard-title {
+        color: #cbd5f5;
+      }
+      .tool-feed {
+        margin-top: 12px;
+        border-top: 1px dashed rgba(148, 163, 184, 0.4);
+        padding-top: 10px;
+      }
+      .tool-feed-title {
+        margin: 0 0 6px;
+        font-size: 12px;
+        color: #94a3b8;
+        letter-spacing: 0.05em;
+      }
+      .tool-emoji {
+        font-size: 14px;
+      }
+      .tool-status-pass {
+        color: #38bdf8;
+      }
+      .tool-status-fail {
+        color: #f87171;
+      }
+      .tool-param-preview {
+        font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+        font-size: 11px;
+        color: var(--muted);
+        background: rgba(15, 23, 42, 0.04);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .chart-tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: rgba(15, 23, 42, 0.95);
+        color: #f8fafc;
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 12px;
+        min-width: 220px;
+        z-index: 20;
+      }
+      .chart-tooltip h4 {
+        margin: 0 0 6px;
+        font-size: 13px;
+      }
+      .chart-tooltip p {
+        margin: 0 0 4px;
+        line-height: 1.4;
+      }
+      .chart-surface {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        padding: 16px;
+        background: var(--chart-surface-bg);
+        min-height: 360px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      }
+      .chart-surface canvas {
+        width: 100%;
+        min-height: 320px;
+        max-height: 420px;
+        border-radius: 12px;
+      }
+      .chart-note {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .chart-empty {
+        margin: 0;
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px dashed var(--border);
+        background: var(--chart-empty-bg);
+        color: var(--muted);
+        text-align: center;
       }
       .sort-label {
         display: flex;
@@ -148,71 +627,80 @@
       }
       .tab-bar {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
-        margin: 16px 0 12px;
+        margin: 4px 0 0;
       }
       .tab-button {
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        background: rgba(15, 23, 42, 0.35);
-        color: #f8fafc;
-        padding: 6px 12px;
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        color: var(--fg);
+        padding: 4px 10px;
         border-radius: 999px;
-        font-size: 13px;
+        font-size: 12px;
         cursor: pointer;
+        line-height: 1.2;
         transition: background 0.2s ease, transform 0.2s ease;
       }
       .tab-button:hover {
         transform: translateY(-1px);
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
       }
       .tab-button.active {
-        background: rgba(82, 112, 255, 0.65);
-        border-color: rgba(82, 112, 255, 0.85);
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
+        color: var(--header-fg);
       }
       .subtab-bar {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         overflow-x: auto;
-        padding-bottom: 6px;
-        margin-bottom: 12px;
+        padding-bottom: 4px;
+        margin-bottom: 8px;
       }
       .subtab-button {
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        background: rgba(15, 23, 42, 0.25);
-        color: #f8fafc;
-        padding: 4px 10px;
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        color: var(--fg);
+        padding: 3px 8px;
         border-radius: 8px;
-        font-size: 12px;
+        font-size: 11px;
         cursor: pointer;
         white-space: nowrap;
       }
       .subtab-button.active {
-        background: rgba(82, 112, 255, 0.55);
-        border-color: rgba(82, 112, 255, 0.75);
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
+        color: var(--header-fg);
+      }
+      .log-panel-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .log-toolbar {
+        background: var(--panel);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 14px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
       .log-panel {
-        background: linear-gradient(135deg, #1f2430, #3b4765);
-        color: #f8fafc;
+        background: var(--log-panel-bg);
+        color: var(--log-panel-text);
         border-radius: 14px;
         padding: 18px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
         height: 60vh;
         min-height: 520px;
         resize: vertical;
         overflow: auto;
         position: relative;
-      }
-      .log-sticky {
-        position: sticky;
-        top: 0;
-        z-index: 5;
-        background: linear-gradient(135deg, rgba(31, 36, 48, 0.95), rgba(59, 71, 101, 0.92));
-        border-radius: 12px;
-        padding: 12px;
-        margin: -6px -6px 12px;
-        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
-        backdrop-filter: blur(6px);
+        overscroll-behavior: contain;
       }
       .log-meta {
         display: flex;
@@ -223,7 +711,7 @@
       }
       .log-meta strong {
         font-weight: 600;
-        color: #fff;
+        color: var(--header-fg);
       }
       .log-header {
         display: flex;
@@ -231,8 +719,8 @@
         gap: 8px;
       }
       .log-content {
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--log-panel-inner-bg);
+        border: 1px solid var(--log-sticky-border);
         border-radius: 10px;
         padding: 12px;
         max-height: none;
@@ -241,26 +729,37 @@
         font-size: 13px;
         line-height: 1.5;
         white-space: pre-wrap;
-        color: #e2e8f0;
+        color: var(--log-panel-text);
       }
       .log-body {
         padding-top: 8px;
       }
       .empty-log {
-        color: rgba(226, 232, 240, 0.8);
+        color: var(--muted);
         font-size: 13px;
         margin: 18px 0 0;
       }
       .log-selectors {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         flex-wrap: wrap;
-        margin-bottom: 12px;
+        margin-bottom: 4px;
+        align-items: flex-end;
+      }
+      .log-selectors .sort-label {
+        flex: 1 1 220px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        font-size: 12px;
       }
       .log-selectors select {
-        background: rgba(15, 23, 42, 0.35);
-        color: #f8fafc;
-        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: var(--panel);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        width: 100%;
+        padding: 4px 10px;
       }
     </style>
   </head>
@@ -268,16 +767,286 @@
     <div id="root"></div>
 
     <script type="text/javascript">
-      const { useState, useEffect, useMemo } = React;
+      const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-      const runKey = (run) => `${run.environment || ''}::${run.tag_model || ''}::${run.seed || ''}::${run.run_timestamp || ''}`;
+      const runKey = (run) => `${run.environment || ''}::${run.model_info || run.tag_model || ''}::${run.seed || ''}::${run.run_timestamp || ''}`;
+      const cleanTagModel = (value) => {
+        if (!value) return '';
+        const firstUnderscore = value.indexOf('_');
+        if (firstUnderscore === -1) return value;
+        const possibleModel = value.slice(firstUnderscore + 1);
+        return possibleModel || value;
+      };
+      const getModelLabel = (run) => {
+        if (!run) return 'Unknown model';
+        if (run.model_info) return run.model_info;
+        if (run.tag_model) return cleanTagModel(run.tag_model);
+        return 'Unknown model';
+      };
+
+      const hashStringToInt = (value) => {
+        let hash = 0;
+        const text = value || '';
+        for (let i = 0; i < text.length; i += 1) {
+          hash = ((hash << 5) - hash) + text.charCodeAt(i);
+          hash |= 0; // convert to 32-bit integer
+        }
+        return Math.abs(hash);
+      };
+
+      const getRunColor = (run) => {
+        const baseKey = `${run.environment || ''}|${run.model_info || run.tag_model || ''}`;
+        const variantKey = `${run.seed || ''}|${run.run_timestamp || ''}`;
+        const hue = hashStringToInt(baseKey) % 360;
+        const saturation = 55 + (hashStringToInt(variantKey) % 25); // 55-79%
+        const lightness = 45 + (hashStringToInt(`${baseKey}|${variantKey}`) % 20); // 45-64%
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      };
+
+      const getTagColor = (tag) => {
+        const hue = hashStringToInt(tag || '') % 360;
+        return `hsl(${hue}, 70%, 45%)`;
+      };
+      const getPrimaryTag = (run) => {
+        if (!run) return 'Untagged';
+        const tags = Array.isArray(run.tags) ? run.tags.map((tag) => String(tag).trim()).filter(Boolean) : [];
+        return tags.length ? tags[0] : 'Untagged';
+      };
+
+      const parseToolCalls = (run) => {
+        if (!run || !run.logs || !run.logs.tool_calls) {
+          return [];
+        }
+        try {
+          const parsed = JSON.parse(run.logs.tool_calls);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          return [];
+        }
+      };
+      const extractBoardIdFromName = (name) => {
+        if (!name) return null;
+        const match = name.match(/(\d+)/);
+        if (!match) return null;
+        const num = Number(match[1]);
+        return Number.isFinite(num) ? num : null;
+      };
+      const normalizeBoardId = (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string' && value.trim() === '') return null;
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+      };
+      const collectBoardIdsFromTool = (tool) => {
+        const ids = new Set();
+        const addValue = (value) => {
+          if (value === null || value === undefined) return;
+          if (Array.isArray(value)) {
+            value.forEach(addValue);
+            return;
+          }
+          const normalized = normalizeBoardId(value);
+          if (normalized !== null) {
+            ids.add(normalized);
+          }
+        };
+        if (!tool) return ids;
+        addValue(tool.blackboard_id);
+        if (tool.parameters && typeof tool.parameters === 'object') {
+          addValue(tool.parameters.blackboard_id);
+          addValue(tool.parameters.blackboard_ids);
+          addValue(tool.parameters.target_blackboard_id);
+          addValue(tool.parameters.source_blackboard_id);
+        }
+        if (tool.result && typeof tool.result === 'object') {
+          addValue(tool.result.blackboard_id);
+          if (Array.isArray(tool.result.events)) {
+            tool.result.events.forEach((event) => addValue(event && event.blackboard_id));
+          }
+        }
+        if (tool.response && typeof tool.response === 'object') {
+          addValue(tool.response.blackboard_id);
+        }
+        return ids;
+      };
+      const toolMatchesBoard = (tool, boardId) => {
+        if (boardId === null || boardId === undefined) return true;
+        const ids = collectBoardIdsFromTool(tool);
+        if (!ids.size) {
+          return true;
+        }
+        return ids.has(boardId);
+      };
+      const getAgentColor = (agent) => {
+        const hue = hashStringToInt(agent || '') % 360;
+        return `hsl(${hue}, 65%, 45%)`;
+      };
+      const toolEmojiMap = {
+        schedule_meeting: '📅',
+        post_message: '✍️',
+        get_blackboard_events: '📖',
+        fetch_calendar: '🗓️',
+        default: '🔧',
+      };
+      const escapeHtml = (text) => text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+      const enhanceBlackboardText = (raw, agentNames) => {
+        if (!raw) return '';
+        let html = escapeHtml(raw);
+        const sortedAgents = [...(agentNames || [])].sort((a, b) => b.length - a.length);
+        sortedAgents.forEach((agent) => {
+          const color = getAgentColor(agent);
+          const escaped = agent.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp(`(?<![A-Za-z0-9_])${escaped}(?![A-Za-z0-9_])`, 'g');
+          html = html.replace(regex, `<span class="agent-chip-inline" style="--agent-color:${color};">${agent}</span>`);
+        });
+        Object.entries(toolEmojiMap).forEach(([tool, emoji]) => {
+          const regex = new RegExp(tool.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+          html = html.replace(regex, `<span class="tool-pill">${emoji} ${tool}</span>`);
+        });
+        html = html.replace(/\n/g, '<br />');
+        return html;
+      };
+
+      const collectAgentNames = (text, targetSet) => {
+        if (!text) return;
+        const addName = (name) => {
+          if (!name) return;
+          const cleaned = name.trim().replace(/[^A-Za-z0-9_\- ]+/g, '');
+          if (!cleaned || cleaned.length > 50) return;
+          targetSet.add(cleaned);
+        };
+        const participantsRegex = /Participants:\s*([^\n]+)/gi;
+        let match;
+        while ((match = participantsRegex.exec(text))) {
+          match[1].split(/[,|]/).forEach(addName);
+        }
+        const byAgentRegex = /By Agent:\s*([^\n]+)/gi;
+        while ((match = byAgentRegex.exec(text))) {
+          match[1].split(/,/).forEach((token) => addName(token.replace(/\([^)]*\)/g, '')));
+        }
+        const lastAgentRegex = /Last Agent:\s*([^\n]+)/gi;
+        while ((match = lastAgentRegex.exec(text))) {
+          addName(match[1]);
+        }
+        const eventAgentRegex = /\]\s*([A-Z][A-Za-z0-9_\-]{1,40})\s*\(/g;
+        while ((match = eventAgentRegex.exec(text))) {
+          addName(match[1]);
+        }
+      };
+
+      const timestampToMs = (value, referenceDateMs = null) => {
+        if (!value) return null;
+        const parsed = Date.parse(value);
+        if (!Number.isNaN(parsed)) return parsed;
+        const timeMatch = value.match(/(\d{2}):(\d{2}):(\d{2})/);
+        if (timeMatch) {
+          const hours = Number(timeMatch[1]) || 0;
+          const minutes = Number(timeMatch[2]) || 0;
+          const seconds = Number(timeMatch[3]) || 0;
+          if (Number.isFinite(referenceDateMs)) {
+            const base = new Date(referenceDateMs);
+            base.setHours(0, 0, 0, 0);
+            base.setHours(hours, minutes, seconds, 0);
+            return base.getTime();
+          }
+          return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+        }
+        return null;
+      };
+
+      const formatDisplayTime = (msValue, fallback) => {
+        if (Number.isFinite(msValue)) {
+          const date = new Date(msValue);
+          return date.toLocaleTimeString([], { hour12: false });
+        }
+        if (fallback) {
+          const match = fallback.match(/(\d{2}:\d{2}:\d{2})/);
+          if (match) return match[1];
+          return fallback;
+        }
+        return '—';
+      };
+
+      const buildTimeline = (blackboardText, toolEntries, agentNames) => {
+        const referenceTimestamp = (() => {
+          if (!toolEntries || !toolEntries.length) return null;
+          for (let i = 0; i < toolEntries.length; i += 1) {
+            const entry = toolEntries[i];
+            if (!entry || !entry.timestamp) continue;
+            const parsed = Date.parse(entry.timestamp);
+            if (!Number.isNaN(parsed)) {
+              return parsed;
+            }
+          }
+          return null;
+        })();
+        const events = [];
+        if (blackboardText) {
+          const eventRegex = /(\[Event #[\s\S]*?)(?=\n\[Event #|$)/g;
+          let match;
+          while ((match = eventRegex.exec(blackboardText))) {
+            const block = match[1].trim();
+            if (!block) continue;
+            const timeMatch = block.match(/\[(\d{2}:\d{2}:\d{2})\]/);
+            const tsMs = timestampToMs(timeMatch ? timeMatch[1] : null, referenceTimestamp);
+            events.push({
+              type: 'blackboard',
+              timestamp: timeMatch ? timeMatch[1] : null,
+              tsMs,
+              sortTs: tsMs === null ? null : tsMs + 200,
+              displayTime: formatDisplayTime(tsMs, timeMatch ? timeMatch[1] : null),
+              content: block,
+            });
+          }
+          if (!events.length) {
+            events.push({ type: 'blackboard', timestamp: null, tsMs: null, sortTs: null, displayTime: '—', content: blackboardText });
+          }
+        }
+
+        (toolEntries || []).forEach((entry) => {
+          const tsMs = timestampToMs(entry.timestamp, referenceTimestamp);
+          const sortBias = entry.tool_name === 'post_message' ? -500 : -200;
+          const baseTs = tsMs ?? Number.MAX_SAFE_INTEGER;
+          const sortTs = baseTs + sortBias;
+          events.push({
+            type: 'tool',
+            timestamp: entry.timestamp || null,
+            tsMs,
+            sortTs,
+            displayTime: formatDisplayTime(tsMs, entry.timestamp),
+            content: entry,
+          });
+        });
+
+        events.sort((a, b) => {
+          const aMs = a.sortTs ?? a.tsMs ?? Number.MAX_SAFE_INTEGER;
+          const bMs = b.sortTs ?? b.tsMs ?? Number.MAX_SAFE_INTEGER;
+          if (aMs !== bMs) {
+            return aMs - bMs;
+          }
+          const priority = (value) => (value === 'tool' ? 0 : 1);
+          const typeDiff = priority(a.type) - priority(b.type);
+          if (typeDiff !== 0) {
+            return typeDiff;
+          }
+          return 0;
+        });
+
+        return { events, referenceTimestamp };
+      };
       const compareStrings = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
       const compareNumbers = (a, b) => (Number(a) || 0) - (Number(b) || 0);
       const sortRuns = (runs, mode) => {
         const copy = [...runs];
         copy.sort((a, b) => {
           const envCmp = compareStrings(a.environment || '', b.environment || '');
-          const modelCmp = compareStrings(a.tag_model || '', b.tag_model || '');
+          const modelCmp = compareStrings(getModelLabel(a), getModelLabel(b));
           const seedCmp = compareNumbers(a.seed, b.seed);
           const timestampCmp = compareStrings(a.run_timestamp || '', b.run_timestamp || '');
           switch (mode) {
@@ -311,50 +1080,802 @@
         return name;
       };
 
-      const Badge = ({ success }) => (
-        React.createElement('span', { className: `badge ${success ? 'success' : 'failure'}` }, success ? 'success' : 'failure')
-      );
+      const parseTimestampToMs = (value) => {
+        if (!value) return null;
+        if (/^\d{8}-\d{6}$/.test(value)) {
+          const year = value.slice(0, 4);
+          const month = value.slice(4, 6);
+          const day = value.slice(6, 8);
+          const hour = value.slice(9, 11);
+          const minute = value.slice(11, 13);
+          const second = value.slice(13, 15);
+          const isoGuess = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+          const parsed = Date.parse(isoGuess);
+          if (!Number.isNaN(parsed)) {
+            return parsed;
+          }
+        }
+        const fallback = Date.parse(value);
+        return Number.isNaN(fallback) ? null : fallback;
+      };
+      const formatRunDate = (value) => {
+        const ms = parseTimestampToMs(value);
+        if (!ms) return null;
+        const date = new Date(ms);
+        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      };
 
-      const RunsGrid = ({ runs, filter }) => {
+      const getEventAggregates = (run) => {
+        const totals = { success: 0, failure: 0 };
+        if (!run || !run.event_counts) {
+          return totals;
+        }
+        Object.values(run.event_counts).forEach((counts) => {
+          totals.success += Number(counts.success) || 0;
+          totals.failure += Number(counts.failure) || 0;
+        });
+        return totals;
+      };
+
+      const getTotalEvents = (run) => {
+        const totals = getEventAggregates(run);
+        const aggregate = totals.success + totals.failure;
+        return aggregate || null;
+      };
+
+      const getCompletionStats = (run) => {
+        const summary = (run && (run.action_success || run.success_summary)) || {};
+        const completedRaw = summary.completed ?? summary.meetings_scheduled ?? summary.total_meetings_scheduled;
+        const totalRaw = summary.total ?? summary.total_meetings;
+        const completed = Number.isFinite(Number(completedRaw)) ? Number(completedRaw) : null;
+        const total = Number.isFinite(Number(totalRaw)) ? Number(totalRaw) : null;
+        let rate = typeof summary.rate === 'number' ? summary.rate : null;
+        if ((rate === null || Number.isNaN(rate)) && completed !== null && total) {
+          rate = (completed / total) * 100;
+        }
+        const label = summary.label || 'Action completion';
+        return { completed, total, rate, label };
+      };
+
+      const getFallbackSuccessRate = (run) => {
+        const totals = getEventAggregates(run);
+        const aggregate = totals.success + totals.failure;
+        if (!aggregate) return null;
+        return (totals.success / aggregate) * 100;
+      };
+
+      const getSuccessRate = (run) => {
+        if (!run) return null;
+        if (typeof run.success_rate === 'number' && !Number.isNaN(run.success_rate)) {
+          return run.success_rate;
+        }
+        const completion = getCompletionStats(run);
+        if (completion.rate !== null && completion.rate !== undefined && !Number.isNaN(completion.rate)) {
+          return completion.rate;
+        }
+        return getFallbackSuccessRate(run);
+      };
+
+      const formatSuccessRateText = (value) => {
+        if (value === null || value === undefined || Number.isNaN(value)) return 'n/a';
+        return `${value.toFixed(1)}%`;
+      };
+
+      const formatCompletionDisplay = (completion) => {
+        if (!completion || !Number.isFinite(completion.total) || completion.total <= 0) {
+          return 'Unsuccessful ❌';
+        }
+        const completed = Number.isFinite(completion.completed) ? completion.completed : (completion.completed ?? 0);
+        return `✅ ${completed}/${completion.total} (${formatSuccessRateText(completion.rate)})`;
+      };
+
+      const formatCompletionLabel = (completion) => {
+        if (!completion || !Number.isFinite(completion.total) || completion.total <= 0) {
+          return 'Unsuccessful';
+        }
+        return completion.label || 'Completion';
+      };
+
+      const formatObjectForDisplay = (value) => {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'string') return value;
+        try {
+          return JSON.stringify(value, null, 2);
+        } catch (err) {
+          return String(value);
+        }
+      };
+
+      const toFiniteNumber = (value) => {
+        if (value === null || value === undefined || value === '') {
+          return null;
+        }
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+      };
+      const formatParameterPreview = (parameters, maxLength = 180) => {
+        if (parameters === null || parameters === undefined) {
+          return '—';
+        }
+        const textSource = typeof parameters === 'string'
+          ? parameters.trim()
+          : formatObjectForDisplay(parameters).trim();
+        if (!textSource) return '—';
+        if (textSource.length <= maxLength) return textSource;
+        return `${textSource.slice(0, maxLength - 1).trimEnd()}…`;
+      };
+      const titleCase = (value) => {
+        if (!value || typeof value !== 'string') return value;
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      };
+      const normalizeMessageText = (text) => (text || '').replace(/\s+/g, ' ').trim();
+      const buildMessageKey = (agent, message) => {
+        const normalized = normalizeMessageText(message);
+        if (!normalized) return null;
+        return `${(agent || '').toLowerCase()}::${normalized.toLowerCase()}`;
+      };
+      const extractToolMessage = (tool) => {
+        if (!tool || !tool.parameters) return '';
+        return normalizeMessageText(tool.parameters.message || tool.parameters.content || '');
+      };
+      const parseBlackboardEventDetails = (block) => {
+        if (!block) return {};
+        const eventMatch = block.match(/Event #(\d+)/i);
+        const iterationMatch = block.match(/Iteration:\s*(\d+)/i);
+        const roundMatch = block.match(/Round\s*(?:[:#-]\s*)?(\d+)/i);
+        const phaseMatch = block.match(/\[(planning|execution)\]/i);
+        const agentTypeMatch = block.match(/\]\s*([A-Za-z0-9 _.-]{1,80})\s*\(([^)]+)\)/);
+        const agentMatch = agentTypeMatch || block.match(/\]\s*([A-Za-z0-9 _.-]{1,80})\s*\(/);
+        const messageMatch = block.match(/Message:\s*([\s\S]+)/i) || block.match(/Content:\s*([\s\S]+)/i);
+        let message = messageMatch ? messageMatch[1].trim() : '';
+        if (!message) {
+          const parts = block.split('\n');
+          if (parts.length > 1) {
+            message = parts.slice(1).join(' ').trim();
+          }
+        }
+        message = message.replace(/\s+/g, ' ').trim();
+        return {
+          eventNumber: eventMatch ? Number(eventMatch[1]) : null,
+          iteration: iterationMatch ? Number(iterationMatch[1]) : null,
+          phase: phaseMatch ? titleCase(phaseMatch[1]) : null,
+          round: roundMatch ? Number(roundMatch[1]) : null,
+          agent: agentMatch ? agentMatch[1].trim() : null,
+          eventType: agentTypeMatch ? agentTypeMatch[2].trim().toLowerCase() : null,
+          message,
+        };
+      };
+      const matchPostMessageTool = (details, entryTs, messageQueues, agentQueues) => {
+        if ((details.eventType || '').toLowerCase() !== 'communication') return null;
+        const key = buildMessageKey(details.agent, details.message);
+        if (key && messageQueues.has(key)) {
+          const queue = messageQueues.get(key);
+          while (queue.length) {
+            const payload = queue.shift();
+            if (payload && !payload.consumed) {
+              payload.consumed = true;
+              return payload;
+            }
+          }
+        }
+        if (!details.agent) return null;
+        const agentKey = details.agent.toLowerCase();
+        const agentQueue = agentQueues.get(agentKey) || [];
+        while (agentQueue.length && agentQueue[0].consumed) {
+          agentQueue.shift();
+        }
+        if (!agentQueue.length) return null;
+        const candidate = agentQueue[0];
+        const withinWindow = candidate.tsMs == null || entryTs == null || candidate.tsMs <= entryTs + 5000;
+        if (!withinWindow) return null;
+        agentQueue.shift();
+        candidate.consumed = true;
+        return candidate;
+      };
+      const formatEventMetaLine = (details) => {
+        if (!details) return '';
+        const parts = [];
+        parts.push(`Iter ${details.iteration ?? '—'}`);
+        if (details.phase) parts.push(details.phase);
+        parts.push(`Round ${details.round ?? '—'}`);
+        return parts.join(' · ');
+      };
+      const formatToolMetaLine = (tool) => {
+        if (!tool) return '';
+        const parts = [];
+        const iter = toFiniteNumber(tool.iteration);
+        const round = toFiniteNumber(tool.round);
+        parts.push(`Iter ${iter ?? '—'}`);
+        parts.push(tool.phase ? titleCase(tool.phase) : '—');
+        parts.push(`Round ${round ?? '—'}`);
+        return parts.join(' · ');
+      };
+
+      const deriveExperimentName = (run) => {
+        if (!run) return 'Experiment';
+        if (run.log_dir) {
+          const parts = run.log_dir.split('/').filter(Boolean);
+          if (parts.length >= 2) {
+            return `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+          }
+          return parts[parts.length - 1];
+        }
+        const env = run.environment || 'Experiment';
+        const ts = run.run_timestamp || 'legacy';
+        const seed = run.seed ? `seed ${run.seed}` : '';
+        return `${env} ${ts} ${seed}`.trim();
+      };
+
+      const METRIC_OPTIONS = [
+        {
+          value: 'global_score',
+          label: 'Global Score',
+          accessor: (run) => {
+            const scores = Array.isArray(run.scores)
+              ? run.scores.filter((entry) => typeof entry.global_score === 'number')
+              : [];
+            if (!scores.length) return null;
+            return Number(scores[scores.length - 1].global_score);
+          },
+          formatter: (value) => `${value}`,
+        },
+        {
+          value: 'success_rate',
+          label: 'Success Rate (%)',
+          accessor: (run) => getSuccessRate(run),
+          formatter: (value) => `${value.toFixed(1)}%`,
+          enforceZero: true,
+        },
+        {
+          value: 'total_events',
+          label: 'Total Event Count',
+          accessor: (run) => getTotalEvents(run),
+          formatter: (value) => `${value} events`,
+          enforceZero: true,
+        },
+      ];
+
+      const X_AXIS_OPTIONS = [
+        {
+          value: 'run_timestamp',
+          label: 'Run Timestamp',
+          type: 'linear',
+          accessor: (run) => parseTimestampToMs(run.run_timestamp),
+          formatter: (value, run) => {
+            if (run && run.run_timestamp) {
+              return run.run_timestamp;
+            }
+            if (value === null || value === undefined) {
+              return 'legacy';
+            }
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return 'legacy';
+            return date.toLocaleString();
+          },
+          tickFormatter: (value) => {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          },
+        },
+        {
+          value: 'seed',
+          label: 'Seed',
+          type: 'linear',
+          accessor: (run) => {
+            const numeric = Number(run.seed);
+            return Number.isNaN(numeric) ? null : numeric;
+          },
+          formatter: (value) => `Seed ${value}`,
+        },
+        {
+          value: 'environment',
+          label: 'Environment',
+          type: 'category',
+          accessor: (run) => run.environment || 'Unknown environment',
+          formatter: (value) => value,
+        },
+        {
+          value: 'model_info',
+          label: 'Model (Provider)',
+          type: 'category',
+          accessor: (run) => run.model_info || run.tag_model || 'Unknown model',
+          formatter: (value) => value || 'Unknown model',
+        },
+        {
+          value: 'tag',
+          label: 'Primary Tag',
+          type: 'category',
+          accessor: (run) => getPrimaryTag(run),
+          formatter: (value) => value || 'Untagged',
+        },
+      ];
+
+      const buildScatterPayload = (runs, axisDef, metricDef) => {
+        const points = [];
+        const categories = [];
+        const categorySet = new Set();
+
+        runs.forEach((run) => {
+          const key = runKey(run);
+          const metricValue = metricDef.accessor(run);
+          if (metricValue === null || metricValue === undefined || Number.isNaN(metricValue)) {
+            return;
+          }
+          const axisRaw = axisDef.accessor(run);
+          if (axisRaw === null || axisRaw === undefined || axisRaw === '') {
+            return;
+          }
+          const completion = getCompletionStats(run);
+          const color = getRunColor(run);
+          if (axisDef.type === 'category' && !categorySet.has(axisRaw)) {
+            categorySet.add(axisRaw);
+            categories.push(axisRaw);
+          }
+          const axisLabel = axisDef.formatter ? axisDef.formatter(axisRaw, run) : axisRaw;
+          const metricLabel = metricDef.formatter ? metricDef.formatter(metricValue, run) : metricValue;
+          points.push({
+            runKey: key,
+            x: axisDef.type === 'category' ? axisRaw : axisRaw,
+            y: metricValue,
+            color,
+            meta: {
+              runKey: key,
+              axisLabel,
+              metricLabel,
+              environment: run.environment || 'Unknown environment',
+              model: getModelLabel(run),
+              seed: run.seed || '–',
+              timestamp: run.run_timestamp || 'legacy',
+              logDir: run.log_dir || '',
+              experimentName: deriveExperimentName(run),
+              completion,
+              note: run.note || '',
+              tags: Array.isArray(run.tags) ? run.tags : [],
+            },
+          });
+        });
+
+        return { points, categories };
+      };
+
+      const EvaluationScatter = ({ runs, onSelectRun }) => {
+        const [metricField, setMetricField] = useState(METRIC_OPTIONS[0].value);
+        const [xAxisField, setXAxisField] = useState(X_AXIS_OPTIONS[0].value);
+        const canvasRef = useRef(null);
+        const chartRef = useRef(null);
+
+        const metricDef = useMemo(
+          () => METRIC_OPTIONS.find((opt) => opt.value === metricField) || METRIC_OPTIONS[0],
+          [metricField]
+        );
+        const axisDef = useMemo(
+          () => X_AXIS_OPTIONS.find((opt) => opt.value === xAxisField) || X_AXIS_OPTIONS[0],
+          [xAxisField]
+        );
+
+        const scatterPayload = useMemo(
+          () => buildScatterPayload(runs, axisDef, metricDef),
+          [runs, axisDef, metricDef]
+        );
+
+        const tooltipElRef = useRef(null);
+        const [gridColor, setGridColor] = useState(() => getComputedStyle(document.body).getPropertyValue('--chart-grid-color')?.trim() || 'rgba(31, 36, 48, 0.12)');
+
+        useEffect(() => {
+          const observer = new MutationObserver(() => {
+            const color = getComputedStyle(document.body).getPropertyValue('--chart-grid-color')?.trim();
+            if (color && color !== gridColor) {
+              setGridColor(color);
+            }
+          });
+          observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+          return () => observer.disconnect();
+        }, [gridColor]);
+
+        const getOrCreateTooltip = () => {
+          if (tooltipElRef.current) return tooltipElRef.current;
+          const el = document.createElement('div');
+          el.className = 'chart-tooltip';
+          el.style.opacity = 0;
+          document.body.appendChild(el);
+          tooltipElRef.current = el;
+          return el;
+        };
+
+        useEffect(() => {
+          if (!window.Chart) return;
+
+          if (!scatterPayload.points.length) {
+            if (chartRef.current) {
+              chartRef.current.destroy();
+              chartRef.current = null;
+            }
+            return;
+          }
+
+          if (!canvasRef.current) return;
+
+          if (chartRef.current) {
+            chartRef.current.destroy();
+          }
+
+          const pointColors = scatterPayload.points.map((point) => point.color || '#526fff');
+
+          const ctx = canvasRef.current.getContext('2d');
+          const chart = new window.Chart(ctx, {
+            type: 'scatter',
+            data: {
+              datasets: [
+                {
+                  label: metricDef.label,
+                  data: scatterPayload.points,
+                  backgroundColor: pointColors,
+                  borderColor: pointColors,
+                  pointBackgroundColor: pointColors,
+                  pointBorderColor: '#ffffff',
+                  pointRadius: 6,
+                  pointHoverRadius: 8,
+                  pointHitRadius: 12,
+                  pointBorderWidth: 2,
+                  pointHoverBorderWidth: 2,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              layout: { padding: 8 },
+              scales: {
+                x: axisDef.type === 'category'
+                  ? {
+                      type: 'category',
+                      labels: scatterPayload.categories,
+                      title: { display: true, text: axisDef.label },
+                      grid: { borderDash: [4, 4], color: gridColor },
+                      ticks: {
+                        autoSkip: scatterPayload.categories.length > 8,
+                        maxRotation: 35,
+                        minRotation: 0,
+                      },
+                    }
+                  : {
+                      type: 'linear',
+                      title: { display: true, text: axisDef.label },
+                      grid: { borderDash: [4, 4], color: gridColor },
+                      ticks: axisDef.tickFormatter
+                        ? {
+                            callback: axisDef.tickFormatter,
+                          }
+                        : undefined,
+                    },
+                y: {
+                  beginAtZero: !!metricDef.enforceZero,
+                  title: { display: true, text: metricDef.label },
+                  grid: { borderDash: [4, 4], color: gridColor },
+                },
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  enabled: false,
+                  external: (context) => {
+                    const tooltipModel = context.tooltip;
+                    const tooltipEl = getOrCreateTooltip();
+                    if (!tooltipModel || tooltipModel.opacity === 0) {
+                      tooltipEl.style.opacity = 0;
+                      return;
+                    }
+
+                    const dataPoint = tooltipModel.dataPoints[0];
+                    const meta = (dataPoint && dataPoint.raw && dataPoint.raw.meta) || {};
+                    const completion = meta.completion || {};
+                    const completionLabel = formatCompletionLabel(completion);
+                    const completionText = formatCompletionDisplay(completion);
+                    const completionParagraph = completionLabel === 'Unsuccessful'
+                      ? `<p><strong>${completionText}</strong></p>`
+                      : `<p><strong>${completionLabel}:</strong> ${completionText}</p>`;
+
+                    const tagBadges = (meta.tags || []).map((tag) => {
+                      const color = getTagColor(tag);
+                      return `<span class="tag-badge" style="background-color:${color};border-color:${color}">${tag}</span>`;
+                    }).join('');
+
+                    tooltipEl.innerHTML = `
+                      <h4>${meta.experimentName || 'Experiment'}</h4>
+                      <p><strong>${metricDef.label}:</strong> ${meta.metricLabel || dataPoint.formattedValue}</p>
+                      <p><strong>${axisDef.label}:</strong> ${meta.axisLabel || dataPoint.raw.x}</p>
+                      <p><strong>Environment:</strong> ${meta.environment || 'Unknown environment'}</p>
+                      <p><strong>Model:</strong> ${meta.model || 'Unknown model'}</p>
+                      <p><strong>Seed:</strong> ${meta.seed || '–'}</p>
+                      <p><strong>Run:</strong> ${meta.timestamp || 'legacy'}</p>
+                      ${completionParagraph}
+                      ${meta.note ? `<p><strong>Note:</strong> ${meta.note}</p>` : ''}
+                      ${tagBadges ? `<div class="tag-list">${tagBadges}</div>` : ''}
+                    `;
+
+                    const rect = context.chart.canvas.getBoundingClientRect();
+                    const left = rect.left + window.scrollX + tooltipModel.caretX + 12;
+                    const top = rect.top + window.scrollY + tooltipModel.caretY + 12;
+                    tooltipEl.style.opacity = 1;
+                    tooltipEl.style.left = `${left}px`;
+                    tooltipEl.style.top = `${top}px`;
+                  },
+                },
+              },
+              onClick: (event, elements, chartInstance) => {
+                if (!elements || !elements.length) {
+                  return;
+                }
+                const element = elements[0];
+                const dataset = chartInstance?.data?.datasets?.[element.datasetIndex];
+                const point = dataset && dataset.data && dataset.data[element.index];
+                const key = point && (point.runKey || (point.meta && point.meta.runKey));
+                if (key && typeof onSelectRun === 'function') {
+                  onSelectRun(key);
+                }
+              },
+            },
+          });
+
+          chartRef.current = chart;
+          return () => {
+            if (chartRef.current) {
+              chartRef.current.destroy();
+              chartRef.current = null;
+            }
+            if (tooltipElRef.current) {
+              tooltipElRef.current.remove();
+              tooltipElRef.current = null;
+            }
+          };
+        }, [scatterPayload, axisDef, metricDef, gridColor, onSelectRun]);
+
+        const plottedRuns = scatterPayload.points.length;
+        const totalRuns = runs.length;
+
+        return React.createElement(React.Fragment, null, [
+          React.createElement('div', { className: 'chart-controls', key: 'controls' }, [
+            React.createElement('label', { className: 'chart-chip', key: 'metric-chip' }, [
+              'Y axis',
+              React.createElement('select', {
+                value: metricField,
+                onChange: (e) => setMetricField(e.target.value),
+              },
+                METRIC_OPTIONS.map((option) =>
+                  React.createElement('option', { value: option.value, key: option.value }, option.label)
+                )
+              ),
+            ]),
+            React.createElement('label', { className: 'chart-chip', key: 'x-chip' }, [
+              'X axis',
+              React.createElement('select', {
+                value: xAxisField,
+                onChange: (e) => setXAxisField(e.target.value),
+              },
+                X_AXIS_OPTIONS.map((option) =>
+                  React.createElement('option', { value: option.value, key: option.value }, option.label)
+                )
+              ),
+            ]),
+          ]),
+          scatterPayload.points.length
+            ? React.createElement('div', { className: 'chart-surface', key: 'chart-surface' },
+                React.createElement('canvas', { ref: canvasRef, height: 360 })
+              )
+            : React.createElement('p', { className: 'chart-empty', key: 'chart-empty' }, 'No runs have the selected metric yet.'),
+          React.createElement('p', { className: 'chart-note', key: 'chart-note' },
+            `${plottedRuns} of ${totalRuns} runs plotted — hover any point to inspect metadata. Click a point to open that run in the Log Explorer.`
+          ),
+        ]);
+      };
+
+      const compareColumnValues = (a, b, column) => {
+        switch (column) {
+          case 'model':
+            return compareStrings(getModelLabel(a), getModelLabel(b)) || compareStrings(a.environment || '', b.environment || '');
+          case 'completion': {
+            const aStats = getCompletionStats(a);
+            const bStats = getCompletionStats(b);
+            const aRate = Number.isFinite(aStats.rate) ? aStats.rate : -1;
+            const bRate = Number.isFinite(bStats.rate) ? bStats.rate : -1;
+            const rateCompare = compareNumbers(aRate, bRate);
+            if (rateCompare !== 0) return rateCompare;
+            const aTotal = Number.isFinite(aStats.total) ? aStats.total : 0;
+            const bTotal = Number.isFinite(bStats.total) ? bStats.total : 0;
+            return compareNumbers(aTotal, bTotal);
+          }
+          case 'events':
+            return compareNumbers(getTotalEvents(a) || 0, getTotalEvents(b) || 0);
+          case 'tags': {
+            const aText = `${(Array.isArray(a.tags) ? a.tags.join(' ') : '')} ${a.note || ''}`.trim();
+            const bText = `${(Array.isArray(b.tags) ? b.tags.join(' ') : '')} ${b.note || ''}`.trim();
+            return compareStrings(aText, bText);
+          }
+          case 'experiment':
+          default:
+            return compareStrings(a.environment || '', b.environment || '')
+              || compareStrings(getModelLabel(a), getModelLabel(b))
+              || compareNumbers(a.seed, b.seed)
+              || compareStrings(a.run_timestamp || '', b.run_timestamp || '');
+        }
+      };
+
+      const RunsGrid = ({ runs, filter, selectedRunKey, onSelectRun }) => {
+        const [columnSort, setColumnSort] = useState({ column: 'experiment', direction: 'asc' });
+
+        const formatEventSummary = (counts) => {
+          const entries = Object.entries(counts || {});
+          if (!entries.length) {
+            return 'No events recorded.';
+          }
+          return entries.map(([eventType, stats]) => {
+            const success = stats && Number.isFinite(stats.success) ? stats.success : 0;
+            const failure = stats && Number.isFinite(stats.failure) ? stats.failure : 0;
+            const total = success + failure;
+            const rate = total ? `${((success / total) * 100).toFixed(1)}%` : '0.0%';
+            return `${eventType}: ${success}/${total || 0} (${rate})`;
+          }).join(' · ');
+        };
+
+        const filtered = useMemo(() => {
+          if (!filter) return runs;
+          const needle = filter.toLowerCase();
+          return runs.filter((run) => {
+            const haystack = [
+              run.environment || '',
+              getModelLabel(run) || '',
+              String(run.seed ?? ''),
+              run.run_timestamp || '',
+              run.log_dir || '',
+              run.note || '',
+              Array.isArray(run.tags) ? run.tags.join(' ') : '',
+              JSON.stringify(run.event_counts || {}),
+            ].join(' ').toLowerCase();
+            return haystack.includes(needle);
+          });
+        }, [runs, filter]);
+
+        const sortedRows = useMemo(() => {
+          if (!filtered.length) return [];
+          const copy = [...filtered];
+          copy.sort((a, b) => {
+            const base = compareColumnValues(a, b, columnSort.column);
+            if (base !== 0) {
+              return columnSort.direction === 'asc' ? base : -base;
+            }
+            const fallback = compareColumnValues(a, b, 'experiment');
+            return columnSort.direction === 'asc' ? fallback : -fallback;
+          });
+          return copy;
+        }, [filtered, columnSort]);
+
+        const handleColumnSort = useCallback((columnKey) => {
+          setColumnSort((prev) => {
+            if (prev.column === columnKey) {
+              return { column: columnKey, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+            }
+            return { column: columnKey, direction: 'asc' };
+          });
+        }, []);
+
+        const getSortIndicator = (columnKey) => {
+          if (columnSort.column !== columnKey) {
+            return '⇅';
+          }
+          return columnSort.direction === 'asc' ? '▲' : '▼';
+        };
+
         if (!runs.length) {
           return React.createElement('p', { className: 'muted' }, 'No runs discovered.');
         }
-        const filtered = runs.filter((run) => {
-          if (!filter) return true;
-          const f = filter.toLowerCase();
-          return (
-            run.environment.toLowerCase().includes(f) ||
-            run.tag_model.toLowerCase().includes(f) ||
-            String(run.seed).includes(f) ||
-            (run.run_timestamp || '').toLowerCase().includes(f)
-          );
-        });
-        if (!filtered.length) {
+
+        if (!sortedRows.length) {
           return React.createElement('p', { className: 'muted' }, 'No runs match the current filter.');
         }
-        return React.createElement('div', { className: 'grid' },
-          filtered.map((run, idx) => (
-            React.createElement('div', { className: 'run-card', key: idx }, [
-              React.createElement('h3', null, `${run.environment} · ${run.tag_model}`),
-              React.createElement('p', { className: 'muted' }, `Seed ${run.seed} · Run ${run.run_timestamp} · ${run.log_dir}`),
-              React.createElement('ul', null,
-                Object.entries(run.event_counts || {}).map(([eventType, counts]) => {
-                  const total = (counts.success || 0) + (counts.failure || 0);
-                  const rate = total ? ((counts.success || 0) / total * 100).toFixed(1) : '0.0';
-                  return React.createElement('li', { key: eventType }, [
-                    React.createElement('strong', null, eventType), ' — ',
-                    React.createElement('span', { className: 'badge success' }, `${counts.success || 0} success`), ' ',
-                    React.createElement('span', { className: 'badge failure' }, `${counts.failure || 0} failure`), ' ',
-                    React.createElement('span', { className: 'muted' }, `(${rate}%)`),
-                  ]);
+
+        const columnDefs = [
+          { key: 'experiment', label: 'Experiment' },
+          { key: 'model', label: 'Model' },
+          { key: 'completion', label: 'Completion' },
+          { key: 'events', label: 'Events' },
+          { key: 'tags', label: 'Tags / Notes' },
+        ];
+
+        return React.createElement('div', { className: 'table-wrapper' },
+          React.createElement('table', { className: 'runs-table' }, [
+            React.createElement('thead', { key: 'thead' },
+              React.createElement('tr', null,
+                columnDefs.map((column) => {
+                  const ariaSort = columnSort.column === column.key
+                    ? (columnSort.direction === 'asc' ? 'ascending' : 'descending')
+                    : 'none';
+                  return React.createElement('th', { key: column.key, 'aria-sort': ariaSort },
+                    React.createElement('button', {
+                      type: 'button',
+                      className: 'sortable-header',
+                      onClick: () => handleColumnSort(column.key),
+                    }, [
+                      column.label,
+                      React.createElement('span', { className: 'sort-indicator', 'aria-hidden': 'true' }, getSortIndicator(column.key)),
+                    ])
+                  );
                 })
               )
-            ])
-          ))
+            ),
+            React.createElement('tbody', { key: 'tbody' },
+              sortedRows.map((run) => {
+                const completion = getCompletionStats(run);
+                const completionLabel = formatCompletionLabel(completion);
+                const completionLine = formatCompletionDisplay(completion);
+                const tags = Array.isArray(run.tags) ? run.tags : [];
+                const key = runKey(run);
+                const isSelected = selectedRunKey && key === selectedRunKey;
+                return React.createElement('tr', {
+                  key,
+                  className: isSelected ? 'selected' : '',
+                  onClick: () => onSelectRun && onSelectRun(key),
+                  style: { cursor: onSelectRun ? 'pointer' : 'default' },
+                }, [
+                  React.createElement('td', { key: 'experiment' }, [
+                    React.createElement('span', { className: 'run-main' }, run.environment || 'Unknown environment'),
+                    React.createElement('span', { className: 'run-meta' },
+                      `Seed ${run.seed ?? '–'} · Run ${run.run_timestamp || 'legacy'}`
+                    ),
+                  ]),
+                  React.createElement('td', { key: 'model' }, [
+                    React.createElement('span', { className: 'run-main' }, getModelLabel(run)),
+                    React.createElement('span', { className: 'run-meta' }, run.log_dir || 'log dir unavailable'),
+                  ]),
+                  React.createElement('td', { key: 'completion' },
+                    React.createElement('div', { className: 'stat-row' },
+                      React.createElement('span', { className: 'stat-chip' },
+                        completionLabel === 'Unsuccessful'
+                          ? completionLine
+                          : [
+                              React.createElement('span', { className: 'stat-label' }, completionLabel),
+                              completionLine,
+                            ]
+                      )
+                    )
+                  ),
+                  React.createElement('td', { key: 'events' },
+                    React.createElement('span', { className: 'event-summary' }, formatEventSummary(run.event_counts))
+                  ),
+                  React.createElement('td', { key: 'tags' },
+                    tags.length || run.note
+                      ? React.createElement('div', { className: 'tag-stack' }, [
+                          tags.length
+                            ? React.createElement('div', { className: 'tag-list' },
+                                tags.map((tag) =>
+                                  React.createElement('span', {
+                                    className: 'tag-badge',
+                                    key: tag,
+                                    style: {
+                                      backgroundColor: getTagColor(tag),
+                                      borderColor: getTagColor(tag),
+                                    },
+                                  }, tag)
+                                )
+                              )
+                            : null,
+                          run.note
+                            ? React.createElement('div', { className: 'note-pill' }, [
+                                React.createElement('strong', null, 'Note'),
+                                React.createElement('span', null, run.note),
+                              ])
+                            : null,
+                        ])
+                      : React.createElement('span', { className: 'muted' }, '—')
+                  ),
+                ]);
+              })
+            )
+          ])
         );
       };
 
-      const RunLogExplorer = ({ runs }) => {
+      const RunLogExplorer = ({ runs, selectedRunKey, onSelectRun }) => {
         const logTabs = [
           { key: 'blackboards', label: 'Blackboards' },
           { key: 'tool_calls', label: 'Tool Calls' },
@@ -373,7 +1894,6 @@
         ), [runs]);
 
         const [selectedEnv, setSelectedEnv] = useState(ALL_ENVS);
-        const [selectedRunKey, setSelectedRunKey] = useState(() => (runs.length ? runKey(runs[0]) : ''));
         const [activeTab, setActiveTab] = useState('blackboards');
         const [activeBlackboard, setActiveBlackboard] = useState('');
 
@@ -393,20 +1913,78 @@
         }, [runs, selectedEnv]);
 
         useEffect(() => {
-          if (!runsForEnv.length) {
-            setSelectedRunKey('');
+          if (!runs.length) {
+            if (selectedRunKey && onSelectRun) {
+              onSelectRun('');
+            }
             return;
           }
-          const existing = runsForEnv.find((run) => runKey(run) === selectedRunKey);
-          if (!existing) {
-            setSelectedRunKey(runKey(runsForEnv[0]));
+          const selectedExists = selectedRunKey && runs.some((run) => runKey(run) === selectedRunKey);
+          if (!selectedExists) {
+            const scope = selectedEnv === ALL_ENVS
+              ? runs
+              : runs.filter((run) => run.environment === selectedEnv);
+            const fallbackRun = scope[0] || runs[0];
+            if (fallbackRun && onSelectRun) {
+              onSelectRun(runKey(fallbackRun));
+            }
           }
-        }, [runsForEnv, selectedRunKey]);
+        }, [runs, selectedEnv, selectedRunKey, onSelectRun]);
+
+        useEffect(() => {
+          if (!selectedRunKey) return;
+          if (selectedEnv === ALL_ENVS) return;
+          const match = runs.find((run) => runKey(run) === selectedRunKey);
+          if (match && match.environment !== selectedEnv) {
+            setSelectedEnv(match.environment || '');
+          }
+        }, [selectedRunKey, runs, selectedEnv]);
 
         const selectedRun = useMemo(() => {
-          if (!selectedRunKey) return runsForEnv[0] || null;
-          return runs.find((run) => runKey(run) === selectedRunKey) || runsForEnv[0] || null;
-        }, [runs, selectedRunKey, runsForEnv]);
+          if (selectedRunKey) {
+            const match = runs.find((run) => runKey(run) === selectedRunKey);
+            if (match) return match;
+          }
+          if (selectedEnv === ALL_ENVS) {
+            return runs[0] || null;
+          }
+          return runs.find((run) => run.environment === selectedEnv) || runs[0] || null;
+        }, [runs, selectedRunKey, selectedEnv]);
+
+        const handleEnvChange = (value) => {
+          setSelectedEnv(value);
+          if (value === ALL_ENVS) {
+            if (!selectedRunKey && runs.length && onSelectRun) {
+              onSelectRun(runKey(runs[0]));
+            }
+            return;
+          }
+          const currentSelection = selectedRunKey
+            ? runs.find((run) => runKey(run) === selectedRunKey)
+            : null;
+          if (currentSelection && currentSelection.environment === value) {
+            return;
+          }
+          const envRun = runs.find((run) => run.environment === value);
+          if (envRun && onSelectRun) {
+            onSelectRun(runKey(envRun));
+          }
+        };
+
+        const toolCalls = useMemo(() => parseToolCalls(selectedRun), [selectedRun]);
+
+        const agentNames = useMemo(() => {
+          const nameSet = new Set();
+          if (selectedRun && selectedRun.logs && selectedRun.logs.blackboards) {
+            Object.values(selectedRun.logs.blackboards).forEach((text) => collectAgentNames(text, nameSet));
+          }
+          (toolCalls || []).forEach((call) => {
+            if (call && call.agent_name) {
+              nameSet.add(String(call.agent_name));
+            }
+          });
+          return Array.from(nameSet);
+        }, [selectedRun, toolCalls]);
 
         useEffect(() => {
           if (!selectedRun) {
@@ -446,6 +2024,8 @@
           }
           const activeEntry = boards.find(([name]) => name === activeBlackboard) || boards[0];
           const [activeName, activeText] = activeEntry;
+          const activeBoardId = extractBoardIdFromName(activeName);
+          const boardToolCalls = (toolCalls || []).filter((call) => toolMatchesBoard(call, activeBoardId));
           const tabBar = React.createElement('div', { className: 'subtab-bar', key: 'subtabs' },
             boards.map(([name]) =>
               React.createElement('button', {
@@ -455,7 +2035,191 @@
               }, formatBlackboardTitle(name))
             )
           );
-          const content = React.createElement('pre', { className: 'log-content', key: `${activeName}-content` }, activeText || '(empty blackboard)');
+          const { events: timeline, referenceTimestamp } = buildTimeline(activeText, boardToolCalls, agentNames);
+          const lastRoundByAgent = new Map();
+          let lastRoundNumber = null;
+
+          const renderToolNode = (tool, timeLabel, resolvedRound, key) => {
+            const emoji = toolEmojiMap[tool.tool_name] || toolEmojiMap.default;
+            const statusClass = tool.success === false ? 'tool-status-fail' : 'tool-status-pass';
+            const statusLabel = tool.success === false ? 'Failure' : 'Success';
+            const toolMeta = { ...tool, round: resolvedRound };
+            const metaLine = formatToolMetaLine(toolMeta);
+            const topChildren = [
+              React.createElement('span', { className: 'timestamp-label', key: 'label' }, timeLabel),
+              React.createElement('span', { className: 'timestamp-event', key: 'pill' }, 'Tool'),
+            ];
+            const timestampNode = React.createElement('div', { className: 'timeline-timestamp', key: 'ts' }, [
+              React.createElement('div', { className: 'timestamp-top', key: 'top' }, topChildren),
+              metaLine ? React.createElement('span', { className: 'timestamp-meta', key: 'meta' }, metaLine) : null,
+            ].filter(Boolean));
+            const parameterPreview = formatParameterPreview(tool.parameters);
+            return React.createElement('div', { className: 'timeline-entry tool-entry', key }, [
+              timestampNode,
+              React.createElement('div', { className: 'timeline-body', key: 'body' }, [
+                React.createElement('div', { className: 'tool-entry-inline', key: 'inline' }, [
+                  tool.agent_name
+                    ? React.createElement('span', {
+                        className: 'timeline-agent-label',
+                        key: 'agent',
+                        style: { color: getAgentColor(tool.agent_name) },
+                      }, `${tool.agent_name}:`)
+                    : null,
+                  React.createElement('strong', { key: 'label' }, `${emoji} ${tool.tool_name || 'Tool call'}`),
+                  React.createElement('span', { className: statusClass, key: 'status' }, statusLabel),
+                  parameterPreview ? React.createElement('span', { className: 'tool-param-preview', key: 'params' }, `Params: ${parameterPreview}`) : null,
+                ].filter(Boolean)),
+              ]),
+            ]);
+          };
+
+          const postMessageQueues = new Map();
+          const postMessageAgentQueues = new Map();
+          (boardToolCalls || []).forEach((tool, idx) => {
+            if (!tool || tool.tool_name !== 'post_message') return;
+            const key = buildMessageKey(tool.agent_name, extractToolMessage(tool));
+            if (!key) return;
+            const payload = {
+              tool,
+              tsMs: timestampToMs(tool.timestamp, referenceTimestamp),
+              timeLabel: formatDisplayTime(timestampToMs(tool.timestamp, referenceTimestamp), tool.timestamp),
+              order: idx,
+              consumed: false,
+            };
+            if (!postMessageQueues.has(key)) {
+              postMessageQueues.set(key, []);
+            }
+            postMessageQueues.get(key).push(payload);
+            const agentKey = (tool.agent_name || '').toLowerCase();
+            if (!postMessageAgentQueues.has(agentKey)) {
+              postMessageAgentQueues.set(agentKey, []);
+            }
+            postMessageAgentQueues.get(agentKey).push(payload);
+          });
+          postMessageQueues.forEach((queue) => queue.sort((a, b) => (a.tsMs ?? 0) - (b.tsMs ?? 0)));
+          postMessageAgentQueues.forEach((queue) => queue.sort((a, b) => (a.tsMs ?? 0) - (b.tsMs ?? 0)));
+
+          const timelineNodes = [];
+          let nodeOrder = 0;
+          const pushNode = (node, sortTs) => {
+            timelineNodes.push({ node, sortTs: sortTs ?? Number.MAX_SAFE_INTEGER, order: nodeOrder });
+            nodeOrder += 1;
+          };
+
+          timeline.forEach((entry, idx) => {
+            const timeLabel = entry.displayTime || entry.timestamp || '—';
+            if (entry.type === 'tool') {
+              const tool = entry.content || {};
+              if (tool.tool_name === 'post_message') {
+                return;
+              }
+              const toolRound = toFiniteNumber(tool.round);
+              const resolvedRound = toolRound !== null ? toolRound : lastRoundNumber;
+              if (resolvedRound !== null) {
+                lastRoundNumber = resolvedRound;
+                if (tool.agent_name) {
+                  lastRoundByAgent.set(tool.agent_name, resolvedRound);
+                }
+              }
+              const node = renderToolNode(tool, timeLabel, resolvedRound, `tl-tool-${idx}`);
+              pushNode(node, entry.sortTs ?? entry.tsMs ?? Number.MAX_SAFE_INTEGER);
+              return;
+            }
+
+            const details = parseBlackboardEventDetails(entry.content);
+            if ((details.eventType || '').toLowerCase() === 'action_executed') {
+              return;
+            }
+
+            const entryTs = entry.tsMs ?? entry.sortTs ?? Number.MAX_SAFE_INTEGER;
+            const matchedPayload = matchPostMessageTool(details, entryTs, postMessageQueues, postMessageAgentQueues);
+            if (matchedPayload) {
+              const toolRound = toFiniteNumber(matchedPayload.tool.round);
+              const resolvedRound = toolRound !== null ? toolRound : lastRoundNumber;
+              if (resolvedRound !== null) {
+                details.round = resolvedRound;
+                lastRoundNumber = resolvedRound;
+                if (details.agent) {
+                  lastRoundByAgent.set(details.agent, resolvedRound);
+                }
+              }
+              const node = renderToolNode(matchedPayload.tool, matchedPayload.timeLabel || timeLabel, resolvedRound, `tl-tool-match-${idx}-${matchedPayload.order}`);
+              const sortTs = entryTs - 0.5;
+              pushNode(node, sortTs);
+            }
+
+            const normalizedPhase = (details.phase || '').toLowerCase();
+            let messageRound = toFiniteNumber(details.round);
+            if (messageRound === null) {
+              if (details.agent && lastRoundByAgent.has(details.agent)) {
+                messageRound = lastRoundByAgent.get(details.agent);
+              } else if (lastRoundNumber !== null) {
+                messageRound = lastRoundNumber;
+              } else if (normalizedPhase === 'planning') {
+                messageRound = 1;
+              }
+            }
+            if (messageRound !== null) {
+              details.round = messageRound;
+              lastRoundNumber = messageRound;
+              if (details.agent) {
+                lastRoundByAgent.set(details.agent, messageRound);
+              }
+            }
+            const metaLine = formatEventMetaLine(details);
+            const eventBadge = details.eventNumber != null
+              ? React.createElement('span', { className: 'timestamp-event', key: 'event' }, `Event #${details.eventNumber}`)
+              : null;
+            const topChildren = [
+              React.createElement('span', { className: 'timestamp-label', key: 'label' }, timeLabel),
+            ];
+            if (eventBadge) topChildren.push(eventBadge);
+            const timestampNode = React.createElement('div', { className: 'timeline-timestamp', key: 'ts' }, [
+              React.createElement('div', { className: 'timestamp-top', key: 'top' }, topChildren),
+              metaLine ? React.createElement('span', { className: 'timestamp-meta', key: 'meta' }, metaLine) : null,
+            ].filter(Boolean));
+            const agentLabel = details.agent || 'Unknown agent';
+            const messageText = details.message || entry.content || '(no message recorded)';
+            const agentColor = getAgentColor(agentLabel);
+            const messageNode = React.createElement('div', { className: 'timeline-entry', key: `tl-bb-${idx}` }, [
+              timestampNode,
+              React.createElement('div', { className: 'timeline-body', key: 'body' },
+                React.createElement('div', { className: 'timeline-message-line', key: 'msg' }, [
+                  React.createElement('span', { className: 'timeline-agent-label', key: 'agent', style: { color: agentColor } }, `${agentLabel}:`),
+                  React.createElement('span', { key: 'text' }, messageText),
+                ])
+              ),
+            ]);
+            pushNode(messageNode, entry.sortTs ?? entry.tsMs ?? Number.MAX_SAFE_INTEGER);
+          });
+
+          postMessageAgentQueues.forEach((queue) => {
+            queue.forEach((payload) => {
+              if (payload.consumed) return;
+              payload.consumed = true;
+              const resolvedRound = toFiniteNumber(payload.tool.round) ?? lastRoundNumber;
+              const node = renderToolNode(payload.tool, payload.timeLabel || '—', resolvedRound, `tl-tool-unmatched-${payload.order}`);
+              pushNode(node, payload.tsMs ?? Number.MAX_SAFE_INTEGER);
+            });
+          });
+
+          if (!timelineNodes.length) {
+            pushNode(React.createElement('em', { key: 'empty' }, 'No entries logged'), Number.MAX_SAFE_INTEGER);
+          }
+
+          timelineNodes.sort((a, b) => (a.sortTs - b.sortTs) || (a.order - b.order));
+          const renderedTimeline = timelineNodes.map((item, idx) => React.cloneElement(item.node, { key: item.node.key || `timeline-node-${idx}` }));
+          const rawBlock = React.createElement('pre', { className: 'log-content', key: `${activeName}-content` }, activeText || '(empty blackboard)');
+          const content = React.createElement(React.Fragment, null, [
+            React.createElement('div', { className: 'clean-blackboard-wrapper', key: 'clean-wrapper' }, [
+              React.createElement('div', { className: 'clean-blackboard-title', key: 'clean-title' }, 'Clean blackboard'),
+              ...renderedTimeline,
+            ]),
+            React.createElement('div', { className: 'raw-blackboard-wrapper', key: 'raw-wrapper' }, [
+              React.createElement('div', { className: 'raw-blackboard-title', key: 'raw-title' }, 'Raw blackboard'),
+              rawBlock,
+            ]),
+          ]);
           return { tabBar, content };
         };
 
@@ -471,12 +2235,12 @@
           return React.createElement('pre', { className: 'log-content' }, text);
         };
 
-        let additionalSticky = null;
+        let additionalToolbar = null;
         let bodyNode = null;
 
         if (activeTab === 'blackboards') {
           const { tabBar, content } = renderBlackboards();
-          additionalSticky = tabBar;
+          additionalToolbar = tabBar;
           bodyNode = content;
         } else {
           switch (activeTab) {
@@ -498,13 +2262,13 @@
           }
         }
 
-        const stickyChildren = [
+        const toolbarChildren = [
           React.createElement('div', { className: 'log-selectors', key: 'selectors' }, [
             React.createElement('label', { className: 'sort-label', key: 'env-label' }, [
               'Environment',
               React.createElement('select', {
                 value: selectedEnv,
-                onChange: (e) => setSelectedEnv(e.target.value),
+                onChange: (e) => handleEnvChange(e.target.value),
               },
                 [
                   React.createElement('option', { value: ALL_ENVS, key: ALL_ENVS }, 'All environments'),
@@ -515,13 +2279,13 @@
             React.createElement('label', { className: 'sort-label', key: 'run-label' }, [
               'Run',
               React.createElement('select', {
-                value: selectedRun ? runKey(selectedRun) : selectedRunKey,
-                onChange: (e) => setSelectedRunKey(e.target.value),
+                value: selectedRun ? runKey(selectedRun) : (selectedRunKey || ''),
+                onChange: (e) => onSelectRun && onSelectRun(e.target.value),
                 disabled: !runsForEnv.length,
               },
                 runsForEnv.map((run) =>
                   React.createElement('option', { value: runKey(run), key: runKey(run) },
-                    `${run.environment || 'Unknown environment'} · ${run.tag_model || 'Unknown model'} · seed ${run.seed} · ${run.run_timestamp || 'legacy'}`
+                    `${run.environment || 'Unknown environment'} · ${getModelLabel(run)} · seed ${run.seed} · ${run.run_timestamp || 'legacy'}`
                   )
                 )
               ),
@@ -530,17 +2294,52 @@
         ];
 
         if (selectedRun) {
-          stickyChildren.push(
+          const completion = getCompletionStats(selectedRun);
+          const completionLabel = formatCompletionLabel(completion);
+          const completionSummary = formatCompletionDisplay(completion);
+          const runDateLabel = formatRunDate(selectedRun.run_timestamp);
+          toolbarChildren.push(
             React.createElement('div', { className: 'log-header', key: 'meta' }, [
               React.createElement('div', { className: 'log-meta', key: 'meta-line' }, [
                 React.createElement('span', { key: 'env' }, [React.createElement('strong', { key: 's' }, 'Environment:'), ` ${selectedRun.environment || 'Unknown environment'}`]),
-                React.createElement('span', { key: 'model' }, [React.createElement('strong', { key: 's' }, 'Model:'), ` ${selectedRun.tag_model || 'Unknown model'}`]),
+                React.createElement('span', { key: 'model' }, [React.createElement('strong', { key: 's' }, 'Model:'), ` ${getModelLabel(selectedRun)}`]),
                 React.createElement('span', { key: 'seed' }, [React.createElement('strong', { key: 's' }, 'Seed:'), ` ${selectedRun.seed}`]),
                 React.createElement('span', { key: 'ts' }, [React.createElement('strong', { key: 's' }, 'Run:'), ` ${selectedRun.run_timestamp || 'legacy'}`]),
+                runDateLabel ? React.createElement('span', { key: 'date' }, [React.createElement('strong', { key: 's' }, 'Date:'), ` ${runDateLabel}`]) : null,
+                React.createElement('span', { key: 'success' },
+                  completionLabel === 'Unsuccessful'
+                    ? completionSummary
+                    : [React.createElement('strong', { key: 's' }, `${completionLabel}:`), ` ${completionSummary}`]
+                ),
               ]),
             ])
           );
-          stickyChildren.push(
+          if (selectedRun.note) {
+            toolbarChildren.push(
+              React.createElement('div', { className: 'note-pill', key: 'note-pill' }, [
+                React.createElement('strong', null, 'Note'),
+                React.createElement('span', null, selectedRun.note),
+              ])
+            );
+          }
+          const selectedTags = Array.isArray(selectedRun.tags) ? selectedRun.tags : [];
+          if (selectedTags.length) {
+            toolbarChildren.push(
+              React.createElement('div', { className: 'tag-list', key: 'tag-list' },
+                selectedTags.map((tag) =>
+                  React.createElement('span', {
+                    className: 'tag-badge',
+                    key: tag,
+                    style: {
+                      backgroundColor: getTagColor(tag),
+                      borderColor: getTagColor(tag),
+                    },
+                  }, tag)
+                )
+              )
+            );
+          }
+          toolbarChildren.push(
             React.createElement('div', { className: 'tab-bar', key: 'tabs' },
               logTabs.map((tab) =>
                 React.createElement('button', {
@@ -552,16 +2351,18 @@
             )
           );
         } else {
-          stickyChildren.push(React.createElement('p', { className: 'empty-log', key: 'meta-empty' }, 'Select a run to inspect logs.'));
+          toolbarChildren.push(React.createElement('p', { className: 'empty-log', key: 'meta-empty' }, 'Select a run to inspect logs.'));
         }
 
-        if (additionalSticky) {
-          stickyChildren.push(additionalSticky);
+        if (additionalToolbar) {
+          toolbarChildren.push(additionalToolbar);
         }
 
-        return React.createElement('div', { className: 'log-panel' }, [
-          React.createElement('div', { className: 'log-sticky', key: 'sticky' }, stickyChildren),
-          React.createElement('div', { className: 'log-body', key: 'body' }, bodyNode),
+        return React.createElement('div', { className: 'log-panel-wrap' }, [
+          React.createElement('div', { className: 'log-toolbar', key: 'toolbar' }, toolbarChildren),
+          React.createElement('div', { className: 'log-panel', key: 'panel' },
+            React.createElement('div', { className: 'log-body', key: 'body' }, bodyNode)
+          ),
         ]);
       };
 
@@ -571,6 +2372,25 @@
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState(null);
         const [sortMode, setSortMode] = useState('env-model');
+        const [theme, setTheme] = useState('light');
+        const [selectedRunKey, setSelectedRunKey] = useState('');
+
+        useEffect(() => {
+          if (typeof window === 'undefined') return;
+          const storedTheme = window.localStorage.getItem('terrarium-theme');
+          if (storedTheme === 'dark' || storedTheme === 'light') {
+            setTheme(storedTheme);
+          }
+        }, []);
+
+        useEffect(() => {
+          if (typeof document !== 'undefined') {
+            document.body.classList.toggle('dark-mode', theme === 'dark');
+          }
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('terrarium-theme', theme);
+          }
+        }, [theme]);
 
         useEffect(() => {
           fetch('dashboard_data.json')
@@ -592,6 +2412,25 @@
           () => sortRuns(((data && data.runs) || []), sortMode),
           [data, sortMode]
         );
+        useEffect(() => {
+          if (!sortedRuns.length) {
+            setSelectedRunKey('');
+            return;
+          }
+          setSelectedRunKey((current) => {
+            if (current && sortedRuns.some((run) => runKey(run) === current)) {
+              return current;
+            }
+            return runKey(sortedRuns[0]);
+          });
+        }, [sortedRuns]);
+        const handleRunSelect = useCallback((key) => {
+          const next = key || '';
+          setSelectedRunKey((current) => (current === next ? current : next));
+        }, []);
+        const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+        const themeButtonLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+        const themeButtonText = theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
 
         if (loading) {
           return React.createElement('main', null, 'Loading dashboard data...');
@@ -602,17 +2441,32 @@
           );
         }
         return React.createElement(React.Fragment, null, [
-          React.createElement('header', { key: 'hdr' }, [
-            React.createElement('div', { className: 'logo-wrap', key: 'logo' },
-              React.createElement('img', {
-                src: 'terrarium_logo_rounded.png',
-                alt: 'Terrarium logo',
-                className: 'logo-image',
-              })
-            ),
-            React.createElement('div', { className: 'meta' }, `Logs root: ${data.logs_root}`),
-          ]),
+          React.createElement('header', { key: 'hdr' },
+            React.createElement('div', { className: 'header-content' }, [
+              React.createElement('div', { className: 'header-info', key: 'header-info' }, [
+                React.createElement('div', { className: 'logo-wrap', key: 'logo' },
+                  React.createElement('img', {
+                    src: 'terrarium_logo_rounded.png',
+                    alt: 'Terrarium logo',
+                    className: 'logo-image',
+                  })
+                ),
+                React.createElement('div', { className: 'meta', key: 'meta' }, `Logs root: ${data.logs_root}`),
+              ]),
+              React.createElement('button', {
+                type: 'button',
+                className: 'theme-toggle-btn',
+                onClick: toggleTheme,
+                'aria-pressed': theme === 'dark',
+                title: themeButtonLabel,
+              }, themeButtonText),
+            ])
+          ),
           React.createElement('main', { key: 'main' }, [
+            React.createElement('section', { key: 'scatter' }, [
+              React.createElement('h2', null, 'Evaluation Metrics'),
+              React.createElement(EvaluationScatter, { runs: sortedRuns, onSelectRun: handleRunSelect }),
+            ]),
             React.createElement('section', { key: 'runs' }, [
               React.createElement('div', { className: 'filters' }, [
                 React.createElement('input', {
@@ -632,12 +2486,12 @@
                 ]),
               ]),
               React.createElement('h2', null, 'Runs'),
-              React.createElement(RunsGrid, { runs: sortedRuns, filter }),
+              React.createElement(RunsGrid, { runs: sortedRuns, filter, selectedRunKey, onSelectRun: handleRunSelect }),
             ]),
             React.createElement('section', { key: 'logs' }, [
               React.createElement('h2', null, 'Run Log Explorer'),
               React.createElement('p', { className: 'muted' }, 'Inspect the underlying blackboards, prompts, tool calls, and agent trajectories for any run.'),
-              React.createElement(RunLogExplorer, { runs: sortedRuns }),
+              React.createElement(RunLogExplorer, { runs: sortedRuns, selectedRunKey, onSelectRun: handleRunSelect }),
             ]),
           ])
         ]);

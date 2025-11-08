@@ -155,7 +155,8 @@ All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed
 - [ ] !! Implement vLLM client
 - [ ] ! Add multi-step negotiation environments (e.g., Trading)
 - [ ] ! Update the CoLLAB environments
-- [ ] Improve the Dashboard UI
+- [x] Improve the Dashboard UI
+- [ ] Add tests directory
 
 ## Paper Citation
 ```bibtex
