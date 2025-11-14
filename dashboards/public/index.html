@@ -176,9 +176,11 @@
         cursor: pointer;
       }
       .sortable-header {
-        display: inline-flex;
+        display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 6px;
+        width: 100%;
         background: none;
         border: none;
         color: inherit;
@@ -195,6 +197,8 @@
       .sort-indicator {
         font-size: 10px;
         color: var(--muted);
+        flex: 0 0 18px;
+        text-align: right;
       }
       .table-wrapper {
         width: 100%;
@@ -207,6 +211,7 @@
         width: 100%;
         min-width: 760px;
         border-collapse: collapse;
+        table-layout: fixed;
         font-size: 13px;
       }
       .runs-table thead th {
@@ -228,6 +233,8 @@
       }
       .runs-table td {
         vertical-align: top;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       .runs-table .run-main {
         font-weight: 600;
@@ -237,11 +244,6 @@
       .runs-table .run-meta {
         color: var(--muted);
         font-size: 12px;
-      }
-      .runs-table .event-summary {
-        font-size: 12px;
-        color: var(--muted);
-        line-height: 1.4;
       }
       .runs-table .tag-stack {
         display: flex;
@@ -294,6 +296,22 @@
       .filters select {
         background: var(--panel);
       }
+      .filter-toggle-btn {
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--pill-border);
+        background: var(--pill-bg);
+        color: var(--fg);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+      }
+      .filter-toggle-btn.active {
+        background: var(--pill-bg-active);
+        border-color: var(--pill-border-active);
+        transform: translateY(-1px);
+      }
       .stat-row {
         display: flex;
         gap: 8px;
@@ -321,6 +339,54 @@
         flex-wrap: wrap;
         gap: 10px;
         margin-bottom: 16px;
+      }
+      .chart-legend {
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .chart-legend-header {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .chart-legend-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .chart-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: var(--chip-bg);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+      }
+      .chart-legend-item:hover,
+      .chart-legend-item:focus-visible,
+      .chart-legend-item.active {
+        border-color: var(--pill-border-active);
+        transform: translateY(-1px);
+      }
+      .chart-legend-item:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--pill-border-active);
+      }
+      .chart-legend-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        border: 1px solid rgba(15, 23, 42, 0.15);
       }
       .chart-chip {
         display: inline-flex;
@@ -360,6 +426,17 @@
       }
       .note-pill strong {
         color: var(--muted);
+      }
+      .run-note {
+        display: block;
+        margin-top: 8px;
+        font-size: 13px;
+        color: var(--fg);
+        white-space: pre-wrap;
+      }
+      .run-note strong {
+        color: var(--muted);
+        margin-right: 6px;
       }
       .tag-list {
         display: flex;
@@ -784,6 +861,19 @@
         return 'Unknown model';
       };
 
+      const getLatestGlobalScore = (run) => {
+        if (!run || !Array.isArray(run.scores)) {
+          return null;
+        }
+        for (let idx = run.scores.length - 1; idx >= 0; idx -= 1) {
+          const entry = run.scores[idx];
+          if (entry && typeof entry.global_score === 'number' && !Number.isNaN(entry.global_score)) {
+            return entry.global_score;
+          }
+        }
+        return null;
+      };
+
       const hashStringToInt = (value) => {
         let hash = 0;
         const text = value || '';
@@ -807,9 +897,99 @@
         const hue = hashStringToInt(tag || '') % 360;
         return `hsl(${hue}, 70%, 45%)`;
       };
+      const getColorToken = (value) => {
+        if (value === null || value === undefined || value === '') {
+          return 'unknown';
+        }
+        return String(value);
+      };
+      const getCategoryColor = (value) => getTagColor(getColorToken(value));
+      const hexToRgb = (hex) => {
+        if (typeof hex !== 'string') return null;
+        let normalized = hex.replace('#', '');
+        if (normalized.length === 3) {
+          normalized = normalized.split('').map((char) => char + char).join('');
+        }
+        if (normalized.length !== 6) return null;
+        const bigint = Number.parseInt(normalized, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b };
+      };
+      const dimColor = (color, alpha = 0.2) => {
+        if (!color) return `rgba(82, 111, 255, ${alpha})`;
+        if (color.startsWith('hsl(')) {
+          return color.replace('hsl', 'hsla').replace(')', `, ${alpha})`);
+        }
+        if (color.startsWith('hsla(')) {
+          return color.replace(/hsla\(([^,]+,[^,]+,[^,]+),[^)]+\)/, `hsla($1, ${alpha})`);
+        }
+        if (color.startsWith('#')) {
+          const rgb = hexToRgb(color);
+          if (rgb) {
+            return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+          }
+        }
+        if (color.startsWith('rgb(')) {
+          return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+        }
+        return `rgba(82, 111, 255, ${alpha})`;
+      };
+      const splitTagSegments = (text) => {
+        if (!text) return [];
+        return text
+          .split(/[,|]/)
+          .flatMap((segment) => segment.split('/'))
+          .map((segment) => segment.replace(/_/g, ' ').trim())
+          .filter(Boolean);
+      };
+      const coerceTagList = (value) => {
+        if (value === null || value === undefined) return [];
+        if (Array.isArray(value)) {
+          return value.flatMap(coerceTagList);
+        }
+        if (typeof value === 'object') {
+          const candidate = value.label || value.name || value.tag || value.text || value.value;
+          return candidate ? coerceTagList(candidate) : [];
+        }
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (!trimmed) return [];
+          if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) {
+                return parsed.flatMap(coerceTagList);
+              }
+            } catch (err) {
+              // fall through to plain string handling
+            }
+          }
+          return splitTagSegments(trimmed);
+        }
+        return splitTagSegments(String(value));
+      };
+      const dedupeTags = (list) => {
+        const seen = new Set();
+        const result = [];
+        list.forEach((tag) => {
+          const normalized = (tag || '').trim();
+          if (!normalized) return;
+          const key = normalized.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          result.push(normalized);
+        });
+        return result;
+      };
+      const getRunTags = (run) => {
+        if (!run) return [];
+        return dedupeTags(coerceTagList(run.tags));
+      };
       const getPrimaryTag = (run) => {
         if (!run) return 'Untagged';
-        const tags = Array.isArray(run.tags) ? run.tags.map((tag) => String(tag).trim()).filter(Boolean) : [];
+        const tags = getRunTags(run);
         return tags.length ? tags[0] : 'Untagged';
       };
 
@@ -1156,6 +1336,21 @@
         return getFallbackSuccessRate(run);
       };
 
+      const isRunSuccessful = (run) => {
+        if (!run) return false;
+        const completion = getCompletionStats(run);
+        if (completion && Number.isFinite(completion.total) && completion.total > 0) {
+          if (Number.isFinite(completion.completed)) {
+            return completion.completed >= completion.total;
+          }
+          if (!Number.isNaN(completion.rate) && completion.rate !== null) {
+            return completion.rate >= 99.9;
+          }
+        }
+        const fallbackRate = getSuccessRate(run);
+        return fallbackRate !== null && !Number.isNaN(fallbackRate) && fallbackRate >= 99.9;
+      };
+
       const formatSuccessRateText = (value) => {
         if (value === null || value === undefined || Number.isNaN(value)) return 'n/a';
         return `${value.toFixed(1)}%`;
@@ -1165,8 +1360,14 @@
         if (!completion || !Number.isFinite(completion.total) || completion.total <= 0) {
           return 'Unsuccessful ❌';
         }
-        const completed = Number.isFinite(completion.completed) ? completion.completed : (completion.completed ?? 0);
-        return `✅ ${completed}/${completion.total} (${formatSuccessRateText(completion.rate)})`;
+        const completed = Number.isFinite(completion.completed)
+          ? completion.completed
+          : (Number.isFinite(Number(completion.completed)) ? Number(completion.completed) : 0);
+        const total = completion.total;
+        const isComplete = completed >= total
+          || (Number.isFinite(completion.rate) && completion.rate >= 99.9);
+        const icon = isComplete ? '✅' : '❌';
+        return `${icon} ${completed}/${total} (${formatSuccessRateText(completion.rate)})`;
       };
 
       const formatCompletionLabel = (completion) => {
@@ -1311,11 +1512,8 @@
           value: 'global_score',
           label: 'Global Score',
           accessor: (run) => {
-            const scores = Array.isArray(run.scores)
-              ? run.scores.filter((entry) => typeof entry.global_score === 'number')
-              : [];
-            if (!scores.length) return null;
-            return Number(scores[scores.length - 1].global_score);
+            const score = getLatestGlobalScore(run);
+            return score === null ? null : Number(score);
           },
           formatter: (value) => `${value}`,
         },
@@ -1326,12 +1524,38 @@
           formatter: (value) => `${value.toFixed(1)}%`,
           enforceZero: true,
         },
+      ];
+
+      const COLOR_OPTIONS = [
         {
-          value: 'total_events',
-          label: 'Total Event Count',
-          accessor: (run) => getTotalEvents(run),
-          formatter: (value) => `${value} events`,
-          enforceZero: true,
+          value: 'none',
+          label: 'None',
+          accessor: null,
+        },
+        {
+          value: 'model',
+          label: 'Model',
+          accessor: (run) => getModelLabel(run),
+        },
+        {
+          value: 'environment',
+          label: 'Environment',
+          accessor: (run) => run.environment || 'Unknown environment',
+        },
+        {
+          value: 'primary_tag',
+          label: 'Primary Tag',
+          accessor: (run) => getPrimaryTag(run),
+        },
+        {
+          value: 'run_timestamp',
+          label: 'Run Timestamp',
+          accessor: (run) => run.run_timestamp || 'legacy',
+        },
+        {
+          value: 'seed',
+          label: 'Seed',
+          accessor: (run) => run.seed ?? '—',
         },
       ];
 
@@ -1391,7 +1615,45 @@
         },
       ];
 
-      const buildScatterPayload = (runs, axisDef, metricDef) => {
+      const resolveRunColor = (run, colorDef) => {
+        if (!colorDef || colorDef.value === 'none') {
+          return getRunColor(run);
+        }
+        const accessor = typeof colorDef.accessor === 'function' ? colorDef.accessor : null;
+        const rawValue = accessor ? accessor(run) : null;
+        return getCategoryColor(rawValue);
+      };
+
+      const getPointStyling = (points, highlightLabel) => {
+        const background = [];
+        const border = [];
+        const radius = [];
+        const hoverRadius = [];
+        points.forEach((point) => {
+          const baseColor = point.color || '#526fff';
+          const label = (point.meta && point.meta.colorValue) || 'Unknown';
+          const matches = !highlightLabel || label === highlightLabel;
+          const colorValue = highlightLabel
+            ? (matches ? baseColor : dimColor(baseColor, 0.18))
+            : baseColor;
+          const borderValue = highlightLabel
+            ? (matches ? '#ffffff' : 'rgba(255, 255, 255, 0.45)')
+            : '#ffffff';
+          const radiusValue = highlightLabel
+            ? (matches ? 7 : 4)
+            : 6;
+          const hoverValue = highlightLabel
+            ? (matches ? 9 : 5)
+            : 8;
+          background.push(colorValue);
+          border.push(borderValue);
+          radius.push(radiusValue);
+          hoverRadius.push(hoverValue);
+        });
+        return { background, border, radius, hoverRadius };
+      };
+
+      const buildScatterPayload = (runs, axisDef, metricDef, colorDef) => {
         const points = [];
         const categories = [];
         const categorySet = new Set();
@@ -1407,7 +1669,8 @@
             return;
           }
           const completion = getCompletionStats(run);
-          const color = getRunColor(run);
+          const color = resolveRunColor(run, colorDef);
+          const globalScore = getLatestGlobalScore(run);
           if (axisDef.type === 'category' && !categorySet.has(axisRaw)) {
             categorySet.add(axisRaw);
             categories.push(axisRaw);
@@ -1431,7 +1694,12 @@
               experimentName: deriveExperimentName(run),
               completion,
               note: run.note || '',
-              tags: Array.isArray(run.tags) ? run.tags : [],
+              tags: getRunTags(run),
+              globalScore,
+              colorValue: colorDef && colorDef.value !== 'none'
+                ? (colorDef.accessor ? colorDef.accessor(run) : null)
+                : null,
+              colorMode: colorDef ? colorDef.label : 'None',
             },
           });
         });
@@ -1442,6 +1710,8 @@
       const EvaluationScatter = ({ runs, onSelectRun }) => {
         const [metricField, setMetricField] = useState(METRIC_OPTIONS[0].value);
         const [xAxisField, setXAxisField] = useState(X_AXIS_OPTIONS[0].value);
+        const [colorField, setColorField] = useState(COLOR_OPTIONS[0].value);
+        const [legendFocus, setLegendFocus] = useState(null);
         const canvasRef = useRef(null);
         const chartRef = useRef(null);
 
@@ -1453,11 +1723,36 @@
           () => X_AXIS_OPTIONS.find((opt) => opt.value === xAxisField) || X_AXIS_OPTIONS[0],
           [xAxisField]
         );
+        const colorDef = useMemo(
+          () => COLOR_OPTIONS.find((opt) => opt.value === colorField) || COLOR_OPTIONS[0],
+          [colorField]
+        );
 
         const scatterPayload = useMemo(
-          () => buildScatterPayload(runs, axisDef, metricDef),
-          [runs, axisDef, metricDef]
+          () => buildScatterPayload(runs, axisDef, metricDef, colorDef),
+          [runs, axisDef, metricDef, colorDef]
         );
+
+        useEffect(() => {
+          if (!colorDef || colorDef.value === 'none') {
+            setLegendFocus(null);
+          }
+        }, [colorDef]);
+
+        const colorLegend = useMemo(() => {
+          if (!colorDef || colorDef.value === 'none') {
+            return [];
+          }
+          const unique = new Map();
+          scatterPayload.points.forEach((point) => {
+            const label = (point.meta && point.meta.colorValue) || 'Unknown';
+            if (!unique.has(label)) {
+              unique.set(label, point.color || '#526fff');
+            }
+          });
+          const entries = Array.from(unique.entries()).map(([label, color]) => ({ label, color }));
+          return entries.slice(0, 36);
+        }, [scatterPayload, colorDef]);
 
         const tooltipElRef = useRef(null);
         const [gridColor, setGridColor] = useState(() => getComputedStyle(document.body).getPropertyValue('--chart-grid-color')?.trim() || 'rgba(31, 36, 48, 0.12)');
@@ -1500,7 +1795,7 @@
             chartRef.current.destroy();
           }
 
-          const pointColors = scatterPayload.points.map((point) => point.color || '#526fff');
+          const styling = getPointStyling(scatterPayload.points, null);
 
           const ctx = canvasRef.current.getContext('2d');
           const chart = new window.Chart(ctx, {
@@ -1510,12 +1805,12 @@
                 {
                   label: metricDef.label,
                   data: scatterPayload.points,
-                  backgroundColor: pointColors,
-                  borderColor: pointColors,
-                  pointBackgroundColor: pointColors,
-                  pointBorderColor: '#ffffff',
-                  pointRadius: 6,
-                  pointHoverRadius: 8,
+                  backgroundColor: styling.background,
+                  borderColor: styling.background,
+                  pointBackgroundColor: styling.background,
+                  pointBorderColor: styling.border,
+                  pointRadius: styling.radius,
+                  pointHoverRadius: styling.hoverRadius,
                   pointHitRadius: 12,
                   pointBorderWidth: 2,
                   pointHoverBorderWidth: 2,
@@ -1526,6 +1821,15 @@
               responsive: true,
               maintainAspectRatio: false,
               layout: { padding: 8 },
+              interaction: {
+                mode: 'nearest',
+                intersect: true,
+                axis: 'xy',
+              },
+              hover: {
+                mode: 'nearest',
+                intersect: true,
+              },
               scales: {
                 x: axisDef.type === 'category'
                   ? {
@@ -1558,6 +1862,8 @@
               plugins: {
                 legend: { display: false },
                 tooltip: {
+                  mode: 'nearest',
+                  intersect: true,
                   enabled: false,
                   external: (context) => {
                     const tooltipModel = context.tooltip;
@@ -1572,9 +1878,13 @@
                     const completion = meta.completion || {};
                     const completionLabel = formatCompletionLabel(completion);
                     const completionText = formatCompletionDisplay(completion);
+                    const completionIcon = completionLabel === 'Unsuccessful' ? '❌' : '✅';
                     const completionParagraph = completionLabel === 'Unsuccessful'
-                      ? `<p><strong>${completionText}</strong></p>`
-                      : `<p><strong>${completionLabel}:</strong> ${completionText}</p>`;
+                      ? `<p>${completionIcon} <strong>${completionText}</strong></p>`
+                      : `<p>${completionIcon} <strong>${completionLabel}:</strong> ${completionText}</p>`;
+                    const globalScoreDisplay = Number.isFinite(meta.globalScore)
+                      ? meta.globalScore
+                      : '—';
 
                     const tagBadges = (meta.tags || []).map((tag) => {
                       const color = getTagColor(tag);
@@ -1583,14 +1893,16 @@
 
                     tooltipEl.innerHTML = `
                       <h4>${meta.experimentName || 'Experiment'}</h4>
-                      <p><strong>${metricDef.label}:</strong> ${meta.metricLabel || dataPoint.formattedValue}</p>
-                      <p><strong>${axisDef.label}:</strong> ${meta.axisLabel || dataPoint.raw.x}</p>
-                      <p><strong>Environment:</strong> ${meta.environment || 'Unknown environment'}</p>
-                      <p><strong>Model:</strong> ${meta.model || 'Unknown model'}</p>
-                      <p><strong>Seed:</strong> ${meta.seed || '–'}</p>
-                      <p><strong>Run:</strong> ${meta.timestamp || 'legacy'}</p>
+                      <p>📊 <strong>Global Score:</strong> ${globalScoreDisplay}</p>
+                      <p>🌍 <strong>Environment:</strong> ${meta.environment || 'Unknown environment'}</p>
+                      <p>🤖 <strong>Model:</strong> ${meta.model || 'Unknown model'}</p>
+                      <p>🌱 <strong>Seed:</strong> ${meta.seed || '–'}</p>
+                      <p>⏱️ <strong>Timestamp:</strong> ${meta.timestamp || 'legacy'}</p>
                       ${completionParagraph}
-                      ${meta.note ? `<p><strong>Note:</strong> ${meta.note}</p>` : ''}
+                      ${(colorDef && colorDef.value !== 'none' && meta.colorValue)
+                        ? `<p>🎨 <strong>Color (${colorDef.label}):</strong> ${meta.colorValue}</p>`
+                        : ''}
+                      ${meta.note ? `<p>📝 <strong>Note:</strong> ${meta.note}</p>` : ''}
                       ${tagBadges ? `<div class="tag-list">${tagBadges}</div>` : ''}
                     `;
 
@@ -1629,7 +1941,23 @@
               tooltipElRef.current = null;
             }
           };
-        }, [scatterPayload, axisDef, metricDef, gridColor, onSelectRun]);
+        }, [scatterPayload, axisDef, metricDef, colorDef, gridColor, onSelectRun]);
+
+        useEffect(() => {
+          const chart = chartRef.current;
+          if (!chart) return;
+          if (!chart.data || !chart.data.datasets || !chart.data.datasets.length) return;
+          const highlightLabel = (colorDef && colorDef.value !== 'none' && legendFocus) ? legendFocus : null;
+          const styling = getPointStyling(scatterPayload.points, highlightLabel);
+          const dataset = chart.data.datasets[0];
+          dataset.backgroundColor = styling.background;
+          dataset.borderColor = styling.background;
+          dataset.pointBackgroundColor = styling.background;
+          dataset.pointBorderColor = styling.border;
+          dataset.pointRadius = styling.radius;
+          dataset.pointHoverRadius = styling.hoverRadius;
+          chart.update('none');
+        }, [legendFocus, scatterPayload, colorDef]);
 
         const plottedRuns = scatterPayload.points.length;
         const totalRuns = runs.length;
@@ -1647,18 +1975,29 @@
                 )
               ),
             ]),
-            React.createElement('label', { className: 'chart-chip', key: 'x-chip' }, [
-              'X axis',
-              React.createElement('select', {
-                value: xAxisField,
-                onChange: (e) => setXAxisField(e.target.value),
-              },
-                X_AXIS_OPTIONS.map((option) =>
-                  React.createElement('option', { value: option.value, key: option.value }, option.label)
-                )
-              ),
-            ]),
+          React.createElement('label', { className: 'chart-chip', key: 'x-chip' }, [
+            'X axis',
+            React.createElement('select', {
+              value: xAxisField,
+              onChange: (e) => setXAxisField(e.target.value),
+            },
+              X_AXIS_OPTIONS.map((option) =>
+                React.createElement('option', { value: option.value, key: option.value }, option.label)
+              )
+            ),
           ]),
+          React.createElement('label', { className: 'chart-chip', key: 'color-chip' }, [
+            'Color',
+            React.createElement('select', {
+              value: colorField,
+              onChange: (e) => setColorField(e.target.value),
+            },
+              COLOR_OPTIONS.map((option) =>
+                React.createElement('option', { value: option.value, key: option.value }, option.label)
+              )
+            ),
+          ]),
+        ]),
           scatterPayload.points.length
             ? React.createElement('div', { className: 'chart-surface', key: 'chart-surface' },
                 React.createElement('canvas', { ref: canvasRef, height: 360 })
@@ -1667,6 +2006,31 @@
           React.createElement('p', { className: 'chart-note', key: 'chart-note' },
             `${plottedRuns} of ${totalRuns} runs plotted — hover any point to inspect metadata. Click a point to open that run in the Log Explorer.`
           ),
+          colorLegend.length
+            ? React.createElement('div', { className: 'chart-legend', key: 'chart-legend' }, [
+                React.createElement('span', { className: 'chart-legend-header', key: 'legend-label' }, `Color scale: ${colorDef.label}`),
+                React.createElement('div', { className: 'chart-legend-items', key: 'legend-items' },
+                  colorLegend.map((entry) => {
+                    const isActive = legendFocus === entry.label;
+                    return React.createElement('span', {
+                      className: `chart-legend-item${isActive ? ' active' : ''}`,
+                      key: entry.label,
+                      tabIndex: 0,
+                      onMouseEnter: () => setLegendFocus(entry.label),
+                      onMouseLeave: () => setLegendFocus(null),
+                      onFocus: () => setLegendFocus(entry.label),
+                      onBlur: () => setLegendFocus(null),
+                    }, [
+                      React.createElement('span', {
+                        className: 'chart-legend-swatch',
+                        style: { backgroundColor: entry.color },
+                      }),
+                      React.createElement('span', null, entry.label),
+                    ]);
+                  })
+                ),
+              ])
+            : null,
         ]);
       };
 
@@ -1685,8 +2049,6 @@
             const bTotal = Number.isFinite(bStats.total) ? bStats.total : 0;
             return compareNumbers(aTotal, bTotal);
           }
-          case 'events':
-            return compareNumbers(getTotalEvents(a) || 0, getTotalEvents(b) || 0);
           case 'tags': {
             const aText = `${(Array.isArray(a.tags) ? a.tags.join(' ') : '')} ${a.note || ''}`.trim();
             const bText = `${(Array.isArray(b.tags) ? b.tags.join(' ') : '')} ${b.note || ''}`.trim();
@@ -1701,22 +2063,17 @@
         }
       };
 
-      const RunsGrid = ({ runs, filter, selectedRunKey, onSelectRun }) => {
+      const RunsGrid = ({
+        runs,
+        filter,
+        selectedRunKey,
+        onSelectRun,
+        pageSize,
+        currentPage,
+        onPageChange,
+        onPageSizeChange,
+      }) => {
         const [columnSort, setColumnSort] = useState({ column: 'experiment', direction: 'asc' });
-
-        const formatEventSummary = (counts) => {
-          const entries = Object.entries(counts || {});
-          if (!entries.length) {
-            return 'No events recorded.';
-          }
-          return entries.map(([eventType, stats]) => {
-            const success = stats && Number.isFinite(stats.success) ? stats.success : 0;
-            const failure = stats && Number.isFinite(stats.failure) ? stats.failure : 0;
-            const total = success + failure;
-            const rate = total ? `${((success / total) * 100).toFixed(1)}%` : '0.0%';
-            return `${eventType}: ${success}/${total || 0} (${rate})`;
-          }).join(' · ');
-        };
 
         const filtered = useMemo(() => {
           if (!filter) return runs;
@@ -1729,7 +2086,7 @@
               run.run_timestamp || '',
               run.log_dir || '',
               run.note || '',
-              Array.isArray(run.tags) ? run.tags.join(' ') : '',
+              getRunTags(run).join(' '),
               JSON.stringify(run.event_counts || {}),
             ].join(' ').toLowerCase();
             return haystack.includes(needle);
@@ -1774,23 +2131,59 @@
           return React.createElement('p', { className: 'muted' }, 'No runs match the current filter.');
         }
 
+        const totalFiltered = sortedRows.length;
+        const totalPages = Math.max(1, Math.ceil(Math.max(totalFiltered, 1) / pageSize));
+
+        useEffect(() => {
+          if (!onPageChange) return;
+          if (currentPage > totalPages) {
+            onPageChange(totalPages);
+          } else if (currentPage < 1) {
+            onPageChange(1);
+          }
+        }, [currentPage, totalPages, onPageChange]);
+
+        const clampedPage = Math.min(Math.max(currentPage, 1), totalPages);
+        const startIndex = (clampedPage - 1) * pageSize;
+        const pageRows = sortedRows.slice(startIndex, startIndex + pageSize);
+
         const columnDefs = [
-          { key: 'experiment', label: 'Experiment' },
-          { key: 'model', label: 'Model' },
-          { key: 'completion', label: 'Completion' },
-          { key: 'events', label: 'Events' },
-          { key: 'tags', label: 'Tags / Notes' },
+          { key: 'experiment', label: 'Experiment', width: '30%' },
+          { key: 'model', label: 'Model', width: '25%' },
+          { key: 'completion', label: 'Completion', width: '20%' },
+          { key: 'tags', label: 'Tags / Notes', width: '25%' },
         ];
 
-        return React.createElement('div', { className: 'table-wrapper' },
-          React.createElement('table', { className: 'runs-table' }, [
+        const changePage = (target) => {
+          if (!onPageChange) return;
+          const clamped = Math.min(Math.max(target, 1), totalPages);
+          onPageChange(clamped);
+        };
+
+        const pageSizeOptions = [10, 20, 50, 100];
+
+        return React.createElement(React.Fragment, null,
+          React.createElement('div', { className: 'table-wrapper' },
+            React.createElement('table', { className: 'runs-table' }, [
+            React.createElement('colgroup', { key: 'colgroup' },
+              columnDefs.map((column) => (
+                React.createElement('col', {
+                  key: `col-${column.key}`,
+                  style: column.width ? { width: column.width } : undefined,
+                })
+              ))
+            ),
             React.createElement('thead', { key: 'thead' },
               React.createElement('tr', null,
                 columnDefs.map((column) => {
                   const ariaSort = columnSort.column === column.key
                     ? (columnSort.direction === 'asc' ? 'ascending' : 'descending')
                     : 'none';
-                  return React.createElement('th', { key: column.key, 'aria-sort': ariaSort },
+                  const thProps = { key: column.key, 'aria-sort': ariaSort };
+                  if (column.width) {
+                    thProps.style = { width: column.width };
+                  }
+                  return React.createElement('th', thProps,
                     React.createElement('button', {
                       type: 'button',
                       className: 'sortable-header',
@@ -1804,11 +2197,11 @@
               )
             ),
             React.createElement('tbody', { key: 'tbody' },
-              sortedRows.map((run) => {
+              pageRows.map((run) => {
                 const completion = getCompletionStats(run);
                 const completionLabel = formatCompletionLabel(completion);
                 const completionLine = formatCompletionDisplay(completion);
-                const tags = Array.isArray(run.tags) ? run.tags : [];
+                const tags = getRunTags(run);
                 const key = runKey(run);
                 const isSelected = selectedRunKey && key === selectedRunKey;
                 return React.createElement('tr', {
@@ -1839,9 +2232,6 @@
                       )
                     )
                   ),
-                  React.createElement('td', { key: 'events' },
-                    React.createElement('span', { className: 'event-summary' }, formatEventSummary(run.event_counts))
-                  ),
                   React.createElement('td', { key: 'tags' },
                     tags.length || run.note
                       ? React.createElement('div', { className: 'tag-stack' }, [
@@ -1860,8 +2250,8 @@
                               )
                             : null,
                           run.note
-                            ? React.createElement('div', { className: 'note-pill' }, [
-                                React.createElement('strong', null, 'Note'),
+                            ? React.createElement('div', { className: 'run-note' }, [
+                                React.createElement('strong', null, 'Note:'),
                                 React.createElement('span', null, run.note),
                               ])
                             : null,
@@ -1871,6 +2261,48 @@
                 ]);
               })
             )
+          ])),
+          React.createElement('div', { className: 'stat-row', style: { justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' } }, [
+            React.createElement('div', { key: 'pager-left', className: 'stat-row', style: { gap: '6px', flexWrap: 'wrap' } }, [
+              React.createElement('button', {
+                type: 'button',
+                className: `filter-toggle-btn ${clampedPage === 1 ? '' : 'active'}`,
+                onClick: () => changePage(1),
+                disabled: clampedPage === 1,
+              }, '⏮ First'),
+              React.createElement('button', {
+                type: 'button',
+                className: `filter-toggle-btn ${clampedPage === 1 ? '' : 'active'}`,
+                onClick: () => changePage(clampedPage - 1),
+                disabled: clampedPage === 1,
+              }, '◀ Previous'),
+              React.createElement('span', { className: 'muted', style: { padding: '6px 8px' } }, `Page ${clampedPage} of ${totalPages}`),
+              React.createElement('button', {
+                type: 'button',
+                className: `filter-toggle-btn ${clampedPage >= totalPages ? '' : 'active'}`,
+                onClick: () => changePage(clampedPage + 1),
+                disabled: clampedPage >= totalPages,
+              }, 'Next ▶'),
+              React.createElement('button', {
+                type: 'button',
+                className: `filter-toggle-btn ${clampedPage >= totalPages ? '' : 'active'}`,
+                onClick: () => changePage(totalPages),
+                disabled: clampedPage >= totalPages,
+              }, 'Last ⏭'),
+            ]),
+            React.createElement('div', { key: 'pager-right', className: 'stat-row', style: { gap: '6px', alignItems: 'center' } }, [
+              React.createElement('label', { className: 'muted', key: 'label' }, 'Runs per page:'),
+              React.createElement('select', {
+                key: 'page-size-select',
+                value: pageSize,
+                onChange: (e) => onPageSizeChange && onPageSizeChange(Number(e.target.value)),
+              },
+                pageSizeOptions.map((size) => (
+                  React.createElement('option', { value: size, key: `size-${size}` }, size)
+                ))
+              ),
+              React.createElement('span', { className: 'muted', key: 'total-runs' }, `${totalFiltered} run${totalFiltered === 1 ? '' : 's'} total`),
+            ]),
           ])
         );
       };
@@ -2374,6 +2806,9 @@
         const [sortMode, setSortMode] = useState('env-model');
         const [theme, setTheme] = useState('light');
         const [selectedRunKey, setSelectedRunKey] = useState('');
+        const [showOnlySuccessful, setShowOnlySuccessful] = useState(false);
+        const [pageSize, setPageSize] = useState(10);
+        const [currentPage, setCurrentPage] = useState(1);
 
         useEffect(() => {
           if (typeof window === 'undefined') return;
@@ -2412,18 +2847,36 @@
           () => sortRuns(((data && data.runs) || []), sortMode),
           [data, sortMode]
         );
+
+        const visibleRuns = useMemo(
+          () => (showOnlySuccessful ? sortedRuns.filter((run) => isRunSuccessful(run)) : sortedRuns),
+          [sortedRuns, showOnlySuccessful]
+        );
+
         useEffect(() => {
-          if (!sortedRuns.length) {
+          setCurrentPage(1);
+        }, [filter, showOnlySuccessful, sortMode]);
+
+        useEffect(() => {
+          const totalPages = Math.max(1, Math.ceil(Math.max(visibleRuns.length, 1) / pageSize));
+          if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+          } else if (currentPage < 1) {
+            setCurrentPage(1);
+          }
+        }, [visibleRuns, pageSize, currentPage]);
+        useEffect(() => {
+          if (!visibleRuns.length) {
             setSelectedRunKey('');
             return;
           }
           setSelectedRunKey((current) => {
-            if (current && sortedRuns.some((run) => runKey(run) === current)) {
+            if (current && visibleRuns.some((run) => runKey(run) === current)) {
               return current;
             }
-            return runKey(sortedRuns[0]);
+            return runKey(visibleRuns[0]);
           });
-        }, [sortedRuns]);
+        }, [visibleRuns]);
         const handleRunSelect = useCallback((key) => {
           const next = key || '';
           setSelectedRunKey((current) => (current === next ? current : next));
@@ -2431,6 +2884,14 @@
         const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
         const themeButtonLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
         const themeButtonText = theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+        const toggleSuccessfulFilter = () => setShowOnlySuccessful((prev) => !prev);
+        const handlePageChange = useCallback((page) => {
+          setCurrentPage(page);
+        }, []);
+        const handlePageSizeChange = useCallback((size) => {
+          setPageSize(size);
+          setCurrentPage(1);
+        }, []);
 
         if (loading) {
           return React.createElement('main', null, 'Loading dashboard data...');
@@ -2465,7 +2926,7 @@
           React.createElement('main', { key: 'main' }, [
             React.createElement('section', { key: 'scatter' }, [
               React.createElement('h2', null, 'Evaluation Metrics'),
-              React.createElement(EvaluationScatter, { runs: sortedRuns, onSelectRun: handleRunSelect }),
+              React.createElement(EvaluationScatter, { runs: visibleRuns, onSelectRun: handleRunSelect }),
             ]),
             React.createElement('section', { key: 'runs' }, [
               React.createElement('div', { className: 'filters' }, [
@@ -2484,14 +2945,31 @@
                   React.createElement('option', { value: 'model-env', key: 'model-env' }, 'Sort: Model → Environment'),
                   React.createElement('option', { value: 'timestamp-desc', key: 'timestamp-desc' }, 'Sort: Newest Run First'),
                 ]),
+                React.createElement('button', {
+                  type: 'button',
+                  key: 'successful-toggle',
+                  className: `filter-toggle-btn ${showOnlySuccessful ? 'active' : ''}`,
+                  onClick: toggleSuccessfulFilter,
+                }, showOnlySuccessful
+                  ? `Showing only successful runs (${visibleRuns.length}/${sortedRuns.length})`
+                  : 'Hide unsuccessful runs'),
               ]),
               React.createElement('h2', null, 'Runs'),
-              React.createElement(RunsGrid, { runs: sortedRuns, filter, selectedRunKey, onSelectRun: handleRunSelect }),
+              React.createElement(RunsGrid, {
+                runs: visibleRuns,
+                filter,
+                selectedRunKey,
+                onSelectRun: handleRunSelect,
+                pageSize,
+                currentPage,
+                onPageChange: handlePageChange,
+                onPageSizeChange: handlePageSizeChange,
+              }),
             ]),
             React.createElement('section', { key: 'logs' }, [
               React.createElement('h2', null, 'Run Log Explorer'),
               React.createElement('p', { className: 'muted' }, 'Inspect the underlying blackboards, prompts, tool calls, and agent trajectories for any run.'),
-              React.createElement(RunLogExplorer, { runs: sortedRuns, selectedRunKey, onSelectRun: handleRunSelect }),
+              React.createElement(RunLogExplorer, { runs: visibleRuns, selectedRunKey, onSelectRun: handleRunSelect }),
             ]),
           ])
         ]);
