@@ -115,7 +115,7 @@
         height: 52px;
         width: auto;
         border-radius: 12px;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+        box-shadow: none;
       }
       .theme-toggle-btn {
         position: absolute;
@@ -2049,10 +2049,20 @@
             const bTotal = Number.isFinite(bStats.total) ? bStats.total : 0;
             return compareNumbers(aTotal, bTotal);
           }
+          case 'date': {
+            const aMs = parseTimestampToMs(a.run_timestamp);
+            const bMs = parseTimestampToMs(b.run_timestamp);
+            const msCompare = compareNumbers(aMs || 0, bMs || 0);
+            if (msCompare !== 0) return msCompare;
+            return compareStrings(a.run_timestamp || '', b.run_timestamp || '');
+          }
           case 'tags': {
-            const aText = `${(Array.isArray(a.tags) ? a.tags.join(' ') : '')} ${a.note || ''}`.trim();
-            const bText = `${(Array.isArray(b.tags) ? b.tags.join(' ') : '')} ${b.note || ''}`.trim();
+            const aText = Array.isArray(a.tags) ? a.tags.join(' ') : (a.tags || '');
+            const bText = Array.isArray(b.tags) ? b.tags.join(' ') : (b.tags || '');
             return compareStrings(aText, bText);
+          }
+          case 'notes': {
+            return compareStrings(a.note || '', b.note || '');
           }
           case 'experiment':
           default:
@@ -2148,11 +2158,23 @@
         const pageRows = sortedRows.slice(startIndex, startIndex + pageSize);
 
         const columnDefs = [
-          { key: 'experiment', label: 'Experiment', width: '30%' },
-          { key: 'model', label: 'Model', width: '25%' },
-          { key: 'completion', label: 'Completion', width: '20%' },
-          { key: 'tags', label: 'Tags / Notes', width: '25%' },
+          { key: 'experiment', label: 'Experiment', width: '26%' },
+          { key: 'model', label: 'Model', width: '23%' },
+          { key: 'completion', label: 'Completion', width: '17%' },
+          { key: 'date', label: 'Run Date', width: '14%' },
+          { key: 'tags', label: 'Tags', width: '10%' },
+          { key: 'notes', label: 'Notes', width: '10%' },
         ];
+        const formatRunDateCell = (run) => {
+          if (!run || !run.run_timestamp) {
+            return { primary: 'Legacy run', secondary: 'timestamp unavailable' };
+          }
+          const parsed = parseTimestampToMs(run.run_timestamp);
+          return {
+            primary: formatDisplayTime(parsed, run.run_timestamp),
+            secondary: run.run_timestamp,
+          };
+        };
 
         const changePage = (target) => {
           if (!onPageChange) return;
@@ -2202,6 +2224,8 @@
                 const completionLabel = formatCompletionLabel(completion);
                 const completionLine = formatCompletionDisplay(completion);
                 const tags = getRunTags(run);
+                const noteText = (run.note || '').trim();
+                const runDateInfo = formatRunDateCell(run);
                 const key = runKey(run);
                 const isSelected = selectedRunKey && key === selectedRunKey;
                 return React.createElement('tr', {
@@ -2232,29 +2256,33 @@
                       )
                     )
                   ),
+                  React.createElement('td', { key: 'date' }, [
+                    React.createElement('span', { className: 'run-main' }, runDateInfo.primary),
+                    React.createElement('span', { className: 'run-meta' }, runDateInfo.secondary),
+                  ]),
                   React.createElement('td', { key: 'tags' },
-                    tags.length || run.note
-                      ? React.createElement('div', { className: 'tag-stack' }, [
-                          tags.length
-                            ? React.createElement('div', { className: 'tag-list' },
-                                tags.map((tag) =>
-                                  React.createElement('span', {
-                                    className: 'tag-badge',
-                                    key: tag,
-                                    style: {
-                                      backgroundColor: getTagColor(tag),
-                                      borderColor: getTagColor(tag),
-                                    },
-                                  }, tag)
-                                )
-                              )
-                            : null,
-                          run.note
-                            ? React.createElement('div', { className: 'run-note' }, [
-                                React.createElement('strong', null, 'Note:'),
-                                React.createElement('span', null, run.note),
-                              ])
-                            : null,
+                    tags.length
+                      ? React.createElement('div', { className: 'tag-stack' },
+                          React.createElement('div', { className: 'tag-list' },
+                            tags.map((tag) =>
+                              React.createElement('span', {
+                                className: 'tag-badge',
+                                key: tag,
+                                style: {
+                                  backgroundColor: getTagColor(tag),
+                                  borderColor: getTagColor(tag),
+                                },
+                              }, tag)
+                            )
+                          )
+                        )
+                      : React.createElement('span', { className: 'muted' }, '—')
+                  ),
+                  React.createElement('td', { key: 'notes' },
+                    noteText
+                      ? React.createElement('div', { className: 'run-note' }, [
+                          React.createElement('strong', null, 'Note:'),
+                          React.createElement('span', null, ` ${noteText}`),
                         ])
                       : React.createElement('span', { className: 'muted' }, '—')
                   ),
@@ -2828,7 +2856,8 @@
         }, [theme]);
 
         useEffect(() => {
-          fetch('dashboard_data.json')
+          const cacheBuster = `dashboard_data.json?ts=${Date.now()}`;
+          fetch(cacheBuster, { cache: 'no-store' })
             .then((res) => {
               if (!res.ok) throw new Error('Unable to load dashboard_data.json');
               return res.json();
