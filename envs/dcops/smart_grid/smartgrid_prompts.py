@@ -9,6 +9,10 @@ from typing import Dict, List, Any
 from pathlib import Path
 from envs.abstract_environment import AbstractEnvironment
 from src.logger import PromptLogger
+from src.tool_prompt_utils import (
+    build_vllm_tool_instructions,
+    get_phase_tool_instructions,
+)
 from envs.dcops.CoLLAB.SmartGrid.prompt_maker import make_prompts_powerlite_from_catalog
 
 
@@ -44,10 +48,22 @@ class SmartGridPrompts:
             env.instance,
             catalog_path_for_prompts
         )
+        self.tool_instruction_data = build_vllm_tool_instructions(
+            full_config,
+            execution_tool_lines=[
+                "- schedule_task(task_id: str, start_time: int): Schedule one of your tasks at a chosen start slot."
+            ],
+            planning_header="Planning phase tools (blackboard coordination only):",
+            execution_header="Execution phase tools (blackboard + scheduling):",
+            system_note=(
+                "Planning: only blackboard tools are available for coordination.\n"
+                "Execution: schedule_task becomes available in addition to blackboard tools."
+            ),
+        )
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for SmartGrid agents."""
-        return """You are a home energy management system participating in a power grid coordination task.
+        base_prompt = """You are a home energy management system participating in a power grid coordination task.
 
 PHASES:
 - Planning Phase: Use blackboards to discuss task scheduling and coordinate with other homes
@@ -62,6 +78,10 @@ RULES:
 - **Ensure** that all tasks are scheduled during the execution phase!
 
 Your goal is to minimize main grid energy consumption while meeting all task requirements through effective coordination."""
+        system_text = (self.tool_instruction_data or {}).get("system")
+        if system_text:
+            base_prompt += "\n\nTOOL CALLING REQUIREMENTS:\n" + system_text
+        return base_prompt
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any],
                        blackboard_context: Dict[str, Any]) -> str:
@@ -185,6 +205,15 @@ Your goal is to minimize main grid energy consumption while meeting all task req
                 tool_usage_instructions,
                 "- Consider all previous discussions and current schedules from other homes",
                 "- You must schedule all your tasks within their allowed time windows",
+                "- Only call schedule_task for tasks assigned to YOUR home (listed in your task summary above)",
+                ""
+            ])
+
+        phase_instructions = get_phase_tool_instructions(self.tool_instruction_data, phase)
+        if phase_instructions:
+            context_parts.extend([
+                "=== TOOL CALLING FORMAT ===",
+                phase_instructions,
                 ""
             ])
 

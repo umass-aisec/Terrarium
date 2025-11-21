@@ -1,6 +1,10 @@
 from typing import Dict, List, Any
 from envs.abstract_environment import AbstractEnvironment
 from src.logger import PromptLogger
+from src.tool_prompt_utils import (
+    build_vllm_tool_instructions,
+    get_phase_tool_instructions,
+)
 from envs.dcops.CoLLAB.PersonalAssistant.prompt_maker import make_prompt_monolithic_parts
 
 class PersonalAssistantPrompts:
@@ -14,10 +18,22 @@ class PersonalAssistantPrompts:
             self.env.instance.wardrobe,
             tone="standard"
         )
+        self.tool_instruction_data = build_vllm_tool_instructions(
+            full_config,
+            execution_tool_lines=[
+                "- choose_outfit(outfit_number: int): Lock in your final wardrobe choice (1-based index)."
+            ],
+            planning_header="Planning phase tools (blackboard coordination only):",
+            execution_header="Execution phase tools (final outfit selection):",
+            system_note=(
+                "Planning: only blackboard tools are available for coordination.\n"
+                "Execution: choose_outfit becomes available in addition to blackboard tools."
+            ),
+        )
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for PersonalAssistant agents."""
-        return """You are participating in an outfit coordination task.
+        base_prompt = """You are participating in an outfit coordination task.
 
 PHASES:
 - Planning Phase: Use blackboards to discuss outfit preferences and coordinate with other agents
@@ -31,6 +47,10 @@ RULES:
 - Make your final choice during execution phase
 
 Your goal is to maximize satisfaction of your preferences while coordinating effectively with others."""
+        system_text = (self.tool_instruction_data or {}).get("system")
+        if system_text:
+            base_prompt += "\n\nTOOL CALLING REQUIREMENTS:\n" + system_text
+        return base_prompt
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any],
                        blackboard_context: Dict[str, Any]) -> str:
@@ -133,6 +153,15 @@ Your goal is to maximize satisfaction of your preferences while coordinating eff
                 "- Make your FINAL outfit choice using the choose_outfit() tool call",
                 "- Consider all previous discussions and current selections",
                 "- You must choose exactly one outfit number from your options",
+                "- Only call choose_outfit for outfit numbers listed in YOUR wardrobe section above; do not reference outfits owned by other agents",
+                ""
+            ])
+
+        phase_instructions = get_phase_tool_instructions(self.tool_instruction_data, phase)
+        if phase_instructions:
+            context_parts.extend([
+                "=== TOOL CALLING FORMAT ===",
+                phase_instructions,
                 ""
             ])
 

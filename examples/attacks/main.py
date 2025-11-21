@@ -19,7 +19,13 @@ from datetime import datetime
 from src.agent import Agent
 from src.communication_protocol import CommunicationProtocol
 from src.logger import ToolCallLogger, AgentTrajectoryLogger
-from src.utils import load_config, get_client_instance, create_environment, get_model_name
+from src.utils import (
+    load_config,
+    get_client_instance,
+    create_environment,
+    get_model_name,
+    build_vllm_runtime,
+)
 import asyncio
 from fastmcp import Client
 from attack_module.attack_modules import AgentPoisoningAttack, CommunicationProtocolPoisoningAttack, ContextOverflowAttack
@@ -44,6 +50,7 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
     Returns:
         True if simulation succeeded, False otherwise
     """
+    vllm_runtime = None
     try:
         seed = config["environment"]["rng_seed"]
         run_timestamp = config.get("simulation", {}).get("run_timestamp")
@@ -78,22 +85,34 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
 
         # Get provider and model name
         llm_config = config["llm"]
-        provider = llm_config.get("provider", None)
-        model_name = get_model_name(provider, llm_config)
-        print(f"Using provider: {provider}, model: {model_name}")
+        provider_label = llm_config.get("provider", "unknown")
+        provider = provider_label.lower()
+        log_path = None
+        if provider == "vllm":
+            vllm_runtime = build_vllm_runtime(llm_config)
+            model_name = vllm_runtime.describe_default_model()
+            log_path = vllm_runtime.describe_log_path()
+        else:
+            model_name = get_model_name(provider, llm_config)
+        log_suffix = f" (server logs: {log_path})" if log_path else ""
+        print(f"Using provider: {provider_label}, model: {model_name}{log_suffix}")
 
         max_conversation_steps = config["simulation"].get("max_conversation_steps", 3)
 
         # Create agents with appropriate client for each
         agents = []
         for idx, name in enumerate(agent_names):
-            client = get_client_instance(llm_config)
-            print(f"Initializing Agent: {name} with {provider} - {model_name}")
+            if provider == "vllm":
+                client, agent_model_name = vllm_runtime.create_client(name)
+            else:
+                client = get_client_instance(llm_config)
+                agent_model_name = model_name
+            print(f"Initializing Agent: {name} with {provider_label} - {agent_model_name}")
             if args.attack_type == "agent_poisoning":
                 agent = AgentPoisoningAttack(
                     client,
                     name,
-                    model_name,
+                    agent_model_name,
                     max_conversation_steps,
                     tool_logger,
                     trajectory_logger,
@@ -115,7 +134,7 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
                 agent = Agent(
                     client,
                     name,
-                    model_name, 
+                    agent_model_name, 
                     max_conversation_steps,
                     tool_logger,
                     trajectory_logger,
@@ -157,6 +176,8 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
             environment._generate_final_summary()
         finally:
             environment.cleanup()
+            if provider == "vllm" and vllm_runtime:
+                vllm_runtime.shutdown()
 
         print(f"\nSimulation completed successfully")
         return True
