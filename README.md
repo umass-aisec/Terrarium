@@ -106,13 +106,41 @@ python examples/attacks/main.py \
   --attack_type context_overflow
 ```
 
-
 ## Quick Tips
 - When working with Terrarium, use sublass definitions (e.g., A2ACommunicationProtocol, EvilAgent) of the base module classes (e.g., CommunicationProtocol, Agent) rather than directly changing the base module classes.
 - When creating new environments, ensure they inherit the AbstractEnvironment class and all methods are properly defined.
 - Keep in mind some models (e.g., gpt-4.1-nano) are not capable enough of utilizing tools to take actions in the environment, so track the completion rate such as `Meeting completion: 15/15 (100.0%)` for MeetingScheduling.
 
-## Dashboard (Experimental)
+## vLLM Provider (Open-Source Models)
+1. Install vLLM (`pip install vllm`) and make sure CUDA is available.
+2. Set `llm.provider: "vllm"` in your config and describe the single server under `llm.vllm`.
+3. All agents share the one configured vLLM model; advanced routing is disabled in this setup.
+
+Best *small* model for successful tool use tested so far: Qwen/Qwen2.5-7B-Instruct. We have not tested on large >70B open-source models, but use use the [Berkeley Function-Calling Leaderboard - BFCL](https://gorilla.cs.berkeley.edu/leaderboard.html) as a reference.
+
+Minimal example:
+
+```yaml
+llm:
+  provider: "vllm"
+  vllm:
+    auto_start_server: true
+    startup_timeout: 180
+    models:
+      - checkpoint: "/data/models/Qwen2-7B-Instruct"
+        served_model_name: "Qwen2-7B-Instruct"
+        host: "127.0.0.1"
+        port: 8001
+        tensor_parallel_size: 1
+        trust_remote_code: true
+        additional_args:
+          - "--max-model-len"
+          - "65536"
+```
+
+If `auto_start_server` is true and the configured endpoint is unreachable, Terrarium launches `python -m vllm.entrypoints.openai.api_server` with the supplied checkpoint and writes stdout/stderr to `logs/vllm/<model_id>.log`. Processes are cleaned up automatically after each run.
+
+## Dashboard
 
 Consolidates runs and logs into a static dashboard for easier navigation:
 
@@ -151,8 +179,9 @@ Terrarium incorporates a set of loggers for prompts, tool usage, agent trajector
 All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed>/`, including a snapshot of the config used for that run.
 
 ## TODOs
-- [ ] !! Get parallelized simulations working on multiple seeds
-- [ ] !! Implement vLLM client
+- [x] !! Get parallelized simulations working on multiple seeds
+- [x] !! Implement vLLM client
+- [ ] !! Optimize parallel inference for fast large agent experiments
 - [ ] ! Add multi-step negotiation environments (e.g., Trading)
 - [ ] ! Update the CoLLAB environments
 - [x] Improve the Dashboard UI

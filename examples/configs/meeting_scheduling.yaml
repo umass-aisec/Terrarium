@@ -4,7 +4,7 @@ simulation:
   max_conversation_steps: 3
   tags:
     - baseline
-  note: ""
+  note: "im a note"
 environment:
   name: MeetingScheduling
   n_agents: 10
@@ -17,27 +17,28 @@ environment:
   rng_seed: 42
 llm:
   # Provider: "openai", "anthropic", "gemini", or "vllm"
-  provider: "openai"
+  provider: "vllm"
   openai:
     model: "gpt-4.1-mini-2025-04-14"
   anthropic:
     model: "claude-3-5-sonnet-20241022"
   gemini:
     model: "gemini-2.0-flash-lite"
-  # TODO: Get vLLM configuration working
   vllm:
-    model: "/data/huggingface/models--Qwen--Qwen3-235B-A22B-Thinking-2507/snapshots/d24ea3047182ca7b02f8b9f5d4e06f7be78c6885"
-    host: localhost
-    port: 8000
-    prefer_existing_server: true
     auto_start_server: true
-    trust_remote_code: true
-    connection_timeout: 30
-    max_retries: 4
-    max_model_len: 65536
-    gpu_memory_utilization: 0.8
-    tensor_parallel_size: 8
-    additional_args: []
+    health_check_path: "/models"
+    startup_timeout: 420 # When starting a new server, max time (s) to wait for it to be ready
+    models:
+      - checkpoint: "Qwen/Qwen2.5-7B-Instruct"
+        host: "127.0.0.1"
+        port: 8020
+        tensor_parallel_size: 1
+        gpu_memory_utilization: 0.9
+        max_model_len: 16000
+        trust_remote_code: true
+        additional_args:
+          # Will pick the correct parser per model family (e.g., mistral, qwen, hermes)
+          - "--enable-auto-tool-choice"
 notes:
 - MeetingScheduling baseline configuration (no attacks)
 - MeetingScheduling always logs scores for each iteration
