@@ -97,7 +97,14 @@ class SmartGridTools:
                 break
 
         if task_spec is None:
-            return {"status": "failed", "reason": f"Task {task_id} not found for home {agent_name}"}
+            valid_tasks = ", ".join(task["id"] for task in home_tasks)
+            return {
+                "status": "failed",
+                "reason": (
+                    f"Task {task_id} not found for home {agent_name}. "
+                    f"Valid tasks: {valid_tasks or 'None'}"
+                ),
+            }
 
         try:
             start_time = int(start_time)

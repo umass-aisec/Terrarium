@@ -3,6 +3,7 @@ Client implementations for different LLM backends.
 
 This package contains:
 - OpenAIClient: Client for OpenAI API
-- GPTOSSClient: Client for GPT-OSS vLLM models with Harmony encoding
-- VLLMClient: Client for general vLLM server communication
+- AnthropicClient: Client for Claude models
+- GeminiClient: Client for Google Gemini
+- VLLMClient: Client for vLLM OpenAI-compatible servers
 """

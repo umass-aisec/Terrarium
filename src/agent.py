@@ -107,14 +107,23 @@ class Agent:
             if not self.current_agent_name:
                 return {"error": "Agent context not set - call set_agent_context first"}
 
+            env_name_normalized = (self.environment_name or "").lower()
+            available_env_tools = {
+                tool.get("function", {}).get("name")
+                for tool in self.toolset_discovery.get_tools_for_environment(env_name_normalized, self.current_phase)
+            }
+            supported_env_tools = self.toolset_discovery.get_supported_tools_for_environment(env_name_normalized)
+
             # Check blackboard tools first
             if tool_name in self.toolset_discovery.get_supported_tools_for_blackboard():
                 result = await self.communication_protocol.blackboard_handle_tool_call(tool_name, self.current_agent_name, arguments,
                                                             phase=self.current_phase, iteration=self.current_iteration)
             # Then check environment tools (normalize environment name to lowercase)
-            elif tool_name in self.toolset_discovery.get_supported_tools_for_environment(self.environment_name.lower()):
+            elif tool_name in available_env_tools:
                 result = await self.communication_protocol.environment_handle_tool_call(tool_name, self.current_agent_name, arguments,
                                                           phase=self.current_phase, iteration=self.current_iteration)
+            elif tool_name in supported_env_tools:
+                result = {"error": f"Tool '{tool_name}' is not available during the {self.current_phase or 'current'} phase."}
             else:
                 result = {"error": f"Unknown tool: {tool_name}"}
 
@@ -209,6 +218,7 @@ class Agent:
 
                 # Initialize trajectory tracking as dict
                 trajectory_dict = {}
+                has_reasoning_trace = False
 
                 for step in range(self.max_conversation_steps):
                     # Process tool calls and extract content
@@ -217,8 +227,11 @@ class Agent:
                     )
 
                     # Extract text reasoning from current response for trajectory
-                    # Use client's method to extract content (works for all providers)
-                    step_reasoning = self.client._extract_message_content(current_response)
+                    reasoning_trace = self.client.extract_reasoning_trace(current_response)
+                    # Fall back to regular content if no explicit reasoning payload
+                    step_reasoning = reasoning_trace or self.client._extract_message_content(current_response)
+                    if reasoning_trace:
+                        has_reasoning_trace = True
 
                     # Add trajectory step to dict if there was any activity
                     if step_tools or step_reasoning:
@@ -265,7 +278,7 @@ class Agent:
                             "full_content": response_str,
                             "usage": total_usage,
                             "model": self.model_name,
-                            "reasoning_available": False,
+                            "reasoning_available": has_reasoning_trace,
                             "tool_calls": None,
                             "has_tool_calls": False,
                             "manual_tool_execution": True,
@@ -290,7 +303,7 @@ class Agent:
                     "full_content": response_str,
                     "usage": total_usage,
                     "model": getattr(current_response, 'model', None) or self.model_name,
-                    "reasoning_available": False,
+                    "reasoning_available": has_reasoning_trace,
                     "tool_calls": None,
                     "has_tool_calls": total_tools_executed > 0,
                     "manual_tool_execution": True,

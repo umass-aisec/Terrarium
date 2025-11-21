@@ -111,3 +111,15 @@ class AbstractClient(ABC):
         """
         # Default no-op implementation
         pass
+
+    def extract_reasoning_trace(self, response: Any) -> str:
+        """
+        Optional hook for providers that expose a structured reasoning field.
+
+        Args:
+            response: Raw response object returned by generate_response.
+
+        Returns:
+            String representation of the reasoning trace ("" if unavailable).
+        """
+        return ""

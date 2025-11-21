@@ -67,9 +67,16 @@ class PersonalAssistantTools:
 
         agent_wardrobe = wardrobe_options[agent_name]
         if outfit_idx < 0 or outfit_idx >= len(agent_wardrobe):
+            valid_options = ", ".join(
+                f"{idx + 1}: {opt['article']} ({opt['color']})"
+                for idx, opt in enumerate(agent_wardrobe)
+            )
             return {
                 "status": "retry",
-                "reason": f"outfit_number out of range (1-{len(agent_wardrobe)})",
+                "reason": (
+                    f"outfit_number out of range (1-{len(agent_wardrobe)}). "
+                    f"Valid outfits: {valid_options or 'None'}"
+                ),
                 "suggestions": [f"Choose a number between 1 and {len(agent_wardrobe)}"]
             }
 

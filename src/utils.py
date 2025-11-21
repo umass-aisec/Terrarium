@@ -9,6 +9,7 @@ import shutil
 import yaml
 from pathlib import Path
 from typing import Union, Any, Dict, List, Optional
+import re
 
 
 def load_config(config_file) -> Dict[str, Any]:
@@ -143,6 +144,140 @@ def validate_config(config: Dict[str, Any]) -> None:
             )
 
 
+def _sanitize_identifier(value: str) -> str:
+    cleaned = value.lower().replace("/", "_").replace("-", "_")
+    cleaned = re.sub(r"[^a-z0-9_]+", "_", cleaned)
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    return cleaned or "model"
+
+
+def _normalize_vllm_block(raw_vllm: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Normalize legacy vLLM config dictionaries into the new multi-model structure.
+    """
+    raw_vllm = raw_vllm or {}
+    if isinstance(raw_vllm.get("models"), list):
+        return raw_vllm
+
+    model_id = (
+        raw_vllm.get("model_id")
+        or raw_vllm.get("id")
+        or raw_vllm.get("served_model_name")
+        or raw_vllm.get("model")
+        or raw_vllm.get("model_name")
+        or "model"
+    )
+    model_id = _sanitize_identifier(str(model_id))
+    model_entry = {
+        "id": model_id,
+        "checkpoint": raw_vllm.get("model") or raw_vllm.get("model_name"),
+        "served_model_name": raw_vllm.get("served_model_name"),
+        "base_url": raw_vllm.get("base_url"),
+        "host": raw_vllm.get("host", "127.0.0.1"),
+        "port": raw_vllm.get("port", 8000),
+        "tensor_parallel_size": raw_vllm.get("tensor_parallel_size"),
+        "trust_remote_code": raw_vllm.get("trust_remote_code", False),
+        "max_model_len": raw_vllm.get("max_model_len"),
+        "dtype": raw_vllm.get("dtype"),
+        "download_dir": raw_vllm.get("download_dir"),
+        "gpu_memory_utilization": raw_vllm.get("gpu_memory_utilization"),
+        "additional_args": raw_vllm.get("additional_args", []),
+        "env": raw_vllm.get("env", {}),
+        "request_timeout": raw_vllm.get("connection_timeout", 60),
+        "api_key": raw_vllm.get("api_key"),
+        "launch_command": raw_vllm.get("launch_command"),
+    }
+    normalized = dict(raw_vllm)
+    normalized["models"] = [model_entry]
+    return normalized
+
+
+def _ensure_flag(args: List[str], flag: str) -> None:
+    if flag not in args:
+        args.append(flag)
+
+
+def _ensure_flag_with_value(args: List[str], flag: str, value: str) -> None:
+    try:
+        idx = args.index(flag)
+    except ValueError:
+        args.extend([flag, value])
+        return
+
+    # If the flag exists but no value follows, append one
+    if idx == len(args) - 1:
+        args.append(value)
+        return
+
+    # Otherwise, replace the existing value
+    args[idx + 1] = value
+
+
+def _apply_vllm_model_presets(vllm_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Inject model-specific defaults (tool parser, templates, etc.) when absent."""
+
+    model_presets = [
+        {
+            "match": lambda name: "qwen" in name,
+            "tool_call_parser": "hermes",
+            "ensure_auto_tool_choice": True,
+            "chat_template": None,
+        },
+    ]
+
+    models = vllm_config.get("models") or []
+    for model in models:
+        name = (
+            model.get("served_model_name")
+            or model.get("checkpoint")
+            or model.get("model")
+            or model.get("id")
+            or ""
+        ).lower()
+
+        args = list(model.get("additional_args", []))
+        for preset in model_presets:
+            if not preset["match"](name):
+                continue
+            if preset.get("ensure_auto_tool_choice"):
+                _ensure_flag(args, "--enable-auto-tool-choice")
+            parser = preset.get("tool_call_parser")
+            if parser:
+                _ensure_flag_with_value(args, "--tool-call-parser", parser)
+            template = preset.get("chat_template")
+            if template:
+                _ensure_flag_with_value(args, "--chat-template", template)
+            break
+
+        model["additional_args"] = args
+
+    return vllm_config
+
+
+def _get_vllm_model_name(llm_config: Dict[str, Any]) -> str:
+    vllm_block = _normalize_vllm_block(llm_config.get("vllm"))
+    models = vllm_block.get("models") or []
+    if not models:
+        return "unknown-vllm-model"
+    model = models[0]
+    return (
+        model.get("served_model_name")
+        or model.get("checkpoint")
+        or model.get("model")
+        or model.get("id")
+        or "unknown-vllm-model"
+    )
+
+
+def build_vllm_runtime(llm_config: Dict[str, Any]):
+    """Construct a VLLMProviderRuntime from normalized configuration."""
+    from llm_server.vllm.runtime import VLLMProviderRuntime
+
+    normalized = _normalize_vllm_block(llm_config.get("vllm"))
+    normalized = _apply_vllm_model_presets(normalized)
+    return VLLMProviderRuntime(normalized)
+
+
 def extract_model_info(full_config: Dict[str, Any]) -> str:
     """
     Extract model name from full config for logging.
@@ -167,7 +302,7 @@ def extract_model_info(full_config: Dict[str, Any]) -> str:
     elif provider == "gemini":
         model_name = llm_config.get("gemini", {}).get("model", "unknown")
     elif provider == "vllm":
-        raise NotImplementedError
+        model_name = _get_vllm_model_name(llm_config)
     else:
         model_name = "unknown"
 
@@ -262,7 +397,7 @@ def clear_seed_directories(environment_name: str, seed: Union[int, str], full_co
         print(f"Cleared logs directory: {logs_seed_dir}")
 
 
-def get_client_instance(llm_config: Dict[str, Any]):
+def get_client_instance(llm_config: Dict[str, Any], *, agent_name: Optional[str] = None, vllm_runtime: Any = None):
     """
     Create and return the appropriate LLM client based on provider configuration.
 
@@ -276,21 +411,24 @@ def get_client_instance(llm_config: Dict[str, Any]):
         ValueError: If provider is unknown
         NotImplementedError: If vllm provider is selected (currently not implemented)
     """
-    # Import here to avoid circular dependencies
-    from llm_server.clients.openai import OpenAIClient
-    from llm_server.clients.anthropic_client import AnthropicClient
-    from llm_server.clients.gemini_client import GeminiClient
-
     provider = llm_config.get("provider", "vllm").lower()
 
     if provider == "openai":
+        from llm_server.clients.openai import OpenAIClient
         return OpenAIClient()
     elif provider == "anthropic":
+        from llm_server.clients.anthropic_client import AnthropicClient
         return AnthropicClient()
     elif provider == "gemini":
+        from llm_server.clients.gemini_client import GeminiClient
         return GeminiClient()
     elif provider == "vllm":
-        raise NotImplementedError("vLLM provider is currently not implemented")
+        if not vllm_runtime:
+            raise ValueError("vLLM runtime is required to initialize vLLM clients")
+        if agent_name is None:
+            raise ValueError("agent_name must be provided when using vLLM provider")
+        client, _ = vllm_runtime.create_client(agent_name)
+        return client
     else:
         raise ValueError(f"Unknown provider: {provider}. Must be one of: openai, anthropic, gemini, vllm")
 
@@ -351,7 +489,7 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
     elif provider == "gemini":
         model_name = llm_config.get("gemini", {}).get("model", "gemini-2.0-flash-exp")
     elif provider == "vllm":
-        raise NotImplementedError("vLLM provider is currently not implemented")
+        model_name = _get_vllm_model_name(llm_config)
     else:
         raise ValueError(f"Unknown provider: {provider}")
 

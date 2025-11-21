@@ -68,7 +68,16 @@ class MeetingSchedulingTools:
 
         meeting = meetings[meeting_id]
         if meeting.get("owner") != agent_name:
-            return {"status": "failed", "reason": f"Agent {agent_name} does not own meeting {meeting_id}"}
+            owned_meetings = sorted(
+                mid for mid, data in meetings.items() if data.get("owner") == agent_name
+            )
+            return {
+                "status": "failed",
+                "reason": (
+                    f"Agent {agent_name} does not own meeting {meeting_id}. "
+                    f"Valid meetings for {agent_name}: {', '.join(owned_meetings) or 'None'}"
+                ),
+            }
 
         try:
             # 0-based indexing
