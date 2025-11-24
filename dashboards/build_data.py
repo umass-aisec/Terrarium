@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
@@ -260,12 +261,38 @@ def compute_chart_payload(counts: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
     return {"labels": labels, "success": success, "failure": failure}
 
 
+def load_health_fn(module_path: Optional[Path]) -> Optional[Callable[[Dict[str, Any]], Any]]:
+    """Load a user-provided health metric function from a Python file.
+
+    The file should expose a callable named `compute_health(run: dict) -> Any`.
+    The return value can be:
+      - bool: treated as ok/needs attention
+      - dict: merged under run["health"], with expected keys like ok/label/reason/score
+      - None: ignored
+    """
+    if not module_path:
+        return None
+    if not module_path.exists():
+        raise FileNotFoundError(f"Health metric module not found: {module_path}")
+    spec = importlib.util.spec_from_file_location("terrarium_dashboard_health", module_path)
+    if not spec or not spec.loader:
+        raise ImportError(f"Unable to load spec for {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[call-arg]
+    func = getattr(module, "compute_health", None)
+    if func and callable(func):
+        return func  # type: ignore[return-value]
+    raise AttributeError(f"{module_path} must define a callable compute_health(run: dict)")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build static data for the dashboard")
     parser.add_argument("--logs-root", type=Path, default=Path("logs"))
     parser.add_argument("--config", type=Path, default=None,
                         help="Optional YAML config to embed")
     parser.add_argument("--output", type=Path, default=Path("dashboards/public/dashboard_data.json"))
+    parser.add_argument("--health-metric", type=Path, default=None,
+                        help="Optional Python file defining compute_health(run) -> dict|bool to annotate runs")
     return parser.parse_args()
 
 
@@ -275,6 +302,27 @@ def main() -> None:
     config = load_config(args.config) if args.config else None
     aggregate = aggregate_event_counts(runs)
     chart_payload = compute_chart_payload(aggregate)
+
+    health_path: Optional[Path] = args.health_metric
+    if health_path is None:
+        default_health = Path("dashboards/health_metric.py")
+        if default_health.exists():
+            health_path = default_health
+    health_fn = load_health_fn(health_path)
+    if health_fn:
+        for run in runs:
+            try:
+                result = health_fn(run)
+            except Exception:
+                continue
+            if result is None:
+                continue
+            if isinstance(result, dict):
+                run["health"] = result
+            else:
+                run["health"] = {"ok": bool(result)}
+        if health_path:
+            print(f"Applied health metric from {health_path}")
 
     data_bundle = {
         "config": summarize_config(config),

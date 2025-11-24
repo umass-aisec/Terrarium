@@ -17,7 +17,7 @@ environment:
   rng_seed: 42
 llm:
   # Provider: "openai", "anthropic", "gemini", or "vllm"
-  provider: "vllm"
+  provider: "openai"
   openai:
     model: "gpt-4.1-mini-2025-04-14"
   anthropic:

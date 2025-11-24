@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Terrarium Live Dashboard v2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --fg: #0f172a;
+      --muted: #5b6475;
+      --panel: #ffffff;
+      --border: #dfe5f1;
+      --accent: #2563eb;
+      --accent-2: #f97316;
+      --success: #0ea66a;
+      --failure: #ef4444;
+      --shadow: 0 16px 60px rgba(15, 23, 42, 0.08);
+      --mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(140% 200% at 20% 10%, rgba(14,165,233,0.12), rgba(16,185,129,0.1)), var(--bg);
+      color: var(--fg);
+      font-family: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    .hero {
+      background: linear-gradient(135deg, #0e172a, #111827);
+      color: #e6f1ff;
+      padding: 24px 28px;
+      box-shadow: var(--shadow);
+    }
+    .hero-top {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand img {
+      height: 52px;
+      width: auto;
+      border-radius: 12px;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+    }
+    .hero-sub {
+      color: rgba(230,241,255,0.8);
+      font-size: 14px;
+    }
+    .hero-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--accent);
+      background: #ffffff;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .live-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34,197,94,0.4);
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      70% { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .button {
+      background: var(--accent);
+      color: #ffffff;
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .button:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); background: #1d4ed8; border-color: #1d4ed8; }
+    .button.secondary { background: transparent; color: var(--accent); border-color: var(--accent); }
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .stat-card .label { color: var(--muted); font-size: 13px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+    .stat-card .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    .run-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .run-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #ffffff;
+      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+    }
+    .run-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(15,23,42,0.08); }
+    .run-card.active { border-color: var(--accent); box-shadow: 0 12px 32px rgba(14,165,233,0.18); }
+    .run-title { font-weight: 700; margin: 0 0 6px 0; font-size: 15px; }
+    .run-meta { color: var(--muted); font-size: 13px; margin: 0; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(14,165,233,0.12);
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 12px;
+      border: 1px solid rgba(14,165,233,0.25);
+      margin-right: 6px;
+    }
+    .pill-success { color: var(--success); background: rgba(14,166,106,0.1); border: 1px solid rgba(14,166,106,0.3); }
+    .pill-failure { color: var(--failure); background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+    .muted { color: var(--muted); }
+    .section-title {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .meter {
+      height: 10px;
+      width: 100%;
+      background: #eef2fb;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .meter-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #22c55e);
+    }
+    .aggregate-row {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f9fbff;
+    }
+    .aggregate-head {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .aggregate-counts { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    input[type="text"], select, input[type="number"] {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      background: #fff;
+    }
+    label.switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg);
+      cursor: pointer;
+    }
+    label.switch input { accent-color: var(--accent); }
+    .log-viewer {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .log-toolbar {
+      background: #0b1323;
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .tab {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      background: #ffffff;
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+    .log-body {
+      max-height: 520px;
+      overflow: auto;
+      padding: 14px;
+      font-family: var(--mono);
+      white-space: pre-wrap;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .event-feed {
+      display: grid;
+      gap: 8px;
+    }
+    .event-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #ffffff;
+    }
+    .event-card h4 { margin: 0 0 6px 0; font-size: 14px; }
+    .event-card .small { color: var(--muted); font-size: 12px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 10px;
+      background: rgba(14,165,233,0.15);
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script>
+    (() => {
+      const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+      const DATA_SOURCES = [
+        'dashboard_data.json',
+        '../public/dashboard_data.json',
+        '/dashboards/public/dashboard_data.json',
+        '../../dashboards/public/dashboard_data.json',
+      ];
+      const PATH_PREFIXES = ['/', '', '../', '../../'];
+      const LOG_DISCOVERY_ROOTS = ['/logs/', 'logs/'];
+      const DEFAULT_DATA_POLL = 4000;
+      const DEFAULT_LOG_POLL = 1500;
+      const DEFAULT_DISCOVERY_POLL = 8000;
+
+      const joinPath = (prefix, path) => {
+        if (!prefix) return path;
+        if (prefix.endsWith('/') && path.startsWith('/')) {
+          return prefix + path.slice(1);
+        }
+        return prefix + path;
+      };
+
+      const withCacheBuster = (url) => {
+        return url.includes('?') ? `${url}&ts=${Date.now()}` : `${url}?ts=${Date.now()}`;
+      };
+
+      async function fetchJsonWithFallback(sources) {
+        const errors = [];
+        for (const src of sources) {
+          try {
+            const res = await fetch(withCacheBuster(src), { cache: 'no-store' });
+            if (!res.ok) {
+              errors.push(`${src}: ${res.status}`);
+              continue;
+            }
+            const data = await res.json();
+            return { data, source: src };
+          } catch (err) {
+            errors.push(`${src}: ${err.message}`);
+          }
+        }
+        throw new Error(errors.join(' | '));
+      }
+
+      async function fetchTextWithFallback(path) {
+        const errors = [];
+        const seen = new Set();
+        const candidates = [];
+
+        // Prefer absolute path first so we don't spam 404s under /dashboards/.
+        if (path.startsWith('/')) {
+          candidates.push(path);
+        } else {
+          candidates.push(`/${path}`);
+        }
+        PATH_PREFIXES.forEach((prefix) => {
+          const candidate = joinPath(prefix, path);
+          if (!seen.has(candidate)) {
+            seen.add(candidate);
+            candidates.push(candidate);
+          }
+        });
+
+        for (const candidate of candidates) {
+          try {
+            const res = await fetch(withCacheBuster(candidate), { cache: 'no-store' });
+            if (!res.ok) {
+              errors.push(`${candidate}: ${res.status}`);
+              continue;
+            }
+            const text = await res.text();
+            return { text, source: candidate };
+          } catch (err) {
+            errors.push(`${candidate}: ${err.message}`);
+          }
+        }
+        throw new Error(errors.join(' | '));
+      }
+
+      function extractLinks(html) {
+        const hrefRegex = /href=\"([^\"]+)\"/g;
+        const links = [];
+        let match;
+        while ((match = hrefRegex.exec(html)) !== null) {
+          links.push(match[1]);
+        }
+        return links;
+      }
+
+      async function listEntries(path) {
+        const errors = [];
+        const seen = new Set();
+        const candidates = [];
+        if (path.startsWith('/')) {
+          candidates.push(path);
+        } else {
+          candidates.push(`/${path}`);
+        }
+        PATH_PREFIXES.forEach((prefix) => {
+          const candidate = joinPath(prefix, path);
+          if (!seen.has(candidate)) {
+            seen.add(candidate);
+            candidates.push(candidate);
+          }
+        });
+
+        for (const candidate of candidates) {
+          try {
+            const res = await fetch(withCacheBuster(candidate), { cache: 'no-store' });
+            if (!res.ok) {
+              errors.push(`${candidate}: ${res.status}`);
+              continue;
+            }
+            const html = await res.text();
+            const links = extractLinks(html);
+            const files = [];
+            const dirs = [];
+            links.forEach((href) => {
+              if (href === '../') return;
+              if (href.endsWith('/')) {
+                dirs.push(href);
+              } else {
+                files.push(href);
+              }
+            });
+            return { base: candidate, dirs, files };
+          } catch (err) {
+            errors.push(`${candidate}: ${err.message}`);
+          }
+        }
+        throw new Error(errors.join(' | '));
+      }
+
+      function normalizePath(...parts) {
+        const raw = parts.join('/');
+        return raw.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
+      }
+
+      async function discoverRunsFromLogs(logsRootCandidates) {
+        const runs = [];
+        for (const root of logsRootCandidates) {
+          try {
+            const rootEntries = await listEntries(root);
+            for (const envDir of rootEntries.dirs) {
+              const envPath = normalizePath(root, envDir);
+              let envEntries;
+              try {
+                envEntries = await listEntries(envPath);
+              } catch (_err) {
+                continue;
+              }
+              for (const tagDir of envEntries.dirs) {
+                const tagPath = normalizePath(envPath, tagDir);
+                let tagEntries;
+                try {
+                  tagEntries = await listEntries(tagPath);
+                } catch (_err) {
+                  continue;
+                }
+                const seedsAtTag = tagEntries.dirs.filter((d) => d.startsWith('seed_'));
+                if (seedsAtTag.length) {
+                  seedsAtTag.forEach((seedDir) => {
+                    const logDir = normalizePath(tagPath, seedDir).replace(/\/+$/, '');
+                    runs.push({
+                      environment: envDir.replace(/\/$/, ''),
+                      tag_model: tagDir.replace(/\/$/, ''),
+                      seed: seedDir.replace('seed_', '').replace(/\/$/, ''),
+                      run_timestamp: null,
+                      log_dir: logDir,
+                      events: [],
+                      event_counts: {},
+                      logs: {},
+                    });
+                  });
+                }
+                for (const tsDir of tagEntries.dirs) {
+                  const tsPath = normalizePath(tagPath, tsDir);
+                  let tsEntries;
+                  try {
+                    tsEntries = await listEntries(tsPath);
+                  } catch (_err) {
+                    continue;
+                  }
+                  tsEntries.dirs.filter((d) => d.startsWith('seed_')).forEach((seedDir) => {
+                    const logDir = normalizePath(tsPath, seedDir).replace(/\/+$/, '');
+                    runs.push({
+                      environment: envDir.replace(/\/$/, ''),
+                      tag_model: tagDir.replace(/\/$/, ''),
+                      seed: seedDir.replace('seed_', '').replace(/\/$/, ''),
+                      run_timestamp: tsDir.replace(/\/$/, ''),
+                      log_dir: logDir,
+                      events: [],
+                      event_counts: {},
+                      logs: {},
+                    });
+                  });
+                }
+              }
+              envEntries.dirs.filter((d) => d.startsWith('seed_')).forEach((seedDir) => {
+                const logDir = normalizePath(envPath, seedDir).replace(/\/+$/, '');
+                runs.push({
+                  environment: envDir.replace(/\/$/, ''),
+                  tag_model: envDir.replace(/\/$/, ''),
+                  seed: seedDir.replace('seed_', '').replace(/\/$/, ''),
+                  run_timestamp: null,
+                  log_dir: logDir,
+                  events: [],
+                  event_counts: {},
+                  logs: {},
+                });
+              });
+            }
+            if (runs.length) break;
+          } catch (_err) {
+            // ignore and try next root
+          }
+        }
+        return runs;
+      }
+
+      const formatTimeAgo = (ts) => {
+        if (!ts) return '—';
+        const delta = Date.now() - ts;
+        if (delta < 1000) return 'just now';
+        const sec = Math.round(delta / 1000);
+        if (sec < 60) return `${sec}s ago`;
+        const min = Math.round(sec / 60);
+        if (min < 60) return `${min}m ago`;
+        const hr = Math.round(min / 60);
+        return `${hr}h ago`;
+      };
+
+      const runKey = (run) => `${run.environment || 'env'}|${run.tag_model || 'model'}|${run.run_timestamp || 'ts'}|${run.seed || 'seed'}|${run.log_dir || ''}`;
+      const runTimestampValue = (run) => {
+        const raw = String(run.run_timestamp || '').replace(/\D/g, '');
+        const num = Number(raw);
+        return Number.isFinite(num) ? num : 0;
+      };
+
+      const fallbackHealth = (run) => {
+        if (typeof run.success_rate === 'number') {
+          const ok = run.success_rate >= 50;
+          return {
+            ok,
+            label: ok ? 'Likely healthy' : 'Needs attention',
+            reason: `Success rate ${run.success_rate.toFixed(1)}%`,
+            score: run.success_rate,
+          };
+        }
+        const counts = run.event_counts || {};
+        let total = 0;
+        let success = 0;
+        Object.values(counts).forEach((c) => {
+          const s = Number(c.success || 0);
+          const f = Number(c.failure || 0);
+          success += s;
+          total += s + f;
+        });
+        if (total > 0) {
+          const rate = (success / total) * 100;
+          const ok = rate >= 50;
+          return {
+            ok,
+            label: ok ? 'Likely healthy' : 'Needs attention',
+            reason: `${success}/${total} successful events (${rate.toFixed(1)}%)`,
+            score: rate,
+          };
+        }
+        return {
+          ok: false,
+          label: 'Needs attention',
+          reason: 'No event data yet.',
+          score: 0,
+        };
+      };
+
+      const runHealth = (run) => {
+        if (run && run.health) {
+          const ok = Boolean(run.health.ok);
+          return {
+            ok,
+            label: run.health.label || (ok ? 'Likely healthy' : 'Needs attention'),
+            reason: run.health.reason || '',
+            score: typeof run.health.score === 'number' ? run.health.score : undefined,
+          };
+        }
+        return fallbackHealth(run || {});
+      };
+
+      const isRunComplete = (run, manualCompleteKeys) => {
+        if (!run) return false;
+        const key = runKey(run);
+        if (manualCompleteKeys && manualCompleteKeys.has(key)) return true;
+        if (run.action_success) return true;
+        if (typeof run.success_rate === 'number') return true;
+        const counts = run.event_counts || {};
+        const totalEvents = Object.values(counts).reduce((acc, c) => acc + (c.success || 0) + (c.failure || 0), 0);
+        if (totalEvents > 0) return true;
+        const scores = Array.isArray(run.scores) ? run.scores : [];
+        if (scores.length > 0) return true;
+        return false;
+      };
+
+      const totalEventCounts = (aggregate) => {
+        let success = 0;
+        let failure = 0;
+        Object.values(aggregate || {}).forEach((entry) => {
+          success += entry.success || 0;
+          failure += entry.failure || 0;
+        });
+        return { success, failure, total: success + failure };
+      };
+
+      function StatCard({ label, value, hint }) {
+        return React.createElement('div', { className: 'card stat-card' }, [
+          React.createElement('div', { className: 'label', key: 'label' }, label),
+          React.createElement('div', { className: 'value', key: 'value' }, value),
+          hint ? React.createElement('div', { className: 'hint', key: 'hint' }, hint) : null,
+        ]);
+      }
+
+      const LivePill = ({ label }) => React.createElement('span', { className: 'pill' }, [
+        React.createElement('span', { className: 'live-dot', key: 'dot' }),
+        React.createElement('span', { key: 'text' }, label),
+      ]);
+
+      function AggregateSummary({ aggregateCounts }) {
+        const entries = Object.entries(aggregateCounts || {});
+        if (!entries.length) {
+          return React.createElement('p', { className: 'muted' }, 'No events aggregated yet.');
+        }
+        return React.createElement(React.Fragment, null,
+          entries.map(([name, counts]) => {
+            const success = counts.success || 0;
+            const failure = counts.failure || 0;
+            const total = success + failure || 1;
+            const successPct = Math.round((success / total) * 100);
+            return React.createElement('div', { className: 'aggregate-row', key: name }, [
+              React.createElement('div', { className: 'aggregate-head', key: 'head' }, [
+                React.createElement('span', null, name),
+                React.createElement('span', { className: 'muted' }, `${success + failure} events`),
+              ]),
+              React.createElement('div', { className: 'meter', key: 'meter' },
+                React.createElement('div', {
+                  className: 'meter-fill',
+                  style: { width: `${successPct}%` },
+                })
+              ),
+              React.createElement('div', { className: 'aggregate-counts', key: 'counts' },
+                `${success} success · ${failure} failure (${successPct}% success)`
+              ),
+            ]);
+          })
+        );
+      }
+
+      function RunCard({ run, active, onSelect, onDelete, showDelete, highlight, onMarkComplete, showMarkComplete }) {
+        const tags = (run.tags || []).slice(0, 3);
+        const tagLabels = tags.length ? tags.join(' • ') : run.tag_model;
+        const health = runHealth(run);
+        const badge = health.ok ? 'pill-success' : 'pill-failure';
+        const badgeLabel = health.label;
+        return React.createElement('div', {
+          className: `run-card ${active ? 'active' : ''}`,
+          onClick: () => onSelect(runKey(run)),
+        }, [
+          React.createElement('div', { className: 'run-title', key: 'title' },
+            `${run.environment || 'Environment'} · ${run.tag_model || 'model'}`),
+          React.createElement('p', { className: 'run-meta', key: 'meta' },
+            `Seed ${run.seed || '–'} · ${run.run_timestamp || 'legacy'}`),
+          React.createElement('div', { key: 'tags', style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } }, [
+            React.createElement('span', { className: `tag ${badge}`, key: 'badge', title: health.reason || '' }, badgeLabel),
+            tagLabels ? React.createElement('span', { className: 'tag', key: 'tag' }, tagLabels) : null,
+            highlight ? React.createElement('span', { className: 'tag', key: 'highlight' }, highlight) : null,
+          ]),
+          (showDelete && onDelete) || (showMarkComplete && onMarkComplete)
+            ? React.createElement('div', { style: { marginTop: '8px', display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }, key: 'actions' }, [
+                showMarkComplete && onMarkComplete ? React.createElement('button', {
+                  className: 'button secondary',
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    onMarkComplete(runKey(run));
+                  },
+                  style: { padding: '6px 10px', fontSize: '12px' },
+                }, highlight === 'Archived' ? 'Restore' : 'Move to history') : null,
+                showDelete && onDelete ? React.createElement('button', {
+                  className: 'button secondary',
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    onDelete(runKey(run));
+                  },
+                  style: { padding: '6px 10px', fontSize: '12px' },
+                }, 'Delete from view') : null,
+              ])
+            : null,
+        ]);
+      }
+
+      function RunList({ runs, activeKey, onSelect, onDelete, showDelete, getHighlightLabel, onMarkComplete, showMarkComplete }) {
+        if (!runs.length) {
+          return React.createElement('p', { className: 'muted' }, 'No runs yet. Keep this tab open while agents talk.');
+        }
+        return React.createElement('div', { className: 'run-list' },
+          runs.map((run) =>
+            React.createElement(RunCard, {
+              key: runKey(run),
+              run,
+              active: runKey(run) === activeKey,
+              onSelect,
+              onDelete,
+              showDelete,
+              highlight: getHighlightLabel ? getHighlightLabel(run) : '',
+              onMarkComplete,
+              showMarkComplete,
+            })
+          )
+        );
+      }
+
+      function useLiveText(path, { pollMs, enabled }) {
+        const [text, setText] = useState('');
+        const [error, setError] = useState('');
+        const [source, setSource] = useState('');
+        const [updatedAt, setUpdatedAt] = useState(null);
+
+        const load = useCallback(async () => {
+          if (!path) return;
+          try {
+            const result = await fetchTextWithFallback(path);
+            setText(result.text);
+            setSource(result.source);
+            setError('');
+            setUpdatedAt(Date.now());
+          } catch (err) {
+            setError(err.message || 'Unable to read file');
+          }
+        }, [path]);
+
+        useEffect(() => {
+          setText('');
+          setError('');
+          setUpdatedAt(null);
+          load();
+          if (enabled && pollMs > 0 && path) {
+            const id = setInterval(load, pollMs);
+            return () => clearInterval(id);
+          }
+          return undefined;
+        }, [load, enabled, pollMs, path]);
+
+        return { text, error, source, updatedAt, refresh: load };
+      }
+
+      function useLiveData({ sources, pollMs, enabled }) {
+        const [data, setData] = useState(null);
+        const [error, setError] = useState('');
+        const [loading, setLoading] = useState(true);
+        const [updatedAt, setUpdatedAt] = useState(null);
+        const [source, setSource] = useState('');
+
+        const load = useCallback(async () => {
+          try {
+            const result = await fetchJsonWithFallback(sources);
+            setData(result.data);
+            setSource(result.source);
+            setError('');
+            setLoading(false);
+            setUpdatedAt(Date.now());
+          } catch (err) {
+            setError(err.message || 'Unable to read dashboard_data.json');
+            setLoading(false);
+          }
+        }, [sources]);
+
+        useEffect(() => {
+          load();
+          if (enabled) {
+            const id = setInterval(load, pollMs);
+            return () => clearInterval(id);
+          }
+          return undefined;
+        }, [load, pollMs, enabled]);
+
+        return { data, error, loading, updatedAt, source, refresh: load };
+      }
+
+      function parseEvents(text) {
+        if (!text) return [];
+        return text.split('\n').reduce((acc, line) => {
+          const trimmed = line.trim();
+          if (!trimmed) return acc;
+          try {
+            const evt = JSON.parse(trimmed);
+            acc.push(evt);
+          } catch (err) {
+            // ignore bad line
+          }
+          return acc;
+        }, []);
+      }
+
+      function useLiveEvents(run, enabled, pollMs) {
+        const path = run ? `${run.log_dir}/attack_events.jsonl` : '';
+        const { text, updatedAt, refresh } = useLiveText(path, { pollMs, enabled });
+        const [events, setEvents] = useState(() => (run ? run.events || [] : []));
+        useEffect(() => {
+          if (!run) {
+            setEvents([]);
+            return;
+          }
+          setEvents(run.events || []);
+        }, [run]);
+        useEffect(() => {
+          if (!text) return;
+          const parsed = parseEvents(text);
+          if (parsed.length) {
+            setEvents(parsed);
+          }
+        }, [text]);
+        return { events, updatedAt, refresh };
+      }
+
+      function EventFeed({ events }) {
+        if (!events || !events.length) {
+          return React.createElement('p', { className: 'muted' }, 'No structured events yet. Blackboards below will still live update.');
+        }
+        return React.createElement('div', { className: 'event-feed' },
+          events.slice(-20).reverse().map((evt, idx) => {
+            const title = evt.event_type || evt.type || evt.category || 'event';
+            const agent = evt.agent || (evt.metadata && evt.metadata.agent) || (evt.actor && evt.actor.name);
+            const ts = evt.timestamp || evt.created_at || evt.time;
+            const summary = evt.message || evt.content || evt.result || evt.status;
+            return React.createElement('div', { className: 'event-card', key: idx }, [
+              React.createElement('h4', null, [
+                React.createElement('span', { className: 'badge', key: 'badge' }, title),
+                agent ? ` ${agent}` : ' ',
+              ]),
+              ts ? React.createElement('div', { className: 'small', key: 'ts' }, ts) : null,
+              summary ? React.createElement('div', { key: 'summary' }, summary) : null,
+              !summary ? React.createElement('pre', { className: 'muted', style: { whiteSpace: 'pre-wrap', fontFamily: 'var(--mono)', background: '#f7f7f7', padding: '8px', borderRadius: '10px' } },
+                JSON.stringify(evt, null, 2)) : null,
+            ]);
+          })
+        );
+      }
+
+      function LogViewer({ run, autoRefresh, interval }) {
+        const [activeTab, setActiveTab] = useState('');
+        const [autoScroll, setAutoScroll] = useState(true);
+        const bodyRef = useRef(null);
+
+        const tabs = useMemo(() => {
+          if (!run) return [];
+          const base = [];
+          const blackboards = run.logs && run.logs.blackboards ? Object.keys(run.logs.blackboards).sort() : null;
+          const blackboardNames = blackboards || Array.from({ length: 16 }, (_v, i) => `blackboard_${i}.txt`);
+          blackboardNames.forEach((name) => {
+            base.push({
+              key: `bb-${name}`,
+              label: name.replace('blackboard_', 'Board '),
+              path: `${run.log_dir}/${name}`,
+            });
+          });
+          const extras = [
+            ['tool_calls', 'Tool calls', 'tool_calls.json'],
+            ['agent_prompts_json', 'Agent prompts (json)', 'agent_prompts.json'],
+            ['agent_prompts_markdown', 'Agent prompts (md)', 'agent_prompts.md'],
+            ['agent_trajectories', 'Trajectories', 'agent_trajectories.json'],
+            ['meeting_scheduling', 'Config', 'meeting_scheduling.yaml'],
+          ];
+          extras.forEach(([key, label, filename]) => {
+            const hasSnapshot = run.logs && run.logs[key];
+            base.push({
+              key: `extra-${key}`,
+              label: hasSnapshot ? label : `${label} (live)`,
+              path: `${run.log_dir}/${filename}`,
+            });
+          });
+          return base;
+        }, [run]);
+
+        useEffect(() => {
+          if (!tabs.length) {
+            setActiveTab('');
+            return;
+          }
+          setActiveTab((current) => {
+            if (current && tabs.some((t) => t.key === current)) {
+              return current; // keep the user-selected tab if it still exists
+            }
+            return tabs[0].key; // otherwise default to the first tab
+          });
+        }, [tabs]);
+
+        const activePath = useMemo(() => {
+          const tab = tabs.find((t) => t.key === activeTab);
+          return tab ? tab.path : '';
+        }, [tabs, activeTab]);
+
+        const { text, error, source, updatedAt, refresh } = useLiveText(activePath, { pollMs: interval, enabled: autoRefresh });
+
+        useEffect(() => {
+          if (autoScroll && bodyRef.current) {
+            bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+          }
+        }, [text, autoScroll]);
+
+        if (!run) {
+          return React.createElement('p', { className: 'muted' }, 'Pick a run to stream logs.');
+        }
+
+        return React.createElement('div', { className: 'log-viewer' }, [
+          React.createElement('div', { className: 'log-toolbar', key: 'toolbar' }, [
+            React.createElement('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' }, key: 'tabs' },
+              tabs.map((tab) =>
+                React.createElement('button', {
+                  key: tab.key,
+                  className: `tab ${tab.key === activeTab ? 'active' : ''}`,
+                  onClick: () => setActiveTab(tab.key),
+                }, tab.label)
+              )
+            ),
+            React.createElement('div', { style: { marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }, key: 'controls' }, [
+              React.createElement('label', { className: 'switch', key: 'auto' }, [
+                React.createElement('input', {
+                  type: 'checkbox',
+                  checked: autoScroll,
+                  onChange: (e) => setAutoScroll(e.target.checked),
+                }),
+                'Auto-scroll',
+              ]),
+              React.createElement('button', { className: 'tab', onClick: refresh, key: 'refresh' }, 'Refresh now'),
+            ]),
+          ]),
+          React.createElement('div', { className: 'log-body', key: 'body', ref: bodyRef }, [
+            error ? React.createElement('div', { className: 'muted' }, error) : text || 'Waiting for content...',
+          ]),
+          React.createElement('div', { className: 'log-toolbar', key: 'footer' }, [
+            React.createElement('span', { className: 'muted', key: 'source' }, source ? `Reading ${source}` : 'Select a log'),
+            React.createElement('span', { className: 'muted', key: 'time' }, updatedAt ? `Updated ${formatTimeAgo(updatedAt)}` : ''),
+          ]),
+        ]);
+      }
+
+      function useDirectoryDiscovery(auto, pollMs, logsRootFromData) {
+        const [runs, setRuns] = useState([]);
+        const load = useCallback(async () => {
+          const candidates = [];
+          if (logsRootFromData && typeof logsRootFromData === 'string') {
+            const normalized = logsRootFromData.replace(/\\/g, '/');
+            if (normalized.endsWith('/logs')) {
+              candidates.push('/logs/');
+            }
+          }
+          LOG_DISCOVERY_ROOTS.forEach((root) => {
+            if (!candidates.includes(root)) candidates.push(root);
+          });
+          const discovered = await discoverRunsFromLogs(candidates);
+          setRuns(discovered);
+        }, [logsRootFromData]);
+
+        useEffect(() => {
+          load();
+          if (auto && pollMs > 0) {
+            const id = setInterval(load, pollMs);
+            return () => clearInterval(id);
+          }
+          return undefined;
+        }, [auto, pollMs, load]);
+
+        return runs;
+      }
+
+      function App() {
+        const [filter, setFilter] = useState('');
+        const [activeRunKey, setActiveRunKey] = useState('');
+        const [autoData, setAutoData] = useState(true);
+        const [autoLogs, setAutoLogs] = useState(true);
+        const [dataPoll, setDataPoll] = useState(DEFAULT_DATA_POLL);
+        const [logPoll, setLogPoll] = useState(DEFAULT_LOG_POLL);
+        const [autoDiscover, setAutoDiscover] = useState(true);
+        const [discoverPoll, setDiscoverPoll] = useState(DEFAULT_DISCOVERY_POLL);
+        const [runListTab, setRunListTab] = useState('current');
+        const [archivedRunKeys, setArchivedRunKeys] = useState(() => {
+          if (typeof window === 'undefined') return new Set();
+          try {
+            const raw = window.localStorage.getItem('terrarium-archived-runs') || '[]';
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) return new Set(arr);
+          } catch (_err) {
+            /* ignore */
+          }
+          return new Set();
+        });
+        const [manualCompleteKeys, setManualCompleteKeys] = useState(() => {
+          if (typeof window === 'undefined') return new Set();
+          try {
+            const raw = window.localStorage.getItem('terrarium-manual-complete') || '[]';
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) return new Set(arr);
+          } catch (_err) {
+            /* ignore */
+          }
+          return new Set();
+        });
+
+        const { data, error, loading, updatedAt, source, refresh } = useLiveData({
+          sources: DATA_SOURCES,
+          pollMs: dataPoll,
+          enabled: autoData,
+        });
+
+        const discoveredRuns = useDirectoryDiscovery(autoDiscover, discoverPoll, data && data.logs_root);
+        const runs = useMemo(() => {
+          const merged = new Map();
+          (data && data.runs ? data.runs : []).forEach((run) => {
+            merged.set(runKey(run), run);
+          });
+          discoveredRuns.forEach((run) => {
+            if (!merged.has(runKey(run))) merged.set(runKey(run), run);
+          });
+          return Array.from(merged.values());
+        }, [data, discoveredRuns]);
+        const aggregateCounts = data && (data.aggregate_counts || data.event_totals) ? (data.aggregate_counts || data.event_totals) : {};
+
+        const filteredRuns = useMemo(() => {
+          if (!filter) return runs;
+          const needle = filter.toLowerCase();
+          return runs.filter((run) => {
+            return (
+              (run.environment || '').toLowerCase().includes(needle) ||
+              (run.tag_model || '').toLowerCase().includes(needle) ||
+              (run.tags || []).some((tag) => (tag || '').toLowerCase().includes(needle))
+            );
+          });
+        }, [runs, filter]);
+
+        const sortedRuns = useMemo(() => {
+          return [...filteredRuns].sort((a, b) => {
+            const tsDelta = runTimestampValue(b) - runTimestampValue(a);
+            if (tsDelta !== 0) return tsDelta;
+            return runKey(a) > runKey(b) ? 1 : -1;
+          });
+        }, [filteredRuns]);
+
+        const newestRun = sortedRuns[0] || null;
+        const currentRunFromList =
+          newestRun &&
+          !archivedRunKeys.has(runKey(newestRun)) &&
+          !manualCompleteKeys.has(runKey(newestRun)) &&
+          !isRunComplete(newestRun, manualCompleteKeys)
+            ? newestRun
+            : null;
+        const historyRuns = useMemo(() => {
+          const filtered = sortedRuns.filter((run) => !currentRunFromList || runKey(run) !== runKey(currentRunFromList));
+          return filtered.filter((run) => !archivedRunKeys.has(runKey(run)));
+        }, [sortedRuns, archivedRunKeys, currentRunFromList]);
+        const lastCompletedKey = useMemo(() => {
+          const firstCompleted = historyRuns.find((run) => isRunComplete(run, manualCompleteKeys));
+          return firstCompleted ? runKey(firstCompleted) : '';
+        }, [historyRuns, manualCompleteKeys]);
+        const visibleRuns = useMemo(() => {
+          const list = [];
+          if (currentRunFromList) list.push(currentRunFromList);
+          historyRuns.forEach((run) => list.push(run));
+          return list;
+        }, [currentRunFromList, historyRuns]);
+
+        const handleArchiveRun = useCallback((key) => {
+          setArchivedRunKeys((prev) => {
+            const next = new Set(prev);
+            next.add(key);
+            return next;
+          });
+        }, []);
+
+        const handleRestoreRun = useCallback((key) => {
+          setArchivedRunKeys((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }, []);
+
+        const handleMarkComplete = useCallback((key) => {
+          setManualCompleteKeys((prev) => {
+            const next = new Set(prev);
+            next.add(key);
+            return next;
+          });
+        }, []);
+
+        useEffect(() => {
+          if (!visibleRuns.length) {
+            setActiveRunKey('');
+            return;
+          }
+          setActiveRunKey((current) => {
+            if (current && visibleRuns.some((run) => runKey(run) === current)) return current;
+            return runKey(visibleRuns[0]);
+          });
+        }, [visibleRuns]);
+
+        useEffect(() => {
+          if (typeof window === 'undefined') return;
+          try {
+            window.localStorage.setItem('terrarium-archived-runs', JSON.stringify(Array.from(archivedRunKeys)));
+          } catch (_err) {
+            /* ignore */
+          }
+        }, [archivedRunKeys]);
+
+        useEffect(() => {
+          if (typeof window === 'undefined') return;
+          try {
+            window.localStorage.setItem('terrarium-manual-complete', JSON.stringify(Array.from(manualCompleteKeys)));
+          } catch (_err) {
+            /* ignore */
+          }
+        }, [manualCompleteKeys]);
+
+        const activeRun = visibleRuns.find((run) => runKey(run) === activeRunKey) || null;
+        const { events } = useLiveEvents(activeRun, autoLogs, logPoll);
+
+        const totals = totalEventCounts(aggregateCounts);
+
+        return React.createElement(React.Fragment, null, [
+          React.createElement('header', { className: 'hero', key: 'hero' }, [
+            React.createElement('div', { className: 'hero-top', key: 'top' }, [
+              React.createElement('div', { className: 'brand', key: 'brand' }, [
+                React.createElement('img', { src: '../public/terrarium_logo_rounded.png', alt: 'Terrarium logo' }),
+                React.createElement('div', null, [
+                  React.createElement('h1', null, 'Terrarium Live Dashboard v2'),
+                  React.createElement('div', { className: 'hero-sub' }, data ? `Logs root: ${data.logs_root}` : 'Watching for dashboard_data.json'),
+                ]),
+              ]),
+              React.createElement('div', { className: 'hero-controls', key: 'controls' }, [
+                React.createElement(LivePill, { key: 'live', label: autoData ? 'Live data polling' : 'Paused (manual refresh)' }),
+                React.createElement('button', { className: 'button secondary', onClick: refresh, key: 'refresh' }, 'Force refresh'),
+                React.createElement('div', { className: 'pill', key: 'status' }, [
+                  'Last data update ',
+                  updatedAt ? formatTimeAgo(updatedAt) : '—',
+                  source ? ` · ${source}` : '',
+                ]),
+              ]),
+            ]),
+          ]),
+          React.createElement('main', { className: 'page', key: 'main' }, [
+            React.createElement('div', { className: 'grid', key: 'stats' }, [
+              React.createElement(StatCard, {
+                label: 'Runs tracked',
+                value: runs.length || '0',
+                hint: error ? 'Unable to read dashboard_data.json' : 'Auto-refreshes every few seconds.',
+                key: 'runs',
+              }),
+            ]),
+            React.createElement('div', { className: 'layout', key: 'layout' }, [
+              React.createElement('div', { className: 'card', key: 'left' }, [
+                React.createElement('div', { className: 'section-title' }, 'Runs'),
+                React.createElement('div', { className: 'toolbar' }, [
+                  React.createElement('input', {
+                    type: 'text',
+                    placeholder: 'Filter by environment, model, or tag',
+                    value: filter,
+                    onChange: (e) => setFilter(e.target.value),
+                    key: 'filter',
+                    style: { width: '100%' },
+                  }),
+                ]),
+                React.createElement('div', { className: 'toolbar' }, [
+                  React.createElement('label', { className: 'switch', key: 'data' }, [
+                    React.createElement('input', {
+                      type: 'checkbox',
+                      checked: autoData,
+                      onChange: (e) => setAutoData(e.target.checked),
+                    }),
+                    'Auto-refresh data',
+                  ]),
+                  React.createElement('label', { className: 'switch', key: 'logs' }, [
+                    React.createElement('input', {
+                      type: 'checkbox',
+                      checked: autoLogs,
+                      onChange: (e) => setAutoLogs(e.target.checked),
+                    }),
+                    'Auto-refresh logs',
+                  ]),
+                  React.createElement('label', { className: 'switch', key: 'discover' }, [
+                    React.createElement('input', {
+                      type: 'checkbox',
+                      checked: autoDiscover,
+                      onChange: (e) => setAutoDiscover(e.target.checked),
+                    }),
+                    'Discover new runs',
+                  ]),
+                ]),
+                React.createElement('div', { className: 'toolbar' }, [
+                  React.createElement('label', { className: 'switch', key: 'dataPoll' }, [
+                    'Data poll (ms)',
+                    React.createElement('input', {
+                      type: 'number',
+                      value: dataPoll,
+                      onChange: (e) => setDataPoll(Number(e.target.value) || DEFAULT_DATA_POLL),
+                      style: { width: '110px' },
+                    }),
+                  ]),
+                  React.createElement('label', { className: 'switch', key: 'logPoll' }, [
+                    'Log poll (ms)',
+                    React.createElement('input', {
+                      type: 'number',
+                      value: logPoll,
+                      onChange: (e) => setLogPoll(Number(e.target.value) || DEFAULT_LOG_POLL),
+                      style: { width: '110px' },
+                    }),
+                  ]),
+                  React.createElement('label', { className: 'switch', key: 'discoverPoll' }, [
+                    'Discover poll (ms)',
+                    React.createElement('input', {
+                      type: 'number',
+                      value: discoverPoll,
+                      onChange: (e) => setDiscoverPoll(Number(e.target.value) || DEFAULT_DISCOVERY_POLL),
+                      style: { width: '110px' },
+                    }),
+                  ]),
+                ]),
+                React.createElement('div', { className: 'toolbar' }, [
+                  React.createElement('button', {
+                    className: `tab ${runListTab === 'current' ? 'active' : ''}`,
+                    onClick: () => setRunListTab('current'),
+                    key: 'tab-current',
+                  }, 'Current'),
+                  React.createElement('button', {
+                    className: `tab ${runListTab === 'history' ? 'active' : ''}`,
+                    onClick: () => setRunListTab('history'),
+                    key: 'tab-history',
+                  }, 'History'),
+                  React.createElement('button', {
+                    className: `tab ${runListTab === 'archive' ? 'active' : ''}`,
+                    onClick: () => setRunListTab('archive'),
+                    key: 'tab-archive',
+                  }, 'Archive'),
+                ]),
+                runListTab === 'current'
+                  ? (currentRunFromList
+                      ? React.createElement(RunList, {
+                          runs: [currentRunFromList],
+                          activeKey: activeRunKey,
+                          onSelect: setActiveRunKey,
+                          onDelete: handleArchiveRun,
+                          showDelete: false,
+                          getHighlightLabel: () => '',
+                          onMarkComplete: handleMarkComplete,
+                          showMarkComplete: true,
+                        })
+                      : React.createElement('p', { className: 'muted' }, 'No active run detected.'))
+                  : runListTab === 'history'
+                  ? React.createElement(RunList, {
+                      runs: historyRuns,
+                      activeKey: activeRunKey,
+                      onSelect: setActiveRunKey,
+                      onDelete: handleArchiveRun,
+                      showDelete: true,
+                      getHighlightLabel: (run) => (runKey(run) === lastCompletedKey && isRunComplete(run) ? 'Last run' : ''),
+                      onMarkComplete: null,
+                      showMarkComplete: false,
+                    })
+                  : React.createElement(RunList, {
+                      runs: sortedRuns.filter((run) => archivedRunKeys.has(runKey(run))),
+                      activeKey: activeRunKey,
+                      onSelect: setActiveRunKey,
+                      onDelete: null,
+                      showDelete: false,
+                      getHighlightLabel: () => 'Archived',
+                      onMarkComplete: handleRestoreRun,
+                      showMarkComplete: true,
+                    }),
+              ]),
+              React.createElement('div', { className: 'card', key: 'right' }, [
+                React.createElement('div', { className: 'section-title' }, activeRun ? `${activeRun.environment} · ${activeRun.tag_model}` : 'No run selected'),
+                activeRun ? React.createElement('div', null, [
+                  React.createElement('div', { className: 'toolbar' }, [
+                    React.createElement('span', { className: 'pill' }, `Seed ${activeRun.seed || '–'}`),
+                    activeRun.run_timestamp ? React.createElement('span', { className: 'pill' }, `Run ${activeRun.run_timestamp}`) : null,
+                    activeRun.note ? React.createElement('span', { className: 'pill' }, activeRun.note) : null,
+                  ]),
+                  React.createElement('div', { className: 'section-title' }, 'Events (if available)'),
+                  React.createElement(EventFeed, { events }),
+                  React.createElement('div', { className: 'section-title' }, 'Live logs'),
+                  React.createElement(LogViewer, {
+                    run: activeRun,
+                    autoRefresh: autoLogs,
+                    interval: logPoll,
+                  }),
+                ]) : React.createElement('p', { className: 'muted' }, 'Select a run to see details.'),
+              ]),
+            ]),
+            error ? React.createElement('p', { className: 'muted' }, `Data error: ${error}`) : null,
+            loading ? React.createElement('p', { className: 'muted' }, 'Loading dashboard data...') : null,
+          ]),
+        ]);
+      }
+
+      ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+    })();
+  </script>
+</body>
+</html>
