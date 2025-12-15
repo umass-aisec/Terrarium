@@ -1,57 +1,46 @@
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
-import time
-import uuid
-from envs.dcops.meeting_scheduling.tool_discovery import MeetingSchedulingEnvironmentTools
-from envs.dcops.personal_assistant.tool_discovery import PersonalAssistantEnvironmentTools
-from envs.dcops.smart_grid.tool_discovery import SmartGridEnvironmentTools
+from typing import Any, Dict, List, Set
+from envs.dcops.meeting_scheduling.meeting_scheduling_tools import MeetingSchedulingTools
+from envs.dcops.personal_assistant.personal_assistant_tools import PersonalAssistantTools
+from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
 
 class ToolsetDiscovery:
     def __init__(self):
-        self.meeting_tools = MeetingSchedulingEnvironmentTools()
-        self.personal_assistant_tools = PersonalAssistantEnvironmentTools()
-        self.smartgrid_tools = SmartGridEnvironmentTools()
+        self.meeting_tools = MeetingSchedulingTools(blackboard_manager=None)
+        self.personal_assistant_tools = PersonalAssistantTools(blackboard_manager=None)
+        self.smartgrid_tools = SmartGridTools(blackboard_manager=None)
+
+        self._tools_by_environment = {
+            "MeetingSchedulingEnvironment": self.meeting_tools,
+            "PersonalAssistantEnvironment": self.personal_assistant_tools,
+            "SmartGridEnvironment": self.smartgrid_tools,
+        }
 
     def get_tools_for_environment(self, environment_name: str, phase: str) -> List[Dict[str, Any]]:
         """
         Get the toolset for a specific environment.
 
         Args:
-            environment_name: Name of the environment (normalized to lowercase, e.g., "meetingscheduling")
+            environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__)
             phase: Current phase ("planning" or "execution")
         """
-        # Normalize environment name for comparison (remove underscores and lowercase)
-        normalized = environment_name.lower().replace("_", "")
-
-        if normalized == "meetingscheduling":
-            return self.meeting_tools.get_tools(phase)
-        elif normalized == "personalassistant":
-            return self.personal_assistant_tools.get_tools(phase)
-        elif normalized == "smartgrid":
-            return self.smartgrid_tools.get_tools(phase)
-        else:
+        tools = self._tools_by_environment.get(environment_name)
+        if not tools:
             return []
+        return tools.get_tools(phase)
 
-    def get_supported_tools_for_environment(self, environment_name: str) -> Set[str]:
+    def get_env_tool_names(self, environment_name: str) -> Set[str]:
         """
         Get the set of tool names that this environment supports.
 
         Args:
-            environment_name: Name of the environment (normalized to lowercase, e.g., "meetingscheduling")
+            environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__)
         """
-        # Normalize environment name for comparison (remove underscores and lowercase)
-        normalized = environment_name.lower().replace("_", "")
-
-        if normalized == "meetingscheduling":
-            return self.meeting_tools.get_supported_tools()
-        elif normalized == "personalassistant":
-            return self.personal_assistant_tools.get_supported_tools()
-        elif normalized == "smartgrid":
-            return self.smartgrid_tools.get_supported_tools()
-        else:
+        tools = self._tools_by_environment.get(environment_name)
+        if not tools:
             return set()
+        return tools.get_tool_names()
 
-    def get_supported_tools_for_blackboard(self) -> Set[str]:
+    def get_blackboard_tool_names(self) -> Set[str]:
         """
         Get the set of tool names that this blackboard manager supports.
 

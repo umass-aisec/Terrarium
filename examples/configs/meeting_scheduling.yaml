@@ -2,32 +2,63 @@ simulation:
   max_iterations: 1
   max_planning_rounds: 1
   max_conversation_steps: 3
+  seed: 42
   tags:
     - baseline
   note: "im a note"
 environment:
-  name: MeetingScheduling
-  n_agents: 10
-  n_meetings: 15
-  max_attendees_per_meeting: 4
-  p_zoom: 0.3
-  min_prefs_per_agent: 3
-  max_prefs_per_agent: 6
-  time_match_weight: 1.0
-  rng_seed: 42
+  name: MeetingSchedulingEnvironment
+  # CoLLAB v2 MeetingScheduling (attendance intervals)
+  num_meetings: 3
+  timeline_length: 12
+  min_participants: 2
+  max_participants: 4
+  soft_meeting_ratio: 0.6
+communication_network:
+  # Topology used to create blackboards
+  # Options: complete | path | star | random
+  # random requires `edge_prob` (0..1) and uses `simulation.seed`
+  topology: random
+  num_agents: 6
+  edge_prob: .7
+  # consolidate_channels=false => one blackboard per edge
+  # consolidate_channels=true => one blackboard per clique (plus leftover edges)
+  consolidate_channels: true
 llm:
-  # Provider: "openai", "anthropic", "gemini", or "vllm"
-  provider: "openai"
+  # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
+  provider: "together"
   openai:
     model: "gpt-4.1-mini-2025-04-14"
+    params:
+      max_tokens: 1024
+      temperature: 0.7
+      reasoning_effort: "low"
+      verbosity: "low"
   anthropic:
     model: "claude-3-5-sonnet-20241022"
+    params:
+      max_tokens: 4000
+      temperature: 0.7
+      top_p: 0.95
   gemini:
     model: "gemini-2.0-flash-lite"
+    params:
+      max_tokens: 1024
+      temperature: 0.6
+      top_p: 0.95
+  together:
+    model: "zai-org/GLM-4.6"
+    params:
+      max_tokens: 1024
+      temperature: 0.7
   vllm:
     auto_start_server: true
+    persistent_server: false  # Keep the vLLM server alive between runs to avoid cold starts
     health_check_path: "/models"
     startup_timeout: 420 # When starting a new server, max time (s) to wait for it to be ready
+    params:
+      max_tokens: 1024
+      temperature: 0.7
     models:
       - checkpoint: "Qwen/Qwen2.5-7B-Instruct"
         host: "127.0.0.1"
@@ -42,12 +73,10 @@ llm:
 notes:
 - MeetingScheduling baseline configuration (no attacks)
 - MeetingScheduling always logs scores for each iteration
-- MeetingScheduling environment coordinates meeting scheduling across agents
-- Agents are meeting owners who coordinate via blackboards during planning phase
-- Final meeting scheduling happens during execution phase using schedule_meeting action
-- Considers time preferences, travel constraints, and priority-based attendance
-- 'Time slots: 1-10 (8:00-17:00), supports both ZOOM and PHYSICAL meetings'
-- 'Objective: Maximize global score considering attendee preferences and feasibility'
-- PHYSICAL meetings have travel time constraints between buildings
-- Each agent has priority rankings for meetings they attend
-- Simulation stops when all meetings scheduled optimally or max iterations reached
+- MeetingScheduling environment coordinates attendance intervals across agents
+- Agents coordinate via blackboards during planning phase
+- Final attendance decisions happen during execution using attend_meeting action
+- Meetings have fixed windows on a shared timeline; soft meetings reward overlap
+- Strict meetings reward full‑window attendance; overlaps across two meetings are penalized
+- Objective: Maximize global reward ratio from CoLLAB v2 scoring
+- Simulation stops when all attendance variables are assigned or max iterations reached

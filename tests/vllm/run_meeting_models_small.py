@@ -233,7 +233,7 @@ def main() -> None:
     args = parse_args()
     base_cfg = load_yaml(args.config)
     models = args.models or DEFAULT_MODELS
-    main_py = Path("examples/base/main.py")
+    main_py = Path("examples/base_main.py")
 
     print(f"Running MeetingScheduling on {len(models)} models...")
     results = []

@@ -13,8 +13,6 @@ from envs.abstract_environment import AbstractEnvironment
 from .store import Store
 from .agent import Agent, create_agent_pool, create_agents_with_names
 from .trade import TradeManager
-from envs.negotiation.plotter import UtilityPlotter
-from envs.dcops.plotter import ScorePlotter
 from src.logger import BlackboardLogger, PromptLogger
 from src.utils import (
     clear_seed_directories,
@@ -22,7 +20,6 @@ from src.utils import (
     get_tag_model_subdir,
     get_run_timestamp,
     build_log_dir,
-    build_plots_dir,
 )
 from .prompts.user_prompt import generate_user_prompt
 
@@ -45,7 +42,7 @@ class TradingGameEnvironment(AbstractEnvironment):
         self.action_logging_config = ["buy", "trade", "approve_trade", "reject_trade"]
 
         # Core components - initialized in initialize()
-        self.config = None
+        self.env_config = None
         self.store = None
         self.agents = []
         self.agents_dict = {}
@@ -56,7 +53,6 @@ class TradingGameEnvironment(AbstractEnvironment):
         self.blackboard_logger = None
         self.utility_history = {}
         self.budget_history = {}
-        self.plotter = None
 
         # Factor graph support
         self._factor_graph_blackboards = []
@@ -70,12 +66,12 @@ class TradingGameEnvironment(AbstractEnvironment):
             blackboard_manager: Blackboard manager for posting events
         """
         self.full_config = config
-        self.config = config["environment"]  # Extract environment-specific config
+        self.env_config = config["environment"]  # Extract environment-specific config
         self.blackboard_manager = blackboard_manager
         self.run_timestamp = get_run_timestamp(self.full_config)
 
         # Extract and store seed for reproducibility
-        self.seed = self.full_config.get("_current_seed", self.config.get("rng_seed", 42))
+        self.seed = int(self.full_config["simulation"]["seed"])
 
         # Initialize store with seed for reproducible inventory
         self.store = Store(seed=self.seed)
@@ -87,9 +83,9 @@ class TradingGameEnvironment(AbstractEnvironment):
         items_list = list(self.store.item_prices.keys())
 
         # Create agents and generate random blackboards for trading coordination
-        min_budget = self.config.get("min_budget", 25)
-        max_budget = self.config.get("max_budget", 25)
-        num_agents = self.config.get("num_agents", 4)
+        min_budget = self.env_config.get("min_budget", 25)
+        max_budget = self.env_config.get("max_budget", 25)
+        num_agents = self.env_config.get("num_agents", 4)
 
         # Create agents first
         self.agents = create_agent_pool(
@@ -158,17 +154,9 @@ class TradingGameEnvironment(AbstractEnvironment):
         self.utility_history = {agent.name: [] for agent in self.agents}
         self.budget_history = {agent.name: [] for agent in self.agents}
 
-        # Setup seed-based directory structure for plots
-        # Get tag_model subdirectory
-        tag_model = get_tag_model_subdir(self.full_config)
-        plots_dir = build_plots_dir("Trading", tag_model, self.seed, self.run_timestamp)
-        plots_dir_str = str(plots_dir)
-        self.plotter = UtilityPlotter(save_dir=plots_dir_str)
-
         # Initialize score tracking for JSON logging (similar to other environments)
-        self.global_score_history: List[float] = []
-        self.local_scores_history: Dict[str, List[float]] = {agent.name: [] for agent in self.agents}
-        self.score_plotter = ScorePlotter(save_dir=plots_dir_str)
+        self.joint_reward_history: List[float] = []
+        self.agent_rewards_history: Dict[str, List[float]] = {agent.name: [] for agent in self.agents}
 
         # Record initial utilities and budgets (before any trading)
         for agent in self.agents:
@@ -188,7 +176,7 @@ class TradingGameEnvironment(AbstractEnvironment):
     def _load_system_prompt(self) -> str:
         """Load system prompt for agents from file with validation."""
         # Get prompt path from config
-        prompt_path = self.config.get("system_prompt_path", "src/trading/prompts/system_prompt.txt") if self.config else "src/trading/prompts/system_prompt.txt"
+        prompt_path = self.env_config.get("system_prompt_path", "src/trading/prompts/system_prompt.txt") if self.env_config else "src/trading/prompts/system_prompt.txt"
 
         # Convert to absolute path relative to the project root directory
         if not os.path.isabs(prompt_path):
@@ -597,9 +585,9 @@ class TradingGameEnvironment(AbstractEnvironment):
             agent_context["affordable_store_items"] = affordable_items[:10]
 
         # Add game structure information
-        assert self.config is not None, "Config not available"
-        agent_context["max_iterations"] = self.config.get("max_iterations", 3)
-        agent_context["max_planning_rounds"] = self.config.get("max_planning_rounds", 5)
+        assert self.env_config is not None, "Config not available"
+        agent_context["max_iterations"] = self.env_config.get("max_iterations", 3)
+        agent_context["max_planning_rounds"] = self.env_config.get("max_planning_rounds", 5)
 
         return agent_context
 
@@ -698,7 +686,7 @@ class TradingGameEnvironment(AbstractEnvironment):
 
         return base_tools
 
-    def get_supported_tools(self) -> Set[str]:
+    def get_tool_names(self) -> Set[str]:
         """Return set of tool names this environment supports."""
         return {"get_agent_info", "get_store_info", "buy_item", "propose_trade", "approve_trade", "reject_trade"}
 
@@ -718,7 +706,7 @@ class TradingGameEnvironment(AbstractEnvironment):
             Dictionary with tool execution result
         """
         # Check if tool is supported
-        if tool_name not in self.get_supported_tools():
+        if tool_name not in self.get_tool_names():
             return {"error": f"Tool '{tool_name}' not supported by TradingGameEnvironment"}
 
         # Tools that are actually actions and modify state
@@ -786,55 +774,35 @@ class TradingGameEnvironment(AbstractEnvironment):
         else:
             return self.execute_tool(tool_name, agent_name, arguments)
 
-    def should_continue_simulation(self, iteration: int) -> bool:
-        """Check if trading game should continue."""
-        # Continue if we haven't reached max iterations
-        assert self.config is not None, "Config not available"
-        max_iterations = self.config.get("max_iterations", 3)
-        return iteration <= max_iterations
+    def done(self, iteration: int) -> bool:
+        """Return True when the environment is finished."""
+        assert self.env_config is not None, "Config not available"
+        max_iterations = self.env_config.get("max_iterations", 3)
+        return iteration > max_iterations
 
-    def log_state(self, iteration: int, phase: str) -> None:
-        """Log trading game state."""
-        # Log game state information
-        if phase == "initialization":
-            self._log_initial_state()
-        elif phase == "iteration_end":
-            self._log_iteration_state(iteration)
+    def log_iteration(self, iteration: int) -> None:
+        """Log trading game state for the current iteration."""
+        self._log_iteration_state(iteration)
 
-        # Update utility and budget tracking
-        if phase == "iteration_end":
-            for agent in self.agents:
-                self.utility_history[agent.name].append(agent.state.current_utility)
-                self.budget_history[agent.name].append(agent.state.budget)
+        for agent in self.agents:
+            self.utility_history[agent.name].append(agent.state.current_utility)
+            self.budget_history[agent.name].append(agent.state.budget)
 
-            # Generate utility plot
-            if self.plotter:
-                plot_path = self.plotter.plot_utilities(
-                    self.utility_history,
-                    iteration,
-                    budget_history=self.budget_history,
-                    show=False
-                )
-                print(f"  📊 Utility plot saved: {plot_path}")
+        joint_reward = sum(agent.state.current_utility for agent in self.agents)
+        agent_rewards = {agent.name: float(agent.state.current_utility) for agent in self.agents}
+        self._track_scores(iteration, joint_reward, agent_rewards)
 
-            # Calculate and track scores like other environments
-            global_score = sum(agent.state.current_utility for agent in self.agents)
-            local_scores = {agent.name: float(agent.state.current_utility) for agent in self.agents}
-
-            # Track scores and generate JSON logs and plots
-            self._track_scores(iteration, global_score, local_scores)
-
-    def _track_scores(self, iteration: int, global_score: float, local_scores: Dict[str, float]) -> None:
-        """Track scores and generate plots/logs similar to other environments."""
+    def _track_scores(self, iteration: int, joint_reward: float, agent_rewards: Dict[str, float]) -> None:
+        """Track scores and write logs similar to other environments."""
         import json
         from datetime import datetime
         from pathlib import Path
 
         # Update score histories
-        self.global_score_history.append(global_score)
-        for agent, score in local_scores.items():
-            if agent in self.local_scores_history:
-                self.local_scores_history[agent].append(score)
+        self.joint_reward_history.append(joint_reward)
+        for agent, reward in agent_rewards.items():
+            if agent in self.agent_rewards_history:
+                self.agent_rewards_history[agent].append(reward)
 
         tag_model = get_tag_model_subdir(self.full_config)
         log_dir = build_log_dir("Trading", tag_model, self.seed, self.run_timestamp)
@@ -845,34 +813,21 @@ class TradingGameEnvironment(AbstractEnvironment):
             "environment": "Trading",
             "iteration": iteration,
             "timestamp": datetime.now().isoformat(),
-            "global_score": global_score,
-            "local_scores": local_scores,
+            "joint_reward": joint_reward,
+            "agent_rewards": agent_rewards,
             "model_info": extract_model_info(self.full_config),
             "full_config": self.full_config,
             "metadata": {
-                "total_agents": len(local_scores),
-                "average_local_score": sum(local_scores.values()) / len(local_scores) if local_scores else 0,
-                "total_utility": global_score,
+                "total_agents": len(agent_rewards),
+                "average_agent_reward": sum(agent_rewards.values()) / len(agent_rewards) if agent_rewards else 0.0,
+                "total_utility": joint_reward,
                 "total_budget": sum(agent.state.budget for agent in self.agents)
             }
         }
 
-        score_file = log_dir / f"scores_iteration_{iteration}.json"
-        with open(score_file, 'w') as f:
+        data_file = log_dir / f"data_iteration_{iteration}.json"
+        with open(data_file, "w") as f:
             json.dump(score_entry, f, indent=2, ensure_ascii=False)
-
-        # Generate score plot using ScorePlotter
-        if self.score_plotter:
-            try:
-                plot_path = self.score_plotter.plot_scores(
-                    self.global_score_history,
-                    self.local_scores_history,
-                    iteration,
-                    environment_name="Trading",
-                    show=False
-                )
-            except Exception as e:
-                print(f"Warning: Failed to generate score plot: {e}")
 
     def _log_initial_state(self):
         """Log initial trading game state."""
@@ -994,38 +949,6 @@ class TradingGameEnvironment(AbstractEnvironment):
         else:
             print(f"        Failed to get response from {target_agent} for trade {trade['trade_id']}")
 
-    def cleanup(self, iteration: int) -> None:
-        """Clean up trading game resources."""
-        print("Cleaning up trading game environment...")
-
-        # Generate final plots if plotter available
-        if self.plotter and self.utility_history:
-            # Get final iteration from utility history length
-            final_iteration = max(len(utils) for utils in self.utility_history.values() if utils)
-            final_plot = self.plotter.plot_utilities(
-                self.utility_history,
-                iteration=final_iteration,
-                budget_history=self.budget_history,
-                show=False
-            )
-            print(f"Final utility plot saved: {final_plot}")
-
-        # Log final blackboard state
-        if self.blackboard_logger and self.blackboard_manager and self._factor_graph_blackboards:
-            for bb_string_id in self._factor_graph_blackboards:
-                blackboard = self.blackboard_manager.get_blackboard_by_string_id(bb_string_id)
-                if blackboard:
-                    self.blackboard_logger.log_blackboard_state(
-                        blackboard, iteration, "final", "SIMULATION_END"
-                    )
-            # Get any log file from the blackboard_log_files dict
-            log_files = getattr(self.blackboard_logger, 'blackboard_log_files', {})
-            if log_files:
-                first_log_file = next(iter(log_files.values()))
-                print(f"Final blackboard state saved: {first_log_file}")
-            else:
-                print("Final blackboard state saved")
-
     def handle_pending_response(self, response_type: str, target_agent: str,
                                context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1072,20 +995,6 @@ class TradingGameEnvironment(AbstractEnvironment):
             "target_agent": target_agent,
             "context": context
         }
-
-    def get_iteration_summary(self, _iteration: int) -> Dict[str, Any]:
-        """Get trading game iteration summary."""
-        summary = {}
-
-        if self.trade_manager:
-            trade_stats = self.trade_manager.get_trade_statistics()
-            summary.update({
-                "total_trades": trade_stats['total_trades'],
-                "executed_trades": trade_stats['status_breakdown']['executed'],
-                "success_rate": f"{trade_stats['success_rate']:.1%}"
-            })
-
-        return summary
 
     def get_final_summary(self) -> Dict[str, Any]:
         """Get final trading game summary."""

@@ -10,7 +10,6 @@ plots/
 .env
 .vscode/
 .idea/
-node_modules/
 dist/
 build/
 *.log
@@ -28,3 +27,5 @@ coverage/
 *.egg
 *.iml
 dashboards/public/dashboard_data.json
+
+envs/dcops/outputs

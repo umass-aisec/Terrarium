@@ -28,54 +28,43 @@ Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/
 Follow the quick guide provided below for basic testing.
 
 ## Quick Start
-
-**Requirements**: Python 3.11+
-
-1. Clone the repository:
+Clone the repository and update submodules. A submodule exists at `external/CoLLAB` for a suite of external environments.
 ```bash
-git clone <repository-url>
-cd terrarium
+git clone <repository-url> Terrarium
+cd Terrarium
+git submodule update --init --recursive
 ```
 
-2. Start up a new conda environment and activate it
+In this repo, we use [uv](https://docs.astral.sh/uv/) as our extremely fast package manager. If not already installed follow these [installation instructions](https://docs.astral.sh/uv/getting-started/installation/).
 ```bash
-conda create --name terrarium
-conda activate terrarium
+# Run this at the root directory .../Terrarium
+uv venv --python 3.11 .venv
+source .venv/bin/activate
+uv sync
 ```
+---
+Terrarium enables two types of servicing: (1) API-based providers and (2) [vLLM](https://github.com/vllm-project/vllm) integration for open-source models.
 
-3. Install dependencies (recommended to use Conda env):
-Use uv for fast dependency installation
+For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Set your API keys in a .env file.
 ```bash
-uv pip install -e .
-```
-or just 
-```bash
-pip install -e .
-```
-
-
-<!-- 3a. (If using vLLM for servicing) Start the vLLM server (Read `server/docs/USAGE.md` before using vLLM):
-```bash
-python server/utils/start_vllm_server.py
-```
-and set the `"use_openai_api": false` in `configs/config.json` -->
-4. Create a .env file at the root directory --> terrarium/.env
-5. Set your provider keys in the .env file (vLLM integration coming soon :gear:):
-```bash
-# In .env file
+# In a .env file at the root directory
 OPENAI_API_KEY=<your_key>
 GOOGLE_API_KEY=<your_key>
 ANTHROPIC_API_KEY=<your_key>
+TOGETHER_API_KEY=<your_key>
 ```
+Next, set the model and provider you want to use at `llm.provider` and `llm.<provider>.model` in `examples/configs/<config>.yaml`.
 
-### Running
-1. Start up the MCP server
+For vLLM servicing, simply set `llm.provider:"vllm"` and `llm.vllm.auto_start_server:true` in `examples/configs/<config>.yaml` for auto-startup and shutdown for a single run. If you require a persistent vLLM server, which is useful for using the same vLLM model for different configurations or environments without the costly startup time, then set `llm.vllm.persistent_server:true`. To kill all vLLM servers run `pkill -f vllm.entrypoints.openai.api_server`.
+
+### Running a Multi-Agent Trajectory
+1. Start up the persistent MCP server once for tool calls and the blackboard server:
 ```bash
 python src/server.py
 ```
-2. Run the base simulation using a config file:
+2. Run a simulation using an execution script along with a config file:
 ```bash
-python3 examples/base/main.py --config <yaml_config_path>
+python examples/base_main.py --config <yaml_config_path>
 ```
 
 ## Attack Scenarios
@@ -84,9 +73,9 @@ Terrarium ships three reference attacks that exercise different points in the st
 
 | Attack | What it targets | Entry point | Payload config |
 | --- | --- | --- | --- |
-| Agent poisoning | Replaces every `post_message` payload from the compromised agent before it reaches the blackboard. | `examples/attacks/main.py --attack_type agent_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
-| Context overflow | Appends a large filler block to agent messages to force downstream context truncation. | `examples/attacks/main.py --attack_type context_overflow` | `examples/configs/attack_config.yaml` (`header`, `filler_token`, `repeat`, `max_chars`) |
-| Communication protocol poisoning | Injects malicious system messages into every blackboard via the MCP layer. | `examples/attacks/main.py --communication_protocol_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+| Agent poisoning | Replaces every `post_message` payload from the compromised agent before it reaches the blackboard. | `examples/attack_main.py --attack_type agent_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+| Context overflow | Appends a large filler block to agent messages to force downstream context truncation. | `examples/attack_main.py --attack_type context_overflow` | `examples/configs/attack_config.yaml` (`header`, `filler_token`, `repeat`, `max_chars`) |
+| Communication protocol poisoning | Injects malicious system messages into every blackboard via the MCP layer. | `examples/attack_main.py --communication_protocol_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
 
 ### Running agent-side attacks
 
@@ -94,13 +83,13 @@ Use the unified driver to launch both the standard run and the selected attack:
 
 ```bash
 # Agent poisoning example
-python examples/attacks/main.py \
+python examples/attack_main.py \
   --config examples/configs/meeting_scheduling.yaml \
   --poison_payload examples/configs/attack_config.yaml \
   --attack_type agent_poisoning
 
 # Context overflow example
-python examples/attacks/main.py \
+python examples/attack_main.py \
   --config examples/configs/meeting_scheduling.yaml \
   --poison_payload examples/configs/attack_config.yaml \
   --attack_type context_overflow
@@ -125,6 +114,7 @@ llm:
   provider: "vllm"
   vllm:
     auto_start_server: true
+    persistent_server: false
     startup_timeout: 180
     models:
       - checkpoint: "/data/models/Qwen2-7B-Instruct"
@@ -165,7 +155,7 @@ Consolidates runs and logs into a static dashboard for easier navigation:
 
 ## Tooling (MCP Servers)
 
-To standardize tool usage among different model providers, we employ an MCP server using FastMCP. Each environment has their own set of MCP tools that are readily available to the agent with the functionality of permitting certain tools by the communication protocol. Some examples of environment tools are MeetingScheduling -> schedule_meeting(.), PersonalAssistant -> choose_outfit(.), and SmartGrid -> schedule_task(.).
+To standardize tool usage among different model providers, we employ an MCP server using FastMCP. Each environment has their own set of MCP tools that are readily available to the agent with the functionality of permitting certain tools by the communication protocol. Some examples of environment tools are MeetingScheduling -> attend_meeting(.), PersonalAssistant -> choose_outfit(.), and SmartGrid -> assign_source(.).
 
 
 ## Logging

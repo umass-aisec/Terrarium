@@ -41,4 +41,4 @@ This folder contains the static dashboards plus helper scripts to build the data
 4) For near–real-time updates, rerun `build_data.py` periodically (e.g., a small shell loop) while the dashboard auto-polls the JSON/logs.
 
 ## Where success_rate comes from
-`build_data.py` inspects `scores_iteration_*.json` metadata per environment (e.g., MeetingScheduling) to compute a completion ratio. If absent, the UI falls back to event counts or your `run.health`. Customize the logic via your `compute_health` hook. 
+`build_data.py` inspects `data_iteration_*.json` entries (e.g., MeetingScheduling) to compute a completion ratio. If absent, the UI falls back to event counts or your `run.health`. Customize the logic via your `compute_health` hook.

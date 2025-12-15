@@ -861,14 +861,14 @@
         return 'Unknown model';
       };
 
-      const getLatestGlobalScore = (run) => {
+      const getLatestJointReward = (run) => {
         if (!run || !Array.isArray(run.scores)) {
           return null;
         }
         for (let idx = run.scores.length - 1; idx >= 0; idx -= 1) {
           const entry = run.scores[idx];
-          if (entry && typeof entry.global_score === 'number' && !Number.isNaN(entry.global_score)) {
-            return entry.global_score;
+          if (entry && typeof entry.joint_reward === 'number' && !Number.isNaN(entry.joint_reward)) {
+            return entry.joint_reward;
           }
         }
         return null;
@@ -1509,10 +1509,10 @@
 
       const METRIC_OPTIONS = [
         {
-          value: 'global_score',
-          label: 'Global Score',
+          value: 'joint_reward',
+          label: 'Joint Reward',
           accessor: (run) => {
-            const score = getLatestGlobalScore(run);
+            const score = getLatestJointReward(run);
             return score === null ? null : Number(score);
           },
           formatter: (value) => `${value}`,
@@ -1670,7 +1670,7 @@
           }
           const completion = getCompletionStats(run);
           const color = resolveRunColor(run, colorDef);
-          const globalScore = getLatestGlobalScore(run);
+          const jointReward = getLatestJointReward(run);
           if (axisDef.type === 'category' && !categorySet.has(axisRaw)) {
             categorySet.add(axisRaw);
             categories.push(axisRaw);
@@ -1695,7 +1695,7 @@
               completion,
               note: run.note || '',
               tags: getRunTags(run),
-              globalScore,
+              jointReward,
               colorValue: colorDef && colorDef.value !== 'none'
                 ? (colorDef.accessor ? colorDef.accessor(run) : null)
                 : null,
@@ -1882,8 +1882,8 @@
                     const completionParagraph = completionLabel === 'Unsuccessful'
                       ? `<p>${completionIcon} <strong>${completionText}</strong></p>`
                       : `<p>${completionIcon} <strong>${completionLabel}:</strong> ${completionText}</p>`;
-                    const globalScoreDisplay = Number.isFinite(meta.globalScore)
-                      ? meta.globalScore
+                    const jointRewardDisplay = Number.isFinite(meta.jointReward)
+                      ? meta.jointReward
                       : '—';
 
                     const tagBadges = (meta.tags || []).map((tag) => {
@@ -1893,7 +1893,7 @@
 
                     tooltipEl.innerHTML = `
                       <h4>${meta.experimentName || 'Experiment'}</h4>
-                      <p>📊 <strong>Global Score:</strong> ${globalScoreDisplay}</p>
+                      <p>📊 <strong>Joint Reward:</strong> ${jointRewardDisplay}</p>
                       <p>🌍 <strong>Environment:</strong> ${meta.environment || 'Unknown environment'}</p>
                       <p>🤖 <strong>Model:</strong> ${meta.model || 'Unknown model'}</p>
                       <p>🌱 <strong>Seed:</strong> ${meta.seed || '–'}</p>

@@ -287,6 +287,7 @@ class VLLMGlobalConfig:
     models: Dict[str, VLLMModelSpec]
     primary_model_id: str
     auto_start_server: bool = False
+    persistent_server: bool = False
     auto_configure_tool_choice: bool = True
     startup_timeout: int = 180
     health_check_path: str = "/v1/models"
@@ -357,6 +358,7 @@ class VLLMGlobalConfig:
             models=model_map,
             primary_model_id=primary_model_id,
             auto_start_server=bool(raw_config.get("auto_start_server", False)),
+            persistent_server=bool(raw_config.get("persistent_server", False)),
             auto_configure_tool_choice=bool(raw_config.get("auto_configure_tool_choice", True)),
             startup_timeout=int(raw_config.get("startup_timeout", raw_config.get("connection_timeout", 180))),
             health_check_path=str(raw_config.get("health_check_path", "/v1/models")),
@@ -424,6 +426,37 @@ class VLLMServerManager:
             return resp.ok
         except requests.RequestException:
             return False
+
+    @staticmethod
+    def _server_models(spec: VLLMModelSpec, timeout: float = 3.0) -> List[str]:
+        """
+        Return the list of model ids served by the running vLLM server, if reachable.
+        """
+        models_url = spec.api_base().rstrip("/") + "/models"
+        try:
+            resp = requests.get(models_url, timeout=timeout)
+            if not resp.ok:
+                return []
+            payload = resp.json()
+            data = payload.get("data") if isinstance(payload, dict) else None
+            if not isinstance(data, list):
+                return []
+            ids: List[str] = []
+            for entry in data:
+                model_id = entry.get("id") if isinstance(entry, dict) else None
+                if model_id:
+                    ids.append(str(model_id))
+            return ids
+        except Exception:
+            return []
+
+    def _server_matches_model(self, spec: VLLMModelSpec) -> Tuple[bool, List[str]]:
+        """
+        Check whether an already-running server exposes the expected model.
+        """
+        available = self._server_models(spec)
+        expected = spec.served_name()
+        return expected in available, available
 
     def _apply_tool_and_reasoning_settings(self, spec: VLLMModelSpec, cmd: List[str]) -> None:
         """Inject --tool-call-parser/--reasoning-parser flags when possible."""
@@ -501,12 +534,23 @@ class VLLMServerManager:
 
     def ensure_server(self, spec: VLLMModelSpec) -> None:
         """Ensure a server for the given model is reachable, launching if needed."""
-        # Stop any previous servers so we can spin up the new model cleanly.
-        self._stop_all_servers(except_id=spec.id, wait_seconds=5.0)
+        # Stop any previous servers so we can spin up the new model cleanly unless persistence is requested.
+        if not self.config.persistent_server:
+            self._stop_all_servers(except_id=spec.id, wait_seconds=5.0)
 
         health_url = self._health_url(spec, self.config)
         if self._is_server_alive(health_url):
-            return
+            matches, available = self._server_matches_model(spec)
+            if matches:
+                return
+            raise RuntimeError(
+                "Detected an existing vLLM server but it does not expose the expected model.\n"
+                f"Expected: {spec.served_name()}\n"
+                f"Available: {available or 'unknown'}\n"
+                "Stop the running server or change llm.vllm.port/served_model_name to avoid conflicts."
+                "If you are only running one server, run 'pkill -f vllm.entrypoints.openai.api_server' to kill the running server, and rerun your script."
+                "If you have more than one server, try and find the running server that you want to kill with 'kill -9 <pid>'."
+            )
 
         if not self.config.auto_start_server:
             raise RuntimeError(
@@ -571,11 +615,14 @@ class VLLMServerManager:
         log_file.write(f"=== Launching vLLM model {spec.id} at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
         log_file.flush()
 
+        # Detach from the parent's process group when persistence is enabled so Ctrl+C
+        # in the main simulation doesn't send SIGINT to the vLLM server.
         process = subprocess.Popen(
             cmd,
             stdout=log_file,
             stderr=log_file,
             env=env,
+            start_new_session=self.config.persistent_server,
         )
         self._process_table[spec.id] = (process, log_file)
 
@@ -599,6 +646,9 @@ class VLLMServerManager:
 
     def shutdown(self) -> None:
         """Terminate any managed vLLM processes."""
+        if self.config.persistent_server:
+            # Keep servers alive between simulation runs to avoid cold starts.
+            return
         self._stop_all_servers(wait_seconds=5.0)
 
 

@@ -27,24 +27,24 @@ def set_environment_tools(environment_name: str):
     Dynamically load and set environment-specific tools.
 
     Args:
-        environment_name: Name of the environment (e.g., "MeetingScheduling", "PersonalAssistant", "SmartGrid")
+        environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__).
     """
     global environment_tools
 
-    # Normalize environment name
-    normalized = environment_name.lower().replace("_", "")
-
-    if normalized == "meetingscheduling":
+    if environment_name == "MeetingSchedulingEnvironment":
         from envs.dcops.meeting_scheduling import MeetingSchedulingTools
         environment_tools = MeetingSchedulingTools(megaboard)
-    elif normalized == "personalassistant":
+    elif environment_name == "PersonalAssistantEnvironment":
         from envs.dcops.personal_assistant.personal_assistant_tools import PersonalAssistantTools
         environment_tools = PersonalAssistantTools(megaboard)
-    elif normalized == "smartgrid":
+    elif environment_name == "SmartGridEnvironment":
         from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
         environment_tools = SmartGridTools(megaboard)
     else:
-        raise ValueError(f"Unknown environment: {environment_name}. Supported: MeetingScheduling, PersonalAssistant, SmartGrid")
+        raise ValueError(
+            f"Unknown environment: {environment_name}. Supported: "
+            "MeetingSchedulingEnvironment, PersonalAssistantEnvironment, SmartGridEnvironment"
+        )
 
 @mcp.tool()
 def handle_environment_tool_call(tool_name: str, agent_name: str, arguments: Dict[str, Any],

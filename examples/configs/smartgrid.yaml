@@ -2,38 +2,62 @@ simulation:
   max_iterations: 1
   max_planning_rounds: 3
   max_conversation_steps: 3
+  seed: 42
   tags:
     - baseline
   note: ""
 environment:
-  name: SmartGrid
-  catalog_path: envs/dcops/CoLLAB/SmartGrid/data/devices.json
-  T: 24
-  n_homes: 8
-  tasks_per_home:
-  - 2
-  - 4
-  allowed_window_len:
-  - 2
-  - 6
-  S_pattern: sin
-  S_base: 12.0
-  S_amp: 2.5
-  S_min_clip: 0.0
-  rng_seed: 42
+  name: SmartGridEnvironment
+  # CoLLAB v2 SmartGrid (renewable source allocation)
+  timeline_length: 24
+  min_machines_per_agent: 2
+  max_machines_per_agent: 4
+  min_sources_per_agent: 2
+  max_sources_per_agent: 3
+communication_network:
+  # Topology used to create blackboards (one blackboard per edge).
+  # Options: complete | path | star | random
+  # random requires `edge_prob` (0..1) and uses `simulation.seed`
+  topology: complete
+  num_agents: 8
+  # consolidate_channels=false => one blackboard per edge
+  # consolidate_channels=true => one blackboard per clique (plus leftover edges)
+  consolidate_channels: false
 llm:
-  # Provider: "openai", "anthropic", "gemini", or "vllm"
-  provider: "vllm"
+  # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
+  provider: "openai"
   openai:
     model: "gpt-4.1-mini-2025-04-14"
+    params:
+      max_tokens: 1024
+      temperature: 0.7
+      reasoning_effort: "low"
+      verbosity: "low"
   anthropic:
     model: "claude-3-5-sonnet-20241022"
+    params:
+      max_tokens: 4000
+      temperature: 0.7
+      top_p: 0.95
   gemini:
     model: "gemini-2.0-flash-lite"
+    params:
+      max_tokens: 1024
+      temperature: 0.6
+      top_p: 0.95
+  together:
+    model: "zai-org/GLM-4.6"
+    params:
+      max_tokens: 1024
+      temperature: 0.7
   vllm:
     auto_start_server: true
+    persistent_server: false  # Keep the vLLM server alive between runs to avoid cold starts
     health_check_path: "/models"
     startup_timeout: 420 # When starting a new server, max time (s) to wait for it to be ready
+    params:
+      max_tokens: 1024
+      temperature: 0.7
     models:
       - checkpoint: "Qwen/Qwen2.5-7B-Instruct"
         host: "127.0.0.1"
@@ -47,13 +71,10 @@ llm:
           - "--enable-auto-tool-choice"
 notes:
 - SmartGrid baseline configuration (no attacks)
-- SmartGrid creates a single global blackboard for all homes to coordinate power usage
-- SmartGrid environment coordinates power-consuming task scheduling across homes
-- Homes coordinate via blackboards to minimize total main grid draw
-- Each home has 2-4 power-consuming tasks from the device catalog
-- Tasks must be scheduled within their allowed time windows
-- Sustainable capacity varies sinusoidally over 24-hour period
-- 'Objective: Minimize peak consumption and main grid energy usage'
-- Simulation stops when all tasks scheduled optimally or max iterations reached
-- Device catalog includes EVs, appliances, and various home devices with realistic
-  power consumption
+- SmartGrid uses a configured communication graph to create blackboards (one per edge)
+- Agents assign each owned machine to a shared renewable source
+- Coordinate via blackboards to minimize overflow to the main grid
+- Each agent controls 2-4 machines with fixed operating windows
+- Sources have hourly capacities shared across agents
+- Objective: Maximize CoLLAB v2 global reward (minimize overflow)
+- Simulation stops when all machines assigned or max iterations reached

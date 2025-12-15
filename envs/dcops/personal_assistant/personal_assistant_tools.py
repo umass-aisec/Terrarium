@@ -4,6 +4,43 @@ class PersonalAssistantTools:
     def __init__(self, blackboard_manager):
         self.blackboard_manager = blackboard_manager
 
+    def get_tool_names(self) -> Set[str]:
+        """Return set of tool names this environment supports."""
+        return {"choose_outfit"}
+
+    def get_tools(self, phase: str) -> List[Dict[str, Any]]:
+        """
+        Get environment-specific tools available for a phase.
+
+        Args:
+            phase: Current phase ("planning" or "execution")
+
+        Returns:
+            List of tool definitions
+        """
+        if phase == "execution":
+            # During execution phase, provide the choose_outfit tool
+            return [{
+                "type": "function",
+                "function": {
+                    "name": "choose_outfit",
+                    "description": "Choose your final outfit from your wardrobe options",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "outfit_number": {
+                                "type": "integer",
+                                "description": "The number of the outfit to choose (1-based index from your wardrobe)"
+                            }
+                        },
+                        "required": ["outfit_number"]
+                    }
+                }
+            }]
+        # During planning phase, no environment-specific tools
+        # Agents use blackboard tools for communication
+        return []
+
     def execute_action(self, agent_name: str, action: Dict[str, Any], log_to_blackboards: bool = True,
                       phase: Optional[str] = None, iteration: Optional[int] = None, env_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -27,7 +64,7 @@ class PersonalAssistantTools:
         outfit_selections = env_state.get("outfit_selections", {})
         agent_names = env_state.get("agent_names", [])
         wardrobe_options = env_state.get("wardrobe_options", {})
-        max_possible_score = env_state.get("max_possible_score", 0)
+        max_joint_reward = env_state.get("max_joint_reward", 0)
 
         if agent_name not in agent_names:
             return {"status": "failed", "reason": f"Agent {agent_name} not found"}
@@ -116,10 +153,6 @@ class PersonalAssistantTools:
 
         return execution_result
 
-    def get_supported_tools(self) -> Set[str]:
-        """Return set of tool names this environment supports."""
-        return {"choose_outfit"}
-
     def handle_tool_call(self, tool_name: str, agent_name: str, arguments: Dict[str, Any],
                         phase: Optional[str] = None, iteration: Optional[int] = None, env_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -153,36 +186,3 @@ class PersonalAssistantTools:
         # All other tools are not supported by this environment
         else:
             return {"error": f"PersonalAssistant environment does not support tool: {tool_name}"}
-
-    def get_tools(self, phase: str) -> List[Dict[str, Any]]:
-        """
-        Get environment-specific tools available for a phase.
-
-        Args:
-            phase: Current phase ("planning" or "execution")
-
-        Returns:
-            List of tool definitions
-        """
-        if phase == "execution":
-            # During execution phase, provide the choose_outfit tool
-            return [{
-                "type": "function",
-                "function": {
-                    "name": "choose_outfit",
-                    "description": "Choose your final outfit from your wardrobe options",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "outfit_number": {
-                                "type": "integer",
-                                "description": "The number of the outfit to choose (1-based index from your wardrobe)"
-                            }
-                        },
-                        "required": ["outfit_number"]
-                    }
-                }
-            }]
-        # During planning phase, no environment-specific tools
-        # Agents use blackboard tools for communication
-        return []

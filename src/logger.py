@@ -230,7 +230,7 @@ class BlackboardLogger:
         self.session_start = time.time()
         self.config = config
         self.environment_name = self.config["environment"]["name"]
-        self.seed = self.config["environment"]["rng_seed"]
+        self.seed = self.config["simulation"]["seed"]
         self.tag_model = get_tag_model_subdir(self.config)
         self.run_timestamp = _resolve_run_timestamp(self.config, run_timestamp)
         self.log_root = build_log_dir(

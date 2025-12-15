@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Tuple
+import os
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+from dotenv import load_dotenv
 
 from llm_server.clients.abstract_client import AbstractClient
 
@@ -12,7 +14,7 @@ def _convert_tools(tools: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
     """Convert Terrarium tool schema into OpenAI-compatible tool definitions."""
     if not tools:
         return []
-    normalized = []
+    normalized: List[Dict[str, Any]] = []
     for tool in tools:
         if not isinstance(tool, dict):
             continue
@@ -32,25 +34,29 @@ def _convert_tools(tools: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
     return normalized
 
 
-class VLLMClient(AbstractClient):
-    """Client that talks to a vLLM OpenAI-compatible server."""
+class TogetherClient(AbstractClient):
+    """Client that talks to Together.ai's OpenAI-compatible chat endpoint."""
 
     def __init__(
         self,
-        base_url: str,
-        model_name: str,
-        api_key: str = "EMPTY",
+        *,
+        base_url: str = "https://api.together.xyz/v1",
+        api_key: Optional[str] = None,
         request_timeout: int = 60,
     ):
-        self.base_url = base_url.rstrip("/")
-        self.model_name = model_name
-        self.api_key = api_key or "EMPTY"
-        self.request_timeout = request_timeout
+        load_dotenv(override=True)
+        resolved_key = api_key or os.getenv("TOGETHER_API_KEY")
+        if not resolved_key:
+            raise ValueError("Together API key not found. Set TOGETHER_API_KEY in .env file")
+
+        self.base_url = str(base_url).rstrip("/")
+        self.api_key = resolved_key
+        self.request_timeout = int(request_timeout)
         self.session = requests.Session()
 
     @staticmethod
     def init_context(system_prompt: str, user_prompt: str) -> List[Dict[str, Any]]:
-        """Initialize chat-style context for vLLM."""
+        """Initialize chat-style context for Together."""
         return [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -97,17 +103,20 @@ class VLLMClient(AbstractClient):
         params: Dict[str, Any],
     ) -> Tuple[Dict[str, Any], str]:
         payload: Dict[str, Any] = {
-            "model": params.get("model", self.model_name),
+            "model": params.get("model"),
             "messages": input,
         }
+
         max_tokens = params.get("max_completion_tokens") or params.get("max_output_tokens")
         if max_tokens:
             payload["max_tokens"] = max_tokens
         if params.get("temperature") is not None:
             payload["temperature"] = params["temperature"]
+
         converted_tools = _convert_tools(params.get("tools"))
         if converted_tools:
             payload["tools"] = converted_tools
+
         response = self.session.post(
             f"{self.base_url}/chat/completions",
             headers=self._build_headers(),
@@ -116,7 +125,7 @@ class VLLMClient(AbstractClient):
         )
         if not response.ok:
             raise RuntimeError(
-                f"vLLM chat request failed ({response.status_code}): {response.text}"
+                f"Together chat request failed ({response.status_code}): {response.text}"
             )
         data = response.json()
         choices = data.get("choices") or []
@@ -161,3 +170,4 @@ class VLLMClient(AbstractClient):
             tool_calls_executed += 1
 
         return tool_calls_executed, context, step_tools
+

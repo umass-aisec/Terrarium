@@ -9,31 +9,30 @@ The PersonalAssistant environment involves agents coordinating to select outfits
 that satisfy personal preferences and inter-agent constraints (color matching).
 """
 from pathlib import Path
-from typing import Dict, List, Any, Optional, TYPE_CHECKING
-# Import PersonalAssistant modules
-from envs.dcops.CoLLAB.PersonalAssistant.data_structure import (
-    Outfit, Factor
-)
-from envs.dcops.CoLLAB.PersonalAssistant.generate import build_personal_env
-from envs.dcops.CoLLAB.PersonalAssistant.prompt_maker import make_prompts_vanilla
+from typing import Dict, List, Any, Optional, TYPE_CHECKING, Tuple, Mapping
 
+# CoLLAB v2 problem-layer imports (made available via envs.dcops.__init__)
+from problem_layer.personal_assistant import PersonalAssistantConfig, generate_instance
+from problem_layer.personal_assistant.problem import Outfit
+from problem_layer.base import ProblemDefinition
+import logging
 # Import abstract environment interface and logger
 from envs.abstract_environment import AbstractEnvironment
-from envs.dcops.plotter import ScorePlotter
 from src.utils import (
     clear_seed_directories,
     extract_model_info,
     get_tag_model_subdir,
     get_run_timestamp,
     build_log_dir,
-    build_plots_dir,
 )
 from .personal_assistant_tools import PersonalAssistantTools
 from .personal_assistant_prompts import PersonalAssistantPrompts
 
-# Use TYPE_CHECKING to avoid circular import (Agent → ToolsetDiscovery → EnvironmentTools → Environment → Agent)
+logger = logging.getLogger(__name__)
+
+# Use TYPE_CHECKING to avoid circular import (BaseAgent → ToolsetDiscovery → EnvironmentTools → Environment → BaseAgent)
 if TYPE_CHECKING:
-    from src.agent import Agent
+    from src.agents.base import BaseAgent
 
 
 class PersonalAssistantEnvironment(AbstractEnvironment):
@@ -47,11 +46,14 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
     def __init__(self, communication_protocol, config, tool_logger):
         """Initialize the PersonalAssistant environment."""
         self.full_config = config
-        self.config: Dict[str, Any] = config["environment"]
-        # Get the correct seed from environment config
-        self.current_seed = self.config.get("rng_seed", 42)
+        self.env_config: Dict[str, Any] = config["environment"]
+        self.simulation_config = config["simulation"]
+        # Get the correct seed from simulation config
+        self.current_seed = int(self.simulation_config["seed"])
 
         # Instance management
+        # Partial joint assignment: variable_name -> chosen outfit number (1-based)
+        self.assignment: Dict[str, Any] = {}
         self.outfit_selections: Dict[str, Outfit] = {}
         self.tool_logger = tool_logger
         self.agent_names: List[str] = []  # Agent names (renamed from agents_list)
@@ -59,99 +61,70 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         self.communication_protocol.environment = self
         self.run_timestamp = get_run_timestamp(self.full_config)
         self.current_iteration = 0
-        self.simulation_config = config["simulation"]
         self.max_iterations = self.simulation_config.get("max_iterations", None)
         self.max_planning_rounds = self.simulation_config.get("max_planning_rounds", None)
 
-        # Data paths to static CoLLAB data files
-        self.data_root = Path(__file__).parent.parent.parent.parent / "envs" / "dcops" / "CoLLAB" / "PersonalAssistant" / "data"
+        # Clear seed directories FIRST to ensure clean state for this run
+        clear_seed_directories(self.__class__.__name__, self.current_seed, self.full_config)
 
-        # Generate PersonalAssistant instance
-        self.instance = build_personal_env(
-            n_agents=self.config.get("n_agents", 6),
-            max_degree=self.config.get("max_degree", 3),
-            data_root=self.data_root,
-            rng_seed=self.config.get("rng_seed", 42),
-            min_outfits_per_agent=self.config.get("min_outfits_per_agent", 5),
-            max_outfits_per_agent=self.config.get("max_outfits_per_agent", 8),
-            p_add_unary_color=self.config.get("p_add_unary_color", 0.7)
+        # ---- Build CoLLAB v2 instance -------------------------------------------------
+        network_cfg = config.get("communication_network") or {}
+        assert network_cfg is not None and network_cfg != {}, "communication_network config must be specified"
+        num_agents = network_cfg.get("num_agents")
+        assert num_agents is not None and type(num_agents) == int, "communication_network.num_agents in config must be specified as an integer"
+
+        min_outfits = self.env_config.get("min_outfits_per_agent", 4)
+        max_outfits = self.env_config.get("max_outfits_per_agent", 6)
+        density = self.env_config.get("density")
+        if density is None:
+            # Back-compat: approximate density from max_degree if present
+            max_degree = self.env_config.get("max_degree", 3)
+            try:
+                density = float(max_degree) / max(1.0, float(num_agents) - 1.0)
+            except Exception:
+                density = 0.3
+        density = max(0.0, min(1.0, float(density)))
+
+        collab_cfg = PersonalAssistantConfig(
+            num_agents=int(num_agents),
+            density=float(density),
+            min_outfits_per_agent=int(min_outfits),
+            max_outfits_per_agent=int(max_outfits),
+            rng_seed=int(self.current_seed),
         )
+
+        dcops_root = Path(__file__).resolve().parents[1]
+        instance_dir = (
+            dcops_root
+            / "outputs"
+            / "collab_instances"
+            / "personal_assistant"
+            / f"seed_{self.current_seed}"
+        )
+        self.instance = generate_instance(collab_cfg, instance_dir)
+        self.problem: ProblemDefinition = self.instance.problem
 
         # Score tracking
-        self.global_score_history: List[float] = []
-        self.local_scores_history: Dict[str, List[float]] = {}
-        self.score_plotter: Optional[ScorePlotter] = None
-        self.agent_names = self.instance.graph.agents.copy()
-        self.agents: List['Agent'] = [] # Set this later in main.py in case agents get different clients or settings
-
-        # Generate prompts using prompt_maker (this will be used by PersonalAssistantPrompts)
-        self.prompts_dict = make_prompts_vanilla(
-            self.instance.graph,
-            self.instance.wardrobe,
-            tone="standard"
-        )
-
-        # Calculate max possible score
-        self.max_possible_score = sum(len(factor.agent_scope) for factor in self.instance.graph.factors)
-
-        # Clear seed directories FIRST to ensure clean state for this run
-        # This must happen before creating loggers (PromptLogger in PersonalAssistantPrompts)
-        clear_seed_directories("PersonalAssistant", self.current_seed, self.full_config)
+        self.joint_reward_history: List[float] = []
+        self.agent_names = list(self.problem.agents.keys())
+        self.agents: List["BaseAgent"] = []  # Set this later in main.py in case agents get different clients or settings
+        self.max_joint_reward = self.compute_max_joint_reward()
 
         # Initialize prompts (Put this after all other instance variables)
         # Note: tools are now in MCP server, not in environment
         self.prompts = PersonalAssistantPrompts(self, self.full_config)
 
         # Initialize score tracking
-        self.local_scores_history = {agent: [] for agent in self.agent_names}
+        self.agent_rewards_history: Dict[str, List[float]] = {agent: [] for agent in self.agent_names}
 
-        # Get tag_model subdirectory
-        tag_model = get_tag_model_subdir(self.full_config)
-        plots_dir = build_plots_dir("PersonalAssistant", tag_model, self.current_seed, self.run_timestamp)
-        self.score_plotter = ScorePlotter(save_dir=str(plots_dir))
-
-        print(f"PersonalAssistant environment initialized with {len(self.agent_names)} agents")
-        print(f"Agents: {', '.join(self.agent_names)}")
-        print("PersonalAssistantEnvironment initialized")
+        logger.info("%s initialized with %s agents", self.__class__.__name__, len(self.agent_names))
+        logger.info("Agent Names: %s", ", ".join(self.agent_names))
 
     async def async_init(self):
-        """Async initialization - create blackboards from factors."""
-        await self.create_blackboards_from_factors()
+        """Async initialization - create communication blackboards from the supplied network."""
+        await super().async_init()
 
-    def set_agent_clients(self, agents: List['Agent']):
-        """Set the agents for the environment."""
-        self.agents = agents
-
-    async def create_blackboards_from_factors(self):
-        """Convert PersonalAssistant factors to blackboard configuration. This happens only during initialization"""
-
-        # Process factors with multiple agents (coordination factors)
-        for factor in self.instance.graph.factors:
-            if len(factor.agent_scope) >= 2:
-                context = self._factor_to_context(factor)
-
-                blackboard_id = await self.communication_protocol.generate_blackboard_network_from_factor(factor, context)
-                print(f"Created Personal Assistant Blackboard {blackboard_id}: {factor.agent_scope}")
-
-    def _factor_to_context(self, factor: Factor) -> str:
-        """Convert a factor to blackboard initial context string."""
-        if factor.ftype == "MATCH_COLOR":
-            agents_str = " and ".join(factor.agent_scope)
-            return f"Coordination required: {agents_str} should match colors"
-        elif factor.ftype == "NOT_MATCH_COLOR":
-            agents_str = " and ".join(factor.agent_scope)
-            return f"Coordination required: {agents_str} should NOT match colors"
-        else:
-            return f"Coordination between: {', '.join(factor.agent_scope)}"
-
-    # NOTE: Changed from get_agents
-    def get_agent_names(self) -> List[str]:
-        """Get list of agent names."""
-        return self.agent_names.copy()
-
-    def build_agent_context(self, agent_name: str, phase: str, iteration: int,
-                          blackboard_contexts: Optional[Dict[str, str]] = None,
-                          **kwargs) -> Dict[str, Any]:
+    def build_agent_context(self, agent_name: str, phase: str, iteration: int, **kwargs) -> Dict[str, Any]:
         """
         Build environment-specific context for an agent's turn. This is used in the planning and execution phases
         in CommunicationProtocol.
@@ -160,7 +133,6 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
             agent_name: Name of the agent
             phase: Current phase ("planning" or "execution")
             iteration: Current iteration number
-            blackboard_contexts: Blackboard contexts from the protocol
             **kwargs: Additional context
 
         Returns:
@@ -168,9 +140,10 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         """
         # Clear outfit selections at the start of each new iteration's planning phase
         # to allow agents to make new choices
-        if phase == "planning" and iteration > 1 and self.outfit_selections:
-            print(f"PersonalAssistant: Clearing outfit selections for iteration {iteration}")
+        if phase == "planning" and iteration > 1 and (self.outfit_selections or self.assignment):
+            logger.info("%s: Clearing selections for iteration %s", self.__class__.__name__, iteration)
             self.outfit_selections = {}
+            self.assignment = {}
 
         if not self.instance:
             return {"error": "Environment not initialized"}
@@ -186,8 +159,8 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         }
 
         # Add configuration info (consistent with trading environment)
-        assert self.config is not None, "Config not available"
-        context["max_iterations"] = self.config.get("max_iterations", 10)
+        assert self.env_config is not None, "Config not available"
+        context["max_iterations"] = self.env_config.get("max_iterations", 1)
 
         # Add additional context from kwargs (like planning_round)
         for key, value in kwargs.items():
@@ -195,125 +168,178 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
 
         return context
 
-    def should_continue_simulation(self, iteration: int) -> bool:
-        """
-        Check if the simulation should continue running.
-
-        Args:
-            iteration: Current iteration number
-
-        Returns:
-            True if simulation should continue, False to stop
-        """
+    def done(self, iteration: int) -> bool:
+        """Return True when the environment is finished."""
         # Check max iterations first (consistent with trading environment)
-        assert self.config is not None, "Config not available"
-        max_iterations = self.config.get("max_iterations", 10)
+        assert self.env_config is not None, "Config not available"
+        max_iterations = self.env_config.get("max_iterations", 1)
         if iteration > max_iterations:
-            print(f"Reached max iterations ({max_iterations}) - stopping simulation")
-            return False
+            logger.info("Reached max iterations (%s) - stopping simulation", max_iterations)
+            return True
 
-        # Stop early if all agents have selected outfits AND all constraints are satisfied
-        if len(self.outfit_selections) == len(self.agent_names) and self.instance:
-            global_score = self.instance.graph.global_score(self.outfit_selections)
+        # Stop early if all variables assigned and max reward reached
+        total_vars = len(self.problem.variables)
+        if len(self.assignment) == total_vars and self.instance:
+            joint_reward = self.joint_reward(self.assignment)
+            if self.max_joint_reward and joint_reward >= self.max_joint_reward:
+                logger.info(
+                    "All constraints satisfied (score: %s/%s) - simulation complete",
+                    joint_reward,
+                    self.max_joint_reward,
+                )
+                return True
+            logger.info(
+                "All agents selected but constraints not fully satisfied (score: %s/%s) - continuing",
+                joint_reward,
+                self.max_joint_reward,
+            )
 
-            if global_score == self.max_possible_score:
-                print(f"All constraints satisfied (score: {global_score}/{self.max_possible_score}) - simulation complete")
-                return False
-            else:
-                print(f"All agents selected but constraints not fully satisfied (score: {global_score}/{self.max_possible_score}) - continuing")
+        return False
 
-        return True
+    def compute_max_joint_reward(self) -> float:
+        """Return the optimal joint reward for the environment."""
+        return float(getattr(self.instance, "max_utility", 0.0))
 
-    def log_state(self, iteration: int, phase: str) -> None:
+    def joint_reward(self, actions: Mapping[str, Any]) -> float:
+        """Return the (partial) joint reward for a joint assignment."""
+        total_reward, _ = self._rewards(actions)
+        return total_reward
+
+    def agent_reward(self, actions: Mapping[str, Any], agent: str) -> float:
+        """Return the reward attributed to a single agent."""
+        _, local_rewards = self._rewards(actions)
+        assert agent in local_rewards, f"Agent {agent} not found in local rewards"
+        local_reward = local_rewards.get(agent)
+        assert local_reward is not None, f"Local reward for agent {agent} is None"
+        return local_reward
+
+    def _rewards(self, actions: Mapping[str, Any]) -> Tuple[float, Dict[str, float]]:
+        """
+        Compute joint reward and per-agent rewards for a given joint assignment.
+
+        Factors whose full scope has been assigned contribute to the total reward.
+        Per-agent rewards are attributed evenly to variable owners in scope.
+        """
+        total_reward = 0.0
+        local_rewards: Dict[str, float] = {agent: 0.0 for agent in self.agent_names}
+
+        for factor in self.problem.factors:
+            if not all(var in actions for var in factor.scope):
+                continue
+            try:
+                reward = factor.evaluate(actions)
+            except Exception:
+                continue
+            total_reward += reward
+
+            owners = {self.problem.variables[v].owner for v in factor.scope if v in self.problem.variables}
+            if owners:
+                share = reward / len(owners)
+                for owner in owners:
+                    local_rewards[owner] += share
+
+        return total_reward, local_rewards
+
+    def log_iteration(self, iteration: int) -> None:
         """
         Log the current state of the environment.
 
         Args:
             iteration: Current iteration number
-            phase: Current phase
         """
-        print(f"=== PersonalAssistant State - Iteration {iteration}, Phase {phase} ===")
-        print(f"Agents: {len(self.agent_names)} total, {len(self.outfit_selections)} selected outfits")
+        logger.info("=== %s State - Iteration %s ===", self.__class__.__name__, iteration)
+        logger.info(
+            "Agents: %s total, %s selected outfits",
+            len(self.agent_names),
+            len(self.outfit_selections),
+        )
 
         if self.outfit_selections:
-            print("Current Selections:")
+            logger.info("Current Selections:")
             for agent, outfit in self.outfit_selections.items():
-                print(f"  {agent}: {outfit.article}, {outfit.color}")
+                logger.info("  %s: %s, %s", agent, outfit.article, outfit.color)
 
         remaining = [agent for agent in self.agent_names if agent not in self.outfit_selections]
         if remaining:
-            print(f"Remaining agents: {', '.join(remaining)}")
+            logger.info("Remaining agents: %s", ", ".join(remaining))
 
-        # Calculate and track scores always (consistent with other environments)
-        global_score = 0.0
-        local_scores = {}
+        joint_reward, agent_rewards = self._rewards(self.assignment)
+        ratio = joint_reward / self.max_joint_reward if self.max_joint_reward else 0.0
+        logger.info("Current Joint Reward: %.2f (ratio %.2f%%)", joint_reward, ratio * 100.0)
 
-        if len(self.outfit_selections) == len(self.agent_names) and self.instance:
-            # All agents have selected - calculate actual scores
-            global_score = self.instance.graph.global_score(self.outfit_selections)
-            local_scores = self.instance.graph.all_local_scores(self.outfit_selections)
-            print(f"Final Global Score: {global_score}")
-            print("Local Scores:")
-            for agent, score in local_scores.items():
-                print(f"  {agent}: {score}")
-        else:
-            # Partial or no selections - use zero scores for all agents
-            local_scores = {agent: 0.0 for agent in self.agent_names}
+        # Track scores for every iteration
+        self._track_scores(iteration, joint_reward, agent_rewards)
 
-        # Track scores and generate plots for every iteration
-        self._track_scores(iteration, global_score, local_scores)
-
-    def _track_scores(self, iteration: int, global_score: float, local_scores: Dict[str, float]) -> None:
-        """Track scores and generate plots/logs."""
+    def _track_scores(self, iteration: int, joint_reward: float, agent_rewards: Dict[str, float]) -> None:
+        """Track scores and write logs."""
         import json
         from datetime import datetime
 
         # Update score histories
-        self.global_score_history.append(global_score)
-        for agent, score in local_scores.items():
-            if agent in self.local_scores_history:
-                self.local_scores_history[agent].append(score)
+        self.joint_reward_history.append(joint_reward)
+        for agent, reward in agent_rewards.items():
+            if agent in self.agent_rewards_history:
+                self.agent_rewards_history[agent].append(reward)
 
         # Create logs directory with seed subdirectory
         # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
-        log_dir = build_log_dir("PersonalAssistant", tag_model, self.current_seed, self.run_timestamp)
+        log_dir = build_log_dir(self.__class__.__name__, tag_model, self.current_seed, self.run_timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Log scores to JSON
         score_entry = {
-            "environment": "PersonalAssistant",
+            "environment": self.__class__.__name__,
             "iteration": iteration,
             "timestamp": datetime.now().isoformat(),
-            "global_score": global_score/self.max_possible_score if self.max_possible_score > 0 else 0.0,
-            "raw_global_score": global_score,
-            "max_possible_score": self.max_possible_score,
-            "local_scores": local_scores,
+            "joint_reward": joint_reward,
+            "joint_reward_ratio": joint_reward / self.max_joint_reward,
+            "max_joint_reward": self.max_joint_reward,
+            "agent_rewards": agent_rewards,
+            "average_agent_reward": sum(agent_rewards.values()) / len(agent_rewards),
             "model_info": extract_model_info(self.full_config),
             "full_config": self.full_config,
-            "metadata": {
-                "total_agents": len(local_scores),
-                "total_outfits_selected": len(self.outfit_selections),
-                "average_local_score": sum(local_scores.values()) / len(local_scores) if local_scores else 0
-            }
+            "total_agents": len(agent_rewards),
+            "variables_assigned": len(self.assignment),
+            "total_variables": len(self.problem.variables),
         }
 
-        score_file = log_dir / f"scores_iteration_{iteration}.json"
-        with open(score_file, 'w') as f:
+        data_file = log_dir / f"data_iteration_{iteration}.json"
+        with open(data_file, "w") as f:
             json.dump(score_entry, f, indent=2, ensure_ascii=False)
 
-        # Generate plot
-        if self.score_plotter:
-            try:
-                plot_path = self.score_plotter.plot_scores(
-                    self.global_score_history,
-                    self.local_scores_history,
-                    iteration,
-                    environment_name="PersonalAssistant",
-                    show=False
-                )
-            except Exception as e:
-                print(f"Warning: Failed to generate score plot: {e}")
+    def get_final_summary(self) -> Dict[str, Any]:
+        """Get a final summary of the entire simulation."""
+        total_vars = len(self.problem.variables)
+        final_selections = f"{len(self.outfit_selections)}/{len(self.agent_names)} agents"
+        if not self.instance or len(self.assignment) != total_vars:
+            return {
+                "status": "incomplete",
+                "variables_assigned": len(self.assignment),
+                "total_variables": total_vars,
+                "total_agents": len(self.agent_names),
+                "final_selections": final_selections,
+            }
+
+        joint_reward, agent_rewards = self._rewards(self.assignment)
+
+        return {
+            "status": "complete",
+            "joint_reward": joint_reward / self.max_joint_reward if self.max_joint_reward > 0 else 0.0,
+            "raw_joint_reward": joint_reward,
+            "average_agent_reward": sum(agent_rewards.values()) / len(agent_rewards) if agent_rewards else 0.0,
+            "agent_rewards": agent_rewards,
+            "outfit_selections": {
+                agent: {"article": outfit.article, "color": outfit.color}
+                for agent, outfit in self.outfit_selections.items()
+            },
+            "total_variables": total_vars,
+            "variables_assigned": len(self.assignment),
+            "total_agents": len(self.agent_names),
+            "final_selections": final_selections,
+        }
+
+    #### MCP-specific methods ####
 
     def get_serializable_state(self) -> Dict[str, Any]:
         """
@@ -323,22 +349,19 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
             Dictionary with serializable environment state
         """
         # Extract wardrobe options in serializable format
-        wardrobe_options = {}
-        if hasattr(self, 'instance') and self.instance and self.instance.wardrobe:
-            for agent_name, outfits in self.instance.wardrobe.options.items():
+        wardrobe_options: Dict[str, List[Dict[str, str]]] = {}
+        if self.instance and getattr(self.instance, "wardrobe", None):
+            for agent_name, outfits in self.instance.wardrobe.items():
                 wardrobe_options[agent_name] = [
                     {"article": outfit.article, "color": outfit.color}
                     for outfit in outfits
                 ]
 
         # Extract factors in serializable format
-        factors = []
-        if hasattr(self, 'instance') and self.instance and self.instance.graph:
-            for factor in self.instance.graph.factors:
-                factors.append({
-                    "ftype": factor.ftype,
-                    "scope": factor.agent_scope
-                })
+        factors: List[Dict[str, Any]] = []
+        for factor in self.problem.factors:
+            owners = sorted({self.problem.variables[v].owner for v in factor.scope if v in self.problem.variables})
+            factors.append({"name": factor.name, "type": factor.factor_type, "owners": owners})
 
         return {
             "outfit_selections": {
@@ -348,7 +371,8 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
             "agent_names": self.agent_names.copy(),
             "wardrobe_options": wardrobe_options,
             "factors": factors,
-            "max_possible_score": self.max_possible_score
+            "max_joint_reward": self.max_joint_reward,
+            "assignment": self.assignment.copy(),
         }
 
     def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
@@ -358,15 +382,28 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         Args:
             state_updates: Dictionary with state updates to apply
         """
-        # Apply outfit_selections updates (UPDATE, don't replace!)
         if "outfit_selections" in state_updates:
-            # Convert serialized format back to Outfit objects
-            from envs.dcops.CoLLAB.PersonalAssistant.data_structure import Outfit
             for agent, outfit_dict in state_updates["outfit_selections"].items():
-                self.outfit_selections[agent] = Outfit(
+                outfit = Outfit(
                     article=outfit_dict["article"],
-                    color=outfit_dict["color"]
+                    color=outfit_dict["color"],
+                    image=None,
                 )
+                self.outfit_selections[agent] = outfit
+
+                # Update assignment using wardrobe index (1-based)
+                options = self.instance.wardrobe.get(agent, []) if self.instance else []
+                choice_num = None
+                for idx, opt in enumerate(options, start=1):
+                    if opt.article == outfit.article and opt.color == outfit.color:
+                        choice_num = idx
+                        break
+                if choice_num is not None:
+                    try:
+                        var_name = self.problem.agent_variables(agent)[0].name
+                        self.assignment[var_name] = choice_num
+                    except Exception:
+                        pass
 
     def post_tool_execution_callback(self, state_updates: Dict[str, Any], response: Dict[str, Any]) -> None:
         """
@@ -379,83 +416,8 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
             state_updates: Dictionary with state updates that were applied
             response: The response dictionary to potentially modify
         """
-        # Recalculate global_score after state updates if outfit selections were updated
         if "outfit_selections" in state_updates:
-            if hasattr(self, 'instance') and self.instance:
-                # Only calculate score if all agents have selected
-                if len(self.outfit_selections) == len(self.agent_names):
-                    global_score = self.instance.graph.global_score(self.outfit_selections)
-                    # Add global_score to result for agent feedback
-                    if "result" in response:
-                        response["result"]["global_score"] = global_score
-                        response["result"]["max_possible_score"] = self.max_possible_score
-
-    def _generate_final_summary(self):
-        """Generate final simulation summary."""
-        print("\n" + "=" * 60)
-        print("SIMULATION COMPLETE - FINAL SUMMARY")
-        print("=" * 60)
-
-        # Get environment-specific final summary
-        final_summary = self.get_final_summary()
-
-        print(f"Total iterations: {self.current_iteration}")
-
-        if final_summary:
-            for key, value in final_summary.items():
-                if isinstance(value, dict):
-                    print(f"{key}:")
-                    for sub_key, sub_value in value.items():
-                        print(f"  {sub_key}: {sub_value}")
-                else:
-                    print(f"{key}: {value}")
-
-    def _log_iteration_summary(self, iteration: int):
-        """Log the summary of an iteration."""
-        print(f"\n--- ITERATION {iteration} SUMMARY ---")
-        self.log_state(iteration, "iteration_end")
-
-        # Get environment-specific summary
-        summary = self.get_iteration_summary()
-        if summary:
-            print(f"  Iteration {iteration} summary:")
-            for key, value in summary.items():
-                print(f"    {key}: {value}")
-
-    def cleanup(self) -> None:
-        """Clean up any resources used by the environment."""
-        print("PersonalAssistant environment cleanup")
-        if self.outfit_selections:
-            print(f"Final selections: {len(self.outfit_selections)}/{len(self.agent_names)} agents")
-
-    def get_iteration_summary(self) -> Dict[str, Any]:
-        """Get a summary of the current iteration for logging."""
-        return {
-            "selections_made": len(self.outfit_selections),
-            "total_agents": len(self.agent_names),
-            "completion_rate": len(self.outfit_selections) / len(self.agent_names) if self.agent_names else 0
-        }
-
-    def get_final_summary(self) -> Dict[str, Any]:
-        """Get a final summary of the entire simulation."""
-        if not self.instance or len(self.outfit_selections) != len(self.agent_names):
-            return {
-                "status": "incomplete",
-                "selections_made": len(self.outfit_selections),
-                "total_agents": len(self.agent_names)
-            }
-
-        # Calculate final scores
-        global_score = self.instance.graph.global_score(self.outfit_selections)
-        local_scores = self.instance.graph.all_local_scores(self.outfit_selections)
-
-        return {
-            "status": "complete",
-            "global_score": global_score/self.max_possible_score if self.max_possible_score > 0 else 0.0,
-            "average_local_score": sum(local_scores.values()) / len(local_scores),
-            "local_scores": local_scores,
-            "outfit_selections": {
-                agent: {"article": outfit.article, "color": outfit.color}
-                for agent, outfit in self.outfit_selections.items()
-            }
-        }
+            joint_reward = self.joint_reward(self.assignment)
+            if "result" in response:
+                response["result"]["joint_reward"] = joint_reward
+                response["result"]["max_joint_reward"] = self.max_joint_reward

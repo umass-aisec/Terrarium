@@ -255,7 +255,10 @@ class Megaboard:
                     events = blackboard.logs
                     context_parts = []
                     for event in events:
-                        if event.get('kind') == 'initialize' and event.get('payload', {}).get('message'):
+                        if (
+                            event.get("kind") == "context"
+                            and event.get("payload", {}).get("message")
+                        ):
                             context_parts.append(f"Initial: {event['payload']['message']}")
                         elif event.get('kind') == 'communication' and event.get('payload', {}).get('content'):
                             context_parts.append(f"{event.get('agent', 'Unknown')}: {event['payload']['content']}")

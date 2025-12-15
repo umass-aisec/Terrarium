@@ -89,18 +89,25 @@ def load_runs(log_root: Path) -> List[Dict[str, Any]]:
                     except json.JSONDecodeError:
                         continue
 
+        iteration_files = sorted(seed_dir.glob("data_iteration_*.json"))
+        if not iteration_files:
+            # Old file system, remove later
+            iteration_files = sorted(seed_dir.glob("scores_iteration_*.json"))
+
         scores = []
-        for score_file in sorted(seed_dir.glob("scores_iteration_*.json")):
+        for data_file in iteration_files:
             try:
-                score_data = json.loads(score_file.read_text(encoding="utf-8"))
+                score_data = json.loads(data_file.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
             scores.append({
                 "iteration": score_data.get("iteration"),
-                "global_score": score_data.get("global_score"),
+                "joint_reward": score_data.get("joint_reward"),
                 "timestamp": score_data.get("timestamp"),
                 "model_info": score_data.get("model_info"),
                 "metadata": score_data.get("metadata"),
+                "variables_assigned": score_data.get("variables_assigned"),
+                "total_variables": score_data.get("total_variables"),
             })
         scores.sort(key=lambda s: (s.get("iteration") is None, s.get("iteration")))
 
@@ -167,35 +174,22 @@ def load_runs(log_root: Path) -> List[Dict[str, Any]]:
         completion_summary: Optional[Dict[str, Any]] = None
         success_rate: Optional[float] = None
         environment_name = summary.get("environment", env_dir.name)
-        completion_specs = {
-            "MeetingScheduling": ("total_meetings_scheduled", "total_meetings", "Meeting completion"),
-            "PersonalAssistant": ("total_outfits_selected", "total_agents", "Outfit completion"),
-            "SmartGrid": ("total_tasks_scheduled", "total_tasks", "Task completion"),
-        }
-        spec = completion_specs.get(environment_name)
-        if spec and scores:
-            completed_key, total_key, label = spec
-            for score_entry in reversed(scores):
-                metadata = score_entry.get("metadata") or {}
-                completed_raw = metadata.get(completed_key)
-                total_raw = metadata.get(total_key)
-                if total_raw is None:
-                    continue
-                try:
-                    completed_val = int(completed_raw) if completed_raw is not None else 0
-                    total_val = int(total_raw)
-                except (TypeError, ValueError):
-                    continue
-                if total_val <= 0:
-                    continue
+
+        last_score = next((score for score in reversed(scores) if score.get("total_variables") is not None), None)
+        if last_score:
+            try:
+                completed_val = int(last_score.get("variables_assigned") or 0)
+                total_val = int(last_score.get("total_variables") or 0)
+            except (TypeError, ValueError):
+                total_val = 0
+            if total_val > 0:
                 success_rate = (completed_val / total_val) * 100
                 completion_summary = {
-                    "label": label,
+                    "label": "Variable completion",
                     "completed": completed_val,
                     "total": total_val,
                     "rate": success_rate,
                 }
-                break
 
         runs.append({
             "environment": environment_name,

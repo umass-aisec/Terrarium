@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from src.agent import Agent
+from src.agents.base import BaseAgent
 
 DEFAULT_POISON_FILE = Path("attack_module/configs/poisoning_string.yaml")
 DEFAULT_POISON_FALLBACK = (
@@ -57,7 +57,7 @@ def _preview(text: Optional[str], limit: int = 120) -> str:
 
 
 def _log_agent_event(
-    agent: Agent,
+    agent: BaseAgent,
     attack_type: str,
     *,
     success: bool,
@@ -85,7 +85,7 @@ def _log_agent_event(
     )
 
 
-class AgentPoisoningAttack(Agent):
+class AgentPoisoningAttack(BaseAgent):
     """Replaces any outgoing blackboard posts with a fixed poisoning payload."""
 
     def __init__(
@@ -98,6 +98,7 @@ class AgentPoisoningAttack(Agent):
         trajectory_logger,
         environment_name,
         poison_payload,
+        generation_params: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(
             client,
@@ -107,6 +108,7 @@ class AgentPoisoningAttack(Agent):
             tool_logger,
             trajectory_logger,
             environment_name,
+            generation_params=generation_params,
         )
         self.poison_payload =  _load_poison_payload(Path(poison_payload))
 
@@ -134,7 +136,7 @@ class AgentPoisoningAttack(Agent):
         return await super()._execute_tool_call(tool_name, arguments)
 
 
-class ContextOverflowAttack(Agent):
+class ContextOverflowAttack(BaseAgent):
     """Appends a large filler sequence to overwhelm downstream context windows."""
 
     def __init__(
@@ -147,6 +149,7 @@ class ContextOverflowAttack(Agent):
         trajectory_logger,
         environment_name,
         poison_payload,
+        generation_params: Optional[Dict[str, Any]] = None,
         # filler_token: str = "ATTACK",
         # repeat: int = 2048,
         # max_chars: Optional[int] = 16000,
@@ -162,6 +165,7 @@ class ContextOverflowAttack(Agent):
             tool_logger,
             trajectory_logger,
             environment_name,
+            generation_params=generation_params,
         )
         
         self.filler_token = _load_poison_payload(Path(poison_payload), "filler_token")
