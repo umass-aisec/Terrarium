@@ -3,6 +3,8 @@ import json
 from typing import Any, Dict, List, Optional
 import sys
 import os
+from fastapi.responses import JSONResponse 
+from fastapi import Request
 
 # Add project root to sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -150,5 +152,22 @@ def log_blackboard_states(iteration: int, phase: str, agent_name: str, planning_
     except Exception as e:
         return {"status": "error", "message": f"Failed to log blackboards: {str(e)}"}
 
+@mcp.custom_route("/v1/models", methods=["GET"])
+async def list_models(request: Request):
+    """
+    Mock endpoint to satisfy clients expecting an OpenAI-compatible API.
+    """
+    return JSONResponse(content={
+        "object": "list",
+        "data": [
+            {
+                "id": "Qwen/Qwen2.5-7B-Instruct", 
+                "object": "model",
+                "created": 1677610602,
+                "owned_by": "mcp-server",
+            }
+        ]
+    })
+
 if __name__ == "__main__":
-    mcp.run(transport="http", port=8000)
+    mcp.run(transport="http", port=8020)

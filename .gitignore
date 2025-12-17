@@ -29,3 +29,4 @@ coverage/
 dashboards/public/dashboard_data.json
 
 envs/dcops/outputs
+.venv
