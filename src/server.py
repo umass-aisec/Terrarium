@@ -170,4 +170,4 @@ async def list_models(request: Request):
     })
 
 if __name__ == "__main__":
-    mcp.run(transport="http", port=8020)
+    mcp.run(transport="http", port=8000)
