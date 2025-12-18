@@ -30,3 +30,5 @@ dashboards/public/dashboard_data.json
 
 envs/dcops/outputs
 .venv
+data/hospital/raw
+data/hospital/outpatient_merged.csv

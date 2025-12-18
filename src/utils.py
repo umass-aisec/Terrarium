@@ -451,11 +451,13 @@ def _get_environment_registry():
     from envs.dcops.personal_assistant import PersonalAssistantEnvironment
     from envs.dcops.smart_grid import SmartGridEnvironment
     from envs.dcops.meeting_scheduling import MeetingSchedulingEnvironment
+    from envs.dcops.hospital import HospitalEnvironment
 
     return {
         MeetingSchedulingEnvironment.__name__: MeetingSchedulingEnvironment,
         PersonalAssistantEnvironment.__name__: PersonalAssistantEnvironment,
         SmartGridEnvironment.__name__: SmartGridEnvironment,
+        HospitalEnvironment.__name__: HospitalEnvironment,
     }
 
 

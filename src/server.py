@@ -42,6 +42,9 @@ def set_environment_tools(environment_name: str):
     elif environment_name == "SmartGridEnvironment":
         from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
         environment_tools = SmartGridTools(megaboard)
+    elif environment_name == "HospitalEnvironment":
+        from envs.dcops.hospital.hospital_tools import HospitalTools
+        environment_tools = HospitalTools(megaboard)
     else:
         raise ValueError(
             f"Unknown environment: {environment_name}. Supported: "
