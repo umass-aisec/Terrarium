@@ -43,7 +43,7 @@ def set_environment_tools(environment_name: str):
         from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
         environment_tools = SmartGridTools(megaboard)
     elif environment_name == "HospitalEnvironment":
-        from envs.dcops.hospital.hospital_tools import HospitalTools
+        from envs.dcops.hospital import HospitalTools
         environment_tools = HospitalTools(megaboard)
     else:
         raise ValueError(

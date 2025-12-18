@@ -10,71 +10,128 @@ class HospitalPrompts:
         Returns the static system prompt. 
         Note: Must NOT take arguments to match BaseAgent interface.
         """
-        return """You are a hospital administrator participating in a regional patient transfer coordination system.
+        return """You are a Hospital Coordination Agent.
 
-PHASES:
-- Planning Phase: Communicate with other hospitals via the blackboard. Discuss capacity, specialties (e.g., Cardiology, Neurology), and patient needs.
-- Execution Phase: Execute transfers using the `transfer_patient` tool.
+GLOBAL CONSTRAINTS:
+1. **Blackboard**: Access ONLY Blackboard '0'.
+2. **Tool Discipline**: 
+   - Planning Phase -> Use `post_message`.
+   - Execution Phase -> Use `transfer_patient`.
 
-OBJECTIVE:
-Your goal is to maximize the JOINT health outcomes of the region, not just your own metrics.
-1. Match patients to hospitals that have the specific specialty for their condition.
-   - ICD-10 'I' -> Cardiology
-   - ICD-10 'G' -> Neurology
-   - ICD-10 'M' -> Orthopedics
-   - ICD-10 'P' -> Pediatrics
-2. Minimize transportation costs (distance between hospitals).
-3. Strictly adhere to hospital capacity limits. Overcrowding incurs massive penalties.
+OBJECTIVE PRIORITY:
+1. **Perfect Match**: Send Cardiology patients to Cardiology hospitals, etc.
+2. **Load Balancing (Fallback)**: If NO specialty match is found, send the patient to ANY hospital with "General" capacity to relieve your own overcrowding.
 
-DATA CONTEXT:
-- Your ID corresponds to your THCIC_ID.
-- Patient conditions are derived from their PRINC_DIAG_CODE.
-
-Coordinate efficiently. If you are over capacity, ask neighbors for help. If you have open beds and a specialty, advertise it."""
+CRITICAL INSTRUCTION:
+In the Execution Phase, do not just read the blackboard. If you find a hospital that MATCHES the specialty you need (OR is available for General care), you MUST initiate the `transfer_patient` tool immediately.
+"""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
         """
-        Constructs the user prompt, injecting agent-specific context.
+        Constructs the user prompt, injecting agent-specific context and calculating state logic.
         """
-        patients_str = ""
+        # --- 1. PRE-CALCULATE AGENT STATE ---
+        hospital_stats = agent_context.get('hospital_stats', {})
+        my_capacity = hospital_stats.get('capacity', 100)
+        # Clean up duplicates in specialties just in case
+        my_specialties = list(set(hospital_stats.get('specialties', [])))
         my_patients = agent_context.get('my_patients', {})
-        current_assignments = agent_context.get('current_assignments', {})
+        
+        current_load = len(my_patients)
+        
+        # Identify patients that MUST be transferred
+        transfer_list = []
         
         for pid, p_data in my_patients.items():
-            current_target = current_assignments.get(pid, "Not Assigned")
-            patients_str += f"- Patient {pid}: Condition={p_data['condition']} (Code: {p_data['diagnosis_code']}), Severity={p_data['severity']}, Current Target={current_target}\n"
+            code = str(p_data.get('diagnosis_code', ''))
+            
+            # 1. Determine Specialty Needed
+            req_spec = "General"
+            if code.startswith(('I', 'i')): req_spec = "Cardiology"
+            elif code.startswith(('G', 'g')): req_spec = "Neurology"
+            elif code.startswith(('M', 'm')): req_spec = "Orthopedics"
+            
+            reason = None
+            
+            # 2. Logic: Is this patient mismatched?
+            if req_spec != "General" and req_spec not in my_specialties:
+                reason = f"Needs {req_spec}"
+            elif current_load > my_capacity:
+                # If we are simply full, even General patients are candidates for transfer
+                reason = "Over Capacity"
+            
+            if reason:
+                transfer_list.append(f"Patient {pid} (Code {code}) -> Needs {req_spec} [{reason}]")
 
-        hospital_stats = agent_context.get('hospital_stats', {})
-        known_neighbors = agent_context.get('known_neighbors', [])
-        phase = agent_context.get('phase', 'unknown')
-        iteration = agent_context.get('iteration', 0)
+        needs_help = len(transfer_list) > 0
 
-        # Build Blackboard Context String
+        # --- 2. FORMAT BLACKBOARD CONTENT ---
         bb_str = ""
         if blackboard_context:
-            bb_str = "=== BLACKBOARD MESSAGES ===\n"
+            bb_str = "=== BLACKBOARD MESSAGES (Channel 0) ===\n"
             for channel, content in blackboard_context.items():
-                if content.strip():
-                    bb_str += f"Channel {channel}:\n{content}\n\n"
+                if str(channel) == '0' and content.strip():
+                    bb_str += f"{content}\n"
 
+        # --- 3. GENERATE PHASE-SPECIFIC INSTRUCTIONS ---
+        phase = agent_context.get('phase', 'unknown')
+        iteration = agent_context.get('iteration', 0)
+        
+        instruction = ""
+        
+        if phase == 'planning':
+            # DEADLOCK FIX: Always advertise capabilities + load so others can find us
+            spec_str = ', '.join(my_specialties)
+            needed_str = "General" if not transfer_list else "Specialists"
+            
+            instruction = f"""
+!!! PLANNING ACTION !!!
+You must advertise your status to the network so others can match with you.
+Action: Post a message to Blackboard 0.
+REQUIRED FORMAT: "{hospital_stats.get('name')} (ID: {agent_name}). Specialties: {spec_str}. Load: {current_load}/{my_capacity}."
+"""
+
+        elif phase == 'execution':
+            if needs_help:
+                instruction = f"""
+!!! EXECUTION ACTION REQUIRED !!!
+You have patients needing transfer:
+{chr(10).join(['- ' + t for t in transfer_list])}
+
+INSTRUCTIONS:
+1. Read the 'BLACKBOARD MESSAGES'.
+2. **Attempt 1 (Perfect Match):** Look for a hospital offering the specific specialty the patient needs (e.g., "Specialties: ... Cardiology").
+3. **Attempt 2 (Fallback):** If NO specific match exists, look for a hospital that said "Specialties: ... General ..." or appears to be available.
+
+ACTION:
+- Found a match (Specific OR General)? -> CALL `transfer_patient` IMMEDIATELY.
+   - `source_hospital`: {agent_name}
+   - `target_hospital`: [The Agent ID found in the message]
+   - `patient_id`: [Your patient ID]
+   - `blackboard_id`: 0
+
+DO NOT POST MESSAGES. EXECUTE THE TRANSFER TOOL.
+"""
+            else:
+                instruction = """
+State: Stable. 
+You are not seeking to push patients. 
+Monitor the blackboard. If you see a neighbor needing your specialty, you MAY proactively pull a patient.
+"""
+
+        # --- 4. FINAL PROMPT ---
         return f"""
-=== TURN INFORMATION ===
-Phase: {phase}
-Iteration: {iteration}
-You are Administrator for Hospital: {agent_name}
+=== AGENT DASHBOARD ===
+Agent ID: {agent_name}
+Phase: {phase} (Iteration {iteration})
+Hospital Name: {hospital_stats.get('name', 'Unknown')}
+My Specialties: {', '.join(my_specialties)}
+Capacity status: {current_load}/{my_capacity}
 
-=== YOUR HOSPITAL STATS ===
-Name: {hospital_stats.get('name', 'Unknown')}
-Location Index: {hospital_stats.get('location', 'Unknown')}
-Capacity: {hospital_stats.get('capacity', 'Unknown')}
-Specialties: {', '.join(hospital_stats.get('specialties', []))}
-
-=== YOUR PATIENTS ===
-{patients_str if patients_str else "No patients currently at your facility."}
-
-=== KNOWN NEIGHBORS ===
-{', '.join(known_neighbors)}
+=== YOUR PRIORITY TRANSFER LIST ===
+{chr(10).join(['- ' + t for t in transfer_list]) if transfer_list else "None. You are stable."}
 
 {bb_str}
-Use the blackboard to negotiate transfers for patients who need specialties you do not possess, or to offload patients if you are over capacity.
+
+{instruction}
 """

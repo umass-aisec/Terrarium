@@ -1,8 +1,3 @@
-"""
-Hospital Environment
-Agents (Hospitals) coordinate to transfer patients to the facility best suited
-for their condition, balancing transfer costs and capacity constraints.
-"""
 import logging
 import math
 import json
@@ -44,19 +39,29 @@ class HospitalEnvironment(AbstractEnvironment):
         # ---------------------------------------------------------------------
         # 2. State Tracking
         # ---------------------------------------------------------------------
-        # Assignment: {patient_id: target_hospital_id}
-        # Default assignment is the source hospital (no transfer)
         self.assignment: Dict[str, str] = {
             p_id: p_data['location'] for p_id, p_data in self.patients.items()
         }
         
-        # Track history for scoring
         self.joint_reward_history: List[float] = []
         self.agent_rewards_history: Dict[str, List[float]] = {agent: [] for agent in self.agent_names}
         
-        # Estimate max reward for normalization (All patients matched + 0 transport cost)
-        # Prevent division by zero if empty
         self.max_joint_reward = len(self.patients) * 10.0 if self.patients else 100.0
+
+    # --- ADDED THIS METHOD TO FIX THE VALUE ERROR ---
+    def get_network_context(self) -> str:
+        """Required by AbstractEnvironment to seed the blackboards."""
+        return (
+            "This is a hospital coordination network. "
+            "Hospitals must coordinate to transfer patients to facilities with the "
+            "correct specialties (Cardiology, Neurology, Orthopedics, etc.) while "
+            "balancing capacity limits and minimizing transport costs."
+        )
+
+    # --- CORRECTED ASYNC INIT ---
+    async def async_init(self):
+        """Initialize the communication network."""
+        await super().async_init()
 
     def _load_data(self, data_path: str) -> Tuple[Dict, Dict]:
         try:
@@ -67,7 +72,6 @@ class HospitalEnvironment(AbstractEnvironment):
 
         limit = self.env_config.get("num_agents", 5)
         
-        # Ensure THCIC_ID exists
         if 'THCIC_ID' not in df.columns:
             logger.warning("THCIC_ID column missing. Using mock IDs.")
             df['THCIC_ID'] = [f"H{i}" for i in range(len(df))]
@@ -121,9 +125,6 @@ class HospitalEnvironment(AbstractEnvironment):
         if code.startswith('P'): return "Pediatrics"
         if code.startswith('C'): return "Oncology"
         return "General"
-
-    async def async_init(self):
-        pass
 
     def build_agent_context(self, agent_name: str, phase: str, iteration: int, **kwargs) -> Dict[str, Any]:
         my_hospital = self.hospitals[agent_name]
@@ -195,12 +196,7 @@ class HospitalEnvironment(AbstractEnvironment):
         score, _ = self._rewards(self.assignment)
         return score
 
-    # --- THIS WAS MISSING IN YOUR VERSION ---
     def agent_reward(self, agent_name: str, action: Any) -> float:
-        """
-        Compute the reward for a single agent. 
-        Required by AbstractEnvironment.
-        """
         _, local_rewards = self._rewards(self.assignment)
         return local_rewards.get(agent_name, 0.0)
 
@@ -248,7 +244,6 @@ class HospitalEnvironment(AbstractEnvironment):
         return {
             "assignment": self.assignment.copy(),
             "agents": list(self.hospitals.keys()),
-            # This was also missing in your version but is required by the tool logic
             "patients": self.patients.copy() 
         }
 

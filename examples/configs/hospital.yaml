@@ -12,9 +12,9 @@ environment:
   # Path to the preprocessed data file
   data_path: "data/hospital/outpatient_merged.csv"
   # Number of hospitals (agents) to load from the data
-  num_agents: 5
+  num_agents: 8
   # Default patient capacity if not calculated from data
-  default_capacity: 10
+  default_capacity: 30
 
 communication_network:
   # Topology options: complete | path | star | random
@@ -26,7 +26,7 @@ communication_network:
 
 llm:
   # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
-  provider: "openai"
+  provider: "vllm"
   
   openai:
     model: "gpt-4o"
