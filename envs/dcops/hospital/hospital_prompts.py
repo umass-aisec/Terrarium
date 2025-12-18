@@ -105,10 +105,8 @@ INSTRUCTIONS:
 
 ACTION:
 - Found a match (Specific OR General)? -> CALL `transfer_patient` IMMEDIATELY.
-   - `source_hospital`: {agent_name}
-   - `target_hospital`: [The Agent ID found in the message]
+   - `target_hospital_id`: [The Agent ID found in the message]
    - `patient_id`: [Your patient ID]
-   - `blackboard_id`: 0
 
 DO NOT POST MESSAGES. EXECUTE THE TRANSFER TOOL.
 """
