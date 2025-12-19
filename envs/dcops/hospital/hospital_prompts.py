@@ -16,10 +16,6 @@ RULES:
 2. CAPACITY: You cannot exceed your concurrent capacity.
 3. EFFICIENCY: Always pick the EARLIEST valid slot to minimize flow time.
 
-TOOLS:
-- `find_available_slots(duration, min_start_time)`: Returns valid start hours.
-- `schedule_patient(patient_id, step_index, start_time)`: Locks the slot.
-
 BEHAVIOR:
 - PLANNING PHASE: Scout. Check the Blackboard. Do not schedule.
 - EXECUTION PHASE: ACTION ONLY. Iterate through your queue. Find a slot. Schedule it. DO NOT CHAT."""
@@ -29,7 +25,7 @@ BEHAVIOR:
         capacity = dept_info.get('capacity', 1)
         job_queue = agent_context.get('job_queue', [])
         
-        # Format Queue
+        # --- 1. Format Queue ---
         queue_str = ""
         if not job_queue:
             queue_str = "QUEUE EMPTY. Monitor blackboard for incoming patients."
@@ -42,6 +38,16 @@ BEHAVIOR:
                     f"   Note: {job.get('note', '')}\n"
                 )
 
+        # --- 2. Format Blackboard (CRITICAL FIX) ---
+        # We iterate through the blackboard_context dictionary to show the agent what is happening.
+        bb_str = ""
+        if blackboard_context:
+            bb_str = "=== BLACKBOARD NOTICES ===\n"
+            for bb_id, content in blackboard_context.items():
+                bb_str += f"[Board ID: {bb_id}]\n{content}\n"
+        else:
+            bb_str = "=== BLACKBOARD NOTICES ===\n(No new messages)\n"
+
         phase = agent_context.get('phase', 'unknown')
         iteration = agent_context.get('iteration', 0)
         
@@ -52,7 +58,9 @@ BEHAVIOR:
 Status: Waiting for Execution Phase.
 1. Review your Queue.
 2. If you have high load, post to Blackboard: "Agent {agent_name} Load: {len(job_queue)} patients."
-3. DO NOT call `schedule_patient` yet.
+3. Do not commit to any slots yet. Just gather information.
+
+CRITICAL: You are in a read-only phase. Do not attempt to book slots or modify the schedule.
 """
         elif phase == 'execution':
             instruction = f"""
@@ -70,10 +78,13 @@ DO NOT POST MESSAGES. DO NOT DISCUSS.
 USE THE TOOLS IMMEDIATELY. CLEAR YOUR QUEUE.
 """
 
+        # Include bb_str in the final return
         return f"""
 === AGENT STATUS: {agent_name} ===
 Capacity: {capacity}
 Iteration: {iteration}
+
+{bb_str}
 
 {queue_str}
 
