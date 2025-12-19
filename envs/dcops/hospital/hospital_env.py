@@ -1,16 +1,11 @@
 import logging
 import math
 import json
-import pandas as pd
-from typing import Dict, List, Any, Tuple, Optional, Mapping, Set
+import random
+from typing import Dict, List, Any, Tuple, Optional, Mapping
 from datetime import datetime
 from envs.abstract_environment import AbstractEnvironment
-from src.utils import (
-    get_run_timestamp, 
-    build_log_dir, 
-    extract_model_info, 
-    get_tag_model_subdir
-)
+from src.utils import get_run_timestamp, build_log_dir, get_tag_model_subdir
 from .hospital_prompts import HospitalPrompts
 
 logger = logging.getLogger(__name__)
@@ -20,331 +15,214 @@ class HospitalEnvironment(AbstractEnvironment):
         self.full_config = config
         self.env_config = config["environment"]
         self.simulation_config = config["simulation"]
-        self.current_seed = int(self.simulation_config["seed"])
-        self.run_timestamp = get_run_timestamp(self.full_config)
+        self.current_seed = int(self.simulation_config.get("seed", 42))
+        random.seed(self.current_seed)
         
+        self.run_timestamp = get_run_timestamp(self.full_config)
         self.tool_logger = tool_logger
         self.communication_protocol = communication_protocol
         self.communication_protocol.environment = self
 
-        # ---------------------------------------------------------------------
-        # 1. Load Data & Initialize Agents
-        # ---------------------------------------------------------------------
-        data_path = self.env_config.get("data_path", "data/hospital/outpatient_merged.csv")
-        self.hospitals, self.patients = self._load_data(data_path)
-        
-        self.agent_names = list(self.hospitals.keys())
+        # Generate Data
+        self.agents_map, self.patients = self._generate_flexible_jobshop_data()
+        self.agent_names = list(self.agents_map.keys())
         self.prompts = HospitalPrompts(self, self.full_config)
         
-        # ---------------------------------------------------------------------
-        # 2. State Tracking
-        # ---------------------------------------------------------------------
-        self.assignment: Dict[str, str] = {
-            p_id: p_data['location'] for p_id, p_data in self.patients.items()
-        }
+        # State
+        self.schedule: Dict[str, Dict[int, List[str]]] = {a: {} for a in self.agent_names}
+        self.patient_states: Dict[str, Dict] = {p: {"scheduled_steps": {}} for p in self.patients}
+
+        self.max_time_horizon = 168
+        self.transfer_penalty_hours = 4
+        self.theoretical_max_score = len(self.patients) * 1000.0 
+        self.joint_reward_history = []
+        self.agent_rewards_history = {a: [] for a in self.agent_names}
+
+    def compute_max_joint_reward(self) -> float:
+        return self.theoretical_max_score
+
+    def _generate_flexible_jobshop_data(self) -> Tuple[Dict, Dict]:
+        hospitals = ["General_Hospital", "St_Marys_Center"]
+        services = [
+            {"name": "Triage", "capacity": 4, "duration": 1},
+            {"name": "Radiology", "capacity": 2, "duration": 2},
+            {"name": "Surgery", "capacity": 1, "duration": 4},
+            {"name": "Ward", "capacity": 8, "duration": 24}
+        ]
         
-        self.joint_reward_history: List[float] = []
-        self.agent_rewards_history: Dict[str, List[float]] = {agent: [] for agent in self.agent_names}
-        
-        self.max_joint_reward = len(self.patients) * 10.0 if self.patients else 100.0
-
-        initial_reward, initial_agent_rewards = self._rewards(self.assignment)
-        initial_regret = self.max_joint_reward - initial_reward
-        percentage_of_max = initial_reward / self.max_joint_reward if self.max_joint_reward != 0 else 0.0
-        logger.info(f"Initial Regret: {initial_regret:.2f} ({percentage_of_max:=.2%} of max joint reward)\nInitial Agent Rewards: {initial_agent_rewards}")
-        self.stabilized_patients: Set[str] = set() 
-
-    def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        """Constructive Assignment: Lock patients when a specialty match is found."""
-        if "transfers" in state_updates:
-            for p_id, target_h_id in state_updates["transfers"].items():
-                # Prevent re-assignment of stabilized variables
-                if p_id in self.stabilized_patients:
-                    continue
-                
-                self.assignment[p_id] = target_h_id
-                
-                # CSP Logic: If patient condition matches target hospital specialty, lock the variable.
-                patient = self.patients.get(p_id)
-                target_h = self.hospitals.get(target_h_id)
-                if patient and target_h:
-                    if patient['condition'] in target_h['specialties']:
-                        self.stabilized_patients.add(p_id)
-
-    # def done(self, iteration: int) -> bool:
-    #     """CSP Convergence: Finish if all patients are matched or max iterations reached."""
-    #     max_iters = self.env_config.get("max_iterations", 5)
-    #     # Check if all variables have reached a valid specialty-matched state
-    #     if len(self.stabilized_patients) == len(self.patients):
-    #         logger.info("CSP Converged: All patients assigned to matching specialties.")
-    #         return True
-    #     return iteration >= max_iters
-
-    def done(self, iteration: int) -> bool:
-        """Stop when all constraints are satisfied or max iterations reached."""
-        max_iters = self.env_config.get("max_iterations", 5)
-        # Convergence: The CSP is solved when all patients are in matching specialties
-        if len(self.stabilized_patients) == len(self.patients):
-            return True
-        return iteration >= max_iters
-    
-    # --- ADDED THIS METHOD TO FIX THE VALUE ERROR ---
-    def get_network_context(self) -> str:
-        """Required by AbstractEnvironment to seed the blackboards."""
-        return (
-            "This is a hospital coordination network. "
-            "Hospitals must coordinate to transfer patients to facilities with the "
-            "correct specialties (Cardiology, Neurology, Orthopedics, etc.) while "
-            "balancing capacity limits and minimizing transport costs."
-        )
-
-    # --- CORRECTED ASYNC INIT ---
-    async def async_init(self):
-        """Initialize the communication network."""
-        await super().async_init()
-
-    def _load_data(self, data_path: str) -> Tuple[Dict, Dict]:
-        try:
-            df = pd.read_csv(data_path)
-        except FileNotFoundError:
-            logger.error(f"Data file not found at {data_path}. Initializing empty environment.")
-            return {}, {}
-
-        limit = self.env_config.get("num_agents", 5)
-        
-        if 'THCIC_ID' not in df.columns:
-            logger.warning("THCIC_ID column missing. Using mock IDs.")
-            df['THCIC_ID'] = [f"H{i}" for i in range(len(df))]
-
-        unique_ids = df['THCIC_ID'].unique()[:limit]
-        hospitals = {}
-        
-        for h_id in unique_ids:
-            row = df[df['THCIC_ID'] == h_id].iloc[0]
-            
-            specialties = []
-            if str(row.get('FAC_CARDIOVASCULAR_IND', '')).strip() == '1': specialties.append("Cardiology")
-            if str(row.get('FAC_NEUROLOGICAL_IND', '')).strip() == '1': specialties.append("Neurology") 
-            if str(row.get('FAC_ORTHOPEDIC_IND', '')).strip() == '1': specialties.append("Orthopedics")
-            if str(row.get('FAC_PEDS_IND', '')).strip() == '1': specialties.append("Pediatrics")
-            if str(row.get('FAC_ONCOLOGY_IND', '')).strip() == '1': specialties.append("Oncology")
-            if not specialties: specialties.append("General")
-
-            loc_proxy = float(row.get('PAT_COUNTY', 0)) 
-
-            hospitals[str(h_id)] = {
-                "id": str(h_id),
-                "name": str(row.get('PROVIDER_NAME', f"Hospital_{h_id}")),
-                "location": (loc_proxy, loc_proxy),
-                "capacity": self.env_config.get("default_capacity", 10),
-                "specialties": specialties,
-            }
-
-        df_filtered = df[df['THCIC_ID'].isin(unique_ids)]
-        patients = {}
-        for idx, row in df_filtered.iterrows():
-            p_id = str(row.get('RECORD_ID', f"P{idx}"))
-            diag_code = str(row.get('PRINC_DIAG_CODE', ''))
-            condition = self._map_diagnosis_to_specialty(diag_code)
-            
-            patients[p_id] = {
-                "id": p_id,
-                "location": str(row['THCIC_ID']),
-                "condition": condition,
-                "diagnosis_code": diag_code,
-                "severity": str(row.get('PAT_STATUS', '01')),
-            }
-            
-        return hospitals, patients
-
-    def _map_diagnosis_to_specialty(self, code: str) -> str:
-        code = code.upper()
-        if code.startswith('I'): return "Cardiology"
-        if code.startswith('G'): return "Neurology"
-        if code.startswith('M'): return "Orthopedics"
-        if code.startswith('P'): return "Pediatrics"
-        if code.startswith('C'): return "Oncology"
-        return "General"
-
-    def build_agent_context(self, agent_name: str, phase: str, iteration: int, **kwargs) -> Dict[str, Any]:
-        my_hospital = self.hospitals[agent_name]
-        my_current_patients = {pid: p for pid, p in self.patients.items() if p['location'] == agent_name}
-        current_decisions = {pid: self.assignment.get(pid, agent_name) for pid in my_current_patients}
-
-        return {
-            "agent_name": agent_name,
-            "phase": phase,
-            "iteration": iteration,
-            "hospital_stats": {
-                "name": my_hospital["name"],
-                "specialties": my_hospital["specialties"],
-                "capacity": my_hospital["capacity"],
-                "location": my_hospital["location"]
-            },
-            "my_patients": my_current_patients,
-            "current_assignments": current_decisions,
-            "known_neighbors": list(self.hospitals.keys()), 
-            "stabilized_patients": list(self.stabilized_patients)
-        }
-
-    def _rewards(self, assignment: Dict[str, str]) -> Tuple[float, Dict[str, float]]:
-        total_score = 0.0
-        local_rewards = {h: 0.0 for h in self.hospitals}
-        temp_loads = {h: 0 for h in self.hospitals}
-        
-        for p_id, target_h_id in assignment.items():
-            if target_h_id not in self.hospitals: continue
-            
-            patient = self.patients[p_id]
-            target_hospital = self.hospitals[target_h_id]
-            source_hospital = self.hospitals[patient['location']]
-            
-            p_score = 0.0
-            
-            # Specialty Match
-            if patient['condition'] in target_hospital['specialties']:
-                p_score += 10.0
-            elif "General" in target_hospital['specialties']:
-                p_score += 2.0 
-            else:
-                p_score -= 5.0
-
-            # Transport Cost
-            # if patient['location'] != target_h_id:
-            #     loc_a = source_hospital['location']
-            #     loc_b = target_hospital['location']
-            #     dist = math.sqrt((loc_a[0]-loc_b[0])**2 + (loc_a[1]-loc_b[1])**2)
-            #     # p_score -= (dist * 0.01)
-
-            if patient['location'] != target_h_id:
-                loc_a = source_hospital['location'] # Now (Lat_a, Lon_a)
-                loc_b = target_hospital['location'] # Now (Lat_b, Lon_b)
-                
-                # Standard Euclidean distance between Lat/Lon points
-                # dist = sqrt((Lat_a - Lat_b)^2 + (Lon_a - Lon_b)^2)
-                dist = math.sqrt((loc_a[0] - loc_b[0])**2 + (loc_a[1] - loc_b[1])**2)
-                
-                # Apply the penalty (0.1 scaling factor)
-                p_score -= (dist * 0.1)
-            
-            total_score += p_score
-            
-            if patient['location'] in local_rewards:
-                local_rewards[patient['location']] += p_score
-                
-            temp_loads[target_h_id] += 1
-
-        for h_id, load in temp_loads.items():
-            capacity = self.hospitals[h_id]['capacity']
-            if load > capacity:
-                penalty = (load - capacity) * 20.0
-                total_score -= penalty
-                if h_id in local_rewards:
-                    local_rewards[h_id] -= penalty
-
-        return total_score, local_rewards
-
-    def joint_reward(self, actions: Mapping[str, Any]) -> float:
-        score, _ = self._rewards(self.assignment)
-        return score
-
-    def agent_reward(self, agent_name: str, action: Any) -> float:
-        _, local_rewards = self._rewards(self.assignment)
-        return local_rewards.get(agent_name, 0.0)
-
-    def log_iteration(self, iteration: int) -> None:
-        joint_reward, agent_rewards = self._rewards(self.assignment)
-        
-        self.joint_reward_history.append(joint_reward)
-        for agent, reward in agent_rewards.items():
-            if agent in self.agent_rewards_history:
-                self.agent_rewards_history[agent].append(reward)
-
-        tag_model = get_tag_model_subdir(self.full_config)
-        log_dir = build_log_dir(self.__class__.__name__, tag_model, self.current_seed, self.run_timestamp)
-        log_dir.mkdir(parents=True, exist_ok=True)
-
-        logger.info(f"Iteration {iteration}: Joint Reward = {joint_reward:.2f}")
-
-        score_entry = {
-            "environment": self.__class__.__name__,
-            "iteration": iteration,
-            "timestamp": datetime.now().isoformat(),
-            "joint_reward": joint_reward,
-            "joint_reward_ratio": joint_reward / self.max_joint_reward if self.max_joint_reward != 0 else 0,
-            "max_joint_reward": self.max_joint_reward,
-            "agent_rewards": agent_rewards,
-            "average_agent_reward": sum(agent_rewards.values()) / len(agent_rewards) if agent_rewards else 0,
-            "model_info": extract_model_info(self.full_config),
-            "full_config": self.full_config,
-            "total_agents": len(agent_rewards),
-            "total_patients": len(self.patients)
-        }
-
-        data_file = log_dir / f"data_iteration_{iteration}.json"
-        with open(data_file, "w") as f:
-            json.dump(score_entry, f, indent=2, ensure_ascii=False)
-
-    def done(self, iteration: int) -> bool:
-        max_iters = self.env_config.get("max_iterations", 5)
-        return iteration >= max_iters
-    
-    def compute_max_joint_reward(self):
-        return self.max_joint_reward
-
-    def get_serializable_state(self) -> Dict[str, Any]:
-        return {
-            "assignment": self.assignment.copy(),
-            "patients": self.patients.copy(),
-            "agents": {
-                hid: {
-                    "name": h["name"],
-                    "capacity": h["capacity"],
-                    "specialties": h["specialties"],
-                    # Unpack the location tuple (loc_proxy, loc_proxy)
-                    "latitude": h["location"][0], 
-                    "longitude": h["location"][1]
+        agents_map = {}
+        for h in hospitals:
+            for s in services:
+                aid = f"{h}_{s['name']}"
+                agents_map[aid] = {
+                    "id": aid, "hospital": h, "service": s["name"],
+                    "capacity": s["capacity"], "default_duration": s["duration"]
                 }
-                for hid, h in self.hospitals.items()
+                
+        patients = {}
+        pathways = [
+            [("Triage", 1), ("Radiology", 1), ("Surgery", 4), ("Ward", 48)],
+            [("Triage", 1), ("Ward", 24)],
+            [("Triage", 1), ("Radiology", 2), ("Ward", 12)]
+        ]
+        
+        for i in range(self.env_config.get("num_patients", 8)):
+            pid = f"Patient_{i}"
+            steps = [{"step_index": idx, "service": s, "duration": d} 
+                     for idx, (s, d) in enumerate(random.choice(pathways))]
+            patients[pid] = {
+                "id": pid, "arrival_time": random.randint(0, 24), "pathway": steps
             }
-        }
-
-    # def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-    #     if "transfers" in state_updates:
-    #         self.assignment.update(state_updates["transfers"])
+        return agents_map, patients
 
     def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        """Constructive Assignment: Lock patients when a specialty match is found."""
-        if "transfers" in state_updates:
-            for p_id, target_h_id in state_updates["transfers"].items():
-                # Constraint: Once a variable is stabilized, it cannot be reassigned
-                if p_id in self.stabilized_patients:
-                    continue
-                
-                self.assignment[p_id] = target_h_id
-                
-                # CSP Logic: If the value (hospital) satisfies the clinical constraint (specialty)
-                patient = self.patients.get(p_id)
-                target_h = self.hospitals.get(target_h_id)
-                if patient and target_h:
-                    if patient['condition'] in target_h['specialties']:
-                        self.stabilized_patients.add(p_id)
-    
-    def get_final_summary(self) -> Dict[str, Any]:
-        """Get a final summary of the simulation, including regret."""
-        joint_reward, agent_rewards = self._rewards(self.assignment)
-        
-        # Calculate Final Regret
-        regret = self.max_joint_reward - joint_reward
-        logger.info(f"Final Regret: {regret:.2f} ({(joint_reward / self.max_joint_reward if self.max_joint_reward != 0 else 0.0):=.2%} of max joint reward)")
+        if "schedule" in state_updates:
+            for agent_id, acts in state_updates["schedule"].items():
+                if not isinstance(acts, list): acts = [acts]
+                for act in acts:
+                    self._process_schedule_request(agent_id, act)
 
-        return {
-            "status": "complete",
-            "joint_reward": joint_reward,
-            "max_joint_reward": self.max_joint_reward,
-            "regret": regret,
-            "joint_reward_ratio": joint_reward / self.max_joint_reward if self.max_joint_reward else 0.0,
-            "agent_rewards": agent_rewards,
-            # "assignment": self.assignment.copy(),
-            "total_patients": len(self.patients)
+    def _process_schedule_request(self, agent_id, action):
+        p_id, step_idx, start = action.get("patient_id"), action.get("step_index"), action.get("start_time")
+        if p_id not in self.patients: return
+
+        patient = self.patients[p_id]
+        if step_idx >= len(patient["pathway"]): return
+        
+        # Validation Logic
+        target_step = patient["pathway"][step_idx]
+        agent_info = self.agents_map[agent_id]
+        
+        # Service Match
+        if agent_info["service"] != target_step["service"]: return
+        
+        # Precedence
+        min_start = patient["arrival_time"]
+        if step_idx > 0:
+            prev = self.patient_states[p_id]["scheduled_steps"].get(step_idx - 1)
+            if not prev: return
+            
+            prev_h = self.agents_map[prev["agent"]]["hospital"]
+            curr_h = agent_info["hospital"]
+            penalty = self.transfer_penalty_hours if prev_h != curr_h else 0
+            min_start = max(min_start, prev["end_time"] + penalty)
+            
+        if start < min_start: return
+        
+        # Capacity
+        dur = target_step["duration"]
+        for t in range(start, start + dur):
+            if t >= self.max_time_horizon: return
+            if len(self.schedule[agent_id].get(t, [])) >= agent_info["capacity"]: return
+            
+        # Commit
+        for t in range(start, start + dur):
+            if t not in self.schedule[agent_id]: self.schedule[agent_id][t] = []
+            self.schedule[agent_id][t].append(p_id)
+            
+        self.patient_states[p_id]["scheduled_steps"][step_idx] = {
+            "agent": agent_id, "start_time": start, "end_time": start + dur
         }
+
+    def _calculate_makespan_and_flow(self):
+        total_flow = 0.0
+        agent_rewards = {a: 0.0 for a in self.agent_names}
+        penalty = 500.0
+        
+        for pid, p in self.patients.items():
+            sched = self.patient_states[pid]["scheduled_steps"]
+            path = p["pathway"]
+            if len(sched) == len(path):
+                flow = sched[len(path)-1]["end_time"] - p["arrival_time"]
+                total_flow += flow
+                for info in sched.values():
+                    agent_rewards[info["agent"]] -= (flow / len(path))
+            else:
+                total_flow += (len(path) - len(sched)) * penalty
+
+        score = self.theoretical_max_score - total_flow
+        base = self.theoretical_max_score / len(self.agent_names)
+        for a in agent_rewards: agent_rewards[a] += base
+        return score, agent_rewards
+
+    def joint_reward(self, actions):
+        s, _ = self._calculate_makespan_and_flow()
+        return s
+
+    def agent_reward(self, agent_name, action):
+        _, r = self._calculate_makespan_and_flow()
+        return r.get(agent_name, 0.0)
+
+    def build_agent_context(self, agent_name, phase, iteration, **kwargs):
+        my_info = self.agents_map[agent_name]
+        
+        # Summary
+        summary = {}
+        for t in range(0, 48, 4):
+            load = sum(len(self.schedule[agent_name].get(t+i, [])) for i in range(4)) / 4.0
+            summary[f"H{t}"] = f"{load:.1f}/{my_info['capacity']}"
+            
+        # Queue
+        queue = []
+        for pid, p in self.patients.items():
+            done = self.patient_states[pid]["scheduled_steps"]
+            idx = len(done)
+            if idx < len(p["pathway"]):
+                step = p["pathway"][idx]
+                if step["service"] == my_info["service"]:
+                    start = p["arrival_time"]
+                    note = ""
+                    if idx > 0:
+                        prev = done[idx-1]
+                        prev_h = self.agents_map[prev["agent"]]["hospital"]
+                        if prev_h != my_info["hospital"]:
+                            note = "(Transfer)"
+                            start = max(start, prev["end_time"] + self.transfer_penalty_hours)
+                        else:
+                            start = max(start, prev["end_time"])
+                    
+                    queue.append({
+                        "patient_id": pid, "step_index": idx, 
+                        "duration": step["duration"], "earliest_start_time": start, "note": note
+                    })
+                    
+        return {
+            "agent_name": agent_name, "phase": phase, "iteration": iteration,
+            "dept_info": {"capacity": my_info["capacity"], "service": my_info["service"], "schedule_summary": summary},
+            "job_queue": queue
+        }
+
+    def done(self, iteration):
+        if iteration >= self.env_config.get("max_iterations", 10): return True
+        return all(len(self.patient_states[p]["scheduled_steps"]) == len(self.patients[p]["pathway"]) for p in self.patients)
+
+    def get_network_context(self): return "Flexible Job Shop Network."
+    
+    async def async_init(self): await super().async_init()
+
+    def log_iteration(self, iteration):
+        s, r = self._calculate_makespan_and_flow()
+        self.joint_reward_history.append(s)
+        for a, v in r.items(): self.agent_rewards_history[a].append(v)
+
+        tag = get_tag_model_subdir(self.full_config)
+        log_dir = build_log_dir(self.__class__.__name__, tag, self.current_seed, self.run_timestamp)
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # --- SAVE PATIENTS ---
+        if iteration == 1:
+            with open(log_dir / "patients.json", "w") as f:
+                json.dump(self.patients, f, indent=2)
+            logger.info(f"Generated patients saved to {log_dir}/patients.json")
+        # ---------------------
+
+        logger.info(f"Iteration {iteration}: Joint Score = {s:.2f}")
+        with open(log_dir / f"data_iteration_{iteration}.json", "w") as f:
+            json.dump({"iteration": iteration, "joint_reward": s, "agent_rewards": r}, f, indent=2)
+
+    def get_final_summary(self):
+        s, _ = self._calculate_makespan_and_flow()
+        return {"status": "complete", "joint_reward": s, "schedule": self.schedule}
+
+    def get_serializable_state(self):
+        return {"schedule": self.schedule, "patient_states": self.patient_states, "agents": self.agents_map}

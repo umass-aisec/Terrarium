@@ -1,23 +1,22 @@
 from typing import Dict, List, Any, Optional, Set
 import logging
-import math
 
 logger = logging.getLogger(__name__)
 
 class HospitalTools:
     """
-    Hospital coordination tools.
+    Hospital Job Shop Scheduling Tools.
     
-    Includes:
-    1. Sensory tools (available in Planning & Execution): Check costs, capacity, and patient lists.
-    2. Action tools (available in Execution only): Transfer patients.
+    Tools allow agents to:
+    1. Check their own schedule availability (find gaps).
+    2. Commit a patient to a time slot.
     """
 
     def __init__(self, blackboard_manager):
         self.blackboard_manager = blackboard_manager
 
     def get_tool_names(self) -> Set[str]:
-        return {"transfer_patient", "get_transport_cost", "get_hospital_capacity", "get_my_patients"}
+        return {"schedule_patient", "find_available_slots", "get_job_queue"}
 
     def get_tools(self, phase: str) -> List[Dict[str, Any]]:
         """
@@ -27,53 +26,43 @@ class HospitalTools:
         
         # --- READ-ONLY TOOLS (Available in ALL phases) ---
         
-        # Tool 1: Check Cost/Distance
+        # Tool 1: Find Available Slots (Helper to avoid LLM math errors)
         tools.append({
             "type": "function",
             "function": {
-                "name": "get_transport_cost",
-                "description": "Calculate the transport cost (distance/price) to move a patient to a target hospital.",
+                "name": "find_available_slots",
+                "description": "Finds the earliest available time slots for a job of a given duration.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "target_hospital_id": {
-                            "type": "string",
-                            "description": "The THCIC_ID of the destination hospital.",
+                        "duration": {
+                            "type": "integer",
+                            "description": "The length of the procedure in hours.",
                         },
+                        "min_start_time": {
+                            "type": "integer",
+                            "description": "The earliest hour the job can start (e.g., due to arrival time).",
+                        },
+                        "num_slots": {
+                            "type": "integer",
+                            "description": "How many options to return. Default is 3.",
+                            "default": 3
+                        }
                     },
-                    "required": ["target_hospital_id"],
+                    "required": ["duration", "min_start_time"],
                 },
             },
         })
 
-        # Tool 2: Check Capacity
+        # Tool 2: Get Queue
         tools.append({
             "type": "function",
             "function": {
-                "name": "get_hospital_capacity",
-                "description": "Check the total capacity and current load of a target hospital (or yourself).",
+                "name": "get_job_queue",
+                "description": "Refreshes the list of patients waiting for this department.",
                 "parameters": {
                     "type": "object",
-                    "properties": {
-                        "hospital_id": {
-                            "type": "string",
-                            "description": "The THCIC_ID of the hospital to check.",
-                        },
-                    },
-                    "required": ["hospital_id"],
-                },
-            },
-        })
-        
-        # Tool 3: Inspect Own Patients
-        tools.append({
-            "type": "function",
-            "function": {
-                "name": "get_my_patients",
-                "description": "Get a list of all patients currently located at your facility with their required specialty.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {}, # No arguments needed
+                    "properties": {}, 
                     "required": [],
                 },
             },
@@ -84,44 +73,30 @@ class HospitalTools:
             tools.append({
                 "type": "function",
                 "function": {
-                    "name": "transfer_patient",
-                    "description": "Assign a patient currently at your facility to a final destination.",
+                    "name": "schedule_patient",
+                    "description": "Book a specific time slot for a patient. Fails if capacity is exceeded.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "patient_id": {
                                 "type": "string",
-                                "description": "The RECORD_ID of the patient.",
+                                "description": "The ID of the patient.",
                             },
-                            "target_hospital_id": {
-                                "type": "string",
-                                "description": "The THCIC_ID of the receiving hospital.",
+                            "step_index": {
+                                "type": "integer",
+                                "description": "The step number in the patient's pathway.",
+                            },
+                            "start_time": {
+                                "type": "integer",
+                                "description": "The specific hour (0-167) to start the procedure.",
                             },
                         },
-                        "required": ["patient_id", "target_hospital_id"],
+                        "required": ["patient_id", "step_index", "start_time"],
                     },
                 },
             })
 
         return tools
-
-    def _calculate_distance(self, lat1, lon1, lat2, lon2) -> float:
-        """
-        Calculate the great circle distance between two points 
-        on the earth (specified in decimal degrees)
-        """
-        # Convert decimal degrees to radians 
-        lon1, lat1, lon2, lat2 = map(math.radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
-
-        # Haversine formula 
-        dlon = lon2 - lon1 
-        dlat = lat2 - lat1 
-        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-        c = 2 * math.asin(math.sqrt(a)) 
-        
-        # Radius of earth in kilometers. Use 3956 for miles
-        km = 6371 * c
-        return km
 
     def handle_tool_call(
         self,
@@ -137,140 +112,71 @@ class HospitalTools:
             return {"error": "Environment state missing."}
 
         # --- READ HANDLERS ---
-
-        elif tool_name == "get_transport_cost":
-            target_id = arguments.get("target_hospital_id")
-            hospitals = env_state.get("agents", {})
-            
-            source_data = hospitals.get(agent_name)
-            target_data = hospitals.get(target_id)
-            
-            if not source_data or not target_data:
-                return {"result": f"Transport cost from {agent_name} to {target_id} is Unknown."}
-
-            # Check for coordinates (case-insensitive check is safer)
-            s_lat = source_data.get("latitude") or source_data.get("LATITUDE")
-            s_lon = source_data.get("longitude") or source_data.get("LONGITUDE")
-            t_lat = target_data.get("latitude") or target_data.get("LATITUDE")
-            t_lon = target_data.get("longitude") or target_data.get("LONGITUDE")
-
-            if None in [s_lat, s_lon, t_lat, t_lon]:
-                return {"result": "Missing coordinate data for cost calculation."}
-
-            # Calculate distance (simplified or Haversine)
-            dist = self._calculate_distance(s_lat, s_lon, t_lat, t_lon)
-            return {"result": f"Transport cost from {agent_name} to {target_id} is {dist:.2f} km."}
         
+        if tool_name == "get_job_queue":
+            # Just return the subset of patients ready for this agent
+            # We rely on 'build_agent_context' having populated this in the prompt.
+            return {"result": "Please refer to the 'JOB QUEUE' in your prompt context."}
 
-        
-        # elif tool_name == "get_hospital_capacity":
-        #     target = arguments.get("hospital_id")
-        #     # Logic to look up agent profile in env_state...
-        #     agents_data = env_state.get("agents_data", {}) # Assuming this exists
-        #     target_data = agents_data.get(target, {})
-        #     cap = target_data.get("capacity", "Unknown")
-        #     load = target_data.get("current_load", "Unknown")
-        #     return {"result": f"Hospital {target}: Load {load}/{cap}"}
-        
+        elif tool_name == "find_available_slots":
+            duration = arguments.get("duration")
+            min_start = arguments.get("min_start_time", 0)
+            limit = arguments.get("num_slots", 3)
+            
+            # Extract schedule from serializable state
+            schedule = env_state.get("schedule", {}).get(agent_name, {})
+            
+            # Extract capacity
+            agents_info = env_state.get("agents", {})
+            my_capacity = 1
+            if agent_name in agents_info:
+                my_capacity = agents_info[agent_name].get("capacity", 1)
 
-        elif tool_name == "get_hospital_capacity":
-            target = arguments.get("hospital_id")
+            valid_starts = []
             
-            # Get environment data
-            hospitals = env_state.get("agents", {})
-            assignment = env_state.get("assignment", {})
+            # Scan the week (0 to 167 hours)
+            for t in range(min_start, 168):
+                if len(valid_starts) >= limit: break
+                
+                # Check if block [t, t+duration] fits
+                fits = True
+                if t + duration > 168:
+                    fits = False
+                else:
+                    for h in range(t, t + duration):
+                        # SAFETY FIX: Handle both Integer (Environment) and String (JSON) keys
+                        # This prevents the agent from seeing empty slots when keys are actually integers
+                        slot_occupancy = schedule.get(h, schedule.get(str(h), []))
+                        
+                        if len(slot_occupancy) >= my_capacity:
+                            fits = False
+                            break
+                
+                if fits:
+                    valid_starts.append(t)
             
-            target_data = hospitals.get(target)
-            if not target_data:
-                return {"error": f"Hospital {target} not found."}
-
-            # Calculate load dynamically from the assignment state
-            # Load is the count of patients whose current location is the target hospital
-            current_load = sum(1 for target_id in assignment.values() if target_id == target)
-            capacity = target_data.get("capacity", "Unknown")
-            
-            return {"result": f"Hospital {target}: Load {current_load}/{capacity}"}
-
-        elif tool_name == "get_my_patients":
-            patients = env_state.get("patients", {})
-            assignment = env_state.get("assignment", {})
-            
-            # Filter patients based on their current assignment in the DCOP
-            my_list = [
-                {"id": pid, "condition": p.get("condition"), "diagnosis": p.get("diagnosis_code")}
-                for pid, p in patients.items() 
-                if assignment.get(pid) == agent_name
-            ]
-            return {"result": my_list}
+            if not valid_starts:
+                return {"result": "No available slots found in the remaining week."}
+            return {"result": f"Available Start Times: {valid_starts}"}
 
         # --- WRITE HANDLER ---
-        
-        # elif tool_name == "transfer_patient":
-        #     action = {
-        #         "action": "transfer_patient", 
-        #         "patient_id": arguments.get("patient_id"), 
-        #         "target_hospital_id": arguments.get("target_hospital_id")
-        #     }
-        #     return self.execute_action(
-        #         agent_name, action, log_to_blackboards=True, phase=phase, iteration=iteration, env_state=env_state
-        #     )
 
-        if tool_name == "transfer_patient":
-            patient_id = arguments.get("patient_id")
-            # CSP CONSTRAINT: Reject movement of stabilized variables
-            stabilized = env_state.get("stabilized_patients", [])
-            if patient_id in stabilized:
-                return {
-                    "status": "failed",
-                    "reason": f"Patient {patient_id} is already stabilized at a matching facility. Decision is final."
-                }
-
+        elif tool_name == "schedule_patient":
+            # Construct the action dictionary
             action = {
-                "action": "transfer_patient", 
-                "patient_id": patient_id, 
-                "target_hospital_id": arguments.get("target_hospital_id")
+                "schedule": {
+                    agent_name: {
+                        "patient_id": arguments.get("patient_id"),
+                        "step_index": arguments.get("step_index"),
+                        "start_time": arguments.get("start_time")
+                    }
+                }
             }
-            return self.execute_action(agent_name, action, log_to_blackboards=True, phase=phase, iteration=iteration, env_state=env_state)
+            
+            return self.execute_action(agent_name, action, log_to_blackboards=True, phase=phase, iteration=iteration)
 
         return {"error": f"Tool {tool_name} not implemented."}
 
-    # def execute_action(self, agent_name, action, **kwargs) -> Dict[str, Any]:
-    #     env_state = kwargs.get("env_state", {})
-    #     patient_id = action.get("patient_id")
-    #     stabilized = env_state.get("stabilized_patients", set())
-
-    #     # CSP Constraint: Variables already assigned to an optimal domain cannot be changed.
-    #     if patient_id in stabilized:
-    #         return {
-    #             "status": "failed", 
-    #             "reason": f"Patient {patient_id} is already stabilized at a specialty-matched facility."
-    #         }
-
-    # hospital_tools.py
-
-    def execute_action(self, agent_name, action, **kwargs) -> Dict[str, Any]:
-        # 1. Get current state to validate against CSP constraints
-        env_state = kwargs.get("env_state", {})
-        stabilized = env_state.get("stabilized_patients", [])
-        patient_id = action.get("patient_id")
-
-        # 2. Local Validation (Pre-check)
-        if patient_id in stabilized:
-            return {
-                "status": "failed",
-                "reason": f"Constraint Violation: Patient {patient_id} is already locked."
-            }
-
-        # 3. Request State Update from Environment
-        # In Terrarium, this often returns the result of Environment.apply_state_updates
-        response = self.blackboard_manager.apply_state_updates(agent_name, action)
-
-        # 4. Return ACTUAL response
-        if not response:
-            return {"status": "error", "message": "Environment failed to process update."}
-        
-        return response # This will be {"status": "success", ...} or {"status": "denied", ...}
-    
     def execute_action(
         self,
         agent_name: str,
@@ -278,88 +184,36 @@ class HospitalTools:
         log_to_blackboards: bool = True,
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
-        env_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
-        Validates and executes the transfer action, updating the environment state.
+        Processes the action and returns the state updates for the environment to apply.
         """
-        if not env_state:
-            return {"status": "failed", "reason": "Environment state not provided"}
-
-        # Extract state definitions
-        # Note: Ensure HospitalEnvironment.get_serializable_state() provides these keys
-
-        patient_id = action.get("patient_id")
-        stabilized = env_state.get("stabilized_patients", set())
-
-        # CONSTRUCTIVE RULE: Prevent transferring a patient who is already clinically matched
-        if patient_id in stabilized:
-            return {
-                "status": "failed", 
-                "reason": f"Patient {patient_id} is already at a specialty-matched facility and is stabilized."
-            }
         
-        assignment = env_state.get("assignment", {})
-        patients = env_state.get("patients", {})
-        valid_agents = env_state.get("agents", [])
-
-        if agent_name not in valid_agents:
-            return {"status": "failed", "reason": f"Agent {agent_name} not found in valid agents"}
-
-        if action.get("action") != "transfer_patient":
-            return {"status": "failed", "reason": f"Unknown action type: {action.get('action')}"}
-
-        patient_id = action.get("patient_id")
-        target_hospital_id = action.get("target_hospital_id")
-
-        if patient_id is None:
-            return {"status": "retry", "reason": "patient_id is required"}
-        if target_hospital_id is None:
-            return {"status": "retry", "reason": "target_hospital_id is required"}
-
-        # 1. Validate Patient Exists
-        if patient_id not in patients:
-            return {"status": "failed", "reason": f"Patient {patient_id} not found in records"}
-
-        # 2. Validate Ownership (Agent can only transfer patients currently at their location)
-        patient_record = patients[patient_id]
-        if patient_record.get("location") != agent_name:
-            return {
-                "status": "failed", 
-                "reason": f"Permission denied. Patient {patient_id} is located at {patient_record.get('location')}, not {agent_name}."
-            }
-
-        # 3. Validate Target Hospital
-        if target_hospital_id not in valid_agents:
-            return {"status": "retry", "reason": f"Target hospital {target_hospital_id} does not exist."}
-
-        # 4. Check if already assigned in this execution (Prevent double-move if strictly sequential)
-        # Note: logic can be relaxed if re-assignment is allowed, but sticking to MeetingScheduling pattern:
-        # We generally track what has changed in this 'turn'.
-        # Since 'assignment' is the global state, checking it might block re-assignment across iterations 
-        # unless handled carefully. For now, we update it.
+        # We assume the action structure is correct as constructed in handle_tool_call
+        schedule_data = action["schedule"][agent_name]
         
-        updated_assignment = dict(assignment)
-        updated_assignment[patient_id] = target_hospital_id
+        patient_id = schedule_data['patient_id']
+        start_time = schedule_data['start_time']
+        
+        # Construct result message
+        result_msg = f"Request sent to schedule Patient {patient_id} at Hour {start_time}."
 
-        # Calculate basic metrics for the result
-        result_dict = {
-            "agent": agent_name,
-            "transfer": {
-                "patient": patient_id,
-                "source": agent_name,
-                "target": target_hospital_id,
-                "condition": patient_record.get("condition", "Unknown")
-            },
-            "state_updates": {"transfers": {patient_id: target_hospital_id}},
+        # CRITICAL FIX FOR ATTRIBUTE ERROR:
+        # We do NOT call self.blackboard_manager.apply_state_updates(...) because Megaboard doesn't have it.
+        # Instead, we return 'state_updates'. The Framework will pass this to the Environment.
+        execution_result = {
+            "status": "success", 
+            "result": result_msg,
+            "state_updates": action # Pass the whole action dict as the update payload
         }
 
-        execution_result = {"status": "success", "result": result_dict}
-
-        # Log to the blackboard so other agents (and the researcher) can see the move
+        # We DO call log_action_to_blackboards, which IS available on Megaboard
         if log_to_blackboards and self.blackboard_manager:
-            self.blackboard_manager.log_action_to_blackboards(
-                agent_name, action, execution_result, phase, iteration
-            )
+            try:
+                self.blackboard_manager.log_action_to_blackboards(
+                    agent_name, action, execution_result, phase, iteration
+                )
+            except Exception as e:
+                logger.error(f"Failed to log to blackboard: {e}")
 
         return execution_result

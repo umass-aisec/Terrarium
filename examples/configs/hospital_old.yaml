@@ -1,0 +1,73 @@
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 20
+  seed: 42
+  tags:
+    - hospital_baseline
+  note: "Hospital patient transfer coordination"
+
+environment:
+  name: HospitalEnvironment
+  # Path to the preprocessed data file
+  data_path: "data/hospital/outpatient_merged.csv"
+  # Number of hospitals (agents) to load from the data
+  num_agents: 8
+  # Default patient capacity if not calculated from data
+  default_capacity: 30
+
+communication_network:
+  # Topology options: complete | path | star | random
+  # 'complete' allows any hospital to negotiate with any other
+  topology: complete
+  num_agents: 5
+  # consolidate_channels=true => fewer blackboards (one shared board for complete graph)
+  consolidate_channels: true
+
+llm:
+  # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
+  provider: "vllm"
+  
+  openai:
+    model: "gpt-4o"
+    params:
+      max_tokens: 1024
+      temperature: 0.2 # Lower temperature for better logical reasoning
+      
+  anthropic:
+    model: "claude-3-5-sonnet-20241022"
+    params:
+      max_tokens: 4000
+      temperature: 0.2
+      
+  gemini:
+    model: "gemini-1.5-pro"
+    params:
+      max_tokens: 1024
+      temperature: 0.2
+
+  vllm:
+    auto_start_server: true
+    persistent_server: false
+    health_check_path: "/models"
+    startup_timeout: 420
+    params:
+      max_tokens: 1024
+      temperature: 0.2
+    models:
+      - checkpoint: "Qwen/Qwen2.5-7B-Instruct"
+        host: "127.0.0.1"
+        port: 8020
+        tensor_parallel_size: 1
+        gpu_memory_utilization: 0.9
+        max_model_len: 16000
+        trust_remote_code: true
+        additional_args:
+          - "--enable-auto-tool-choice"
+
+notes:
+- Hospital Environment Baseline
+- Agents (Hospitals) identify patients requiring specialized care (Cardiology, Neurology, etc.)
+- Agents negotiate transfers to balance specialty matching vs. transport costs and capacity
+- Objective: Maximize Joint Health Score = (Specialty Match Bonus) - (Transport Cost) - (Overcapacity Penalty)
+- Simulation stops when max_iterations is reached
