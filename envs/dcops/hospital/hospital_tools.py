@@ -1,5 +1,6 @@
 from typing import Dict, List, Any, Optional, Set
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,24 @@ class HospitalTools:
 
         return tools
 
+    def _calculate_distance(self, lat1, lon1, lat2, lon2) -> float:
+        """
+        Calculate the great circle distance between two points 
+        on the earth (specified in decimal degrees)
+        """
+        # Convert decimal degrees to radians 
+        lon1, lat1, lon2, lat2 = map(math.radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
+
+        # Haversine formula 
+        dlon = lon2 - lon1 
+        dlat = lat2 - lat1 
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c = 2 * math.asin(math.sqrt(a)) 
+        
+        # Radius of earth in kilometers. Use 3956 for miles
+        km = 6371 * c
+        return km
+
     def handle_tool_call(
         self,
         tool_name: str,
@@ -118,15 +137,29 @@ class HospitalTools:
             return {"error": "Environment state missing."}
 
         # --- READ HANDLERS ---
-        
-        if tool_name == "get_transport_cost":
-            # Assuming env_state has a 'distance_matrix' or similar
-            target = arguments.get("target_hospital_id")
-            # Logic to look up distance matrix in env_state...
-            # This is a placeholder logic:
-            dist_matrix = env_state.get("distance_matrix", {})
-            cost = dist_matrix.get(agent_name, {}).get(target, "Unknown")
-            return {"result": f"Transport cost from {agent_name} to {target} is {cost}."}
+
+        elif tool_name == "get_transport_cost":
+            target_id = arguments.get("target_hospital_id")
+            hospitals = env_state.get("agents", {})
+            
+            source_data = hospitals.get(agent_name)
+            target_data = hospitals.get(target_id)
+            
+            if not source_data or not target_data:
+                return {"result": f"Transport cost from {agent_name} to {target_id} is Unknown."}
+
+            # Check for coordinates (case-insensitive check is safer)
+            s_lat = source_data.get("latitude") or source_data.get("LATITUDE")
+            s_lon = source_data.get("longitude") or source_data.get("LONGITUDE")
+            t_lat = target_data.get("latitude") or target_data.get("LATITUDE")
+            t_lon = target_data.get("longitude") or target_data.get("LONGITUDE")
+
+            if None in [s_lat, s_lon, t_lat, t_lon]:
+                return {"result": "Missing coordinate data for cost calculation."}
+
+            # Calculate distance (simplified or Haversine)
+            dist = self._calculate_distance(s_lat, s_lon, t_lat, t_lon)
+            return {"result": f"Transport cost from {agent_name} to {target_id} is {dist:.2f} km."}
         
 
         

@@ -292,19 +292,22 @@ class HospitalEnvironment(AbstractEnvironment):
     def compute_max_joint_reward(self):
         return self.max_joint_reward
 
-    # def get_serializable_state(self) -> Dict[str, Any]:
-    #     return {
-    #         "assignment": self.assignment.copy(),
-    #         "agents": list(self.hospitals.keys()),
-    #         "patients": self.patients.copy() 
-    #     }
-
     def get_serializable_state(self) -> Dict[str, Any]:
-            return {
-                "assignment": self.assignment.copy(),
-                "agents": self.hospitals.copy(), # Provide full hospital objects
-                "patients": self.patients.copy()
+        return {
+            "assignment": self.assignment.copy(),
+            "patients": self.patients.copy(),
+            "agents": {
+                hid: {
+                    "name": h["name"],
+                    "capacity": h["capacity"],
+                    "specialties": h["specialties"],
+                    # Unpack the location tuple (loc_proxy, loc_proxy)
+                    "latitude": h["location"][0], 
+                    "longitude": h["location"][1]
+                }
+                for hid, h in self.hospitals.items()
             }
+        }
 
     # def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
     #     if "transfers" in state_updates:

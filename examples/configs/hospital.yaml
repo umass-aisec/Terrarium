@@ -1,7 +1,7 @@
 simulation:
   max_iterations: 1
-  max_planning_rounds: 1
-  max_conversation_steps: 6
+  max_planning_rounds: 4
+  max_conversation_steps: 20
   seed: 42
   tags:
     - hospital_baseline
