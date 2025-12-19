@@ -222,7 +222,34 @@ class HospitalEnvironment(AbstractEnvironment):
 
     def get_final_summary(self):
         s, _ = self._calculate_makespan_and_flow()
-        return {"status": "complete", "joint_reward": s, "schedule": self.schedule}
+        
+        # --- IMPROVED CONVERGENCE REPORTING ---
+        total_patients = len(self.patients)
+        converged_patients = 0
+        failed_list = []
+        
+        for pid, p in self.patients.items():
+            completed_steps = len(self.patient_states[pid]["scheduled_steps"])
+            required_steps = len(p["pathway"])
+            
+            if completed_steps == required_steps:
+                converged_patients += 1
+            else:
+                failed_list.append(f"{pid} ({completed_steps}/{required_steps} steps)")
+        
+        status_msg = "complete" if not failed_list else "partial_convergence"
+        
+        return {
+            "status": status_msg,
+            "joint_reward": s,
+            "convergence_report": {
+                "total_patients": total_patients,
+                "converged_count": converged_patients,
+                "success_rate": f"{(converged_patients/total_patients)*100:.1f}%",
+                "failed_patients": failed_list
+            },
+            "schedule": self.schedule
+        }
 
     def get_serializable_state(self):
         return {"schedule": self.schedule, "patient_states": self.patient_states, "agents": self.agents_map}
