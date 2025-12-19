@@ -155,11 +155,11 @@ def validate_config(config: Dict[str, Any]) -> None:
 
     # Validate environments have exactly 1 iteration
     max_iterations = config["simulation"]["max_iterations"]
-    if max_iterations != 1:
-        raise ValueError(
-            f"Environment '{env_name}' requires "
-            f"max_iterations=1 in simulation config, but got {max_iterations}"
-        )
+    # if max_iterations != 1:
+    #     raise ValueError(
+    #         f"Environment '{env_name}' requires "
+    #         f"max_iterations=1 in simulation config, but got {max_iterations}"
+    #     )
 
 
 def _sanitize_identifier(value: str) -> str:

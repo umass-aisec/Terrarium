@@ -8,56 +8,50 @@ class HospitalPrompts:
     def get_system_prompt(self) -> str:
         """
         Returns the static system prompt. 
-        Note: Must NOT take arguments to match BaseAgent interface.
         """
-        return """You are a Hospital Coordination Agent.
+        return """You are a Hospital Coordination Agent in a Constructive CSP task.
 
-GLOBAL CONSTRAINTS:
-1. **Blackboard**: Access ONLY Blackboard '0'.
-2. **Tool Discipline**: 
-   - Planning Phase -> Use `post_message`.
-   - Execution Phase -> Use `transfer_patient`.
+OBJECTIVE:
+Assign patients (variables) to the optimal hospital (values) to maximize clinical matching and minimize transport costs.
 
-OBJECTIVE PRIORITY:
-1. **Perfect Match**: Send Cardiology patients to Cardiology hospitals, etc.
-2. **Load Balancing (Fallback)**: If NO specialty match is found, send the patient to ANY hospital with "General" capacity to relieve your own overcrowding.
+CONSTRAINTS:
+1. Decision Finality: Once a patient reaches a matching specialty facility, the assignment is LOCKED. You cannot move them again.
+2. Capacity: Overloading a facility results in massive penalties. Check a hospital's current load before transferring.
 
-CRITICAL INSTRUCTION:
-In the Execution Phase, do not just read the blackboard. If you find a hospital that MATCHES the specialty you need (OR is available for General care), you MUST initiate the `transfer_patient` tool immediately.
-"""
+EXECUTION STRATEGY:
+Treat every transfer as a permanent assignment. 
+- Use `get_hospital_capacity` to check if a potential destination is full.
+- Use `transfer_patient` for the final assignment.
+- DO NOT use attribute names like 'THCIC_ID' as parameters. Use the literal numeric/string ID of the hospital (e.g., '35000')."""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
         """
-        Constructs the user prompt, injecting agent-specific context and calculating state logic.
+        Constructs the user prompt with explicit valid IDs to prevent parameter errors.
         """
         # --- 1. PRE-CALCULATE AGENT STATE ---
         hospital_stats = agent_context.get('hospital_stats', {})
         my_capacity = hospital_stats.get('capacity', 100)
-        # Clean up duplicates in specialties just in case
         my_specialties = list(set(hospital_stats.get('specialties', [])))
         my_patients = agent_context.get('my_patients', {})
         
+        # Explicitly list valid neighbor IDs to prevent "THCIC_ID" string errors
+        neighbor_ids = agent_context.get('known_neighbors', [])
+        neighbor_list_str = ", ".join(neighbor_ids) if neighbor_ids else "None"
+        
         current_load = len(my_patients)
         
-        # Identify patients that MUST be transferred
         transfer_list = []
-        
         for pid, p_data in my_patients.items():
             code = str(p_data.get('diagnosis_code', ''))
-            
-            # 1. Determine Specialty Needed
             req_spec = "General"
             if code.startswith(('I', 'i')): req_spec = "Cardiology"
             elif code.startswith(('G', 'g')): req_spec = "Neurology"
             elif code.startswith(('M', 'm')): req_spec = "Orthopedics"
             
             reason = None
-            
-            # 2. Logic: Is this patient mismatched?
             if req_spec != "General" and req_spec not in my_specialties:
                 reason = f"Needs {req_spec}"
             elif current_load > my_capacity:
-                # If we are simply full, even General patients are candidates for transfer
                 reason = "Over Capacity"
             
             if reason:
@@ -77,47 +71,40 @@ In the Execution Phase, do not just read the blackboard. If you find a hospital 
         phase = agent_context.get('phase', 'unknown')
         iteration = agent_context.get('iteration', 0)
         
-        instruction = ""
-        
         if phase == 'planning':
-            # DEADLOCK FIX: Always advertise capabilities + load so others can find us
             spec_str = ', '.join(my_specialties)
-            needed_str = "General" if not transfer_list else "Specialists"
-            
             instruction = f"""
-!!! PLANNING ACTION !!!
-You must advertise your status to the network so others can match with you.
-Action: Post a message to Blackboard 0.
-REQUIRED FORMAT: "{hospital_stats.get('name')} (ID: {agent_name}). Specialties: {spec_str}. Load: {current_load}/{my_capacity}."
+!!! PLANNING ACTION: COORDINATION & DOMAIN SCOUTING !!!
+You are in the information-gathering phase. Your objective is to prune the search space and identify optimal values (Hospitals) for your variables (Patients) before the commit phase.
+
+1. **Advertise (REQUIRED)**: Post a message to Blackboard 0.
+   REQUIRED FORMAT: "{hospital_stats.get('name')} (ID: {agent_name}). Specialties: {spec_str}. Load: {current_load}/{my_capacity}."
+
+2. **Scout & Filter**: Identify the best candidate destinations for your 'Priority Transfer List'.
+   - Read the blackboard to find specialty matches.
+   - Call `get_transport_cost(target_hospital_id="[ID]")` to evaluate the efficiency of potential moves.
+   - Call `get_hospital_capacity(hospital_id="[ID]")` to verify if your intended targets can accept more patients.
+
+3. **Negotiate**: If you find an ideal match, post a follow-up message: "Agent {agent_name} intends to transfer [Specialty] patients to [Target ID] during Execution."
+
+CRITICAL: You are currently in the PLANNING phase. You must use this time to gather data and signal intent. Do NOT call `transfer_patient` yet; that tool is reserved for the COMMIT (Execution) phase to ensure global state synchronization.
 """
 
-        elif phase == 'execution':
-            if needs_help:
-                instruction = f"""
-!!! EXECUTION ACTION REQUIRED !!!
-You have patients needing transfer:
-{chr(10).join(['- ' + t for t in transfer_list])}
+        elif phase == 'execution' and needs_help:
+            instruction = f"""
+!!! CSP EXECUTION: OPTIMAL ASSIGNMENT REQUIRED !!!
+Identify the best destination from this VALID ID LIST: {neighbor_list_str}
 
-INSTRUCTIONS:
-1. Read the 'BLACKBOARD MESSAGES'.
-2. **Attempt 1 (Perfect Match):** Look for a hospital offering the specific specialty the patient needs (e.g., "Specialties: ... Cardiology").
-3. **Attempt 2 (Fallback):** If NO specific match exists, look for a hospital that said "Specialties: ... General ..." or appears to be available.
+Use the literal numeric ID from the list (e.g., "{neighbor_ids[0] if neighbor_ids else '35000'}"). DO NOT type "THCIC_ID".
 
-ACTION:
-- Found a match (Specific OR General)? -> CALL `transfer_patient` IMMEDIATELY.
-   - `target_hospital_id`: [The Agent ID found in the message]
-   - `patient_id`: [Your patient ID]
+STEPS:
+1. **Capacity Check**: Before transferring, call `get_hospital_capacity(hospital_id="[ID]")` for your candidate. Once capacity is confirmed for at least one compatible hospital, proceed to step 2 IMMEDIATELY. Do not waste execution steps.
+2. **Commit**: Once capacity is confirmed, IMMEDIATELY call `transfer_patient`.
 
-DO NOT POST MESSAGES. EXECUTE THE TRANSFER TOOL.
-"""
-            else:
-                instruction = """
-State: Stable. 
-You are not seeking to push patients. 
-Monitor the blackboard. If you see a neighbor needing your specialty, you MAY proactively pull a patient.
-"""
+STABILIZED PATIENTS (LOCKED): {agent_context.get('stabilized_patients', [])}"""
+        else:
+            instruction = """State: Stable. Monitor blackboard for incoming patients matching your specialties."""
 
-        # --- 4. FINAL PROMPT ---
         return f"""
 === AGENT DASHBOARD ===
 Agent ID: {agent_name}
@@ -125,6 +112,7 @@ Phase: {phase} (Iteration {iteration})
 Hospital Name: {hospital_stats.get('name', 'Unknown')}
 My Specialties: {', '.join(my_specialties)}
 Capacity status: {current_load}/{my_capacity}
+VALID NEIGHBOR IDs: {neighbor_list_str}
 
 === YOUR PRIORITY TRANSFER LIST ===
 {chr(10).join(['- ' + t for t in transfer_list]) if transfer_list else "None. You are stable."}

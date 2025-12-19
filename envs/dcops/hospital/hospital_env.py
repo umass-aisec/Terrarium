@@ -2,7 +2,7 @@ import logging
 import math
 import json
 import pandas as pd
-from typing import Dict, List, Any, Tuple, Optional, Mapping
+from typing import Dict, List, Any, Tuple, Optional, Mapping, Set
 from datetime import datetime
 from envs.abstract_environment import AbstractEnvironment
 from src.utils import (
@@ -48,6 +48,46 @@ class HospitalEnvironment(AbstractEnvironment):
         
         self.max_joint_reward = len(self.patients) * 10.0 if self.patients else 100.0
 
+        initial_reward, initial_agent_rewards = self._rewards(self.assignment)
+        initial_regret = self.max_joint_reward - initial_reward
+        percentage_of_max = initial_reward / self.max_joint_reward if self.max_joint_reward != 0 else 0.0
+        logger.info(f"Initial Regret: {initial_regret:.2f} ({percentage_of_max:=.2%} of max joint reward)\nInitial Agent Rewards: {initial_agent_rewards}")
+        self.stabilized_patients: Set[str] = set() 
+
+    def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
+        """Constructive Assignment: Lock patients when a specialty match is found."""
+        if "transfers" in state_updates:
+            for p_id, target_h_id in state_updates["transfers"].items():
+                # Prevent re-assignment of stabilized variables
+                if p_id in self.stabilized_patients:
+                    continue
+                
+                self.assignment[p_id] = target_h_id
+                
+                # CSP Logic: If patient condition matches target hospital specialty, lock the variable.
+                patient = self.patients.get(p_id)
+                target_h = self.hospitals.get(target_h_id)
+                if patient and target_h:
+                    if patient['condition'] in target_h['specialties']:
+                        self.stabilized_patients.add(p_id)
+
+    # def done(self, iteration: int) -> bool:
+    #     """CSP Convergence: Finish if all patients are matched or max iterations reached."""
+    #     max_iters = self.env_config.get("max_iterations", 5)
+    #     # Check if all variables have reached a valid specialty-matched state
+    #     if len(self.stabilized_patients) == len(self.patients):
+    #         logger.info("CSP Converged: All patients assigned to matching specialties.")
+    #         return True
+    #     return iteration >= max_iters
+
+    def done(self, iteration: int) -> bool:
+        """Stop when all constraints are satisfied or max iterations reached."""
+        max_iters = self.env_config.get("max_iterations", 5)
+        # Convergence: The CSP is solved when all patients are in matching specialties
+        if len(self.stabilized_patients) == len(self.patients):
+            return True
+        return iteration >= max_iters
+    
     # --- ADDED THIS METHOD TO FIX THE VALUE ERROR ---
     def get_network_context(self) -> str:
         """Required by AbstractEnvironment to seed the blackboards."""
@@ -144,6 +184,7 @@ class HospitalEnvironment(AbstractEnvironment):
             "my_patients": my_current_patients,
             "current_assignments": current_decisions,
             "known_neighbors": list(self.hospitals.keys()), 
+            "stabilized_patients": list(self.stabilized_patients)
         }
 
     def _rewards(self, assignment: Dict[str, str]) -> Tuple[float, Dict[str, float]]:
@@ -169,10 +210,21 @@ class HospitalEnvironment(AbstractEnvironment):
                 p_score -= 5.0
 
             # Transport Cost
+            # if patient['location'] != target_h_id:
+            #     loc_a = source_hospital['location']
+            #     loc_b = target_hospital['location']
+            #     dist = math.sqrt((loc_a[0]-loc_b[0])**2 + (loc_a[1]-loc_b[1])**2)
+            #     # p_score -= (dist * 0.01)
+
             if patient['location'] != target_h_id:
-                loc_a = source_hospital['location']
-                loc_b = target_hospital['location']
-                dist = math.sqrt((loc_a[0]-loc_b[0])**2 + (loc_a[1]-loc_b[1])**2)
+                loc_a = source_hospital['location'] # Now (Lat_a, Lon_a)
+                loc_b = target_hospital['location'] # Now (Lat_b, Lon_b)
+                
+                # Standard Euclidean distance between Lat/Lon points
+                # dist = sqrt((Lat_a - Lat_b)^2 + (Lon_a - Lon_b)^2)
+                dist = math.sqrt((loc_a[0] - loc_b[0])**2 + (loc_a[1] - loc_b[1])**2)
+                
+                # Apply the penalty (0.1 scaling factor)
                 p_score -= (dist * 0.1)
             
             total_score += p_score
@@ -240,13 +292,56 @@ class HospitalEnvironment(AbstractEnvironment):
     def compute_max_joint_reward(self):
         return self.max_joint_reward
 
+    # def get_serializable_state(self) -> Dict[str, Any]:
+    #     return {
+    #         "assignment": self.assignment.copy(),
+    #         "agents": list(self.hospitals.keys()),
+    #         "patients": self.patients.copy() 
+    #     }
+
     def get_serializable_state(self) -> Dict[str, Any]:
-        return {
-            "assignment": self.assignment.copy(),
-            "agents": list(self.hospitals.keys()),
-            "patients": self.patients.copy() 
-        }
+            return {
+                "assignment": self.assignment.copy(),
+                "agents": self.hospitals.copy(), # Provide full hospital objects
+                "patients": self.patients.copy()
+            }
+
+    # def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
+    #     if "transfers" in state_updates:
+    #         self.assignment.update(state_updates["transfers"])
 
     def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
+        """Constructive Assignment: Lock patients when a specialty match is found."""
         if "transfers" in state_updates:
-            self.assignment.update(state_updates["transfers"])
+            for p_id, target_h_id in state_updates["transfers"].items():
+                # Constraint: Once a variable is stabilized, it cannot be reassigned
+                if p_id in self.stabilized_patients:
+                    continue
+                
+                self.assignment[p_id] = target_h_id
+                
+                # CSP Logic: If the value (hospital) satisfies the clinical constraint (specialty)
+                patient = self.patients.get(p_id)
+                target_h = self.hospitals.get(target_h_id)
+                if patient and target_h:
+                    if patient['condition'] in target_h['specialties']:
+                        self.stabilized_patients.add(p_id)
+    
+    def get_final_summary(self) -> Dict[str, Any]:
+        """Get a final summary of the simulation, including regret."""
+        joint_reward, agent_rewards = self._rewards(self.assignment)
+        
+        # Calculate Final Regret
+        regret = self.max_joint_reward - joint_reward
+        logger.info(f"Final Regret: {regret:.2f} ({(joint_reward / self.max_joint_reward if self.max_joint_reward != 0 else 0.0):=.2%} of max joint reward)")
+
+        return {
+            "status": "complete",
+            "joint_reward": joint_reward,
+            "max_joint_reward": self.max_joint_reward,
+            "regret": regret,
+            "joint_reward_ratio": joint_reward / self.max_joint_reward if self.max_joint_reward else 0.0,
+            "agent_rewards": agent_rewards,
+            # "assignment": self.assignment.copy(),
+            "total_patients": len(self.patients)
+        }
