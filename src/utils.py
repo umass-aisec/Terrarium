@@ -155,11 +155,11 @@ def validate_config(config: Dict[str, Any]) -> None:
 
     # Validate environments have exactly 1 iteration
     max_iterations = config["simulation"]["max_iterations"]
-    if max_iterations != 1:
-        raise ValueError(
-            f"Environment '{env_name}' requires "
-            f"max_iterations=1 in simulation config, but got {max_iterations}"
-        )
+    # if max_iterations != 1:
+    #     raise ValueError(
+    #         f"Environment '{env_name}' requires "
+    #         f"max_iterations=1 in simulation config, but got {max_iterations}"
+    #     )
 
 
 def _sanitize_identifier(value: str) -> str:
@@ -451,11 +451,13 @@ def _get_environment_registry():
     from envs.dcops.personal_assistant import PersonalAssistantEnvironment
     from envs.dcops.smart_grid import SmartGridEnvironment
     from envs.dcops.meeting_scheduling import MeetingSchedulingEnvironment
+    from envs.dcops.hospital import HospitalEnvironment
 
     return {
         MeetingSchedulingEnvironment.__name__: MeetingSchedulingEnvironment,
         PersonalAssistantEnvironment.__name__: PersonalAssistantEnvironment,
         SmartGridEnvironment.__name__: SmartGridEnvironment,
+        HospitalEnvironment.__name__: HospitalEnvironment,
     }
 
 

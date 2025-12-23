@@ -3,6 +3,8 @@ import json
 from typing import Any, Dict, List, Optional
 import sys
 import os
+from fastapi.responses import JSONResponse 
+from fastapi import Request
 
 # Add project root to sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -40,6 +42,9 @@ def set_environment_tools(environment_name: str):
     elif environment_name == "SmartGridEnvironment":
         from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
         environment_tools = SmartGridTools(megaboard)
+    elif environment_name == "HospitalEnvironment":
+        from envs.dcops.hospital import HospitalTools
+        environment_tools = HospitalTools(megaboard)
     else:
         raise ValueError(
             f"Unknown environment: {environment_name}. Supported: "
@@ -149,6 +154,23 @@ def log_blackboard_states(iteration: int, phase: str, agent_name: str, planning_
         return {"status": "success", "message": f"Logged {len(megaboard.blackboards)} blackboards"}
     except Exception as e:
         return {"status": "error", "message": f"Failed to log blackboards: {str(e)}"}
+
+@mcp.custom_route("/v1/models", methods=["GET"])
+async def list_models(request: Request):
+    """
+    Mock endpoint to satisfy clients expecting an OpenAI-compatible API.
+    """
+    return JSONResponse(content={
+        "object": "list",
+        "data": [
+            {
+                "id": "Qwen/Qwen2.5-7B-Instruct", 
+                "object": "model",
+                "created": 1677610602,
+                "owned_by": "mcp-server",
+            }
+        ]
+    })
 
 if __name__ == "__main__":
     mcp.run(transport="http", port=8000)

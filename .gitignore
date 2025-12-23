@@ -29,3 +29,7 @@ coverage/
 dashboards/public/dashboard_data.json
 
 envs/dcops/outputs
+.venv
+data/hospital/raw
+data/hospital/outpatient_merged.csv
+/bigtemp/duh6ae/Terrarium/data/hospital/outpatient_merged.csv

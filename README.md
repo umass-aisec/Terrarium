@@ -60,11 +60,15 @@ For vLLM servicing, simply set `llm.provider:"vllm"` and `llm.vllm.auto_start_se
 ### Running a Multi-Agent Trajectory
 1. Start up the persistent MCP server once for tool calls and the blackboard server:
 ```bash
-python src/server.py
+python src/server.py & export MCP_PID=$!
 ```
 2. Run a simulation using an execution script along with a config file:
 ```bash
 python examples/base_main.py --config <yaml_config_path>
+```
+3. When done, close the persistent MCP server:
+```bash
+kill -9 $MCP_PID
 ```
 
 ## Attack Scenarios
