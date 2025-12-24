@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 import networkx as nx
 
@@ -64,20 +64,29 @@ class CommunicationNetwork:
             )
 
     def consolidate_channels(self) -> List[List[str]]:
-        """Return a greedy vertex-disjoint clique cover as communication channels.
+        """Return a greedy clique-based channel cover as communication channels.
         Example: A complete graph with n nodes/agents --> one channel/blackboard with all n agents.
 
         Algorithm:
         - Repeatedly find a clique (size >= 3), create a multi-participant channel
           for it, remove those nodes, and repeat.
         - When no cliques (size >= 3) remain, create one channel per remaining edge.
+        - Finally, ensure the resulting *channel graph* is connected by adding a
+          small number of pairwise channels that connect otherwise-disconnected
+          channel components (preferring edges that existed in the original graph).
 
         Notes:
         - This is an NP-hard problem, so finding an optimal solution is not feasible.
         - This algorithm may dominate computation time for large graphs.
         - Clique selection is greedy: pick the largest clique each iteration.
-        - Channels are vertex-disjoint by construction (nodes are removed after selection).
+        - Clique channels are vertex-disjoint, but connectivity edges added at the end
+          may cause some agents to participate in multiple channels.
         """
+        cache_key = "_terrarium_consolidated_channels"
+        cached = self.graph.graph.get(cache_key)
+        if isinstance(cached, list) and all(isinstance(c, list) for c in cached):
+            return cached  # type: ignore[return-value]
+
         working = self.graph.copy()
         channels: List[List[str]] = []
 
@@ -97,7 +106,150 @@ class CommunicationNetwork:
         for a, b in sorted(edges):
             channels.append([a, b])
 
+        channels = self._ensure_channel_connectivity(channels)
+        self.graph.graph[cache_key] = channels
         return channels
+
+    def _ensure_channel_connectivity(self, channels: List[List[str]]) -> List[List[str]]:
+        """
+        Ensure the *channel graph* is connected (or as connected as possible) by
+        adding a small number of pairwise channels.
+
+        A channel graph has nodes=channels and edges if two channels share a participant.
+        """
+        # Normalize channels and build quick lookup for existing pair channels.
+        normalized: List[List[str]] = []
+        pair_edges: Set[Tuple[str, str]] = set()
+        for ch in channels:
+            if not ch:
+                continue
+            participants = sorted({str(a) for a in ch})
+            if len(participants) < 2:
+                # Skip singleton channels (not useful for communication).
+                continue
+            normalized.append(participants)
+            if len(participants) == 2:
+                pair_edges.add((participants[0], participants[1]))
+
+        # Track which edges existed before we add any connectivity edges.
+        initial_edges: Set[Tuple[str, str]] = {tuple(sorted((u, v))) for u, v in self.graph.edges}
+
+        # Build channel connectivity via shared participants.
+        # Use a union-find for determinism + simplicity.
+        parent = list(range(len(normalized)))
+
+        def find(i: int) -> int:
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        def union(i: int, j: int) -> None:
+            ri = find(i)
+            rj = find(j)
+            if ri == rj:
+                return
+            if ri < rj:
+                parent[rj] = ri
+            else:
+                parent[ri] = rj
+
+        agent_to_channel: Dict[str, int] = {}
+        for idx, ch in enumerate(normalized):
+            for a in ch:
+                prev = agent_to_channel.get(a)
+                if prev is None:
+                    agent_to_channel[a] = idx
+                else:
+                    union(prev, idx)
+
+        # Component agent sets (union across channels).
+        comp_agents: Dict[int, Set[str]] = {}
+        for idx, ch in enumerate(normalized):
+            root = find(idx)
+            comp_agents.setdefault(root, set()).update(ch)
+
+        # Include isolated agents (agents that ended up in no channel).
+        present = set().union(*comp_agents.values()) if comp_agents else set()
+        for a in self.agent_names:
+            if a not in present:
+                # Represent each isolated agent as its own component.
+                comp_agents.setdefault(-len(comp_agents) - 1, set()).add(str(a))
+
+        if len(comp_agents) <= 1:
+            return normalized
+
+        # Deterministic component list: prefer real channel-components (non-negative roots) over
+        # singleton-agent components (negative keys), and then by agent name.
+        components: List[Set[str]] = []
+        for k in sorted(comp_agents.keys(), key=lambda k: (0 if k >= 0 else 1, k)):
+            components.append(set(comp_agents[k]))
+
+        def _comp_sort_key(c: Set[str]) -> Tuple[int, str]:
+            # Stable ordering for the merge loop.
+            first = sorted(c)[0] if c else ""
+            return (len(c), first)
+
+        components.sort(key=_comp_sort_key)
+
+        def find_bridge(left: Set[str], right: Set[str], *, require_initial: bool) -> Optional[Tuple[str, str]]:
+            left_s = sorted(left)
+            right_s = sorted(right)
+            for u in left_s:
+                for v in right_s:
+                    a, b = sorted((u, v))
+                    if (a, b) in pair_edges:
+                        continue
+                    if require_initial and (a, b) not in initial_edges:
+                        continue
+                    return (a, b)
+            return None
+
+        # Build a spanning tree across components.
+        # Prefer bridges that already exist in the initial graph; if none exist between any
+        # remaining components, add a synthetic bridge.
+        while len(components) > 1:
+            components.sort(key=_comp_sort_key)
+            chosen_i = None
+            chosen_j = None
+            chosen_edge: Optional[Tuple[str, str]] = None
+
+            # First pass: look for any initial-graph bridge between components.
+            for i in range(len(components)):
+                for j in range(i + 1, len(components)):
+                    edge = find_bridge(components[i], components[j], require_initial=True)
+                    if edge is None:
+                        continue
+                    chosen_i, chosen_j, chosen_edge = i, j, edge
+                    break
+                if chosen_edge is not None:
+                    break
+
+            # Second pass: no initial edges exist between components; create a synthetic bridge.
+            if chosen_edge is None:
+                chosen_i, chosen_j = 0, 1
+                chosen_edge = find_bridge(components[chosen_i], components[chosen_j], require_initial=False)
+                if chosen_edge is None:  # pragma: no cover
+                    # Should be impossible if components are non-empty and disjoint.
+                    return normalized
+
+            u, v = chosen_edge
+            if not self.graph.has_edge(u, v):
+                self.graph.add_edge(u, v)
+            if (u, v) not in pair_edges:
+                normalized.append([u, v])
+                pair_edges.add((u, v))
+
+            # Merge the connected components and continue.
+            merged = set(components[chosen_i]).union(components[chosen_j])
+            # Delete higher index first to keep indices valid.
+            hi = max(chosen_i, chosen_j)
+            lo = min(chosen_i, chosen_j)
+            del components[hi]
+            del components[lo]
+            components.append(merged)
+
+        return normalized
 
     def channel_groups(self) -> List[List[str]]:
         """Return communication channel groups (blackboard participants) for this network."""
