@@ -8,7 +8,7 @@ import networkx as nx
 from src.networks.base import CommunicationNetwork
 
 
-class RandomNetwork(CommunicationNetwork):
+class ErdosRenyiNetwork(CommunicationNetwork):
     """Erdos-Renyi G(n, p) random communication network."""
 
     def __init__(
