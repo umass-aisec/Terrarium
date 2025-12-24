@@ -27,6 +27,7 @@ coverage/
 *.egg
 *.iml
 dashboards/public/dashboard_data.json
+*/outputs/
 
 envs/dcops/outputs
 .venv
