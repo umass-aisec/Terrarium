@@ -172,15 +172,6 @@ Terrarium incorporates a set of loggers for prompts, tool usage, agent trajector
 
 All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed>/`, including a snapshot of the config used for that run.
 
-## TODOs
-- [x] !! Get parallelized simulations working on multiple seeds
-- [x] !! Implement vLLM client
-- [ ] !! Optimize parallel inference for fast large agent experiments
-- [ ] ! Add multi-step negotiation environments (e.g., Trading)
-- [ ] ! Update the CoLLAB environments
-- [x] Improve the Dashboard UI
-- [ ] Add tests directory
-
 ## Paper Citation
 ```bibtex
 @article{nakamura2025terrarium,
