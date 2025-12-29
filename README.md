@@ -45,9 +45,9 @@ uv sync
 ---
 Terrarium enables two types of servicing: (1) API-based providers and (2) [vLLM](https://github.com/vllm-project/vllm) integration for open-source models.
 
-For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Set your API keys in a .env file.
+For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Set your API keys in a newly created .env file.
 ```bash
-# In a .env file at the root directory
+# In the new .env file at the root directory
 OPENAI_API_KEY=<your_key>
 GOOGLE_API_KEY=<your_key>
 ANTHROPIC_API_KEY=<your_key>
@@ -171,15 +171,6 @@ Terrarium incorporates a set of loggers for prompts, tool usage, agent trajector
 - AgentTrajectoryLogger -- Logs the multi-step conversation of each agent showing their pseudo-reasoning traces (Useful for approximately evaluating the internal reasoning of agents and their associated tool calls)
 
 All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed>/`, including a snapshot of the config used for that run.
-
-## TODOs
-- [x] !! Get parallelized simulations working on multiple seeds
-- [x] !! Implement vLLM client
-- [ ] !! Optimize parallel inference for fast large agent experiments
-- [ ] ! Add multi-step negotiation environments (e.g., Trading)
-- [ ] ! Update the CoLLAB environments
-- [x] Improve the Dashboard UI
-- [ ] Add tests directory
 
 ## Paper Citation
 ```bibtex

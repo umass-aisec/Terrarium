@@ -16,8 +16,8 @@ environment:
   max_sources_per_agent: 3
 communication_network:
   # Topology used to create blackboards (one blackboard per edge).
-  # Options: complete | path | star | random
-  # random requires `edge_prob` (0..1) and uses `simulation.seed`
+  # Options: complete | path | star | erdos_renyi
+  # erdos_renyi requires `edge_prob` (0..1) and uses `simulation.seed`
   topology: complete
   num_agents: 8
   # consolidate_channels=false => one blackboard per edge

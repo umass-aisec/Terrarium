@@ -45,10 +45,14 @@ def set_environment_tools(environment_name: str):
     elif environment_name == "HospitalEnvironment":
         from envs.dcops.hospital import HospitalTools
         environment_tools = HospitalTools(megaboard)
+    elif environment_name == "JiraTicketEnvironment":
+        from envs.dcops.jira_ticket import JiraTicketTools
+        environment_tools = JiraTicketTools(megaboard)
     else:
         raise ValueError(
             f"Unknown environment: {environment_name}. Supported: "
-            "MeetingSchedulingEnvironment, PersonalAssistantEnvironment, SmartGridEnvironment"
+            "MeetingSchedulingEnvironment, PersonalAssistantEnvironment, SmartGridEnvironment, "
+            "HospitalEnvironment, JiraTicketEnvironment"
         )
 
 @mcp.tool()

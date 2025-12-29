@@ -3,6 +3,7 @@ from envs.dcops.meeting_scheduling.meeting_scheduling_tools import MeetingSchedu
 from envs.dcops.personal_assistant.personal_assistant_tools import PersonalAssistantTools
 from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
 from envs.dcops.hospital.hospital_tools import HospitalTools
+from envs.dcops.jira_ticket.jira_ticket_tools import JiraTicketTools
 
 class ToolsetDiscovery:
     def __init__(self):
@@ -10,12 +11,14 @@ class ToolsetDiscovery:
         self.personal_assistant_tools = PersonalAssistantTools(blackboard_manager=None)
         self.smartgrid_tools = SmartGridTools(blackboard_manager=None)
         self.hospital_tools = HospitalTools(blackboard_manager=None)
+        self.jira_ticket_tools = JiraTicketTools(blackboard_manager=None)
 
         self._tools_by_environment = {
             "MeetingSchedulingEnvironment": self.meeting_tools,
             "PersonalAssistantEnvironment": self.personal_assistant_tools,
             "SmartGridEnvironment": self.smartgrid_tools,
             "HospitalEnvironment": self.hospital_tools,
+            "JiraTicketEnvironment": self.jira_ticket_tools,
         }
 
     def get_tools_for_environment(self, environment_name: str, phase: str) -> List[Dict[str, Any]]:

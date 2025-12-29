@@ -16,9 +16,9 @@ environment:
   soft_meeting_ratio: 0.6
 communication_network:
   # Topology used to create blackboards
-  # Options: complete | path | star | random
-  # random requires `edge_prob` (0..1) and uses `simulation.seed`
-  topology: random
+  # Options: complete | path | star | erdos_renyi
+  # erdos_renyi requires `edge_prob` (0..1) and uses `simulation.seed`
+  topology: erdos_renyi
   num_agents: 6
   edge_prob: .7
   # consolidate_channels=false => one blackboard per edge
