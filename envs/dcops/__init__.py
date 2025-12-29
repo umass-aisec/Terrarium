@@ -1,4 +1,4 @@
-"""DCOP environments module - contains MeetingScheduling, PersonalAssistant, and SmartGrid.
+"""DCOP environments module - contains MeetingScheduling, PersonalAssistant, SmartGrid, and JiraTicket.
 
 This package depends on the external CoLLAB submodule for instance generation
 and scoring. CoLLAB is not a Python package at its root, so we add
@@ -17,5 +17,11 @@ if _COLLAB_ROOT.exists():
 from .meeting_scheduling import MeetingSchedulingEnvironment
 from .personal_assistant import PersonalAssistantEnvironment
 from .smart_grid import SmartGridEnvironment
+from .jira_ticket import JiraTicketEnvironment
 
-__all__ = ['MeetingSchedulingEnvironment', 'PersonalAssistantEnvironment', 'SmartGridEnvironment']
+__all__ = [
+    'MeetingSchedulingEnvironment',
+    'PersonalAssistantEnvironment',
+    'SmartGridEnvironment',
+    'JiraTicketEnvironment',
+]
