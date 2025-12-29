@@ -1,25 +1,27 @@
-from typing import Any, Dict, List, Set
-from envs.dcops.meeting_scheduling.meeting_scheduling_tools import MeetingSchedulingTools
-from envs.dcops.personal_assistant.personal_assistant_tools import PersonalAssistantTools
-from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
-from envs.dcops.hospital.hospital_tools import HospitalTools
-from envs.dcops.jira_ticket.jira_ticket_tools import JiraTicketTools
+from typing import Any, Dict, List, Optional, Set
+
+from src.environment_tools import EnvironmentToolsNotFoundError, instantiate_environment_tools
 
 class ToolsetDiscovery:
     def __init__(self):
-        self.meeting_tools = MeetingSchedulingTools(blackboard_manager=None)
-        self.personal_assistant_tools = PersonalAssistantTools(blackboard_manager=None)
-        self.smartgrid_tools = SmartGridTools(blackboard_manager=None)
-        self.hospital_tools = HospitalTools(blackboard_manager=None)
-        self.jira_ticket_tools = JiraTicketTools(blackboard_manager=None)
+        self._tools_by_environment: Dict[str, Any] = {}
 
-        self._tools_by_environment = {
-            "MeetingSchedulingEnvironment": self.meeting_tools,
-            "PersonalAssistantEnvironment": self.personal_assistant_tools,
-            "SmartGridEnvironment": self.smartgrid_tools,
-            "HospitalEnvironment": self.hospital_tools,
-            "JiraTicketEnvironment": self.jira_ticket_tools,
-        }
+    def _get_tools_instance(self, environment_name: str) -> Optional[Any]:
+        if not environment_name:
+            return None
+        cached = self._tools_by_environment.get(environment_name)
+        if cached is not None:
+            return cached
+        try:
+            tools = instantiate_environment_tools(environment_name, blackboard_manager=None)
+        except EnvironmentToolsNotFoundError:
+            return None
+        except Exception:
+            # Treat toolset discovery as best-effort; tool execution will still
+            # error if the environment tries to call a missing tool.
+            return None
+        self._tools_by_environment[environment_name] = tools
+        return tools
 
     def get_tools_for_environment(self, environment_name: str, phase: str) -> List[Dict[str, Any]]:
         """
@@ -29,7 +31,7 @@ class ToolsetDiscovery:
             environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__)
             phase: Current phase ("planning" or "execution")
         """
-        tools = self._tools_by_environment.get(environment_name)
+        tools = self._get_tools_instance(environment_name)
         if not tools:
             return []
         return tools.get_tools(phase)
@@ -41,7 +43,7 @@ class ToolsetDiscovery:
         Args:
             environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__)
         """
-        tools = self._tools_by_environment.get(environment_name)
+        tools = self._get_tools_instance(environment_name)
         if not tools:
             return set()
         return tools.get_tool_names()

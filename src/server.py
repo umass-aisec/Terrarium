@@ -32,28 +32,12 @@ def set_environment_tools(environment_name: str):
         environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__).
     """
     global environment_tools
+    from src.environment_tools import EnvironmentToolsNotFoundError, instantiate_environment_tools
 
-    if environment_name == "MeetingSchedulingEnvironment":
-        from envs.dcops.meeting_scheduling import MeetingSchedulingTools
-        environment_tools = MeetingSchedulingTools(megaboard)
-    elif environment_name == "PersonalAssistantEnvironment":
-        from envs.dcops.personal_assistant.personal_assistant_tools import PersonalAssistantTools
-        environment_tools = PersonalAssistantTools(megaboard)
-    elif environment_name == "SmartGridEnvironment":
-        from envs.dcops.smart_grid.smartgrid_tools import SmartGridTools
-        environment_tools = SmartGridTools(megaboard)
-    elif environment_name == "HospitalEnvironment":
-        from envs.dcops.hospital import HospitalTools
-        environment_tools = HospitalTools(megaboard)
-    elif environment_name == "JiraTicketEnvironment":
-        from envs.dcops.jira_ticket import JiraTicketTools
-        environment_tools = JiraTicketTools(megaboard)
-    else:
-        raise ValueError(
-            f"Unknown environment: {environment_name}. Supported: "
-            "MeetingSchedulingEnvironment, PersonalAssistantEnvironment, SmartGridEnvironment, "
-            "HospitalEnvironment, JiraTicketEnvironment"
-        )
+    try:
+        environment_tools = instantiate_environment_tools(environment_name, megaboard)
+    except EnvironmentToolsNotFoundError as exc:
+        raise ValueError(str(exc)) from exc
 
 @mcp.tool()
 def handle_environment_tool_call(tool_name: str, agent_name: str, arguments: Dict[str, Any],
