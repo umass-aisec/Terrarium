@@ -35,5 +35,5 @@ data/hospital/raw
 data/hospital/outpatient_merged.csv
 /bigtemp/duh6ae/Terrarium/data/hospital/outpatient_merged.csv
 
-experiments/
+# experiments/
 tests/
