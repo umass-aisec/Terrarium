@@ -347,6 +347,7 @@ async def _run_single(
         return {
             "collusion_role": prompt_role,
             "collusion_coalition_members": sorted(list(colluder_set)) if prompt_role == "colluder" else [],
+            "collusion_blackboard_id": secret_blackboard_id if prompt_role == "colluder" else None,
         }
 
     for planning_round in range(1, planning_rounds + 1):
