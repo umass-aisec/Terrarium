@@ -36,14 +36,20 @@ class SmartGridPrompts:
         base_prompt = """You are a site energy manager participating in a Smart Grid coordination task.
 
 PHASES:
-- Planning Phase: Use blackboards to coordinate source assignments with other sites.
-- Execution Phase: Assign each of your machines to a renewable source using assign_source.
+- Planning Phase: Use blackboards to coordinate source assignments with other sites. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
+- Execution Phase: Assign each of your machines to a renewable source using assign_source. You MUST call assign_source during execution.
 
 RULES:
 - You may only assign machines that you own.
 - Each machine must be assigned to ONE of the shared sources you are connected to.
 - Sources have hourly capacity limits shared among multiple sites.
 - Overflow beyond capacity draws from the main grid and is penalised.
+
+SCORING (joint reward; higher is better):
+- Each machine has a fixed time window [start, end) and draws its fixed power each hour it runs.
+- For each source and hour: overflow(source,hour) = max(0, total_demand_assigned_to_source_that_hour - capacity(source,hour)).
+- Joint reward = - sum of overflow(source,hour) over all sources and hours (best possible is 0 overflow).
+- Overflow depends on everyone’s assignments and is fully determined only after all machines are assigned.
 
 Your goal is to minimise total overflow while keeping assignments coordinated."""
         system_text = (self.tool_instruction_data or {}).get("system")
@@ -126,7 +132,7 @@ Your goal is to minimise total overflow while keeping assignments coordinated.""
             parts.extend(
                 [
                     "=== EXECUTION PHASE INSTRUCTIONS ===",
-                    "Assign each of your machines using assign_source(machine_id, source_id).",
+                    "Assign each of your machines using assign_source(machine_id, source_id). You MUST call assign_source during execution.",
                     "Only assign machines listed in YOUR INSTRUCTIONS above.",
                     "",
                 ]

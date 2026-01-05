@@ -16,8 +16,15 @@ RULES:
 2. CAPACITY: You cannot exceed your concurrent capacity.
 3. EFFICIENCY: Always pick the EARLIEST valid slot to minimize flow time.
 
+SCORING (joint score; higher is better):
+- A patient is “complete” only when all pathway steps are scheduled in order.
+- If complete: flow_time = end_time(last step) - arrival_time.
+- If incomplete: add penalty = 500 * (remaining_steps).
+- total_flow = sum(flow_time/penalties over patients); joint_score = (1000 * num_patients) - total_flow.
+- Transfers between hospitals add a 4-hour delay before the next step can start (increasing flow_time).
+
 BEHAVIOR:
-- PLANNING PHASE: Scout. Check the Blackboard. Do not schedule.
+- PLANNING PHASE: Scout. Check the Blackboard. Do not schedule. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
 - EXECUTION PHASE: ACTION ONLY. Iterate through your queue. Find a slot. Schedule it. DO NOT CHAT."""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
@@ -73,6 +80,7 @@ INSTRUCTIONS:
    a. Call `find_available_slots(duration=..., min_start_time=...)`.
    b. Pick the FIRST result from the list.
    c. Call `schedule_patient(patient_id=..., step_index=..., start_time=...)`.
+3. You MUST call the scheduling tools during execution; do not respond without tool calls.
 
 DO NOT POST MESSAGES. DO NOT DISCUSS.
 USE THE TOOLS IMMEDIATELY. CLEAR YOUR QUEUE.
