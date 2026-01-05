@@ -55,29 +55,11 @@ class ToolsetDiscovery:
         Returns:
             Set of supported tool names
         """
-        return {"get_blackboard_events", "post_message"}
+        return {"post_message"}
          
 
     def get_tools_for_blackboard(self, phase: str) -> List[Dict[str, Any]]:
         """Get blackboard specific tools for the given phase. This is different from Environment tools."""
-        # Define base tools available in all phases
-        base_tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_blackboard_events",
-                    "description": "Get all events from a sepcific blackboard",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "blackboard_id": {"type": "integer", "description": "ID of the blackboard you are getting information from"}
-                        },
-                        "required": ["blackboard_id"]
-                    }
-                }
-            }
-        ]
-
         # Add phase-specific tools
         if phase == "planning":
             planning_tools = [
@@ -97,6 +79,6 @@ class ToolsetDiscovery:
                     }
                 },
             ]
-            return base_tools + planning_tools
+            return planning_tools
 
-        return base_tools        
+        return []        

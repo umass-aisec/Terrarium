@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
+import json
 import time
 import uuid
 
@@ -378,3 +379,47 @@ class Megaboard:
             except Exception as e:
       
               print(f"ERROR: Failed to log action to blackboard {blackboard_id}: {e}")
+
+
+def format_blackboard_events_for_prompt(events: List[Dict[str, Any]]) -> str:
+    """Render blackboard event logs into a compact, readable transcript for prompts."""
+    if not events:
+        return "No recent activity"
+
+    def _compact(obj: Any) -> str:
+        try:
+            return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        except Exception:
+            return repr(obj)
+
+    lines: List[str] = []
+    for idx, event in enumerate(events, start=1):
+        if not isinstance(event, dict):
+            lines.append(f"[{idx}] {_compact(event)}")
+            continue
+
+        kind = str(event.get("kind") or "event")
+        agent = str(event.get("agent") or "Unknown")
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            payload = {}
+
+        if kind == "context" and payload.get("message"):
+            lines.append(f"[{idx}] [context] {payload.get('message')}")
+            continue
+
+        if kind == "communication" and payload.get("content"):
+            meta_parts: List[str] = []
+            if payload.get("phase") is not None:
+                meta_parts.append(f"phase={payload.get('phase')}")
+            if payload.get("iteration") is not None:
+                meta_parts.append(f"iter={payload.get('iteration')}")
+            meta = f" ({', '.join(meta_parts)})" if meta_parts else ""
+            lines.append(f"[{idx}] {agent}: {payload.get('content')}{meta}")
+            continue
+
+        event_id = event.get("id")
+        id_str = f" id={event_id}" if event_id else ""
+        lines.append(f"[{idx}] [{kind}] {agent}{id_str} payload={_compact(payload)}")
+
+    return "\n".join(lines)

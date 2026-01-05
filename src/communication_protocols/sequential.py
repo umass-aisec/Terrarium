@@ -6,6 +6,7 @@ import random
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 from src.communication_protocols.base import BaseCommunicationProtocol
+from src.blackboard import format_blackboard_events_for_prompt
 from src.logger import BlackboardLogger
 
 if TYPE_CHECKING:
@@ -126,14 +127,59 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         async with self.mcp_client as client:
             # Only pass the parameters that the MCP server tool accepts
             return (await client.call_tool("post_system_message", {"blackboard_id": blackboard_id, "kind": kind, "payload": payload})).data
+
+    async def _prefetch_blackboard_events(
+        self,
+        client: Any,
+        agent_name: str,
+        *,
+        phase: Optional[str],
+        iteration: Optional[int],
+    ) -> Dict[str, str]:
+        blackboard_ids = (await client.call_tool("get_agent_blackboards", {"agent_name": agent_name})).data
+        if not isinstance(blackboard_ids, list):
+            return {}
+
+        def _sort_key(bb_id: Any) -> int:
+            try:
+                return int(bb_id)
+            except Exception:
+                return 0
+
+        contexts: Dict[str, str] = {}
+        for bb_id_str in sorted([str(b) for b in blackboard_ids], key=_sort_key):
+            try:
+                bb_id_int = int(bb_id_str)
+            except Exception:
+                continue
+
+            response = (
+                await client.call_tool(
+                    "handle_blackboard_tool_call",
+                    {
+                        "tool_name": "get_blackboard_events",
+                        "agent_name": agent_name,
+                        "arguments": {"blackboard_id": bb_id_int},
+                        "phase": phase,
+                        "iteration": iteration,
+                    },
+                )
+            ).data
+            events = response.get("events") if isinstance(response, dict) else None
+            contexts[bb_id_str] = format_blackboard_events_for_prompt(events if isinstance(events, list) else [])
+
+        return contexts
         
     async def agent_planning_turn(self, agent: "BaseAgent", agent_name: str, agent_context, environment, iteration: int, planning_round: int):
         """Handle a single agent's planning turn."""
-        # Get blackboard contexts from blackboard manager
+        # Get blackboard contexts from blackboard manager (prefetch full event logs)
         async with self.mcp_client as client:
-            blackboard_contexts = (
-                await client.call_tool("get_agent_blackboard_contexts", {"agent_name": agent_name})
-            ).data
+            blackboard_contexts = await self._prefetch_blackboard_events(
+                client,
+                agent_name,
+                phase="planning",
+                iteration=iteration,
+            )
             self.environment = environment
             # blackboard_contexts = self.blackboard_manager.get_agent_blackboard_contexts()
             prompts = environment.prompts
@@ -201,11 +247,14 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             iteration: Current iteration
         """
 
-        # Get blackboard contexts
+        # Get blackboard contexts (prefetch full event logs)
         async with self.mcp_client as client:
-            blackboard_contexts = (
-                await client.call_tool("get_agent_blackboard_contexts", {"agent_name": agent_name})
-            ).data
+            blackboard_contexts = await self._prefetch_blackboard_events(
+                client,
+                agent_name,
+                phase="execution",
+                iteration=iteration,
+            )
             self.environment = environment
             prompts = environment.prompts
             await agent.generate_response(

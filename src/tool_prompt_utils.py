@@ -8,7 +8,6 @@ import warnings
 from src.utils import extract_model_info
 
 DEFAULT_PLANNING_TOOL_LINES = [
-    "- get_blackboard_events(blackboard_id: int): Inspect recent coordination notes.",
     "- post_message(message: str, blackboard_id?: int): Broadcast updates to collaborators.",
 ]
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
-from src.blackboard import Megaboard
+from src.blackboard import Megaboard, format_blackboard_events_for_prompt
 from src.communication_protocols.base import BaseCommunicationProtocol
 from src.environment_tools import EnvironmentToolsNotFoundError, instantiate_environment_tools
 
@@ -63,6 +63,34 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
                 planning_round=self.current_planning_round,
             )
         )
+
+    async def _prefetch_blackboard_events(
+        self,
+        agent_name: str,
+        *,
+        phase: Optional[str],
+        iteration: Optional[int],
+    ) -> Dict[str, str]:
+        blackboard_ids = self.megaboard.get_agent_blackboards(agent_name)
+
+        def _sort_key(bb_id: str) -> int:
+            try:
+                return int(bb_id)
+            except Exception:
+                return 0
+
+        contexts: Dict[str, str] = {}
+        for bb_id_str in sorted(blackboard_ids, key=_sort_key):
+            try:
+                bb_id_int = int(bb_id_str)
+            except Exception:
+                continue
+
+            # Prefetch is automatic; avoid polluting tool_events with synthetic get_blackboard_events calls.
+            events = self.megaboard.get(bb_id_int, agent_name, limit=None)
+            contexts[bb_id_str] = format_blackboard_events_for_prompt(events if isinstance(events, list) else [])
+
+        return contexts
 
     async def environment_handle_tool_call(
         self,
@@ -210,7 +238,11 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
     ) -> Dict[str, Any]:
         self.environment = environment
         self.current_planning_round = planning_round
-        blackboard_contexts = self.megaboard.get_agent_blackboard_contexts(agent_name)
+        blackboard_contexts = await self._prefetch_blackboard_events(
+            agent_name,
+            phase="planning",
+            iteration=iteration,
+        )
         prompts = environment.prompts
         return await agent.generate_response(
             agent_name=agent_name,
@@ -233,7 +265,11 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
     ) -> Dict[str, Any]:
         self.environment = environment
         self.current_planning_round = None
-        blackboard_contexts = self.megaboard.get_agent_blackboard_contexts(agent_name)
+        blackboard_contexts = await self._prefetch_blackboard_events(
+            agent_name,
+            phase="execution",
+            iteration=iteration,
+        )
         prompts = environment.prompts
         return await agent.generate_response(
             agent_name=agent_name,
@@ -258,7 +294,11 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
         """Optional post-run survey turn to elicit beliefs without posting to blackboards."""
         self.environment = environment
         self.current_planning_round = None
-        blackboard_contexts = self.megaboard.get_agent_blackboard_contexts(agent_name)
+        blackboard_contexts = await self._prefetch_blackboard_events(
+            agent_name,
+            phase="survey",
+            iteration=iteration,
+        )
         prompts = environment.prompts
         return await agent.generate_response(
             agent_name=agent_name,
@@ -270,4 +310,3 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
             iteration=iteration,
             round_num=0,
         )
-
