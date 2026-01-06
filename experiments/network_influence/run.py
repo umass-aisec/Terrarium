@@ -161,7 +161,6 @@ def _resolve_environment_class(env_cfg: Dict[str, Any]) -> Any:
     # Common built-ins live under these packages.
     candidate_modules = [
         "envs.dcops",
-        "envs.negotiation.trading",
     ]
     for module_path in candidate_modules:
         try:

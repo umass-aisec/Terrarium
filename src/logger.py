@@ -5,8 +5,8 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from dataclasses import asdict
-from .blackboard import Event, Blackboard
+
+from .blackboard import Blackboard
 from .utils import get_tag_model_subdir, get_run_timestamp, build_log_dir
 
 
@@ -226,9 +226,8 @@ class BlackboardLogger:
         Initialize the blackboard logger.
 
         Args:
-            environment_name: Name of the environment (e.g., "Trading", "SmartGrid")
-            seed: Simulation seed for unique log directories
             config: Full configuration dictionary containing all simulation settings
+            run_timestamp: Optional run timestamp override for log directory naming
         """
         self.session_start = time.time()
         self.config = config
@@ -278,17 +277,6 @@ class BlackboardLogger:
                 f"Session started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
             )
             f.write("=" * 80 + "\n")
-
-            # Only show trade-specific format notes for Trading environment
-            if self.environment_name == "Trading":
-                f.write("FORMAT NOTES:\n")
-                f.write("- Trade actions show: Trade: agent1 → agent2\n")
-                f.write(
-                    "- Money Exchange: +amount (received) or -amount (paid) from proposer's perspective\n"
-                )
-                f.write(
-                    "- Items: -[items given] +[items received] from proposer's perspective\n"
-                )
 
             f.write("=" * 80 + "\n\n")
 
@@ -368,15 +356,8 @@ class BlackboardLogger:
         log_content += f"Session started: {datetime.fromtimestamp(self.session_start).strftime('%Y-%m-%d %H:%M:%S')}\n"
         log_content += "=" * 80 + "\n"
 
-        # Only show trade-specific format notes for Trading environment
-        if self.environment_name == "Trading":
-            log_content += "FORMAT NOTES:\n"
-            log_content += "- Trade actions show: Trade: agent1 → agent2\n"
-            log_content += "- Money Exchange: +amount (received) or -amount (paid) from proposer's perspective\n"
-            log_content += "- Items: -[items given] +[items received] from proposer's perspective\n"
-
         # Add blackboard specific information
-        log_content += f"\nBLACKBOARD INFO:\n"
+        log_content += "\nBLACKBOARD INFO:\n"
         log_content += f"- ID: {blackboard.blackboard_id}\n"
         log_content += f"- Participants: {', '.join(blackboard.participants)}\n"
         if blackboard.initial_context:
@@ -385,7 +366,7 @@ class BlackboardLogger:
         log_content += "=" * 80 + "\n\n"
 
         log_content += "=" * 80 + "\n"
-        log_content += f"BLACKBOARD STATE UPDATE\n"
+        log_content += "BLACKBOARD STATE UPDATE\n"
         log_content += f"Updated: {timestamp}\n"
         log_content += f"Iteration: {iteration} | Phase: {phase}"
         if agent_name:
@@ -570,78 +551,29 @@ class BlackboardLogger:
             if "message" in payload:
                 formatted += f'  Message: "{payload["message"]}"\n'
 
-        elif event_kind in ["proposal", "counter-offer"]:
-            if "trade_details" in payload:
-                trade = payload["trade_details"]
-                give_items = trade.get("give_items", [])
-                receive_items = trade.get("receive_items", [])
-                money_delta = trade.get("money_delta", 0)
-
-                formatted += f"  Trade: Give {give_items}"
-                if money_delta < 0:
-                    formatted += f" + ${abs(money_delta)}"
-                formatted += f" → Receive {receive_items}"
-                if money_delta > 0:
-                    formatted += f" + ${money_delta}"
-                formatted += "\n"
-
-            if "message" in payload:
-                formatted += f'  Message: "{payload["message"]}"\n'
-
-        elif event_kind == "negotiate":
-            if "message" in payload:
-                formatted += f'  Message: "{payload["message"]}"\n'
-
         elif event_kind == "action":
-            if "action_type" in payload:
-                action_type = payload["action_type"]
+            metadata_fields = {
+                "phase",
+                "iteration",
+                "round",
+                "message",
+                "agent_message",
+                "action_type",
+            }
+
+            action_type = payload.get("action_type")
+            if action_type:
                 formatted += f"  Action: {action_type}\n"
 
-                if action_type == "trade":
-                    # Display verbose trade details
-                    target_agent = payload.get("target_agent", "unknown")
-                    give_items = payload.get("give_items", [])
-                    request_items = payload.get("request_items", [])
-                    money_delta = payload.get("money_delta", 0)
+            if "agent_message" in payload:
+                formatted += f'  Agent Message: "{payload["agent_message"]}"\n'
 
-                    formatted += f"  Trade: {event_agent} → {target_agent}\n"
-
-                    if money_delta > 0:
-                        formatted += f"  Money Exchange: +{money_delta}\n"
-                    elif money_delta < 0:
-                        formatted += f"  Money Exchange: {money_delta}\n"
-                    else:
-                        formatted += f"  Money Exchange: +0\n"
-
-                    formatted += f"  Items: -{give_items} +{request_items}\n"
-
-                    # Add agent message if available
-                    if "agent_message" in payload:
-                        formatted += f'  Agent Message: "{payload["agent_message"]}"\n'
-
-                elif action_type == "buy" and "item" in payload:
-                    item = payload["item"]
-                    formatted += f"  Item: {item}\n"
-
-                    # Add agent message if available
-                    if "agent_message" in payload:
-                        formatted += f'  Agent Message: "{payload["agent_message"]}"\n'
-
-                elif action_type in ["approve", "disapprove"]:
-                    # Handle trade approval/disapproval
-                    if "trade_id" in payload:
-                        formatted += f"  Trade ID: {payload['trade_id']}\n"
-
-                    # Add agent reasoning (stored as "reason" in payload)
-                    if "reason" in payload:
-                        formatted += f'  Agent Reason: "{payload["reason"]}"\n'
-
-        elif event_kind == "inventory_update":
-            # Specific handling for inventory updates
             if "message" in payload:
                 formatted += f'  Message: "{payload["message"]}"\n'
-            if "items" in payload:
-                formatted += f"  Current Inventory: {payload['items']}\n"
+
+            for key, value in payload.items():
+                if key not in metadata_fields and value:
+                    formatted += f"  {key.title()}: {value}\n"
 
         else:
             # Generic payload handling for other event types
@@ -676,7 +608,7 @@ class ToolCallLogger:
         Initialize the tool call logger.
 
         Args:
-            environment_name: Name of the environment (e.g., "Trading", "SmartGrid")
+            environment_name: Name of the environment (e.g., "Hospital", "SmartGrid")
             seed: Simulation seed for unique log files
             config: Full configuration dictionary containing all simulation settings
         """
@@ -967,7 +899,7 @@ class AgentTrajectoryLogger:
         Initialize the agent trajectory logger.
 
         Args:
-            environment_name: Name of the environment (e.g., "Trading", "SmartGrid")
+            environment_name: Name of the environment (e.g., "Hospital", "SmartGrid")
             seed: Simulation seed for unique log files
             config: Full configuration dictionary containing all simulation settings
         """

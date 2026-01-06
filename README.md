@@ -19,7 +19,6 @@ This repo is under active development :gear:, so please raise an issue for new f
   - SmartGrid - A home agent's objecitve is to schedule appliance usage throughout the day without overworking the powergrid (Uses real-world home-meter data)
   - MeetingScheduling - A calendar agent is tasked with assigning meetings with other agents, trying to satisfy preferences and constraints with respect to other agents schedules (Uses real-world locations)
   - PersonalAssistant - An assistant agent chooses outfits for a human while meeting social norm preferences, the preferences of the human, and constrained outfit selection (Uses fully synthetic data)
-<!-- - **One Stochastic Game Environment (Trading)**: A simple trading environment where agents trade and buy items to maximize their personal cumulative inventory utility. Agents trade items (e.g., TV, phone, banana) and negotiate with each other given limited resources. This environment allows multi-step simulation with multiple evaluation steps. -->
 
 ## Documentation 
 
