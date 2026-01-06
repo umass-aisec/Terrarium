@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: E402
+
 import sys
 import argparse
 import copy
@@ -13,20 +15,31 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-import yaml
 from tqdm import tqdm
 
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from experiments.network_influence.agents import AdversarySpec, NetworkInfluenceMeetingAgent
-from experiments.network_influence.blackboard_txt import ExperimentBlackboardLogger
+from experiments.common.run_utils import (
+    configure_experiment_logging as _configure_experiment_logging_impl,
+    ensure_dir as _ensure_dir,
+    load_yaml as _load_yaml,
+    normalize_seeds as _normalize_seeds,
+    write_json as _write_json,
+    write_progress as _write_progress,
+)
+from experiments.network_influence.agents import (
+    AdversarySpec,
+    NetworkInfluenceMeetingAgent,
+)
+from experiments.common.blackboard_logger import ExperimentBlackboardLogger
 from experiments.network_influence.judge import JudgeConfig, judge_agent_belief
 from experiments.network_influence.metrics import compute_run_metrics
 from experiments.network_influence.prompts import NetworkInfluencePrompts
 from experiments.network_influence.protocol import LocalMegaboardProtocol
 from llm_server.clients.openai_client import OpenAIClient
 from src.networks import build_communication_network
+from src.logger import AgentTrajectoryLogger
 from src.utils import get_client_instance, get_generation_params, get_model_name
 
 
@@ -34,97 +47,8 @@ LOGGER_NAME = "experiments.network_influence"
 logger = logging.getLogger(LOGGER_NAME)
 
 
-def _load_yaml(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def _ensure_dir(path: Path) -> None:
-    path.mkdir(parents=True, exist_ok=True)
-
-
-def _write_json(path: Path, data: Any) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-
-def _atomic_write_json(path: Path, data: Any) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    _write_json(tmp, data)
-    tmp.replace(path)
-
-
-class _TqdmLoggingHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            tqdm.write(msg)
-        except Exception:
-            pass
-
-
 def _configure_experiment_logging(root: Path, *, verbose: bool = True) -> None:
-    """Configure a dedicated experiment logger (file + tqdm-safe console)."""
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-
-    # Reset handlers so repeated calls (or notebooks) re-point to the new output root.
-    for handler in list(logger.handlers):
-        try:
-            handler.close()
-        except Exception:
-            pass
-        logger.removeHandler(handler)
-
-    log_path = root / "experiment.log"
-    file_handler = logging.FileHandler(log_path, encoding="utf-8")
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-    )
-    logger.addHandler(file_handler)
-
-    if verbose:
-        console_handler = _TqdmLoggingHandler()
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-        logger.addHandler(console_handler)
-
-
-def _write_progress(root: Path, payload: Dict[str, Any]) -> None:
-    payload = dict(payload)
-    payload["updated_at"] = datetime.now().isoformat()
-    _atomic_write_json(root / "progress.json", payload)
-
-
-def _normalize_seeds(raw: Any) -> List[int]:
-    if raw is None:
-        return []
-    if isinstance(raw, int):
-        return [int(raw)]
-    if isinstance(raw, str):
-        # Allow comma-separated values as a convenience.
-        parts = [p.strip() for p in raw.split(",")]
-        seeds: List[int] = []
-        for part in parts:
-            if not part:
-                continue
-            try:
-                seeds.append(int(part))
-            except Exception:
-                continue
-        return seeds
-    if isinstance(raw, list):
-        seeds = []
-        for item in raw:
-            if item is None:
-                continue
-            try:
-                seeds.append(int(item))
-            except Exception:
-                continue
-        return seeds
-    return []
+    _configure_experiment_logging_impl(logger, root, verbose=verbose)
 
 
 def _select_by_strategy(
@@ -209,9 +133,12 @@ def _select_by_strategy(
     raise ValueError(f"Unknown strategy: {strategy!r}")
 
 
-def _choose_target(*, agent_names: Sequence[str], adversaries: Sequence[str], rng: random.Random) -> str:
+def _choose_target(
+    *, agent_names: Sequence[str], adversaries: Sequence[str], rng: random.Random
+) -> str:
     candidates = [a for a in agent_names if a not in set(adversaries)]
     return str(rng.choice(candidates if candidates else list(agent_names)))
+
 
 def _resolve_environment_class(env_cfg: Dict[str, Any]) -> Any:
     import_path = str(env_cfg.get("import_path") or "").strip()
@@ -227,7 +154,9 @@ def _resolve_environment_class(env_cfg: Dict[str, Any]) -> Any:
 
     env_name = str(env_cfg.get("name") or "").strip()
     if not env_name:
-        raise ValueError("environment.name is required (or set environment.import_path).")
+        raise ValueError(
+            "environment.name is required (or set environment.import_path)."
+        )
 
     # Common built-ins live under these packages.
     candidate_modules = [
@@ -269,7 +198,9 @@ def _choose_target_item_id(env: Any, *, target_agent: str, rng: random.Random) -
     if isinstance(meetings, dict) and meetings:
         candidates: List[str] = []
         for mid, meta in meetings.items():
-            participants = (meta or {}).get("participants") if isinstance(meta, dict) else None
+            participants = (
+                (meta or {}).get("participants") if isinstance(meta, dict) else None
+            )
             if isinstance(participants, list) and target_agent in participants:
                 candidates.append(str(mid))
         if not candidates:
@@ -286,14 +217,22 @@ def _choose_target_item_id(env: Any, *, target_agent: str, rng: random.Random) -
 
     # Generic fallback: pick any non-empty dict-like collection in serializable state.
     for key, value in (env_state or {}).items():
-        if key in {"agent_names", "attendance", "assignment", "schedule", "patient_states"}:
+        if key in {
+            "agent_names",
+            "attendance",
+            "assignment",
+            "schedule",
+            "patient_states",
+        }:
             continue
         if not isinstance(value, dict) or not value:
             continue
         return str(rng.choice([str(x) for x in value.keys()]))
 
     problem = getattr(env, "problem", None)
-    agent_vars = getattr(problem, "agent_variables", None) if problem is not None else None
+    agent_vars = (
+        getattr(problem, "agent_variables", None) if problem is not None else None
+    )
     if callable(agent_vars):
         try:
             vars_for_agent = [var.name for var in agent_vars(target_agent)]
@@ -329,7 +268,9 @@ def _assign_distinct_victims(
     if not adversary_list:
         return {}
     if not candidate_victims:
-        raise ValueError("victim_assignment=distinct requires at least 1 non-adversary agent.")
+        raise ValueError(
+            "victim_assignment=distinct requires at least 1 non-adversary agent."
+        )
 
     if len(adversary_list) <= len(candidate_victims):
         victims = rng.sample(candidate_victims, k=len(adversary_list))
@@ -420,10 +361,15 @@ async def _run_single(
     cfg.setdefault("simulation", {})["seed"] = int(seed)
     cfg.setdefault("simulation", {})["max_iterations"] = 1
     cfg.setdefault("simulation", {})["max_planning_rounds"] = int(
-        cfg.get("experiment", {}).get("planning_rounds", cfg.get("simulation", {}).get("max_planning_rounds", 1))
+        cfg.get("experiment", {}).get(
+            "planning_rounds", cfg.get("simulation", {}).get("max_planning_rounds", 1)
+        )
     )
     cfg.setdefault("simulation", {})["max_conversation_steps"] = int(
-        cfg.get("experiment", {}).get("max_conversation_steps", cfg.get("simulation", {}).get("max_conversation_steps", 3))
+        cfg.get("experiment", {}).get(
+            "max_conversation_steps",
+            cfg.get("simulation", {}).get("max_conversation_steps", 3),
+        )
     )
     cfg.setdefault("communication_network", {})["topology"] = str(topology)
     cfg.setdefault("communication_network", {})["num_agents"] = int(num_agents)
@@ -437,13 +383,22 @@ async def _run_single(
     logger.info("RUN START %s", run_id)
 
     cfg.setdefault("simulation", {})["run_timestamp"] = f"{run_timestamp}__{run_id}"
-    cfg.setdefault("simulation", {})["tags"] = [str(cfg.get("experiment", {}).get("tag", "network_influence"))]
+    cfg.setdefault("simulation", {})["tags"] = [
+        str(cfg.get("experiment", {}).get("tag", "network_influence"))
+    ]
 
     protocol = LocalMegaboardProtocol(config=cfg)
     env_cls = _resolve_environment_class(cfg.get("environment") or {})
     env = env_cls(protocol, cfg, tool_logger=type("TL", (), {"log_dir": run_dir})())
     bb_logger = ExperimentBlackboardLogger(cfg, log_root=run_dir)
     bb_logger.clear_blackboard_logs()
+    trajectory_logger = AgentTrajectoryLogger(
+        environment_name=env.__class__.__name__,
+        seed=int(seed),
+        config=cfg,
+        run_timestamp=cfg.get("simulation", {}).get("run_timestamp"),
+        log_dir=run_dir,
+    )
 
     agent_names = env.get_agent_names()
     communication_network = build_communication_network(agent_names, cfg)
@@ -454,14 +409,20 @@ async def _run_single(
     adv_block = (cfg.get("experiment") or {}).get("adversary") or {}
     strategy = str(adv_block.get("strategy", "random"))
     force_seed = bool(adv_block.get("force_seed", True))
-    victim_assignment = str(adv_block.get("victim_assignment", "distinct")).strip().lower()
-    misinfo_frequency = str(adv_block.get("misinfo_frequency", "always")).strip().lower()
+    victim_assignment = (
+        str(adv_block.get("victim_assignment", "distinct")).strip().lower()
+    )
+    misinfo_frequency = (
+        str(adv_block.get("misinfo_frequency", "always")).strip().lower()
+    )
     if misinfo_frequency in {"once", "one"}:
         misinfo_frequency = "once"
     elif misinfo_frequency in {"always", "all", "per_round"}:
         misinfo_frequency = "always"
     else:
-        raise ValueError(f"Unknown misinfo_frequency: {misinfo_frequency!r} (expected: 'once' or 'always')")
+        raise ValueError(
+            f"Unknown misinfo_frequency: {misinfo_frequency!r} (expected: 'once' or 'always')"
+        )
     adversaries = _select_by_strategy(
         agent_names=agent_names,
         count=int(adversary_count),
@@ -480,8 +441,12 @@ async def _run_single(
 
     # Baseline runs (0 adversaries) still track a single "target" for consistent survey/judging.
     if not adversaries:
-        target_agent = _choose_target(agent_names=agent_names, adversaries=adversaries, rng=rng)
-        target_meeting_id = _choose_target_item_id(env, target_agent=target_agent, rng=rng)
+        target_agent = _choose_target(
+            agent_names=agent_names, adversaries=adversaries, rng=rng
+        )
+        target_meeting_id = _choose_target_item_id(
+            env, target_agent=target_agent, rng=rng
+        )
         code, secret_note, misinfo_claim = _build_claims(
             target_agent=target_agent,
             target_meeting_id=target_meeting_id,
@@ -502,11 +467,17 @@ async def _run_single(
         )
     else:
         if victim_assignment in {"shared", "same", "single"}:
-            victim_candidates = [str(a) for a in agent_names if str(a) not in set(adversaries)]
+            victim_candidates = [
+                str(a) for a in agent_names if str(a) not in set(adversaries)
+            ]
             if not victim_candidates:
-                raise ValueError("victim_assignment=shared requires at least 1 non-adversary agent.")
+                raise ValueError(
+                    "victim_assignment=shared requires at least 1 non-adversary agent."
+                )
             victim = str(rng.choice(victim_candidates))
-            victim_meeting_id = _choose_target_item_id(env, target_agent=str(victim), rng=rng)
+            victim_meeting_id = _choose_target_item_id(
+                env, target_agent=str(victim), rng=rng
+            )
             code, secret_note, misinfo_claim = _build_claims(
                 target_agent=str(victim),
                 target_meeting_id=str(victim_meeting_id),
@@ -538,7 +509,9 @@ async def _run_single(
                 victim = adversary_to_victim.get(str(adv), "")
                 if not victim:
                     continue
-                victim_meeting_id = _choose_target_item_id(env, target_agent=str(victim), rng=rng)
+                victim_meeting_id = _choose_target_item_id(
+                    env, target_agent=str(victim), rng=rng
+                )
                 # Best-effort code de-duplication.
                 for _ in range(20):
                     code, secret_note, misinfo_claim = _build_claims(
@@ -606,7 +579,7 @@ async def _run_single(
                 model_name,
                 max_steps,
                 None,
-                None,
+                trajectory_logger,
                 env.__class__.__name__,
                 generation_params=generation_params,
                 adversary_spec=adversary_spec,
@@ -649,7 +622,9 @@ async def _run_single(
     planning_rounds = int(cfg["simulation"].get("max_planning_rounds", 1))
     turns: List[Dict[str, Any]] = []
 
-    adversary_case_by_name = {str(c.get("adversary")): c for c in influence_cases if c.get("adversary")}
+    adversary_case_by_name = {
+        str(c.get("adversary")): c for c in influence_cases if c.get("adversary")
+    }
 
     def _extra_fields(
         agent_name: str,
@@ -673,31 +648,47 @@ async def _run_single(
                 fields.update(
                     {
                         "influence_target_agent": str(case.get("target_agent") or ""),
-                        "influence_target_meeting_id": str(case.get("target_meeting_id") or ""),
+                        "influence_target_meeting_id": str(
+                            case.get("target_meeting_id") or ""
+                        ),
                         "influence_code": str(case.get("code") or ""),
-                        "influence_misinformation_claim": str(case.get("misinformation_claim") or ""),
+                        "influence_misinformation_claim": str(
+                            case.get("misinformation_claim") or ""
+                        ),
                     }
                 )
         elif role == "target":
             # Avoid confusing targets during multi-target surveys with irrelevant secrets.
-            if phase != "survey" or (survey_case and str(survey_case.get("target_agent")) == str(agent_name)):
-                fields["influence_private_secret"] = str(target_secrets.get(str(agent_name), ""))
+            if phase != "survey" or (
+                survey_case and str(survey_case.get("target_agent")) == str(agent_name)
+            ):
+                fields["influence_private_secret"] = str(
+                    target_secrets.get(str(agent_name), "")
+                )
 
         if survey_case is not None:
             # Ensure survey prompts are anchored to the requested victim, not the agent's own role.
             fields.update(
                 {
-                    "influence_target_agent": str(survey_case.get("target_agent") or ""),
-                    "influence_target_meeting_id": str(survey_case.get("target_meeting_id") or ""),
+                    "influence_target_agent": str(
+                        survey_case.get("target_agent") or ""
+                    ),
+                    "influence_target_meeting_id": str(
+                        survey_case.get("target_meeting_id") or ""
+                    ),
                     "influence_code": str(survey_case.get("code") or ""),
-                    "influence_misinformation_claim": str(survey_case.get("misinformation_claim") or ""),
+                    "influence_misinformation_claim": str(
+                        survey_case.get("misinformation_claim") or ""
+                    ),
                 }
             )
 
         return fields
 
     for planning_round in range(1, planning_rounds + 1):
-        logger.info("RUN %s planning round %s/%s", run_id, planning_round, planning_rounds)
+        logger.info(
+            "RUN %s planning round %s/%s", run_id, planning_round, planning_rounds
+        )
         last_agent = None
         for agent in env.agents:
             base_ctx = env.build_agent_context(
@@ -706,7 +697,9 @@ async def _run_single(
                 iteration=1,
                 planning_round=planning_round,
             )
-            agent_context = _augment_context(base_ctx, extra=_extra_fields(agent.name, phase="planning"))
+            agent_context = _augment_context(
+                base_ctx, extra=_extra_fields(agent.name, phase="planning")
+            )
             response = await protocol.agent_planning_turn(
                 agent,
                 agent.name,
@@ -725,6 +718,7 @@ async def _run_single(
                     "usage": response.get("usage"),
                     "model": response.get("model"),
                     "tools_executed": response.get("tools_executed"),
+                    "conversation_steps": response.get("conversation_steps"),
                 }
             )
             last_agent = agent.name
@@ -739,14 +733,22 @@ async def _run_single(
                     planning_round=int(planning_round),
                 )
             except Exception as exc:
-                logger.warning("Failed to write blackboard_*.txt logs after planning round %s: %s", planning_round, exc)
+                logger.warning(
+                    "Failed to write blackboard_*.txt logs after planning round %s: %s",
+                    planning_round,
+                    exc,
+                )
 
     logger.info("RUN %s execution phase start", run_id)
     last_exec_agent = None
     for agent in env.agents:
         base_ctx = env.build_agent_context(agent.name, phase="execution", iteration=1)
-        agent_context = _augment_context(base_ctx, extra=_extra_fields(agent.name, phase="execution"))
-        response = await protocol.agent_execution_turn(agent, agent.name, agent_context, env, iteration=1)
+        agent_context = _augment_context(
+            base_ctx, extra=_extra_fields(agent.name, phase="execution")
+        )
+        response = await protocol.agent_execution_turn(
+            agent, agent.name, agent_context, env, iteration=1
+        )
         turns.append(
             {
                 "phase": "execution",
@@ -756,6 +758,7 @@ async def _run_single(
                 "usage": response.get("usage"),
                 "model": response.get("model"),
                 "tools_executed": response.get("tools_executed"),
+                "conversation_steps": response.get("conversation_steps"),
             }
         )
         last_exec_agent = agent.name
@@ -771,7 +774,9 @@ async def _run_single(
                 planning_round=None,
             )
         except Exception as exc:
-            logger.warning("Failed to write blackboard_*.txt logs after execution: %s", exc)
+            logger.warning(
+                "Failed to write blackboard_*.txt logs after execution: %s", exc
+            )
 
     final_summary = env.get_final_summary()
     variables_assigned = final_summary.get("variables_assigned")
@@ -809,7 +814,9 @@ async def _run_single(
                 base_ctx,
                 extra=_extra_fields(agent.name, phase="survey", survey_case=case),
             )
-            response = await protocol.agent_survey_turn(agent, agent.name, agent_context, env, iteration=1)
+            response = await protocol.agent_survey_turn(
+                agent, agent.name, agent_context, env, iteration=1
+            )
             survey_responses[victim][agent.name] = str(response.get("response") or "")
             turns.append(
                 {
@@ -821,6 +828,7 @@ async def _run_single(
                     "usage": response.get("usage"),
                     "model": response.get("model"),
                     "tools_executed": response.get("tools_executed"),
+                    "conversation_steps": response.get("conversation_steps"),
                 }
             )
 
@@ -852,7 +860,8 @@ async def _run_single(
             )
 
     blackboard_participants = {
-        idx: sorted(list(bb.agents)) for idx, bb in enumerate(protocol.megaboard.blackboards)
+        idx: sorted(list(bb.agents))
+        for idx, bb in enumerate(protocol.megaboard.blackboards)
     }
     metrics_by_target: Dict[str, Any] = {}
     for victim, case in victim_cases.items():
@@ -922,7 +931,10 @@ async def _run_single(
     _write_json(run_dir / "survey_responses.json", survey_responses)
     _write_json(
         run_dir / "judge_results.json",
-        {t: {a: asdict(j) for a, j in m.items()} for t, m in judgements_by_target.items()},
+        {
+            t: {a: asdict(j) for a, j in m.items()}
+            for t, m in judgements_by_target.items()
+        },
     )
     _write_json(
         run_dir / "metrics.json",
@@ -1010,10 +1022,19 @@ async def run_from_config(
 
     default_seeds = _normalize_seeds(exp.get("seeds"))
     if not default_seeds:
-        default_seeds = _normalize_seeds((cfg.get("simulation") or {}).get("seed")) or [1]
+        default_seeds = _normalize_seeds((cfg.get("simulation") or {}).get("seed")) or [
+            1
+        ]
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    root = Path(out_dir or exp.get("output_dir") or "experiments/outputs/network_influence") / timestamp
+    root = (
+        Path(
+            out_dir
+            or exp.get("output_dir")
+            or "experiments/network_influence/outputs/network_influence"
+        )
+        / timestamp
+    )
     _ensure_dir(root)
     _write_json(root / "config.json", cfg)
     _configure_experiment_logging(root)
@@ -1048,7 +1069,9 @@ async def run_from_config(
     summaries: List[Dict[str, Any]] = []
     completed = 0
     failed = 0
-    with tqdm(total=total_runs, desc="Experiments", unit="run", dynamic_ncols=True) as pbar:
+    with tqdm(
+        total=total_runs, desc="Experiments", unit="run", dynamic_ncols=True
+    ) as pbar:
         for model_idx, model in enumerate(models, start=1):
             model_label = str(model.get("label") or "model")
             llm_cfg = model.get("llm") or {}
@@ -1061,10 +1084,13 @@ async def run_from_config(
                 def _run_single_in_thread(**kwargs: Any) -> Dict[str, Any]:
                     return asyncio.run(_run_single(**kwargs))
 
-                async def _run_single_limited(*, run_label: str, **kwargs: Any) -> Dict[str, Any]:
+                async def _run_single_limited(
+                    *, run_label: str, **kwargs: Any
+                ) -> Dict[str, Any]:
                     async with semaphore:
                         logger.info("SCHEDULED %s", run_label)
                         return await asyncio.to_thread(_run_single_in_thread, **kwargs)
+
             for sweep_idx, sweep in enumerate(sweeps, start=1):
                 sweep_name = str(sweep.get("name") or "sweep")
                 topologies = sweep.get("topologies") or []
@@ -1074,9 +1100,13 @@ async def run_from_config(
                 if runs_per_setting is not None:
                     seeds = seeds[:runs_per_setting]
                 if not seeds:
-                    raise ValueError("No seeds specified. Set experiment.seeds or sweeps[].seeds.")
+                    raise ValueError(
+                        "No seeds specified. Set experiment.seeds or sweeps[].seeds."
+                    )
 
-                logger.info("SWEEP START %s (%s/%s)", sweep_name, sweep_idx, len(sweeps))
+                logger.info(
+                    "SWEEP START %s (%s/%s)", sweep_name, sweep_idx, len(sweeps)
+                )
                 if max_concurrent_runs <= 1:
                     for topology in topologies:
                         for n in agent_counts:
@@ -1151,7 +1181,9 @@ async def run_from_config(
 
                     pending = set(tasks)
                     while pending:
-                        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                        done, pending = await asyncio.wait(
+                            pending, return_when=asyncio.FIRST_COMPLETED
+                        )
                         for finished in done:
                             run_label = task_labels.get(finished, "unknown")
                             pbar.set_postfix_str(run_label)
@@ -1199,7 +1231,12 @@ async def run_from_config(
             writer.writeheader()
             writer.writerows(csv_rows)
 
-    logger.info("EXPERIMENT END (completed=%s, failed=%s, output_root=%s)", completed, failed, root)
+    logger.info(
+        "EXPERIMENT END (completed=%s, failed=%s, output_root=%s)",
+        completed,
+        failed,
+        root,
+    )
     _write_progress(
         root,
         {
@@ -1219,9 +1256,11 @@ def main() -> None:
     parser.add_argument(
         "--config",
         required=True,
-        help="Path to experiment YAML config (e.g., experiments/configs/network_influence.yaml).",
+        help="Path to experiment YAML config (e.g., experiments/network_influence/configs/network_influence.yaml).",
     )
-    parser.add_argument("--out-dir", default=None, help="Override output root directory.")
+    parser.add_argument(
+        "--out-dir", default=None, help="Override output root directory."
+    )
     parser.add_argument(
         "--max-concurrent-runs",
         default=None,

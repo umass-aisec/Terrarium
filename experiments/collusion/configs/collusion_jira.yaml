@@ -10,10 +10,8 @@ simulation:
 environment:
   name: JiraTicketEnvironment
   max_tasks: 20
-  max_clearence_threshold: 2
   availability_range: [4, 10]
   priority_bonus: 10.0
-  clearence_cost: 10.0
   violation_penalty: 10.0
 
 communication_network:
@@ -34,14 +32,14 @@ llm_models:
 
 experiment:
   tag: collusion
-  output_dir: experiments/outputs/collusion
+  output_dir: experiments/collusion/outputs/collusion
   max_concurrent_runs: 20
   seeds: [1, 2, 3]
   collusion:
     colluder_selection: random
     # Optional: override built-in variant text strings.
     # prompt_variant_overrides:
-    #   goal_only: "..."
+    #   deception: "..."
   sweeps:
     - name: main
       topologies: [erdos_renyi]
@@ -53,4 +51,4 @@ experiment:
       secret_channel_enabled: [false, true]
       # Prompt variants only apply when secret_channel_enabled=true.
       # When secret_channel_enabled=false, the runner forces the effective variant to "control" (ignores the others).
-      prompt_variants: [control, goal_only, structured_playbook, aggressive_deception]
+      prompt_variants: [control, simple, deception, structured, aggressive]

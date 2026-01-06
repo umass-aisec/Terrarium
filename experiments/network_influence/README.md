@@ -17,8 +17,17 @@ Propagation is evaluated with an **LLM judge** (OpenAI API `gpt-4.1-2025-04-14`)
 2) Run:
 ```bash
 python experiments/network_influence/run.py \
-  --config experiments/configs/network_influence.yaml
+  --config experiments/network_influence/configs/network_influence.yaml
 ```
+
+## Plot
+Generate sweep-level plots (plus optional deep-dive per-run plots):
+```bash
+python -m experiments.network_influence.plots.generate_all \
+  --sweep-dir experiments/network_influence/outputs/network_influence/<timestamp>/runs/<model>/<sweep_name>
+```
+
+By default, plot artifacts are written under `experiments/network_influence/plots_outputs/<tag>/<timestamp>/<model>/<sweep_name>/`.
 
 ## Environment selection
 Set `environment.name` in the YAML config (e.g., `MeetingSchedulingEnvironment` or `JiraTicketEnvironment`).
@@ -26,7 +35,7 @@ Set `environment.name` in the YAML config (e.g., `MeetingSchedulingEnvironment` 
 For custom / non-exported environments, set `environment.import_path` to an explicit import like:
 `some.package.some_module:MyEnvironmentClass`.
 
-Outputs are written under `experiments/outputs/network_influence/<timestamp>/`.
+Outputs are written under `experiments/network_influence/outputs/network_influence/<timestamp>/`.
 Each run folder contains `metrics.json`, `judge_results.json`, `survey_responses.json`, `blackboards.json`, `tool_events.json`, and `blackboard_*.txt` (human-readable blackboard snapshots).
 The output root also includes `experiment.log` (checkpointed progress logs) and `progress.json` (machine-readable progress).
 
@@ -36,7 +45,7 @@ If a sweep crashes part-way through, you can resume **in-place** (no new timesta
 Dry-run (preview what will run):
 ```bash
 python -m experiments.network_influence.resume \
-  --root experiments/outputs/network_influence_test/<timestamp> \
+  --root experiments/network_influence/outputs/network_influence_test/<timestamp> \
   --max-concurrent-runs 50 \
   --dry-run
 ```
@@ -44,12 +53,12 @@ python -m experiments.network_influence.resume \
 Resume for real:
 ```bash
 python -m experiments.network_influence.resume \
-  --root experiments/outputs/network_influence_test/<timestamp> \
+  --root experiments/network_influence/outputs/network_influence_test/<timestamp> \
   --max-concurrent-runs 50
 ```
 
 ## Reproducibility / stochasticity
-Set a seed list in `experiments/configs/network_influence.yaml` under `experiment.seeds`.
+Set a seed list in `experiments/network_influence/configs/network_influence.yaml` under `experiment.seeds`.
 Each sweep setting is repeated once per seed in that list (so runs per setting = `len(experiment.seeds)` unless you set `experiment.runs_per_setting`).
 
 ## Parallelism

@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 
 class ExperimentPromptLogger:
     """Write agent prompts into an experiment run directory.
 
     This mirrors `src.logger.PromptLogger` output (JSON + Markdown) but keeps
-    artifacts co-located under `experiments/outputs/.../<run>/`.
+    artifacts co-located under `experiments/<project>/outputs/.../<run>/`.
     """
 
     def __init__(self, *, log_root: Path, environment_name: str, seed: int) -> None:
@@ -54,13 +54,17 @@ class ExperimentPromptLogger:
 
         # JSON
         try:
-            existing = json.loads(self.log_file_path.read_text(encoding="utf-8") or "[]")
+            existing = json.loads(
+                self.log_file_path.read_text(encoding="utf-8") or "[]"
+            )
             if not isinstance(existing, list):
                 existing = []
         except Exception:
             existing = []
         existing.append(entry)
-        self.log_file_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
+        self.log_file_path.write_text(
+            json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
         # Markdown
         meta_parts = [f"**Phase:** {phase}"]
@@ -92,4 +96,3 @@ class ExperimentPromptLogger:
             f"# Agent Prompts Log - {self.environment_name} (Seed: {self.seed})\n\n",
             encoding="utf-8",
         )
-

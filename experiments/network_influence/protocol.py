@@ -5,7 +5,10 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from src.blackboard import Megaboard, format_blackboard_events_for_prompt
 from src.communication_protocols.base import BaseCommunicationProtocol
-from src.environment_tools import EnvironmentToolsNotFoundError, instantiate_environment_tools
+from src.environment_tools import (
+    EnvironmentToolsNotFoundError,
+    instantiate_environment_tools,
+)
 
 
 @dataclass(slots=True)
@@ -22,7 +25,9 @@ class ToolEvent:
 class LocalMegaboardProtocol(BaseCommunicationProtocol):
     """In-process protocol (no MCP server) backed by Megaboard + environment-specific tools."""
 
-    def __init__(self, *, config: Dict[str, Any], megaboard: Optional[Megaboard] = None):
+    def __init__(
+        self, *, config: Dict[str, Any], megaboard: Optional[Megaboard] = None
+    ):
         self.config = config
         self.megaboard = megaboard or Megaboard()
         self.environment = None
@@ -36,7 +41,9 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
     def _get_env_tools(self, environment: Any) -> Any:
         env_name = environment.__class__.__name__ if environment is not None else ""
         if not env_name:
-            raise EnvironmentToolsNotFoundError("Environment missing or invalid (no __class__.__name__).")
+            raise EnvironmentToolsNotFoundError(
+                "Environment missing or invalid (no __class__.__name__)."
+            )
         if self._env_tools is None or self._env_tools_env_name != env_name:
             self._env_tools = instantiate_environment_tools(env_name, self.megaboard)
             self._env_tools_env_name = env_name
@@ -88,7 +95,9 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
 
             # Prefetch is automatic; avoid polluting tool_events with synthetic get_blackboard_events calls.
             events = self.megaboard.get(bb_id_int, agent_name, limit=None)
-            contexts[bb_id_str] = format_blackboard_events_for_prompt(events if isinstance(events, list) else [])
+            contexts[bb_id_str] = format_blackboard_events_for_prompt(
+                events if isinstance(events, list) else []
+            )
 
         return contexts
 
@@ -281,7 +290,6 @@ class LocalMegaboardProtocol(BaseCommunicationProtocol):
             iteration=iteration,
             round_num=0,
         )
-
 
     async def agent_survey_turn(
         self,

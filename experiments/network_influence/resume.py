@@ -80,7 +80,9 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
 
     default_seeds = run_mod._normalize_seeds(exp.get("seeds"))
     if not default_seeds:
-        default_seeds = run_mod._normalize_seeds((cfg.get("simulation") or {}).get("seed")) or [1]
+        default_seeds = run_mod._normalize_seeds(
+            (cfg.get("simulation") or {}).get("seed")
+        ) or [1]
 
     for model in models:
         model_label = str(model.get("label") or "model")
@@ -94,7 +96,9 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
             if runs_per_setting is not None:
                 seeds = seeds[:runs_per_setting]
             if not seeds:
-                raise ValueError("No seeds specified. Set experiment.seeds or sweeps[].seeds.")
+                raise ValueError(
+                    "No seeds specified. Set experiment.seeds or sweeps[].seeds."
+                )
 
             for topology in topologies:
                 for n in agent_counts:
@@ -111,7 +115,9 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
                             )
 
 
-def _select_incomplete_runs(*, root: Path, cfg: Dict[str, Any]) -> Tuple[List[RunSpec], int, int]:
+def _select_incomplete_runs(
+    *, root: Path, cfg: Dict[str, Any]
+) -> Tuple[List[RunSpec], int, int]:
     expected = list(_iter_expected_run_specs(cfg))
     total_runs = len(expected)
     completed = 0
@@ -260,7 +266,9 @@ async def resume_runs(
 
             pending = set(tasks)
             while pending:
-                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
                 for finished in done:
                     spec = task_specs.get(finished)
                     if spec is None:
@@ -320,7 +328,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     parser.add_argument(
         "--root",
         required=True,
-        help="Existing timestamp output root (e.g., experiments/outputs/<tag>/<timestamp>).",
+        help="Existing timestamp output root (e.g., experiments/network_influence/outputs/<tag>/<timestamp>).",
     )
     parser.add_argument(
         "--config",
@@ -338,7 +346,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         action="store_true",
         help="Abort immediately on the first failed run (default: continue and record failures).",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Print what would run and exit.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print what would run and exit."
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root)

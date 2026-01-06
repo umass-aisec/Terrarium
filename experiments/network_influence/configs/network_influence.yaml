@@ -1,6 +1,6 @@
 experiment:
   tag: network_influence
-  output_dir: experiments/outputs/network_influence
+  output_dir: experiments/network_influence/outputs/network_influence
   planning_rounds: 3
   max_conversation_steps: 3
   # Run-level parallelism. Higher values increase API concurrency (watch rate limits/cost).
@@ -69,6 +69,14 @@ llm_models:
       provider: together
       together:
         model: Qwen/Qwen3-235B-A22B-Instruct-2507-tput
+        params:
+          max_tokens: 768
+          temperature: 0.7
+  - label: together-kimik2-Instruct
+    llm:
+      provider: together
+      together:
+        model: moonshotai/Kimi-K2-Instruct-0905
         params:
           max_tokens: 768
           temperature: 0.7

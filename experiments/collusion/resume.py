@@ -96,7 +96,9 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
 
     default_seeds = run_mod._normalize_seeds(exp.get("seeds"))
     if not default_seeds:
-        default_seeds = run_mod._normalize_seeds((cfg.get("simulation") or {}).get("seed")) or [1]
+        default_seeds = run_mod._normalize_seeds(
+            (cfg.get("simulation") or {}).get("seed")
+        ) or [1]
 
     for model in models:
         model_label = str(model.get("label") or "model")
@@ -106,13 +108,19 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
             topologies = sweep.get("topologies") or []
             agent_counts = sweep.get("num_agents") or []
             colluder_counts = sweep.get("colluder_counts") or []
-            secret_flags = sweep.get("secret_channel_enabled") or sweep.get("secret_channels") or [False]
+            secret_flags = (
+                sweep.get("secret_channel_enabled")
+                or sweep.get("secret_channels")
+                or [False]
+            )
             prompt_variants = sweep.get("prompt_variants") or ["control"]
             seeds = run_mod._normalize_seeds(sweep.get("seeds")) or list(default_seeds)
             if runs_per_setting is not None:
                 seeds = seeds[:runs_per_setting]
             if not seeds:
-                raise ValueError("No seeds specified. Set experiment.seeds or sweeps[].seeds.")
+                raise ValueError(
+                    "No seeds specified. Set experiment.seeds or sweeps[].seeds."
+                )
 
             for topology in topologies:
                 for n in agent_counts:
@@ -136,7 +144,9 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
                                     )
 
 
-def _select_incomplete_runs(*, root: Path, cfg: Dict[str, Any]) -> Tuple[List[RunSpec], int, int]:
+def _select_incomplete_runs(
+    *, root: Path, cfg: Dict[str, Any]
+) -> Tuple[List[RunSpec], int, int]:
     expected = list(_iter_expected_run_specs(cfg))
     total_runs = len(expected)
     completed = 0
@@ -194,14 +204,18 @@ def _rebuild_summary_files(root: Path) -> None:
     # Stable ordering for diffs/readability.
     rows = sorted(rows, key=lambda r: str(r.get("run_id") or ""))
 
-    (root / "summary.json").write_text(json.dumps(rows, indent=2, ensure_ascii=False), encoding="utf-8")
+    (root / "summary.json").write_text(
+        json.dumps(rows, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     with (root / "summary.jsonl").open("w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     flat_rows: List[Dict[str, Any]] = []
     for row in rows:
-        flat_rows.append({k: v for k, v in row.items() if not isinstance(v, (dict, list))})
+        flat_rows.append(
+            {k: v for k, v in row.items() if not isinstance(v, (dict, list))}
+        )
 
     if not flat_rows:
         (root / "summary.csv").write_text("", encoding="utf-8")
@@ -354,7 +368,9 @@ async def resume_runs(
 
             pending = set(tasks)
             while pending:
-                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
                 for finished in done:
                     spec = task_specs.get(finished)
                     if spec is None:
@@ -408,11 +424,13 @@ async def resume_runs(
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
-    parser = argparse.ArgumentParser(description="Resume a previously started collusion experiment in-place.")
+    parser = argparse.ArgumentParser(
+        description="Resume a previously started collusion experiment in-place."
+    )
     parser.add_argument(
         "--root",
         required=True,
-        help="Existing timestamp output root (e.g., experiments/outputs/<tag>/<timestamp>).",
+        help="Existing timestamp output root (e.g., experiments/collusion/outputs/<tag>/<timestamp>).",
     )
     parser.add_argument(
         "--config",
@@ -430,7 +448,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         action="store_true",
         help="Abort immediately on the first failed run (default: continue and record failures).",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Print what would run and exit.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print what would run and exit."
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root)
@@ -457,4 +477,3 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

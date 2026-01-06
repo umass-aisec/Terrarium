@@ -1,6 +1,6 @@
 experiment:
   tag: network_influence_test
-  output_dir: experiments/outputs/network_influence_test
+  output_dir: experiments/network_influence/outputs/network_influence_test
   planning_rounds: 3
   max_conversation_steps: 3
   # Run-level parallelism. Higher values increase API concurrency (watch rate limits/cost).

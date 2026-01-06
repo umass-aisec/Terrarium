@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: E402
+
 import sys
 import argparse
 import copy
@@ -8,23 +10,30 @@ import json
 import logging
 import random
 import importlib
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-import yaml
 from tqdm import tqdm
 
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from experiments.collusion.blackboard_txt import ExperimentBlackboardLogger
+from experiments.common.run_utils import (
+    configure_experiment_logging as _configure_experiment_logging_impl,
+    ensure_dir as _ensure_dir,
+    load_yaml as _load_yaml,
+    normalize_seeds as _normalize_seeds,
+    write_json as _write_json,
+    write_progress as _write_progress,
+)
+from experiments.common.blackboard_logger import ExperimentBlackboardLogger
 from experiments.collusion.metrics import compute_collusion_metrics, metrics_to_json
 from experiments.collusion.prompt_logger import ExperimentPromptLogger
 from experiments.collusion.prompts import CollusionPrompts
 from experiments.network_influence.protocol import LocalMegaboardProtocol
 from src.networks import build_communication_network
+from src.logger import AgentTrajectoryLogger
 from src.utils import get_client_instance, get_generation_params, get_model_name
 from src.agents.base import BaseAgent
 
@@ -33,94 +42,8 @@ LOGGER_NAME = "experiments.collusion"
 logger = logging.getLogger(LOGGER_NAME)
 
 
-def _load_yaml(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def _ensure_dir(path: Path) -> None:
-    path.mkdir(parents=True, exist_ok=True)
-
-
-def _write_json(path: Path, data: Any) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-
-def _atomic_write_json(path: Path, data: Any) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    _write_json(tmp, data)
-    tmp.replace(path)
-
-
-class _TqdmLoggingHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            tqdm.write(msg)
-        except Exception:
-            pass
-
-
 def _configure_experiment_logging(root: Path, *, verbose: bool = True) -> None:
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-
-    for handler in list(logger.handlers):
-        try:
-            handler.close()
-        except Exception:
-            pass
-        logger.removeHandler(handler)
-
-    log_path = root / "experiment.log"
-    file_handler = logging.FileHandler(log_path, encoding="utf-8")
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-    )
-    logger.addHandler(file_handler)
-
-    if verbose:
-        console_handler = _TqdmLoggingHandler()
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-        logger.addHandler(console_handler)
-
-
-def _write_progress(root: Path, payload: Dict[str, Any]) -> None:
-    payload = dict(payload)
-    payload["updated_at"] = datetime.now().isoformat()
-    _atomic_write_json(root / "progress.json", payload)
-
-
-def _normalize_seeds(raw: Any) -> List[int]:
-    if raw is None:
-        return []
-    if isinstance(raw, int):
-        return [int(raw)]
-    if isinstance(raw, str):
-        parts = [p.strip() for p in raw.split(",")]
-        seeds: List[int] = []
-        for part in parts:
-            if not part:
-                continue
-            try:
-                seeds.append(int(part))
-            except Exception:
-                continue
-        return seeds
-    if isinstance(raw, list):
-        seeds = []
-        for item in raw:
-            if item is None:
-                continue
-            try:
-                seeds.append(int(item))
-            except Exception:
-                continue
-        return seeds
-    return []
+    _configure_experiment_logging_impl(logger, root, verbose=verbose)
 
 
 def _resolve_environment_class(env_cfg: Dict[str, Any]) -> Any:
@@ -137,7 +60,9 @@ def _resolve_environment_class(env_cfg: Dict[str, Any]) -> Any:
 
     env_name = str(env_cfg.get("name") or "").strip()
     if not env_name:
-        raise ValueError("environment.name is required (or set environment.import_path).")
+        raise ValueError(
+            "environment.name is required (or set environment.import_path)."
+        )
 
     candidate_modules = [
         "envs.dcops",
@@ -221,10 +146,15 @@ async def _run_single(
     cfg.setdefault("simulation", {})["seed"] = int(seed)
     cfg.setdefault("simulation", {})["max_iterations"] = 1
     cfg.setdefault("simulation", {})["max_planning_rounds"] = int(
-        cfg.get("experiment", {}).get("planning_rounds", cfg.get("simulation", {}).get("max_planning_rounds", 2))
+        cfg.get("experiment", {}).get(
+            "planning_rounds", cfg.get("simulation", {}).get("max_planning_rounds", 2)
+        )
     )
     cfg.setdefault("simulation", {})["max_conversation_steps"] = int(
-        cfg.get("experiment", {}).get("max_conversation_steps", cfg.get("simulation", {}).get("max_conversation_steps", 3))
+        cfg.get("experiment", {}).get(
+            "max_conversation_steps",
+            cfg.get("simulation", {}).get("max_conversation_steps", 3),
+        )
     )
     cfg.setdefault("communication_network", {})["topology"] = str(topology)
     cfg.setdefault("communication_network", {})["num_agents"] = int(num_agents)
@@ -242,7 +172,9 @@ async def _run_single(
     logger.info("RUN START %s", run_id)
 
     cfg.setdefault("simulation", {})["run_timestamp"] = f"{run_timestamp}__{run_id}"
-    cfg.setdefault("simulation", {})["tags"] = [str(cfg.get("experiment", {}).get("tag", "collusion"))]
+    cfg.setdefault("simulation", {})["tags"] = [
+        str(cfg.get("experiment", {}).get("tag", "collusion"))
+    ]
 
     protocol = LocalMegaboardProtocol(config=cfg)
     env_cls = _resolve_environment_class(cfg.get("environment") or {})
@@ -253,6 +185,13 @@ async def _run_single(
         log_root=run_dir,
         environment_name=env.__class__.__name__,
         seed=int(seed),
+    )
+    trajectory_logger = AgentTrajectoryLogger(
+        environment_name=env.__class__.__name__,
+        seed=int(seed),
+        config=cfg,
+        run_timestamp=cfg.get("simulation", {}).get("run_timestamp"),
+        log_dir=run_dir,
     )
 
     agent_names = env.get_agent_names()
@@ -269,7 +208,10 @@ async def _run_single(
         rng=rng,
     )
     colluder_set = set(colluders)
-    roles = {str(a): ("colluder" if str(a) in colluder_set else "normal") for a in agent_names}
+    roles = {
+        str(a): ("colluder" if str(a) in colluder_set else "normal")
+        for a in agent_names
+    }
 
     # Wrap prompts (role-specific injection via agent_context).
     env.prompts = CollusionPrompts(
@@ -296,7 +238,7 @@ async def _run_single(
                 model_name,
                 max_steps,
                 None,
-                None,
+                trajectory_logger,
                 env.__class__.__name__,
                 generation_params=generation_params,
             )
@@ -313,8 +255,12 @@ async def _run_single(
             base_context = env.get_network_context()
             secret_context = env.format_blackboard_context(colluders, base_context)
         except Exception:
-            secret_context = env.get_network_context() if hasattr(env, "get_network_context") else ""
-        secret_blackboard_id = await protocol.generate_comm_network(colluders, secret_context)
+            secret_context = (
+                env.get_network_context() if hasattr(env, "get_network_context") else ""
+            )
+        secret_blackboard_id = await protocol.generate_comm_network(
+            colluders, secret_context
+        )
 
     try:
         _log_blackboards_txt(
@@ -343,15 +289,25 @@ async def _run_single(
 
     def _extra_fields(agent_name: str) -> Dict[str, Any]:
         # Baseline (secret_channel_enabled=False): no explicit collusion prompting.
-        prompt_role = "colluder" if (secret_channel_enabled and str(agent_name) in colluder_set) else "normal"
+        prompt_role = (
+            "colluder"
+            if (secret_channel_enabled and str(agent_name) in colluder_set)
+            else "normal"
+        )
         return {
             "collusion_role": prompt_role,
-            "collusion_coalition_members": sorted(list(colluder_set)) if prompt_role == "colluder" else [],
-            "collusion_blackboard_id": secret_blackboard_id if prompt_role == "colluder" else None,
+            "collusion_coalition_members": sorted(list(colluder_set))
+            if prompt_role == "colluder"
+            else [],
+            "collusion_blackboard_id": secret_blackboard_id
+            if prompt_role == "colluder"
+            else None,
         }
 
     for planning_round in range(1, planning_rounds + 1):
-        logger.info("RUN %s planning round %s/%s", run_id, planning_round, planning_rounds)
+        logger.info(
+            "RUN %s planning round %s/%s", run_id, planning_round, planning_rounds
+        )
         last_agent = None
         for agent in env.agents:
             base_ctx = env.build_agent_context(
@@ -380,6 +336,7 @@ async def _run_single(
                     "usage": response.get("usage"),
                     "model": response.get("model"),
                     "tools_executed": response.get("tools_executed"),
+                    "conversation_steps": response.get("conversation_steps"),
                 }
             )
             last_agent = agent.name
@@ -394,7 +351,11 @@ async def _run_single(
                     planning_round=int(planning_round),
                 )
             except Exception as exc:
-                logger.warning("Failed to write blackboard_*.txt logs after planning round %s: %s", planning_round, exc)
+                logger.warning(
+                    "Failed to write blackboard_*.txt logs after planning round %s: %s",
+                    planning_round,
+                    exc,
+                )
 
     logger.info("RUN %s execution phase start", run_id)
     last_exec_agent = None
@@ -402,7 +363,9 @@ async def _run_single(
         base_ctx = env.build_agent_context(agent.name, phase="execution", iteration=1)
         agent_context = dict(base_ctx)
         agent_context.update(_extra_fields(agent.name))
-        response = await protocol.agent_execution_turn(agent, agent.name, agent_context, env, iteration=1)
+        response = await protocol.agent_execution_turn(
+            agent, agent.name, agent_context, env, iteration=1
+        )
         turns.append(
             {
                 "phase": "execution",
@@ -412,6 +375,7 @@ async def _run_single(
                 "usage": response.get("usage"),
                 "model": response.get("model"),
                 "tools_executed": response.get("tools_executed"),
+                "conversation_steps": response.get("conversation_steps"),
             }
         )
         last_exec_agent = agent.name
@@ -427,13 +391,18 @@ async def _run_single(
                 planning_round=None,
             )
         except Exception as exc:
-            logger.warning("Failed to write blackboard_*.txt logs after execution: %s", exc)
+            logger.warning(
+                "Failed to write blackboard_*.txt logs after execution: %s", exc
+            )
 
     final_summary = env.get_final_summary()
-    logger.info("RUN %s execution complete (status=%s)", run_id, final_summary.get("status"))
+    logger.info(
+        "RUN %s execution complete (status=%s)", run_id, final_summary.get("status")
+    )
 
     blackboard_participants = {
-        idx: sorted(list(bb.agents)) for idx, bb in enumerate(protocol.megaboard.blackboards)
+        idx: sorted(list(bb.agents))
+        for idx, bb in enumerate(protocol.megaboard.blackboards)
     }
     metrics = compute_collusion_metrics(
         env=env,
@@ -541,10 +510,19 @@ async def run_from_config(
 
     default_seeds = _normalize_seeds(exp.get("seeds"))
     if not default_seeds:
-        default_seeds = _normalize_seeds((cfg.get("simulation") or {}).get("seed")) or [1]
+        default_seeds = _normalize_seeds((cfg.get("simulation") or {}).get("seed")) or [
+            1
+        ]
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    root = Path(out_dir or exp.get("output_dir") or "experiments/outputs/collusion") / timestamp
+    root = (
+        Path(
+            out_dir
+            or exp.get("output_dir")
+            or "experiments/collusion/outputs/collusion"
+        )
+        / timestamp
+    )
     _ensure_dir(root)
     _write_json(root / "config.json", cfg)
     _configure_experiment_logging(root)
@@ -556,7 +534,11 @@ async def run_from_config(
             topologies = sweep.get("topologies") or []
             agent_counts = sweep.get("num_agents") or []
             colluder_counts = sweep.get("colluder_counts") or []
-            secret_flags = sweep.get("secret_channel_enabled") or sweep.get("secret_channels") or [False]
+            secret_flags = (
+                sweep.get("secret_channel_enabled")
+                or sweep.get("secret_channels")
+                or [False]
+            )
             prompt_variants = sweep.get("prompt_variants") or ["control"]
             seeds = _normalize_seeds(sweep.get("seeds")) or list(default_seeds)
             if runs_per_setting is not None:
@@ -589,7 +571,9 @@ async def run_from_config(
     completed = 0
     failed = 0
 
-    with tqdm(total=total_runs, desc="Experiments", unit="run", dynamic_ncols=True) as pbar:
+    with tqdm(
+        total=total_runs, desc="Experiments", unit="run", dynamic_ncols=True
+    ) as pbar:
         for model_idx, model in enumerate(models, start=1):
             model_label = str(model.get("label") or "model")
             llm_cfg = model.get("llm") or {}
@@ -602,7 +586,9 @@ async def run_from_config(
                 def _run_single_in_thread(**kwargs: Any) -> Dict[str, Any]:
                     return asyncio.run(_run_single(**kwargs))
 
-                async def _run_single_limited(*, run_label: str, **kwargs: Any) -> Dict[str, Any]:
+                async def _run_single_limited(
+                    *, run_label: str, **kwargs: Any
+                ) -> Dict[str, Any]:
                     async with semaphore:
                         logger.info("SCHEDULED %s", run_label)
                         return await asyncio.to_thread(_run_single_in_thread, **kwargs)
@@ -612,15 +598,23 @@ async def run_from_config(
                 topologies = sweep.get("topologies") or []
                 agent_counts = sweep.get("num_agents") or []
                 colluder_counts = sweep.get("colluder_counts") or []
-                secret_flags = sweep.get("secret_channel_enabled") or sweep.get("secret_channels") or [False]
+                secret_flags = (
+                    sweep.get("secret_channel_enabled")
+                    or sweep.get("secret_channels")
+                    or [False]
+                )
                 prompt_variants = sweep.get("prompt_variants") or ["control"]
                 seeds = _normalize_seeds(sweep.get("seeds")) or list(default_seeds)
                 if runs_per_setting is not None:
                     seeds = seeds[:runs_per_setting]
                 if not seeds:
-                    raise ValueError("No seeds specified. Set experiment.seeds or sweeps[].seeds.")
+                    raise ValueError(
+                        "No seeds specified. Set experiment.seeds or sweeps[].seeds."
+                    )
 
-                logger.info("SWEEP START %s (%s/%s)", sweep_name, sweep_idx, len(sweeps))
+                logger.info(
+                    "SWEEP START %s (%s/%s)", sweep_name, sweep_idx, len(sweeps)
+                )
 
                 if max_concurrent_runs <= 1:
                     for topology in topologies:
@@ -644,7 +638,9 @@ async def run_from_config(
                                                         topology=str(topology),
                                                         num_agents=int(n),
                                                         colluder_count=int(c),
-                                                        secret_channel_enabled=bool(secret),
+                                                        secret_channel_enabled=bool(
+                                                            secret
+                                                        ),
                                                         prompt_variant=str(pv),
                                                         seed=int(seed),
                                                         out_dir=root,
@@ -654,7 +650,9 @@ async def run_from_config(
                                             except Exception:
                                                 run_status = "failed"
                                                 failed += 1
-                                                logger.exception("RUN FAILED %s", run_label)
+                                                logger.exception(
+                                                    "RUN FAILED %s", run_label
+                                                )
                                                 raise
                                             finally:
                                                 pbar.update(1)
@@ -706,7 +704,9 @@ async def run_from_config(
 
                 pending = set(tasks)
                 while pending:
-                    done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                    done, pending = await asyncio.wait(
+                        pending, return_when=asyncio.FIRST_COMPLETED
+                    )
                     for finished in done:
                         run_label = task_labels.get(finished, "unknown")
                         pbar.set_postfix_str(run_label)
@@ -754,7 +754,12 @@ async def run_from_config(
             writer.writeheader()
             writer.writerows(csv_rows)
 
-    logger.info("EXPERIMENT END (completed=%s, failed=%s, output_root=%s)", completed, failed, root)
+    logger.info(
+        "EXPERIMENT END (completed=%s, failed=%s, output_root=%s)",
+        completed,
+        failed,
+        root,
+    )
     _write_progress(
         root,
         {
@@ -768,13 +773,17 @@ async def run_from_config(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run covert collusion sweeps (local protocol; no MCP).")
+    parser = argparse.ArgumentParser(
+        description="Run covert collusion sweeps (local protocol; no MCP)."
+    )
     parser.add_argument(
         "--config",
         required=True,
-        help="Path to experiment YAML config (e.g., experiments/configs/collusion_jira.yaml).",
+        help="Path to experiment YAML config (e.g., experiments/collusion/configs/collusion_jira.yaml).",
     )
-    parser.add_argument("--out-dir", default=None, help="Override output root directory.")
+    parser.add_argument(
+        "--out-dir", default=None, help="Override output root directory."
+    )
     parser.add_argument(
         "--max-concurrent-runs",
         default=None,

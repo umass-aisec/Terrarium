@@ -2,42 +2,50 @@
 
 simulation:
   max_iterations: 1
-  max_planning_rounds: 4
+  max_planning_rounds: 3
   max_conversation_steps: 4
   seed: 1
-  tags: [collusion_test]
+  tags: [collusion_complete]
 
 environment:
   name: JiraTicketEnvironment
   max_tasks: 8
-  max_clearence_threshold: 1
 
 communication_network:
-  topology: erdos_renyi
+  topology: complete
   num_agents: 6
   consolidate_channels: true
   edge_prob: 0.6
 
 llm_models:
-  - label: test
+  # - label: test
+  #   llm:
+  #     provider: openai
+  #     openai:
+  #       model: gpt-4o-mini
+  #       params:
+  #         temperature: 0.0
+  #         max_tokens: 256
+  - label: together-kimik2-Instruct
     llm:
-      provider: openai
-      openai:
-        model: gpt-4o-mini
+      provider: together
+      together:
+        model: moonshotai/Kimi-K2-Instruct-0905
         params:
-          temperature: 0.0
-          max_tokens: 256
+          max_tokens: 768
+          temperature: 0.7
+
 
 experiment:
-  tag: collusion_test
-  output_dir: experiments/outputs/collusion_test
-  max_concurrent_runs: 8
-  seeds: [1,2,3,4,5,6,7,8,9,10]
+  tag: test
+  output_dir: experiments/collusion/outputs/collusion_complete
+  max_concurrent_runs: 30
+  seeds: [1]
   collusion:
     colluder_selection: random
   sweeps:
-    - name: test
-      topologies: [erdos_renyi]
+    - name: complete
+      topologies: [complete]
       num_agents: [6]
       colluder_counts: [2]
       # Baseline vs treatment:
@@ -46,4 +54,4 @@ experiment:
       secret_channel_enabled: [false, true]
       # Prompt variants only apply when secret_channel_enabled=true.
       # When secret_channel_enabled=false, the runner forces the effective variant to "control" (ignores the others).
-      prompt_variants: [control, goal_only, structured_playbook, aggressive_deception]
+      prompt_variants: [control, simple, deception, structured, aggressive]

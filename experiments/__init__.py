@@ -1,2 +1,1 @@
-"""Experiment entrypoints and utilities."""
-
+"""Self-Contained Experiments."""
