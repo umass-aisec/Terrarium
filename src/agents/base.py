@@ -1,4 +1,7 @@
+import ast
+import json
 import logging
+import re
 import time
 from typing import Dict, Optional, Any
 from llm_server.clients.abstract_client import AbstractClient
@@ -52,6 +55,7 @@ class BaseAgent:
         self.current_iteration = None
         self.current_round = None
         self.communication_protocol = None
+        self._env_state_committed = False
 
     def _build_generation_params(self, tool_set) -> Dict[str, Any]:
         """
@@ -73,7 +77,6 @@ class BaseAgent:
         generation_params_clean = {k: v for k, v in self.generation_params.items() if v is not None}
         base_params.update(generation_params_clean)
         return base_params
-
 
     def _log_tool_call(self, tool_name: str, arguments: Dict[str, Any], result: Dict[str, Any], start_time: float) -> None:
         """Helper to log tool calls."""
@@ -167,6 +170,20 @@ class BaseAgent:
                     phase=self.current_phase,
                     iteration=self.current_iteration,
                 )
+
+            if (
+                tool_name in available_env_tools
+                and tool_name not in blackboard_tool_names
+                and isinstance(result, dict)
+                and (
+                    "state_updates" in result
+                    or (
+                        isinstance(result.get("result"), dict)
+                        and "state_updates" in result["result"]
+                    )
+                )
+            ):
+                self._env_state_committed = True
         except Exception as e:
             error_msg = f"Error executing {tool_name}: {e}"
             result = {"error": error_msg}
@@ -248,10 +265,6 @@ class BaseAgent:
         )
         blackboard_tools = self.toolset_discovery.get_tools_for_blackboard(self.current_phase)
         tool_set = env_tools + blackboard_tools
-        if not tool_set:
-            raise ValueError(
-                "[ERROR] tool_set is empty. Agents are required to have access to tools for tool-based execution."
-            )
         params = self._build_generation_params(tool_set=tool_set)
         # Get system and user prompt into Reponses API format
         # TODO: Add functions to abstract client class such as init_context()
@@ -266,8 +279,11 @@ class BaseAgent:
 
         trajectory_dict: Dict[str, Any] = {}
         conversation_steps = 1
+        trajectory_dict["step_1"] = {"reasoning": response_str}
 
         for step in range(self.max_conversation_steps):
+            self._env_state_committed = False
+
             # Process tool calls and extract content
             tool_calls_executed, context, step_tools = await self.client.process_tool_calls(
                 current_response,
@@ -278,12 +294,12 @@ class BaseAgent:
 
             if step_tools:
                 # For logging purposes
-                trajectory_dict[f"step_{step + 1}"] = {"tools": step_tools}
+                step_key = f"step_{step + 1}"
+                trajectory_dict.setdefault(step_key, {})["tools"] = step_tools
 
-            # Heuristic: No tool calls => we're done.
-            if tool_calls_executed == 0:
+            # Break if the agent executed the environment tool call
+            if self._env_state_committed:
                 break
-
             # Reached the max number of model calls allowed.
             if step >= self.max_conversation_steps - 1:
                 break
@@ -294,6 +310,7 @@ class BaseAgent:
                 total_usage = self.client.get_usage(response, total_usage)
                 current_response = response
                 conversation_steps += 1
+                trajectory_dict[f"step_{conversation_steps}"] = {"reasoning": response_str}
             except Exception as e:
                 logger.exception("Failed to continue conversation at step %s: %s", step + 1, e)
                 self._log_trajectory(trajectory_dict)
