@@ -35,7 +35,7 @@ llm:
       reasoning_effort: "low"
       verbosity: "low"
   anthropic:
-    model: "claude-3-5-sonnet-20241022"
+    model: "claude-sonnet-4-5"
     params:
       max_tokens: 4000
       temperature: 0.4
