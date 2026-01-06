@@ -145,7 +145,7 @@ class AnthropicClient(AbstractClient):
         Args:
             input: List of message dictionaries in Anthropic format
             params: Generation parameters including:
-                - model: Model name (e.g., "claude-3-5-sonnet-20241022")
+                - model: Model name (e.g., "claude-sonnet-4-5")
                 - max_tokens: Maximum tokens to generate
                 - max_output_tokens: Alternative parameter name for max_tokens
                 - temperature: Sampling temperature
@@ -158,7 +158,7 @@ class AnthropicClient(AbstractClient):
             Tuple of (response_object, response_text)
         """
         # Extract parameters
-        model = params.get("model", "claude-3-5-sonnet-20241022")
+        model = params.get("model", "claude-sonnet-4-5")
         max_tokens = params.get("max_tokens") or params.get("max_output_tokens", 4000)
         temperature = params.get("temperature", 0.7)
         tools = params.get("tools", [])
@@ -279,7 +279,7 @@ class AnthropicClient(AbstractClient):
                 tool_result_block = {
                     "type": "tool_result",
                     "tool_use_id": tool_use_id,
-                    "content": str(result)
+                    "content": json.dumps(result, ensure_ascii=False, default=str)
                 }
                 tool_results.append(tool_result_block)
 
