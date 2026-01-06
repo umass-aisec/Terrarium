@@ -20,7 +20,7 @@ class OpenAIClient(AbstractClient):
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY in .env file")
-        self.client = OpenAI(api_key=self.api_key, timeout=10.0)
+        self.client = OpenAI(api_key=self.api_key, timeout=30.0)
 
     def _has_temperature_restrictions(self, model_name: str) -> bool:
         """Check if the model has temperature restrictions (only supports default)."""
