@@ -58,12 +58,11 @@ class JiraTicketEnvironment(AbstractEnvironment):
         self.agent_names, self.agent_private = self._build_agents(num_agents)
         self.assignment: Dict[str, Optional[str]] = {}
 
-        self.priority_bonus = max(0.0, float(self.env_config.get("priority_bonus", 10.0)))
-        self.clearance_cost = max(0.0, float(self.env_config.get("clearence_cost", 10.0)))
+        self.priority_bonus = max(0.0, float(self.env_config.get("priority_bonus", 20.0)))
 
         self.costs = self._compute_costs()
-        self.big_m = self._compute_big_m()
-        self.violation_penalty = float(self.env_config.get("violation_penalty", 10.0))
+        self.tasks_done_bonus = max(0.0, float(self.env_config.get("tasks_done_bonus", 20.0)))
+        self.violation_penalty = float(self.env_config.get("violation_penalty", 20.0))
 
         # Theoretical upper bound (no solver)
         self.optimal_k = min(len(self.agent_names), len(self.tasks))
@@ -138,7 +137,6 @@ class JiraTicketEnvironment(AbstractEnvironment):
                     "tags": list(issue["tags"]),
                     "priority": issue["priority"],
                     "effort": max(1.0, effort),
-                    "clearence_threshold": issue["clearence_threshold"],
                     "work_type": micro,
                 }
                 if len(task_map) >= max_tasks:
@@ -153,7 +151,6 @@ class JiraTicketEnvironment(AbstractEnvironment):
         """Create a synthetic pool of base issues with tags/effort/priority."""
         tag_pool = list(self.DEFAULT_SKILL_TAGS)
         priority_pool = list(self.PRIORITY_WEIGHTS.keys())
-        max_clearence_threshold = int(self.env_config.get("max_clearence_threshold", 2))
 
         issues: List[Dict[str, Any]] = []
         issue_count = max(1, int(math.ceil(max_tasks / max(1, len(self.microtask_types)))))
@@ -170,14 +167,12 @@ class JiraTicketEnvironment(AbstractEnvironment):
                 "tags": tags,
                 "priority": priority_label,
                 "effort": effort,
-                "clearence_threshold": self.rng.randint(0, max_clearence_threshold),
             })
         return issues
 
     def _build_agents(self, num_agents: int) -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
-        """Sample synthetic agent skill/availability/clearance profiles."""
+        """Sample synthetic agent skill/availability profiles."""
         tag_pool = sorted({tag for task in self.tasks.values() for tag in task.get("tags", [])})
-        max_clearence_threshold = int(self.env_config.get("max_clearence_threshold", 2))
 
         availability_range = self.env_config.get("availability_range", [4, 10])
         if isinstance(availability_range, (list, tuple)) and len(availability_range) >= 2:
@@ -199,13 +194,12 @@ class JiraTicketEnvironment(AbstractEnvironment):
             agent_private[agent] = {
                 "availability": float(self.rng.randint(int(min_avail), int(max_avail))),
                 "skills": skills,
-                "clearance": int(self.rng.randint(0, max_clearence_threshold)),
             }
 
         return agent_names, agent_private
 
     def _compute_costs(self) -> Dict[str, Dict[str, float]]:
-        """Compute private cost matrix using skills, availability, and clearance."""
+        """Compute private cost matrix using skills and availability."""
         weights = self.env_config.get("cost_weights", {})
         load_cost = float(weights.get("load", 1.0))
         eps = float(self.env_config.get("skill_eps", 0.1))
@@ -216,12 +210,8 @@ class JiraTicketEnvironment(AbstractEnvironment):
             private = self.agent_private[agent]
             skills = private["skills"]
             availability = float(private["availability"])
-            clearance = int(private["clearance"])
 
             for task_id, task in self.tasks.items():
-                clearence_threshold = int(task.get("clearence_threshold", 0))
-                clearance_penalty = self.clearance_cost if clearance < clearence_threshold else 0.0
-
                 tags = task.get("tags", [])
                 if tags:
                     match = sum(skills.get(tag, 0.0) for tag in tags) / max(1, len(tags))
@@ -233,25 +223,12 @@ class JiraTicketEnvironment(AbstractEnvironment):
                 skill_adjusted = effort / max(eps, match + eps)
                 overload = load_cost * max(0.0, effort - availability)
 
-                cost = skill_adjusted + overload + clearance_penalty
+                cost = skill_adjusted + overload
                 if cost < 0:
                     cost = 0.0
                 costs[agent][task_id] = float(cost)
 
         return costs
-
-    def _compute_big_m(self) -> float:
-        """Return a scaling constant so completing tasks dominates cost/priority tradeoffs in the lexicographic objective."""
-        max_cost = 1.0
-        for agent_costs in self.costs.values():
-            for cost in agent_costs.values():
-                if math.isfinite(cost):
-                    max_cost = max(max_cost, cost)
-        big_m = self.env_config.get("big_m")
-        if big_m is not None:
-            return float(big_m)
-        max_priority = max(self.PRIORITY_WEIGHTS.values(), default=1.0)
-        return float((max_cost + self.priority_bonus * max_priority) * max(1, len(self.agent_names)) + 1.0)
 
     def _priority_weight(self, priority: Any) -> float:
         """Map a priority label to a numeric weight in [0, 1]."""
@@ -286,7 +263,7 @@ class JiraTicketEnvironment(AbstractEnvironment):
             total_cost += cost
 
         score = (
-            self.big_m * tasks_done
+            self.tasks_done_bonus * tasks_done
             + self.priority_bonus * priority_sum
             - total_cost
             - self.violation_penalty * violations
@@ -332,7 +309,7 @@ class JiraTicketEnvironment(AbstractEnvironment):
                 local_rewards[agent] -= self.violation_penalty
                 continue
             prio = self._priority_weight(self.tasks.get(task_key, {}).get("priority"))
-            local_rewards[agent] += self.big_m + self.priority_bonus * prio - cost
+            local_rewards[agent] += self.tasks_done_bonus + self.priority_bonus * prio - cost
 
         for agents in task_groups.values():
             if len(agents) <= 1:
@@ -371,7 +348,6 @@ class JiraTicketEnvironment(AbstractEnvironment):
             "cost_table": cost_table,
             "private_state": {
                 "availability": private.get("availability"),
-                "clearance": private.get("clearance"),
                 "top_skills": sorted(
                     private.get("skills", {}).items(),
                     key=lambda item: item[1],
@@ -396,7 +372,7 @@ class JiraTicketEnvironment(AbstractEnvironment):
     def compute_max_joint_reward(self) -> float:
         """Return a theoretical upper bound of the joint reward (no solver)."""
         max_priority = max(self.PRIORITY_WEIGHTS.values(), default=1.0)
-        return float((self.big_m + self.priority_bonus * max_priority) * self.optimal_k - self.optimal_cost)
+        return float((self.tasks_done_bonus + self.priority_bonus * max_priority) * self.optimal_k - self.optimal_cost)
 
     def joint_reward(self, actions: Mapping[str, Any]) -> float:
         """Return joint score for a given partial/complete assignment."""
@@ -543,7 +519,6 @@ class JiraTicketEnvironment(AbstractEnvironment):
                 "tags": task.get("tags", []),
                 "priority": task.get("priority"),
                 "effort": task.get("effort"),
-                "clearence_threshold": task.get("clearence_threshold"),
                 "work_type": task.get("work_type"),
             }
             for task_id, task in self.tasks.items()
