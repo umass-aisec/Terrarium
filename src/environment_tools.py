@@ -85,8 +85,9 @@ def get_environment_tools_class(environment_name: str) -> Type[Any]:
     )
 
 
-def instantiate_environment_tools(environment_name: str, blackboard_manager: Any) -> Any:
+def instantiate_environment_tools(
+    environment_name: str, blackboard_manager: Any
+) -> Any:
     """Instantiate the tools handler for an environment."""
     cls = get_environment_tools_class(environment_name)
     return cls(blackboard_manager)
-

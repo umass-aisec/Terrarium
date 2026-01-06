@@ -34,19 +34,26 @@ llm:
     model: "gpt-4.1-mini-2025-04-14"
     params:
       max_tokens: 1024
-      temperature: 0.0 # Set to 0.0 for strict logic/scheduling tasks
+      temperature: 0.7
       
   anthropic:
     model: "claude-3-5-sonnet-20241022"
     params:
       max_tokens: 4000
-      temperature: 0.0
+      temperature: 0.7
       
   gemini:
     model: "gemini-1.5-pro"
     params:
       max_tokens: 1024
-      temperature: 0.0
+      temperature: 0.7
+
+
+  together:
+    model: moonshotai/Kimi-K2-Instruct-0905
+    params:
+      max_tokens: 2000
+      temperature: 0.7
 
   vllm:
     auto_start_server: true
@@ -55,7 +62,7 @@ llm:
     startup_timeout: 420
     params:
       max_tokens: 1024
-      temperature: 0.0
+      temperature: 0.7
     models:
       - checkpoint: "Qwen/Qwen2.5-7B-Instruct"
         host: "127.0.0.1"

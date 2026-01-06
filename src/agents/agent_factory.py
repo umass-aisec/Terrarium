@@ -85,4 +85,3 @@ def build_agents(
         random.shuffle(agents)
 
     return agents
-

@@ -1,6 +1,10 @@
 from typing import Any, Dict, List, Optional, Set
 
-from src.environment_tools import EnvironmentToolsNotFoundError, instantiate_environment_tools
+from src.environment_tools import (
+    EnvironmentToolsNotFoundError,
+    instantiate_environment_tools,
+)
+
 
 class ToolsetDiscovery:
     def __init__(self):
@@ -13,7 +17,9 @@ class ToolsetDiscovery:
         if cached is not None:
             return cached
         try:
-            tools = instantiate_environment_tools(environment_name, blackboard_manager=None)
+            tools = instantiate_environment_tools(
+                environment_name, blackboard_manager=None
+            )
         except EnvironmentToolsNotFoundError:
             return None
         except Exception:
@@ -23,7 +29,9 @@ class ToolsetDiscovery:
         self._tools_by_environment[environment_name] = tools
         return tools
 
-    def get_tools_for_environment(self, environment_name: str, phase: str) -> List[Dict[str, Any]]:
+    def get_tools_for_environment(
+        self, environment_name: str, phase: str
+    ) -> List[Dict[str, Any]]:
         """
         Get the toolset for a specific environment.
 
@@ -56,7 +64,6 @@ class ToolsetDiscovery:
             Set of supported tool names
         """
         return {"post_message"}
-         
 
     def get_tools_for_blackboard(self, phase: str) -> List[Dict[str, Any]]:
         """Get blackboard specific tools for the given phase. This is different from Environment tools."""
@@ -71,14 +78,20 @@ class ToolsetDiscovery:
                         "parameters": {
                             "type": "object",
                             "properties": {
-                                "message": {"type": "string", "description": "The message to communicate to other agents"},
-                                "blackboard_id": {"type": "integer", "description": "ID of the blackboard you are posting to"}
+                                "message": {
+                                    "type": "string",
+                                    "description": "The message to communicate to other agents",
+                                },
+                                "blackboard_id": {
+                                    "type": "integer",
+                                    "description": "ID of the blackboard you are posting to",
+                                },
                             },
-                            "required": ["message"]
-                        }
-                    }
+                            "required": ["message"],
+                        },
+                    },
                 },
             ]
             return planning_tools
 
-        return []        
+        return []

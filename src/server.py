@@ -3,7 +3,7 @@ import json
 from typing import Any, Dict, List, Optional
 import sys
 import os
-from fastapi.responses import JSONResponse 
+from fastapi.responses import JSONResponse
 from fastapi import Request
 
 # Add project root to sys.path for imports
@@ -24,6 +24,7 @@ environment_tools = None
 # Initialize later
 blackboard_logger: Optional[BlackboardLogger] = None
 
+
 def set_environment_tools(environment_name: str):
     """
     Dynamically load and set environment-specific tools.
@@ -32,20 +33,35 @@ def set_environment_tools(environment_name: str):
         environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__).
     """
     global environment_tools
-    from src.environment_tools import EnvironmentToolsNotFoundError, instantiate_environment_tools
+    from src.environment_tools import (
+        EnvironmentToolsNotFoundError,
+        instantiate_environment_tools,
+    )
 
     try:
         environment_tools = instantiate_environment_tools(environment_name, megaboard)
     except EnvironmentToolsNotFoundError as exc:
         raise ValueError(str(exc)) from exc
 
+
 @mcp.tool()
-def handle_environment_tool_call(tool_name: str, agent_name: str, arguments: Dict[str, Any],
-                        phase: Optional[str] = None, iteration: Optional[int] = None, env_state: Dict[str, Any] = {}) -> Dict[str, Any]:
+def handle_environment_tool_call(
+    tool_name: str,
+    agent_name: str,
+    arguments: Dict[str, Any],
+    phase: Optional[str] = None,
+    iteration: Optional[int] = None,
+    env_state: Dict[str, Any] = {},
+) -> Dict[str, Any]:
     """Handle environment tool calls using serializable state."""
     if environment_tools is None:
-        return {"error": "Environment tools not initialized. Call set_environment_tools first."}
-    return environment_tools.handle_tool_call(tool_name, agent_name, arguments, phase, iteration, env_state)
+        return {
+            "error": "Environment tools not initialized. Call set_environment_tools first."
+        }
+    return environment_tools.handle_tool_call(
+        tool_name, agent_name, arguments, phase, iteration, env_state
+    )
+
 
 @mcp.tool()
 def initialize_environment_tools(environment_name: str) -> Dict[str, str]:
@@ -54,19 +70,25 @@ def initialize_environment_tools(environment_name: str) -> Dict[str, str]:
         # Clear all blackboards when starting a new environment
         megaboard.clear_blackboards()
         set_environment_tools(environment_name)
-        return {"status": "success", "message": f"Environment tools initialized for {environment_name}"}
+        return {
+            "status": "success",
+            "message": f"Environment tools initialized for {environment_name}",
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
 @mcp.tool()
 def return_blackboards() -> List[Blackboard]:
     """Return the blackboards"""
     return megaboard.return_blackboards()
 
+
 @mcp.tool()
 def add_blackboard(agents: List[str], template: Optional[Dict[str, Any]] = None) -> int:
     """Add a new blackboard"""
     return megaboard.add_blackboard(agents, template)
+
 
 @mcp.tool()
 def clear_blackboards() -> Dict[str, str]:
@@ -77,49 +99,79 @@ def clear_blackboards() -> Dict[str, str]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+
 @mcp.tool()
-def post(blackboard_id: int, agent: str, kind: str, payload: Optional[Dict[str, Any]] = None) -> str:
+def post(
+    blackboard_id: int, agent: str, kind: str, payload: Optional[Dict[str, Any]] = None
+) -> str:
     """Post an event to the blackboard"""
     return megaboard.post(blackboard_id, agent, kind, payload)
 
+
 @mcp.tool()
-def post_system_message(blackboard_id: int, kind: str, payload: Optional[Dict[str, Any]] = None) -> str:
+def post_system_message(
+    blackboard_id: int, kind: str, payload: Optional[Dict[str, Any]] = None
+) -> str:
     """Post a system message to the blackboard"""
     return megaboard.post_system_message(blackboard_id, kind, payload)
 
+
 @mcp.tool()
-def get(blackboard_id: int, agent: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+def get(
+    blackboard_id: int, agent: str, limit: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Get the recent events from the blackboard"""
     return megaboard.get(blackboard_id, agent, limit)
+
 
 @mcp.tool()
 def get_blackboard_by_string_id(blackboard_id: str) -> Optional[Blackboard]:
     """Get a blackboard by string ID"""
     return megaboard.get_blackboard_by_string_id(blackboard_id)
 
+
 @mcp.tool()
 def get_agent_blackboards(agent_name: str) -> List[str]:
     """Get the blackboards for an agent"""
     return megaboard.get_agent_blackboards(agent_name)
+
 
 @mcp.tool()
 def get_agent_blackboard_contexts(agent_name: str) -> Dict[str, str]:
     """Get the contexts for an agent's blackboards"""
     return megaboard.get_agent_blackboard_contexts(agent_name)
 
+
 @mcp.tool()
 def get_blackboard_string_ids() -> List[str]:
     return megaboard.get_blackboard_string_ids()
 
-@mcp.tool()
-def handle_blackboard_tool_call(tool_name, agent_name:str, arguments: Dict[str, Any],
-                        phase: Optional[str] = None, iteration: Optional[int] = None) -> Dict[str, Any]:
-    return megaboard.handle_tool_call(tool_name, agent_name, arguments, phase, iteration)
 
 @mcp.tool()
-def log_action_to_blackboards(agent_name: str, action: Dict[str, Any], result: Dict[str, Any],
-                                   phase: Optional[str] = None, iteration: Optional[int] = None) -> None:
-    return megaboard.log_action_to_blackboards(agent_name, action, result, phase, iteration)
+def handle_blackboard_tool_call(
+    tool_name,
+    agent_name: str,
+    arguments: Dict[str, Any],
+    phase: Optional[str] = None,
+    iteration: Optional[int] = None,
+) -> Dict[str, Any]:
+    return megaboard.handle_tool_call(
+        tool_name, agent_name, arguments, phase, iteration
+    )
+
+
+@mcp.tool()
+def log_action_to_blackboards(
+    agent_name: str,
+    action: Dict[str, Any],
+    result: Dict[str, Any],
+    phase: Optional[str] = None,
+    iteration: Optional[int] = None,
+) -> None:
+    return megaboard.log_action_to_blackboards(
+        agent_name, action, result, phase, iteration
+    )
+
 
 @mcp.tool()
 def initialize_blackboard_logger(config: Dict[str, Any]) -> Dict[str, str]:
@@ -128,8 +180,11 @@ def initialize_blackboard_logger(config: Dict[str, Any]) -> Dict[str, str]:
     blackboard_logger.clear_blackboard_logs()
     return {"status": "success", "message": "Blackboard logger initialized"}
 
+
 @mcp.tool()
-def log_blackboard_states(iteration: int, phase: str, agent_name: str, planning_round: Optional[int] = None) -> Dict[str, str]:
+def log_blackboard_states(
+    iteration: int, phase: str, agent_name: str, planning_round: Optional[int] = None
+) -> Dict[str, str]:
     global blackboard_logger
     if blackboard_logger is None:
         return {"status": "error", "message": "Blackboard logger not initialized"}
@@ -139,26 +194,33 @@ def log_blackboard_states(iteration: int, phase: str, agent_name: str, planning_
             blackboard_logger.log_blackboard_state(
                 blackboard, iteration, phase, agent_name, planning_round
             )
-        return {"status": "success", "message": f"Logged {len(megaboard.blackboards)} blackboards"}
+        return {
+            "status": "success",
+            "message": f"Logged {len(megaboard.blackboards)} blackboards",
+        }
     except Exception as e:
         return {"status": "error", "message": f"Failed to log blackboards: {str(e)}"}
+
 
 @mcp.custom_route("/v1/models", methods=["GET"])
 async def list_models(request: Request):
     """
     Mock endpoint to satisfy clients expecting an OpenAI-compatible API.
     """
-    return JSONResponse(content={
-        "object": "list",
-        "data": [
-            {
-                "id": "Qwen/Qwen2.5-7B-Instruct", 
-                "object": "model",
-                "created": 1677610602,
-                "owned_by": "mcp-server",
-            }
-        ]
-    })
+    return JSONResponse(
+        content={
+            "object": "list",
+            "data": [
+                {
+                    "id": "Qwen/Qwen2.5-7B-Instruct",
+                    "object": "model",
+                    "created": 1677610602,
+                    "owned_by": "mcp-server",
+                }
+            ],
+        }
+    )
+
 
 if __name__ == "__main__":
     mcp.run(transport="http", port=8000)

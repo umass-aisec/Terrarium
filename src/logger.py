@@ -10,7 +10,9 @@ from .blackboard import Event, Blackboard
 from .utils import get_tag_model_subdir, get_run_timestamp, build_log_dir
 
 
-def _resolve_run_timestamp(config: Optional[Dict[str, Any]], run_timestamp: Optional[str]) -> Optional[str]:
+def _resolve_run_timestamp(
+    config: Optional[Dict[str, Any]], run_timestamp: Optional[str]
+) -> Optional[str]:
     if run_timestamp:
         return run_timestamp
     if config:
@@ -150,14 +152,16 @@ class AttackLogger:
         self._update_stats(entry.get("attack_type"), bool(entry.get("success")))
 
     def _format_text_entry(self, entry: Dict[str, Any], metadata_limit: int = 4) -> str:
-        meta_preview = self._format_metadata(entry.get("metadata") or {}, metadata_limit)
+        meta_preview = self._format_metadata(
+            entry.get("metadata") or {}, metadata_limit
+        )
         parts = [
             f"[{entry['timestamp']}]",
             f"cat={entry.get('category')}",
             f"attack={entry.get('attack_type')}",
-            f"attacker={entry.get('attacker','-')}",
-            f"target={entry.get('target','-')}",
-            f"phase={entry.get('phase','unknown')}",
+            f"attacker={entry.get('attacker', '-')}",
+            f"target={entry.get('target', '-')}",
+            f"phase={entry.get('phase', 'unknown')}",
             f"iter={entry.get('iteration')}",
             f"round={entry.get('round')}",
             f"success={entry.get('success')}",
@@ -197,7 +201,7 @@ class AttackLogger:
             "updated_at": datetime.now().isoformat(),
             "attack_counts": self.stats,
         }
-        simulation_meta = ((self.config or {}).get("simulation") or {})
+        simulation_meta = (self.config or {}).get("simulation") or {}
         note = simulation_meta.get("note")
         if note:
             payload["note"] = note
@@ -206,7 +210,6 @@ class AttackLogger:
             payload["tags"] = tags
         with self.summary_path.open("w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
-
 
 
 class BlackboardLogger:
@@ -262,26 +265,33 @@ class BlackboardLogger:
     def _initialize_log(self, log_file: str, blackboard_id: str = ""):
         """Initialize log file with header."""
         import os
+
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
-        with open(log_file, 'w') as f:
+        with open(log_file, "w") as f:
             f.write("=" * 80 + "\n")
             if blackboard_id:
                 f.write(f"BLACKBOARD STATE LOG - {blackboard_id.upper()}\n")
             else:
                 f.write("BLACKBOARD STATE LOG\n")
-            f.write(f"Session started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(
+                f"Session started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            )
             f.write("=" * 80 + "\n")
 
             # Only show trade-specific format notes for Trading environment
             if self.environment_name == "Trading":
                 f.write("FORMAT NOTES:\n")
                 f.write("- Trade actions show: Trade: agent1 → agent2\n")
-                f.write("- Money Exchange: +amount (received) or -amount (paid) from proposer's perspective\n")
-                f.write("- Items: -[items given] +[items received] from proposer's perspective\n")
+                f.write(
+                    "- Money Exchange: +amount (received) or -amount (paid) from proposer's perspective\n"
+                )
+                f.write(
+                    "- Items: -[items given] +[items received] from proposer's perspective\n"
+                )
 
             f.write("=" * 80 + "\n\n")
-    
+
     def _get_log_file_for_blackboard(self, blackboard_id: str) -> str:
         """
         Get the appropriate log file path for a blackboard.
@@ -318,8 +328,14 @@ class BlackboardLogger:
         else:
             return getattr(event, property_name, default)
 
-    def log_blackboard_state(self, blackboard: Blackboard, iteration: int = 0,
-                           phase: str = "unknown", agent_name: str = "", round_num: Optional[int] = None):
+    def log_blackboard_state(
+        self,
+        blackboard: Blackboard,
+        iteration: int = 0,
+        phase: str = "unknown",
+        agent_name: str = "",
+        round_num: Optional[int] = None,
+    ):
         """
         Log the complete current state of the blackboard.
 
@@ -330,21 +346,23 @@ class BlackboardLogger:
             agent_name: Name of agent that just acted (optional)
             round_num: Round number within the phase (optional)
         """
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Get the appropriate log file for this blackboard
         log_file = self._get_log_file_for_blackboard(blackboard.blackboard_id)
-        
+
         # Get all events from the blackboard
         all_events = list(blackboard.logs)
-        
+
         # Calculate statistics
         event_stats = self._calculate_event_stats(all_events)
-        
+
         # Build the log content with permanent header
         log_content = "=" * 80 + "\n"
         if blackboard.blackboard_id:
-            log_content += f"BLACKBOARD STATE LOG - {blackboard.blackboard_id.upper()}\n"
+            log_content += (
+                f"BLACKBOARD STATE LOG - {blackboard.blackboard_id.upper()}\n"
+            )
         else:
             log_content += "BLACKBOARD STATE LOG\n"
         log_content += f"Session started: {datetime.fromtimestamp(self.session_start).strftime('%Y-%m-%d %H:%M:%S')}\n"
@@ -363,9 +381,9 @@ class BlackboardLogger:
         log_content += f"- Participants: {', '.join(blackboard.participants)}\n"
         if blackboard.initial_context:
             log_content += f"- Context: {blackboard.initial_context}\n"
-        
+
         log_content += "=" * 80 + "\n\n"
-        
+
         log_content += "=" * 80 + "\n"
         log_content += f"BLACKBOARD STATE UPDATE\n"
         log_content += f"Updated: {timestamp}\n"
@@ -375,22 +393,26 @@ class BlackboardLogger:
         log_content += "\n"
         log_content += f"Total Events: {len(all_events)}\n"
         log_content += "=" * 80 + "\n\n"
-        
+
         # Add event summary
         log_content += "EVENT SUMMARY:\n"
         log_content += f"- Total Events: {len(all_events)}\n"
-        
-        if event_stats['by_type']:
-            type_summary = ", ".join([f"{k}({v})" for k, v in event_stats['by_type'].items()])
+
+        if event_stats["by_type"]:
+            type_summary = ", ".join(
+                [f"{k}({v})" for k, v in event_stats["by_type"].items()]
+            )
             log_content += f"- By Type: {type_summary}\n"
-        
-        if event_stats['by_agent']:
-            agent_summary = ", ".join([f"{k}({v})" for k, v in event_stats['by_agent'].items()])
+
+        if event_stats["by_agent"]:
+            agent_summary = ", ".join(
+                [f"{k}({v})" for k, v in event_stats["by_agent"].items()]
+            )
             log_content += f"- By Agent: {agent_summary}\n"
-        
+
         log_content += "\n" + "-" * 80 + "\n"
         log_content += "FULL EVENT LOG:\n\n"
-        
+
         # Add all events in chronological order
         for i, event in enumerate(all_events, 1):
             try:
@@ -403,14 +425,19 @@ class BlackboardLogger:
         log_content += "\n" + "=" * 80 + "\n\n"
 
         # Write to file (overwrite completely)
-        with open(log_file, 'w') as f:
+        with open(log_file, "w") as f:
             f.write(log_content)
-    
-    def log_blackboard_creation(self, blackboard_id: str, participants: List[str], 
-                              initial_context: str = "", inviter: str = ""):
+
+    def log_blackboard_creation(
+        self,
+        blackboard_id: str,
+        participants: List[str],
+        initial_context: str = "",
+        inviter: str = "",
+    ):
         """
         Log the creation of a new blackboard.
-        
+
         Args:
             blackboard_id: ID of the new blackboard
             participants: List of agents participating in the blackboard
@@ -418,8 +445,8 @@ class BlackboardLogger:
             inviter: Agent who created the blackboard (if applicable)
         """
         log_file = self._get_log_file_for_blackboard(blackboard_id)
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         creation_log = f"\n[{timestamp}] BLACKBOARD CREATED\n"
         creation_log += f"ID: {blackboard_id}\n"
         creation_log += f"Participants: {', '.join(participants)}\n"
@@ -428,77 +455,85 @@ class BlackboardLogger:
         if initial_context:
             creation_log += f"Context: {initial_context}\n"
         creation_log += "=" * 50 + "\n\n"
-        
+
         # Append to log file
-        with open(log_file, 'a') as f:
+        with open(log_file, "a") as f:
             f.write(creation_log)
-    
+
     def log_blackboard_join(self, blackboard_id: str, agent_name: str):
         """
         Log an agent joining a blackboard.
-        
+
         Args:
             blackboard_id: ID of the blackboard
             agent_name: Name of the agent joining
         """
         log_file = self._get_log_file_for_blackboard(blackboard_id)
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         join_log = f"[{timestamp}] AGENT JOINED: {agent_name}\n\n"
-        
+
         # Append to log file
-        with open(log_file, 'a') as f:
+        with open(log_file, "a") as f:
             f.write(join_log)
-    
+
     def log_blackboard_exit(self, blackboard_id: str, agent_name: str):
         """
         Log an agent exiting a blackboard.
-        
+
         Args:
             blackboard_id: ID of the blackboard
             agent_name: Name of the agent exiting
         """
         log_file = self._get_log_file_for_blackboard(blackboard_id)
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         exit_log = f"[{timestamp}] AGENT EXITED: {agent_name}\n\n"
-        
+
         # Append to log file
-        with open(log_file, 'a') as f:
+        with open(log_file, "a") as f:
             f.write(exit_log)
-    
+
     def _calculate_event_stats(self, events: List) -> Dict[str, Dict[str, int]]:
         """Calculate statistics about events."""
-        stats = {
-            'by_type': {},
-            'by_agent': {}
-        }
+        stats = {"by_type": {}, "by_agent": {}}
 
         for event in events:
             # Count by type
-            event_type = self._get_event_property(event, 'kind', 'unknown')
-            stats['by_type'][event_type] = stats['by_type'].get(event_type, 0) + 1
+            event_type = self._get_event_property(event, "kind", "unknown")
+            stats["by_type"][event_type] = stats["by_type"].get(event_type, 0) + 1
 
             # Count by agent
-            agent = self._get_event_property(event, 'agent', 'unknown')
-            stats['by_agent'][agent] = stats['by_agent'].get(agent, 0) + 1
+            agent = self._get_event_property(event, "agent", "unknown")
+            stats["by_agent"][agent] = stats["by_agent"].get(agent, 0) + 1
 
         return stats
-    
-    def _format_event(self, event, event_num: int, iteration: int = 0,
-                     phase: str = "unknown") -> str:
+
+    def _format_event(
+        self, event, event_num: int, iteration: int = 0, phase: str = "unknown"
+    ) -> str:
         """Format a single event for logging."""
-        event_ts = self._get_event_property(event, 'ts', time.time())
+        event_ts = self._get_event_property(event, "ts", time.time())
         timestamp = time.strftime("%H:%M:%S", time.localtime(event_ts))
 
         # Build event header with iteration and phase information
         # Use event's stored phase if available, otherwise fall back to current phase parameter
-        event_payload = self._get_event_property(event, 'payload', {})
-        event_phase = event_payload.get('phase', phase) if isinstance(event_payload, dict) else phase
-        phase_display = f"{event_phase.title()}" if event_phase != "unknown" else "Unknown"
+        event_payload = self._get_event_property(event, "payload", {})
+        event_phase = (
+            event_payload.get("phase", phase)
+            if isinstance(event_payload, dict)
+            else phase
+        )
+        phase_display = (
+            f"{event_phase.title()}" if event_phase != "unknown" else "Unknown"
+        )
 
         # Use event's stored iteration if available, otherwise fall back to current iteration parameter
-        event_iteration = event_payload.get('iteration', iteration) if isinstance(event_payload, dict) else iteration
+        event_iteration = (
+            event_payload.get("iteration", iteration)
+            if isinstance(event_payload, dict)
+            else iteration
+        )
 
         # Create header with iteration and round info
         header_parts = [f"Event #{event_num}"]
@@ -506,30 +541,34 @@ class BlackboardLogger:
             header_parts.append(f"Iteration: {event_iteration}")
 
         # Use event's stored round if available, otherwise fall back to current round parameter
-        event_round = event_payload.get('round', None) if isinstance(event_payload, dict) else None
+        event_round = (
+            event_payload.get("round", None)
+            if isinstance(event_payload, dict)
+            else None
+        )
         if event_round is not None:
             header_parts.append(f"Round: {event_round}")
 
-        event_agent = self._get_event_property(event, 'agent', 'unknown')
-        event_kind = self._get_event_property(event, 'kind', 'unknown')
+        event_agent = self._get_event_property(event, "agent", "unknown")
+        event_kind = self._get_event_property(event, "kind", "unknown")
         formatted = f"[{', '.join(header_parts)}] [{timestamp}] [{phase_display}] {event_agent} ({event_kind})"
 
         # Add references if present
-        event_refs = self._get_event_property(event, 'refs', [])
+        event_refs = self._get_event_property(event, "refs", [])
         if event_refs:
             ref_list = ", ".join(event_refs[:3])
             if len(event_refs) > 3:
                 ref_list += "..."
             formatted += f" [refs: {ref_list}]"
-        
+
         # Add payload content based on event type
-        payload = self._get_event_property(event, 'payload', {})
+        payload = self._get_event_property(event, "payload", {})
 
         assert isinstance(payload, dict), f"Payload is not a dict: {payload}"
 
         if event_kind == "message":
             if "message" in payload:
-                formatted += f"  Message: \"{payload['message']}\"\n"
+                formatted += f'  Message: "{payload["message"]}"\n'
 
         elif event_kind in ["proposal", "counter-offer"]:
             if "trade_details" in payload:
@@ -547,68 +586,68 @@ class BlackboardLogger:
                 formatted += "\n"
 
             if "message" in payload:
-                formatted += f"  Message: \"{payload['message']}\"\n"
+                formatted += f'  Message: "{payload["message"]}"\n'
 
         elif event_kind == "negotiate":
             if "message" in payload:
-                formatted += f"  Message: \"{payload['message']}\"\n"
+                formatted += f'  Message: "{payload["message"]}"\n'
 
         elif event_kind == "action":
             if "action_type" in payload:
                 action_type = payload["action_type"]
                 formatted += f"  Action: {action_type}\n"
-                
+
                 if action_type == "trade":
                     # Display verbose trade details
                     target_agent = payload.get("target_agent", "unknown")
                     give_items = payload.get("give_items", [])
                     request_items = payload.get("request_items", [])
                     money_delta = payload.get("money_delta", 0)
-                    
+
                     formatted += f"  Trade: {event_agent} → {target_agent}\n"
-                    
+
                     if money_delta > 0:
                         formatted += f"  Money Exchange: +{money_delta}\n"
                     elif money_delta < 0:
                         formatted += f"  Money Exchange: {money_delta}\n"
                     else:
                         formatted += f"  Money Exchange: +0\n"
-                    
+
                     formatted += f"  Items: -{give_items} +{request_items}\n"
-                    
+
                     # Add agent message if available
                     if "agent_message" in payload:
-                        formatted += f"  Agent Message: \"{payload['agent_message']}\"\n"
-                
+                        formatted += f'  Agent Message: "{payload["agent_message"]}"\n'
+
                 elif action_type == "buy" and "item" in payload:
                     item = payload["item"]
                     formatted += f"  Item: {item}\n"
-                    
+
                     # Add agent message if available
                     if "agent_message" in payload:
-                        formatted += f"  Agent Message: \"{payload['agent_message']}\"\n"
-                
+                        formatted += f'  Agent Message: "{payload["agent_message"]}"\n'
+
                 elif action_type in ["approve", "disapprove"]:
                     # Handle trade approval/disapproval
                     if "trade_id" in payload:
                         formatted += f"  Trade ID: {payload['trade_id']}\n"
-                    
+
                     # Add agent reasoning (stored as "reason" in payload)
                     if "reason" in payload:
-                        formatted += f"  Agent Reason: \"{payload['reason']}\"\n"
-        
+                        formatted += f'  Agent Reason: "{payload["reason"]}"\n'
+
         elif event_kind == "inventory_update":
             # Specific handling for inventory updates
             if "message" in payload:
-                formatted += f"  Message: \"{payload['message']}\"\n"
+                formatted += f'  Message: "{payload["message"]}"\n'
             if "items" in payload:
                 formatted += f"  Current Inventory: {payload['items']}\n"
-        
+
         else:
             # Generic payload handling for other event types
             if "message" in payload:
-                formatted += f"  Message: \"{payload['message']}\"\n"
-            
+                formatted += f'  Message: "{payload["message"]}"\n'
+
             # Add other important payload fields (excluding metadata already shown in header)
             metadata_fields = {"phase", "iteration", "round", "message"}
             for key, value in payload.items():
@@ -646,26 +685,30 @@ class ToolCallLogger:
         self.config = config or {}
         tag_model = get_tag_model_subdir(self.config)
         self.run_timestamp = _resolve_run_timestamp(self.config, run_timestamp)
-        self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
+        self.log_dir = build_log_dir(
+            environment_name, tag_model, seed, self.run_timestamp
+        )
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file_path = self.log_dir / "tool_calls.json"
         self.note_path = self.log_dir / "experiment_note.txt"
 
         if not self.log_file_path.exists():
-            with self.log_file_path.open('w') as f:
+            with self.log_file_path.open("w") as f:
                 json.dump([], f)
         self._snapshot_config()
         self._write_experiment_note()
 
-    def log_tool_call(self,
-                     agent_name: str,
-                     phase: str,
-                     tool_name: str,
-                     parameters: Dict[str, Any],
-                     result: Dict[str, Any],
-                     iteration: Optional[int] = None,
-                     round_num: Optional[int] = None,
-                     duration_ms: Optional[float] = None) -> None:
+    def log_tool_call(
+        self,
+        agent_name: str,
+        phase: str,
+        tool_name: str,
+        parameters: Dict[str, Any],
+        result: Dict[str, Any],
+        iteration: Optional[int] = None,
+        round_num: Optional[int] = None,
+        duration_ms: Optional[float] = None,
+    ) -> None:
         """
         Log a tool call with all relevant metadata.
 
@@ -682,7 +725,11 @@ class ToolCallLogger:
         try:
             # Determine success from result
             if isinstance(result, dict):
-                success = result.get("success", True) if "error" not in result else not bool(result.get("error"))
+                success = (
+                    result.get("success", True)
+                    if "error" not in result
+                    else not bool(result.get("error"))
+                )
             else:
                 success = True
 
@@ -697,19 +744,19 @@ class ToolCallLogger:
                 "parameters": parameters,
                 "result": result,
                 "success": success,
-                "duration_ms": duration_ms
+                "duration_ms": duration_ms,
             }
 
             # Read existing entries, append new one, and write back
             try:
-                with self.log_file_path.open('r') as f:
+                with self.log_file_path.open("r") as f:
                     entries = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 entries = []
 
             entries.append(log_entry)
 
-            with self.log_file_path.open('w') as f:
+            with self.log_file_path.open("w") as f:
                 json.dump(entries, f, indent=2)
 
         except Exception as e:
@@ -718,7 +765,7 @@ class ToolCallLogger:
     def reset_log(self):
         """Reset the tool call log by clearing all entries."""
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        with self.log_file_path.open('w') as f:
+        with self.log_file_path.open("w") as f:
             json.dump([], f)
         self._snapshot_config()
         self._write_experiment_note()
@@ -748,9 +795,15 @@ class ToolCallLogger:
         except OSError:
             pass
 
-    def log_adversarial_agent_action(self, agent_name: str, original_message: str,
-                                     replaced_message: str, phase: str,
-                                     iteration: Optional[int] = None, round_num: Optional[int] = None):
+    def log_adversarial_agent_action(
+        self,
+        agent_name: str,
+        original_message: str,
+        replaced_message: str,
+        phase: str,
+        iteration: Optional[int] = None,
+        round_num: Optional[int] = None,
+    ):
         """Log when an adversarial_agent agent's message is replaced."""
         try:
             log_entry = {
@@ -764,15 +817,15 @@ class ToolCallLogger:
                 "original_message": original_message,
                 "replaced_message": replaced_message,
                 "environment": self.environment_name,
-                "seed": self.seed
+                "seed": self.seed,
             }
             try:
-                with self.log_file_path.open('r') as f:
+                with self.log_file_path.open("r") as f:
                     entries = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 entries = []
             entries.append(log_entry)
-            with self.log_file_path.open('w') as f:
+            with self.log_file_path.open("w") as f:
                 json.dump(entries, f, indent=2)
         except Exception as e:
             print(f"ERROR: Failed to log adversarial_agent action: {e}")
@@ -792,7 +845,9 @@ class PromptLogger:
         self.seed = seed
         tag_model = get_tag_model_subdir(config or {})
         self.run_timestamp = _resolve_run_timestamp(config, run_timestamp)
-        self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
+        self.log_dir = build_log_dir(
+            environment_name, tag_model, seed, self.run_timestamp
+        )
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         # JSON log for programmatic access
@@ -801,14 +856,21 @@ class PromptLogger:
         self.md_log_path = self.log_dir / "agent_prompts.md"
 
         if not self.log_file_path.exists():
-            with self.log_file_path.open('w') as f:
+            with self.log_file_path.open("w") as f:
                 json.dump([], f)
         if not self.md_log_path.exists():
-            with self.md_log_path.open('w') as f:
+            with self.md_log_path.open("w") as f:
                 f.write(f"# Agent Prompts Log - {environment_name} (Seed: {seed})\n\n")
 
-    def log_prompts(self, agent_name: str, system_prompt: str, user_prompt: str,
-                   phase: str, iteration: Optional[int] = None, round_num: Optional[int] = None) -> None:
+    def log_prompts(
+        self,
+        agent_name: str,
+        system_prompt: str,
+        user_prompt: str,
+        phase: str,
+        iteration: Optional[int] = None,
+        round_num: Optional[int] = None,
+    ) -> None:
         """Log both system and user prompts with metadata in JSON and Markdown formats."""
         try:
             timestamp = datetime.now().isoformat()
@@ -821,19 +883,19 @@ class PromptLogger:
                 "iteration": iteration,
                 "round": round_num,
                 "system_prompt": system_prompt,
-                "user_prompt": user_prompt
+                "user_prompt": user_prompt,
             }
 
             # Write to JSON file (for programmatic access)
             try:
-                with self.log_file_path.open('r') as f:
+                with self.log_file_path.open("r") as f:
                     entries = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 entries = []
 
             entries.append(log_entry)
 
-            with self.log_file_path.open('w') as f:
+            with self.log_file_path.open("w") as f:
                 json.dump(entries, f, indent=2)
 
             # Write to Markdown file (for human readability)
@@ -864,7 +926,7 @@ class PromptLogger:
 """
 
             # Append to markdown file
-            with self.md_log_path.open('a') as f:
+            with self.md_log_path.open("a") as f:
                 f.write(md_entry)
 
         except Exception as e:
@@ -874,11 +936,13 @@ class PromptLogger:
         """Reset both JSON and Markdown prompt logs by clearing all entries."""
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        with self.log_file_path.open('w') as f:
+        with self.log_file_path.open("w") as f:
             json.dump([], f)
 
-        with self.md_log_path.open('w') as f:
-            f.write(f"# Agent Prompts Log - {self.environment_name} (Seed: {self.seed})\n\n")
+        with self.md_log_path.open("w") as f:
+            f.write(
+                f"# Agent Prompts Log - {self.environment_name} (Seed: {self.seed})\n\n"
+            )
 
 
 class AgentTrajectoryLogger:
@@ -897,6 +961,7 @@ class AgentTrajectoryLogger:
         seed: int = 0,
         config: Dict[str, Any] = None,
         run_timestamp: Optional[str] = None,
+        log_dir: Optional[Path] = None,
     ):
         """
         Initialize the agent trajectory logger.
@@ -908,22 +973,29 @@ class AgentTrajectoryLogger:
         """
         self.environment_name = environment_name
         self.seed = seed
-        tag_model = get_tag_model_subdir(config or {})
         self.run_timestamp = _resolve_run_timestamp(config, run_timestamp)
-        self.log_dir = build_log_dir(environment_name, tag_model, seed, self.run_timestamp)
+        if log_dir is not None:
+            self.log_dir = Path(log_dir)
+        else:
+            tag_model = get_tag_model_subdir(config or {})
+            self.log_dir = build_log_dir(
+                environment_name, tag_model, seed, self.run_timestamp
+            )
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file_path = self.log_dir / "agent_trajectories.json"
 
         if not self.log_file_path.exists():
-            with self.log_file_path.open('w') as f:
+            with self.log_file_path.open("w") as f:
                 json.dump({}, f)
 
-    def log_trajectory(self,
-                      agent_name: str,
-                      iteration: int,
-                      phase: str,
-                      trajectory_dict: Dict[str, Any],
-                      round_num: Optional[int] = None) -> None:
+    def log_trajectory(
+        self,
+        agent_name: str,
+        iteration: int,
+        phase: str,
+        trajectory_dict: Dict[str, Any],
+        round_num: Optional[int] = None,
+    ) -> None:
         """
         Log a trajectory for an agent during a specific iteration and phase.
 
@@ -940,7 +1012,7 @@ class AgentTrajectoryLogger:
         try:
             # Read existing data
             try:
-                with self.log_file_path.open('r') as f:
+                with self.log_file_path.open("r") as f:
                     data = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 data = {}
@@ -961,20 +1033,26 @@ class AgentTrajectoryLogger:
 
                 round_key = f"round_{round_num}"
                 if round_key not in data[agent_name][iteration_key][phase]:
-                    data[agent_name][iteration_key][phase][round_key] = {"trajectory": {}}
+                    data[agent_name][iteration_key][phase][round_key] = {
+                        "trajectory": {}
+                    }
 
                 # Merge trajectory dict
-                data[agent_name][iteration_key][phase][round_key]["trajectory"].update(trajectory_dict)
+                data[agent_name][iteration_key][phase][round_key]["trajectory"].update(
+                    trajectory_dict
+                )
             else:
                 # Execution phase (no rounds)
                 if phase not in data[agent_name][iteration_key]:
                     data[agent_name][iteration_key][phase] = {"trajectory": {}}
 
                 # Merge trajectory dict
-                data[agent_name][iteration_key][phase]["trajectory"].update(trajectory_dict)
+                data[agent_name][iteration_key][phase]["trajectory"].update(
+                    trajectory_dict
+                )
 
             # Write back to file
-            with self.log_file_path.open('w') as f:
+            with self.log_file_path.open("w") as f:
                 json.dump(data, f, indent=2)
 
         except Exception as e:
@@ -983,6 +1061,6 @@ class AgentTrajectoryLogger:
     def reset_log(self):
         """Reset the agent trajectory log by clearing all entries."""
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        with open(self.log_file_path, 'w') as f:
+        with open(self.log_file_path, "w") as f:
             json.dump({}, f)
         print("Agent trajectory log has been reset for new simulation")

@@ -9,6 +9,7 @@ from ..toolset_discovery import ToolsetDiscovery
 
 logger = logging.getLogger(__name__)
 
+
 class BaseAgent:
     """
     Agent-dependent methods for LLM agents.
@@ -74,11 +75,19 @@ class BaseAgent:
         base_params = {k: v for k, v in base_params.items() if v is not None}
 
         # Provider/model specific overrides from config
-        generation_params_clean = {k: v for k, v in self.generation_params.items() if v is not None}
+        generation_params_clean = {
+            k: v for k, v in self.generation_params.items() if v is not None
+        }
         base_params.update(generation_params_clean)
         return base_params
 
-    def _log_tool_call(self, tool_name: str, arguments: Dict[str, Any], result: Dict[str, Any], start_time: float) -> None:
+    def _log_tool_call(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        result: Dict[str, Any],
+        start_time: float,
+    ) -> None:
         """Helper to log tool calls."""
         if not (self.tool_logger and self.current_agent_name):
             return
@@ -91,7 +100,7 @@ class BaseAgent:
             result=result,
             iteration=self.current_iteration,
             round_num=self.current_round,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
         )
 
     def _log_trajectory(self, trajectory_dict: Dict[str, Any]) -> None:
@@ -102,11 +111,16 @@ class BaseAgent:
                 iteration=self.current_iteration or 0,
                 phase=self.current_phase or "unknown",
                 trajectory_dict=trajectory_dict,
-                round_num=self.current_round
+                round_num=self.current_round,
             )
 
-
-    def set_meta_context(self, agent_name: str, phase: str, iteration: int, round_num: Optional[int] = None) -> None:
+    def set_meta_context(
+        self,
+        agent_name: str,
+        phase: str,
+        iteration: int,
+        round_num: Optional[int] = None,
+    ) -> None:
         """
         Set the current agent context for tool call logging.
 
@@ -121,7 +135,9 @@ class BaseAgent:
         self.current_iteration = iteration
         self.current_round = round_num
 
-    async def _execute_tool_call(self, tool_name: str, tool_arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_tool_call(
+        self, tool_name: str, tool_arguments: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Execute a tool call by delegating to the appropriate tool handler.
 
@@ -133,9 +149,15 @@ class BaseAgent:
             Tool execution result
         """
         start_time = time.time()
-        assert self.communication_protocol is not None, "Communication protocol not set for agent"
-        assert self.current_agent_name is not None, "Agent context not set - call set_meta_context first"
-        assert self.current_phase is not None, "Agent context not set - call set_meta_context first"
+        assert self.communication_protocol is not None, (
+            "Communication protocol not set for agent"
+        )
+        assert self.current_agent_name is not None, (
+            "Agent context not set - call set_meta_context first"
+        )
+        assert self.current_phase is not None, (
+            "Agent context not set - call set_meta_context first"
+        )
 
         result: Dict[str, Any] = {"error": "Unknown error"}
         try:
@@ -144,7 +166,9 @@ class BaseAgent:
 
             available_env_tools = {
                 tool.get("function", {}).get("name")
-                for tool in self.toolset_discovery.get_tools_for_environment(env_name, self.current_phase)
+                for tool in self.toolset_discovery.get_tools_for_environment(
+                    env_name, self.current_phase
+                )
             }
             available_env_tools.discard(None)
             all_env_tools = self.toolset_discovery.get_env_tool_names(env_name)
@@ -160,7 +184,9 @@ class BaseAgent:
                     "error": f"Tool '{tool_name}' is not available during the {self.current_phase} phase."
                 }
             else:
-                raise ValueError(f"Tool '{tool_name}' is not recognized in environment '{self.environment_name}'.")
+                raise ValueError(
+                    f"Tool '{tool_name}' is not recognized in environment '{self.environment_name}'."
+                )
 
             if handler is not None:
                 result = await handler(
@@ -193,8 +219,6 @@ class BaseAgent:
 
         return result
 
-
-
     async def generate_response(
         self,
         *,
@@ -216,13 +240,17 @@ class BaseAgent:
         try:
             self.communication_protocol = communication_protocol
             if self.communication_protocol is None:
-                raise ValueError("communication_protocol must be set for tool-based execution")
+                raise ValueError(
+                    "communication_protocol must be set for tool-based execution"
+                )
 
             if prompts is None:
                 raise ValueError("prompts must be provided to generate a response")
 
             if not self.environment_name:
-                raise ValueError("environment_name must be set when initializing the agent")
+                raise ValueError(
+                    "environment_name must be set when initializing the agent"
+                )
 
             self.set_meta_context(
                 agent_name=agent_name,
@@ -240,12 +268,16 @@ class BaseAgent:
             if system_prompt is None or user_prompt is None:
                 raise ValueError("Prompts returned empty system/user prompt")
 
-            return await self._multi_step_response_generation(system_prompt=system_prompt, user_prompt=user_prompt)
+            return await self._multi_step_response_generation(
+                system_prompt=system_prompt, user_prompt=user_prompt
+            )
         except Exception as e:
             logger.exception("Can't get LLM response: %s", e)
             raise
 
-    async def _multi_step_response_generation(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+    async def _multi_step_response_generation(
+        self, system_prompt: str, user_prompt: str
+    ) -> Dict[str, Any]:
         """
         Generate a response multi-step tool execution loop.
         Example: Call Tool -> Execute Tool (us) -> Append output to context -> Call Tool -> ...
@@ -258,12 +290,16 @@ class BaseAgent:
             Dict with keys: response, usage, model, has_tool_calls, etc.
         """
         # Get tools for this environment and phase.
-        assert self.current_phase is not None, "Agent context not set - call set_meta_context first"
+        assert self.current_phase is not None, (
+            "Agent context not set - call set_meta_context first"
+        )
         env_tools = self.toolset_discovery.get_tools_for_environment(
             self.environment_name,
             self.current_phase,
         )
-        blackboard_tools = self.toolset_discovery.get_tools_for_blackboard(self.current_phase)
+        blackboard_tools = self.toolset_discovery.get_tools_for_blackboard(
+            self.current_phase
+        )
         tool_set = env_tools + blackboard_tools
         params = self._build_generation_params(tool_set=tool_set)
         # Get system and user prompt into Reponses API format
@@ -273,7 +309,9 @@ class BaseAgent:
         total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         # Get a response and update context for next conversation step
         # response object will have tool calls embedded inside and text response
-        response, response_str = self.client.generate_response(input=context, params=params)
+        response, response_str = self.client.generate_response(
+            input=context, params=params
+        )
         total_usage = self.client.get_usage(response, total_usage)
         current_response = response
 
@@ -285,7 +323,11 @@ class BaseAgent:
             self._env_state_committed = False
 
             # Process tool calls and extract content
-            tool_calls_executed, context, step_tools = await self.client.process_tool_calls(
+            (
+                tool_calls_executed,
+                context,
+                step_tools,
+            ) = await self.client.process_tool_calls(
                 current_response,
                 context,
                 self._execute_tool_call,
@@ -306,13 +348,19 @@ class BaseAgent:
 
             # Continue the conversation using the accumulated context
             try:
-                response, response_str = self.client.generate_response(input=context, params=params)
+                response, response_str = self.client.generate_response(
+                    input=context, params=params
+                )
                 total_usage = self.client.get_usage(response, total_usage)
                 current_response = response
                 conversation_steps += 1
-                trajectory_dict[f"step_{conversation_steps}"] = {"reasoning": response_str}
+                trajectory_dict[f"step_{conversation_steps}"] = {
+                    "reasoning": response_str
+                }
             except Exception as e:
-                logger.exception("Failed to continue conversation at step %s: %s", step + 1, e)
+                logger.exception(
+                    "Failed to continue conversation at step %s: %s", step + 1, e
+                )
                 self._log_trajectory(trajectory_dict)
 
                 return {
@@ -321,7 +369,8 @@ class BaseAgent:
                     ),
                     "full_content": response_str,
                     "usage": total_usage,
-                    "model": getattr(current_response, "model", None) or self.model_name,
+                    "model": getattr(current_response, "model", None)
+                    or self.model_name,
                     "tool_calls": None,
                     "has_tool_calls": total_tools_executed > 0,
                     "manual_tool_execution": True,
