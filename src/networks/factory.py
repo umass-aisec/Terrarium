@@ -44,14 +44,22 @@ def build_communication_network(
         if isinstance(center, int):
             center = agents[center]
         center_name = str(center) if center is not None else None
-        return StarNetwork(agents, center=center_name, consolidate_channels=consolidate_channels)
+        return StarNetwork(
+            agents, center=center_name, consolidate_channels=consolidate_channels
+        )
     if topology == "random":
-        raise ValueError("communication_network.topology='random' is not supported; use 'erdos_renyi'.")
+        raise ValueError(
+            "communication_network.topology='random' is not supported; use 'erdos_renyi'."
+        )
     if topology in {"erdos_renyi", "erdos-renyi", "er"}:
         edge_prob = float(cfg["edge_prob"])
         seed_int = int(config["simulation"]["seed"])
-        assert isinstance(edge_prob, (int, float)) and 0 <= edge_prob <= 1, f"communication_network.edge_prob must be a float in [0, 1], got: {edge_prob!r}"
-        assert isinstance(seed_int, int), f"simulation.seed must be an integer, got: {seed_int!r}"
+        assert isinstance(edge_prob, (int, float)) and 0 <= edge_prob <= 1, (
+            f"communication_network.edge_prob must be a float in [0, 1], got: {edge_prob!r}"
+        )
+        assert isinstance(seed_int, int), (
+            f"simulation.seed must be an integer, got: {seed_int!r}"
+        )
         return ErdosRenyiNetwork(
             agents,
             edge_prob=edge_prob,

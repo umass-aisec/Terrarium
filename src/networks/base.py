@@ -23,7 +23,9 @@ class CommunicationNetwork:
 
     def __post_init__(self) -> None:
         if not isinstance(self.graph, nx.Graph):
-            raise TypeError(f"graph must be a networkx.Graph, got: {type(self.graph)!r}")
+            raise TypeError(
+                f"graph must be a networkx.Graph, got: {type(self.graph)!r}"
+            )
         if not isinstance(self.consolidate_channels_enabled, bool):
             raise TypeError(
                 "consolidate_channels_enabled must be a bool, "
@@ -110,7 +112,9 @@ class CommunicationNetwork:
         self.graph.graph[cache_key] = channels
         return channels
 
-    def _ensure_channel_connectivity(self, channels: List[List[str]]) -> List[List[str]]:
+    def _ensure_channel_connectivity(
+        self, channels: List[List[str]]
+    ) -> List[List[str]]:
         """
         Ensure the *channel graph* is connected (or as connected as possible) by
         adding a small number of pairwise channels.
@@ -132,7 +136,9 @@ class CommunicationNetwork:
                 pair_edges.add((participants[0], participants[1]))
 
         # Track which edges existed before we add any connectivity edges.
-        initial_edges: Set[Tuple[str, str]] = {tuple(sorted((u, v))) for u, v in self.graph.edges}
+        initial_edges: Set[Tuple[str, str]] = {
+            tuple(sorted((u, v))) for u, v in self.graph.edges
+        }
 
         # Build channel connectivity via shared participants.
         # Use a union-find for determinism + simplicity.
@@ -192,7 +198,9 @@ class CommunicationNetwork:
 
         components.sort(key=_comp_sort_key)
 
-        def find_bridge(left: Set[str], right: Set[str], *, require_initial: bool) -> Optional[Tuple[str, str]]:
+        def find_bridge(
+            left: Set[str], right: Set[str], *, require_initial: bool
+        ) -> Optional[Tuple[str, str]]:
             left_s = sorted(left)
             right_s = sorted(right)
             for u in left_s:
@@ -217,7 +225,9 @@ class CommunicationNetwork:
             # First pass: look for any initial-graph bridge between components.
             for i in range(len(components)):
                 for j in range(i + 1, len(components)):
-                    edge = find_bridge(components[i], components[j], require_initial=True)
+                    edge = find_bridge(
+                        components[i], components[j], require_initial=True
+                    )
                     if edge is None:
                         continue
                     chosen_i, chosen_j, chosen_edge = i, j, edge
@@ -228,7 +238,9 @@ class CommunicationNetwork:
             # Second pass: no initial edges exist between components; create a synthetic bridge.
             if chosen_edge is None:
                 chosen_i, chosen_j = 0, 1
-                chosen_edge = find_bridge(components[chosen_i], components[chosen_j], require_initial=False)
+                chosen_edge = find_bridge(
+                    components[chosen_i], components[chosen_j], require_initial=False
+                )
                 if chosen_edge is None:  # pragma: no cover
                     # Should be impossible if components are non-empty and disjoint.
                     return normalized
@@ -269,6 +281,7 @@ class CommunicationNetwork:
 
         try:
             import matplotlib
+
             matplotlib.use("Agg", force=True)
             import matplotlib.pyplot as plt
         except Exception as exc:  # pragma: no cover
@@ -308,7 +321,9 @@ class CommunicationNetwork:
 
         pos = nx.spring_layout(graph, seed=seed)
 
-        def channel_color(idx: int, total: int, *, is_clique: bool) -> tuple[float, float, float]:
+        def channel_color(
+            idx: int, total: int, *, is_clique: bool
+        ) -> tuple[float, float, float]:
             # Deterministic HSV rainbow palette. Make cliques more saturated so they stand out.
             if total <= 0:
                 return (0.2, 0.2, 0.2)
@@ -349,9 +364,7 @@ class CommunicationNetwork:
 
         # Draw remaining edges in light gray so the full topology is still visible.
         remaining_edges = [
-            (u, v)
-            for u, v in graph.edges
-            if tuple(sorted((u, v))) not in channel_edges
+            (u, v) for u, v in graph.edges if tuple(sorted((u, v))) not in channel_edges
         ]
         if remaining_edges:
             nx.draw_networkx_edges(
@@ -386,7 +399,9 @@ class CommunicationNetwork:
                 alpha=0.95,
             )
 
-        nx.draw_networkx_nodes(graph, pos=pos, ax=ax, node_size=node_size, node_color="#93c5fd")
+        nx.draw_networkx_nodes(
+            graph, pos=pos, ax=ax, node_size=node_size, node_color="#93c5fd"
+        )
         if with_labels:
             nx.draw_networkx_labels(graph, pos=pos, ax=ax, font_size=font_size)
 
