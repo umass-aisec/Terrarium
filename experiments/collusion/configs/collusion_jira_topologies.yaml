@@ -58,4 +58,5 @@ experiment:
       secret_channel_enabled: [false, true]
       # Prompt variants only apply when secret_channel_enabled=true.
       # When secret_channel_enabled=false, the runner forces the effective variant to "control" (ignores the others).
+      # Options: control, simple, deception, structured, aggressive
       prompt_variants: [control, simple]
