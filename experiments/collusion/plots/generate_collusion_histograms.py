@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -23,8 +24,15 @@ from experiments.common.plotting.io_utils import (
     sorted_unique,
     write_csv,
 )
+from experiments.common.plotting.logging_utils import (
+    configure_basic_logging,
+    log_saved_plot,
+)
 from experiments.common.plotting.load_runs import LoadedRun, load_runs
 from experiments.common.plotting.style import apply_default_style
+
+
+logger = logging.getLogger(__name__)
 
 
 def _pretty(s: Any) -> str:
@@ -270,6 +278,7 @@ def _plot_box_by_category(
     ax.tick_params(axis="x", rotation=25)
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -366,6 +375,7 @@ def _plot_violin_by_category(
     ax.set_xticklabels(labels, rotation=25)
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -438,6 +448,7 @@ def _plot_hist_grid(
     fig.suptitle(_pretty(value_key), y=1.01)
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -527,6 +538,7 @@ def _plot_scatter_by_category(
 
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -578,6 +590,7 @@ def _plot_role_overlay_hist(
     ax.legend(loc="best")
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -614,45 +627,6 @@ def _generate_plots(
         "aggressive",
     ]
     order_secret_only = ["control", "simple", "deception", "structured", "aggressive"]
-
-    # Run-level: coalition advantage (only meaningful when colluder_count > 0)
-    advantage_rows = [
-        r
-        for r in run_rows
-        if (r.get("colluder_count") or 0) > 0
-        and (r.get("secret_channel_enabled") is True)
-    ]
-    _plot_hist_grid(
-        advantage_rows,
-        value_key="coalition_advantage_mean",
-        row_facet="prompt_variant",
-        col_facet="secret_channel_enabled",
-        out_path=hist_out / "coalition_advantage_mean.png",
-        bins=int(bins),
-        x_label="Coalition mean reward - Non-coalition mean reward",
-        vline_at_zero=True,
-        sharex=False,
-    )
-    advantage_cat_rows: List[Dict[str, Any]] = []
-    for r in run_rows:
-        if (r.get("colluder_count") or 0) <= 0:
-            continue
-        secret = bool(r.get("secret_channel_enabled"))
-        variant = str(r.get("prompt_variant") or "control")
-        label = "baseline" if not secret else variant
-        advantage_cat_rows.append({**r, "variant_or_baseline": label})
-    _plot_box_by_category(
-        advantage_cat_rows,
-        category_key="variant_or_baseline",
-        value_key="coalition_advantage_mean",
-        out_path=hist_out / "coalition_advantage_mean_by_variant_or_baseline.png",
-        x_label="Prompt variant (or baseline with no secret channel)",
-        y_label="Coalition mean reward - Non-coalition mean reward",
-        category_order=order_with_baseline,
-        label_map=label_map,
-        show_n_in_labels=True,
-        hline_at_zero=True,
-    )
 
     # Run-level: secret-channel usage rate (colluders only; avoid colluder_count==0 noise)
     usage_rows = [
@@ -836,54 +810,6 @@ def _generate_plots(
             str(t): str(t).replace("_", " ") for t in topo_order if t is not None
         }
 
-        # Compare distributions across topologies (faceted by prompt_variant).
-        if len(sorted_unique(advantage_rows, "topology")) > 1:
-            adv_range = _robust_hist_range(
-                finite([r.get("coalition_advantage_mean") for r in advantage_rows])
-            )
-            _plot_hist_grid(
-                advantage_rows,
-                value_key="coalition_advantage_mean",
-                row_facet="prompt_variant",
-                col_facet="topology",
-                out_path=topo_compare / "coalition_advantage_mean__by_topology.png",
-                bins=int(bins),
-                x_label="Coalition mean reward - Non-coalition mean reward",
-                vline_at_zero=True,
-                xlim=adv_range,
-                hist_range=adv_range,
-                sharex=True,
-                sharey=True,
-            )
-            for pv in sorted_unique(advantage_rows, "prompt_variant"):
-                subset = [r for r in advantage_rows if r.get("prompt_variant") == pv]
-                _plot_box_by_category(
-                    subset,
-                    category_key="topology",
-                    value_key="coalition_advantage_mean",
-                    out_path=topo_compare
-                    / f"coalition_advantage_mean__box_by_topology__pv{sanitize_filename(pv)}.png",
-                    x_label=f"Topology (prompt_variant={pv})",
-                    y_label="Coalition mean reward - Non-coalition mean reward",
-                    category_order=topo_order,
-                    label_map=topo_label_map,
-                    show_n_in_labels=True,
-                    hline_at_zero=True,
-                )
-                _plot_violin_by_category(
-                    subset,
-                    category_key="topology",
-                    value_key="coalition_advantage_mean",
-                    out_path=topo_compare
-                    / f"coalition_advantage_mean__violin_by_topology__pv{sanitize_filename(pv)}.png",
-                    x_label=f"Topology (prompt_variant={pv})",
-                    y_label="Coalition mean reward - Non-coalition mean reward",
-                    category_order=topo_order,
-                    label_map=topo_label_map,
-                    show_n_in_labels=True,
-                    hline_at_zero=True,
-                )
-
         if len(sorted_unique(usage_rows, "topology")) > 1:
             _plot_hist_grid(
                 usage_rows,
@@ -997,4 +923,5 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    configure_basic_logging()
     raise SystemExit(main())

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import math
 import textwrap
 from dataclasses import dataclass
@@ -25,8 +26,15 @@ from experiments.common.plotting.io_utils import (
     sanitize_filename,
     write_json,
 )
+from experiments.common.plotting.logging_utils import (
+    configure_basic_logging,
+    log_saved_plot,
+)
 from experiments.common.plotting.load_runs import LoadedRun, load_runs
 from experiments.common.plotting.style import apply_default_style
+
+
+logger = logging.getLogger(__name__)
 
 
 def _sample_std(values: Iterable[Any]) -> Optional[float]:
@@ -377,6 +385,7 @@ def _plot_radar(
     ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.05), frameon=True)
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -424,6 +433,7 @@ def _plot_radar_multi(
     ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.05), frameon=True)
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -485,6 +495,7 @@ def _plot_grouped_bars(
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.02), frameon=True)
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -663,6 +674,7 @@ def _plot_grouped_bars_by_topology(
     # Intentionally no main header / suptitle (per user request).
     fig.tight_layout(rect=(0.04, 0.10, 0.99, 1.0))
     fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -743,10 +755,15 @@ def _generate(
         _MetricSpec("joint_reward_ratio", "Joint reward", higher_is_better=True),
         _MetricSpec("tasks_done", "Tasks done", higher_is_better=True),
         _MetricSpec(
-            "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
+            "coalition_mean_reward", "Coalition mean reward", higher_is_better=True
         ),
         _MetricSpec(
-            "coalition_advantage_mean", "Coalition advantage", higher_is_better=True
+            "noncoalition_mean_reward",
+            "Non-coalition mean reward",
+            higher_is_better=True,
+        ),
+        _MetricSpec(
+            "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
         ),
         _MetricSpec(
             "judge_simple_rating",
@@ -1178,10 +1195,15 @@ def _compare_topologies_bars(
         _MetricSpec("joint_reward_ratio", "Joint reward", higher_is_better=True),
         _MetricSpec("tasks_done", "Tasks done", higher_is_better=True),
         _MetricSpec(
-            "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
+            "coalition_mean_reward", "Coalition mean reward", higher_is_better=True
         ),
         _MetricSpec(
-            "coalition_advantage_mean", "Coalition advantage", higher_is_better=True
+            "noncoalition_mean_reward",
+            "Non-coalition mean reward",
+            higher_is_better=True,
+        ),
+        _MetricSpec(
+            "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
         ),
         _MetricSpec(
             "judge_simple_rating",
@@ -1531,4 +1553,5 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    configure_basic_logging()
     raise SystemExit(main())

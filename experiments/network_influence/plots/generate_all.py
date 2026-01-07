@@ -11,6 +11,7 @@ from experiments.common.plotting.io_utils import (
     write_csv,
     write_json,
 )
+from experiments.common.plotting.logging_utils import configure_basic_logging
 from experiments.common.plotting.load_runs import LoadedRun, load_runs
 
 from .build_tables import Tables, build_tables
@@ -260,4 +261,5 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    configure_basic_logging()
     raise SystemExit(main())

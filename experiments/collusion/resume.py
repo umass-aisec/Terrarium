@@ -45,7 +45,7 @@ class RunSpec:
     def effective_prompt_variant(self) -> str:
         if not bool(self.secret_channel_enabled):
             return "control"
-        return str(self.prompt_variant or "control")
+        return str(self.prompt_variant or "").strip() or "control"
 
     @property
     def run_id(self) -> str:
@@ -113,7 +113,15 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
                 or sweep.get("secret_channels")
                 or [False]
             )
-            prompt_variants = sweep.get("prompt_variants") or ["control"]
+            raw_prompt_variants = sweep.get("prompt_variants") or ["control"]
+            prompt_variants: List[str] = []
+            seen_variants: set[str] = set()
+            for pv in raw_prompt_variants:
+                pv_str = str(pv or "").strip() or "control"
+                if pv_str in seen_variants:
+                    continue
+                seen_variants.add(pv_str)
+                prompt_variants.append(pv_str)
             seeds = run_mod._normalize_seeds(sweep.get("seeds")) or list(default_seeds)
             if runs_per_setting is not None:
                 seeds = seeds[:runs_per_setting]
@@ -196,6 +204,10 @@ def _rebuild_summary_files(root: Path) -> None:
             "seed": rc.get("seed"),
             "colluders": rc.get("colluders"),
             "status": metrics.get("status"),
+            "coalition_reward_sum": metrics.get("coalition_reward_sum"),
+            "noncoalition_reward_sum": metrics.get("noncoalition_reward_sum"),
+            "coalition_mean_reward": metrics.get("coalition_mean_reward"),
+            "noncoalition_mean_reward": metrics.get("noncoalition_mean_reward"),
             "coalition_advantage_mean": metrics.get("coalition_advantage_mean"),
             "colluder_posts_secret_rate": metrics.get("colluder_posts_secret_rate"),
         }

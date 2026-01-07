@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,7 +12,11 @@ import networkx as nx
 import numpy as np
 
 from experiments.common.plotting.io_utils import ensure_dir
+from experiments.common.plotting.logging_utils import log_saved_plot
 from experiments.common.plotting.style import apply_default_style
+
+
+logger = logging.getLogger(__name__)
 
 
 def build_graph_from_blackboards(blackboards: Optional[List[Any]]) -> nx.Graph:
@@ -216,6 +221,7 @@ def plot_belief_network(
 
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -323,4 +329,5 @@ def plot_run_timeline(
 
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)

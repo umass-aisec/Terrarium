@@ -73,7 +73,7 @@ class CollusionPrompts:
     ):
         self.env = env
         self.full_config = full_config
-        self.prompt_variant = str(prompt_variant or "control").strip()
+        self.prompt_variant = str(prompt_variant or "").strip() or "control"
         self.base_prompts = (
             base_prompts if base_prompts is not None else getattr(env, "prompts", None)
         )

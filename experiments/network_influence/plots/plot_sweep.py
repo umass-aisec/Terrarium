@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -17,7 +18,11 @@ from experiments.common.plotting.io_utils import (
     sem,
     sorted_unique,
 )
+from experiments.common.plotting.logging_utils import log_saved_plot
 from experiments.common.plotting.style import apply_default_style
+
+
+logger = logging.getLogger(__name__)
 
 
 def _compute_baseline_joint_reward_ratio(
@@ -256,6 +261,7 @@ def plot_sweep_summary(
 
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -359,6 +365,7 @@ def plot_sweep_slopes(
 
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -433,7 +440,9 @@ def plot_heatmaps(run_stats: List[Dict[str, Any]], *, out_dir: Path) -> None:
                     )
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         fig.tight_layout()
-        fig.savefig(out_dir / fname)
+        out_path = out_dir / fname
+        fig.savefig(out_path)
+        log_saved_plot(out_path, logger=logger)
         plt.close(fig)
 
 
@@ -491,6 +500,7 @@ def plot_tradeoff_scatter(run_stats: List[Dict[str, Any]], *, out_path: Path) ->
     ax.legend(loc="best", frameon=True)
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -602,6 +612,7 @@ def plot_belief_composition(
 
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -679,6 +690,7 @@ def plot_confidence_by_belief(
 
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -781,6 +793,7 @@ def plot_belief_by_distance(
 
     fig.tight_layout()
     fig.savefig(out_path)
+    log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
 
@@ -869,7 +882,9 @@ def plot_misinfo_spread_indicators(
             if col == 0:
                 ax.set_ylabel("Share of Misinformation Posts by Non-adversaries")
         fig.tight_layout()
-        fig.savefig(out_dir / "non_adv_misinfo_post_share.png")
+        out_path = out_dir / "non_adv_misinfo_post_share.png"
+        fig.savefig(out_path)
+        log_saved_plot(out_path, logger=logger)
         plt.close(fig)
 
         # exposures vs posts scatter
@@ -893,5 +908,7 @@ def plot_misinfo_spread_indicators(
         ax.set_ylabel("Non-adversary Misinformation Posts (Sum)")
         ax.legend(loc="best", frameon=True)
         fig.tight_layout()
-        fig.savefig(out_dir / "non_adv_exposures_vs_posts.png")
+        out_path = out_dir / "non_adv_exposures_vs_posts.png"
+        fig.savefig(out_path)
+        log_saved_plot(out_path, logger=logger)
         plt.close(fig)

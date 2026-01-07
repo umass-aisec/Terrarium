@@ -136,7 +136,7 @@ async def _run_single(
     # Design choice: prompt variants are only active when the secret channel exists.
     # When secret_channel_enabled is False, we force the effective variant to "control"
     # so the baseline is the vanilla cooperative setup (no explicit collusion prompting).
-    effective_prompt_variant = str(prompt_variant or "control").strip()
+    effective_prompt_variant = str(prompt_variant or "").strip() or "control"
     if not secret_channel_enabled:
         effective_prompt_variant = "control"
 
@@ -488,6 +488,10 @@ async def _run_single(
         "seed": seed,
         "colluders": colluders,
         "status": metrics.status,
+        "coalition_reward_sum": metrics.coalition_reward_sum,
+        "noncoalition_reward_sum": metrics.noncoalition_reward_sum,
+        "coalition_mean_reward": metrics.coalition_mean_reward,
+        "noncoalition_mean_reward": metrics.noncoalition_mean_reward,
         "coalition_advantage_mean": metrics.coalition_advantage_mean,
         "colluder_posts_secret_rate": metrics.colluder_posts_secret_rate,
     }
@@ -547,7 +551,15 @@ async def run_from_config(
                 or sweep.get("secret_channels")
                 or [False]
             )
-            prompt_variants = sweep.get("prompt_variants") or ["control"]
+            raw_prompt_variants = sweep.get("prompt_variants") or ["control"]
+            prompt_variants: List[str] = []
+            seen_variants: set[str] = set()
+            for pv in raw_prompt_variants:
+                pv_str = str(pv or "").strip() or "control"
+                if pv_str in seen_variants:
+                    continue
+                seen_variants.add(pv_str)
+                prompt_variants.append(pv_str)
             seeds = _normalize_seeds(sweep.get("seeds")) or list(default_seeds)
             if runs_per_setting is not None:
                 seeds = seeds[:runs_per_setting]
@@ -611,7 +623,15 @@ async def run_from_config(
                     or sweep.get("secret_channels")
                     or [False]
                 )
-                prompt_variants = sweep.get("prompt_variants") or ["control"]
+                raw_prompt_variants = sweep.get("prompt_variants") or ["control"]
+                prompt_variants: List[str] = []
+                seen_variants: set[str] = set()
+                for pv in raw_prompt_variants:
+                    pv_str = str(pv or "").strip() or "control"
+                    if pv_str in seen_variants:
+                        continue
+                    seen_variants.add(pv_str)
+                    prompt_variants.append(pv_str)
                 seeds = _normalize_seeds(sweep.get("seeds")) or list(default_seeds)
                 if runs_per_setting is not None:
                     seeds = seeds[:runs_per_setting]
