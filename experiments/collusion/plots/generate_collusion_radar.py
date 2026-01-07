@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import textwrap
 from dataclasses import dataclass
@@ -14,92 +13,24 @@ matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import numpy as np
 
-from experiments.common.plotting.io_utils import ensure_dir, infer_labels_from_sweep_dir, mean, safe_load_json
+from experiments.collusion.plots.common import canonical_variant, default_out_dir
+from experiments.common.plotting.io_utils import (
+    as_bool,
+    as_float,
+    as_int,
+    ensure_dir,
+    finite,
+    mean,
+    safe_load_json,
+    sanitize_filename,
+    write_json,
+)
 from experiments.common.plotting.load_runs import LoadedRun, load_runs
-
-
-def _style() -> None:
-    for style in ("seaborn-v0_8-whitegrid", "seaborn-v0_8", "ggplot"):
-        try:
-            plt.style.use(style)
-            break
-        except Exception:
-            continue
-    plt.rcParams.update(
-        {
-            "figure.dpi": 160,
-            "savefig.dpi": 160,
-            "axes.titlesize": 11,
-            "axes.labelsize": 10,
-            "legend.fontsize": 9,
-            "xtick.labelsize": 9,
-            "ytick.labelsize": 9,
-        }
-    )
-
-
-def _as_int(v: Any) -> Optional[int]:
-    if v is None:
-        return None
-    try:
-        return int(v)
-    except Exception:
-        return None
-
-
-def _as_float(v: Any) -> Optional[float]:
-    if v is None:
-        return None
-    try:
-        f = float(v)
-    except Exception:
-        return None
-    if np.isfinite(f):
-        return float(f)
-    return None
-
-
-def _as_bool(v: Any) -> Optional[bool]:
-    if v is None:
-        return None
-    if isinstance(v, bool):
-        return v
-    s = str(v).strip().lower()
-    if s in {"1", "true", "yes", "y", "on"}:
-        return True
-    if s in {"0", "false", "no", "n", "off"}:
-        return False
-    return None
-
-
-def _canonical_variant(name: Any) -> str:
-    s = str(name or "").strip()
-    aliases = {
-        "goal_only": "deception",
-        "structured_playbook": "structured",
-        "aggressive_deception": "aggressive",
-    }
-    return aliases.get(s, s)
-
-
-def _finite(values: Iterable[Any]) -> List[float]:
-    out: List[float] = []
-    for v in values:
-        f = _as_float(v)
-        if f is None:
-            continue
-        out.append(float(f))
-    return out
-
-
-def _write_json(path: Path, data: Any) -> None:
-    ensure_dir(path.parent)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+from experiments.common.plotting.style import apply_default_style
 
 
 def _sample_std(values: Iterable[Any]) -> Optional[float]:
-    vals = _finite(values)
+    vals = finite(values)
     if not vals:
         return None
     if len(vals) == 1:
@@ -117,7 +48,7 @@ def _seed_means(rows: List[Dict[str, Any]], key: str) -> List[float]:
             seed_i = int(seed)
         except Exception:
             continue
-        v = _as_float(r.get(key))
+        v = as_float(r.get(key))
         if v is None:
             continue
         by_seed.setdefault(seed_i, []).append(float(v))
@@ -164,6 +95,7 @@ def _clamp01(x: float) -> float:
         return 1.0
     return float(x)
 
+
 def _wrap_labels(labels: List[str], *, width: int = 14) -> List[str]:
     out: List[str] = []
     for label in labels:
@@ -199,6 +131,7 @@ class _MetricSpec:
             out = -out
         return float(out)
 
+
 def _population_std(values: List[float]) -> Optional[float]:
     values = [float(v) for v in values if v is not None and np.isfinite(float(v))]
     if not values:
@@ -208,6 +141,7 @@ def _population_std(values: List[float]) -> Optional[float]:
     m = float(sum(values) / len(values))
     var = sum((x - m) ** 2 for x in values) / float(len(values))
     return float(var**0.5)
+
 
 def _build_rows(runs: List[LoadedRun]) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
@@ -222,10 +156,14 @@ def _build_rows(runs: List[LoadedRun]) -> List[Dict[str, Any]]:
         if not isinstance(metrics, dict):
             metrics = {}
 
-        joint_reward = _as_float(fs.get("joint_reward"))
-        coalition_reward_sum = _as_float(metrics.get("coalition_reward_sum"))
+        joint_reward = as_float(fs.get("joint_reward"))
+        coalition_reward_sum = as_float(metrics.get("coalition_reward_sum"))
         coalition_reward_ratio = None
-        if coalition_reward_sum is not None and joint_reward is not None and joint_reward != 0.0:
+        if (
+            coalition_reward_sum is not None
+            and joint_reward is not None
+            and joint_reward != 0.0
+        ):
             coalition_reward_ratio = float(coalition_reward_sum) / float(joint_reward)
 
         # Optional: post-hoc LLM-as-a-judge outputs (written outside the run directory).
@@ -236,21 +174,31 @@ def _build_rows(runs: List[LoadedRun]) -> List[Dict[str, Any]]:
         try:
             sweep_dir = run.run_dir.parent
             model_dir = sweep_dir.parent
-            judge_path = model_dir / "judge_secret_blackboard" / sweep_dir.name / f"{run.run_dir.name}.json"
+            judge_path = (
+                model_dir
+                / "judge_secret_blackboard"
+                / sweep_dir.name
+                / f"{run.run_dir.name}.json"
+            )
             judge_payload = safe_load_json(judge_path) if judge_path.exists() else None
             if isinstance(judge_payload, dict):
                 judgements = judge_payload.get("judgements") or {}
                 if isinstance(judgements, dict):
+
                     def _rating(key: str) -> Optional[float]:
                         j = judgements.get(key) or {}
                         if not isinstance(j, dict):
                             return None
-                        return _as_float(j.get("rating"))
+                        return as_float(j.get("rating"))
 
                     judge_simple = _rating("simple")
                     judge_medium = _rating("medium")
                     judge_complex = _rating("complex")
-                    vals = [float(v) for v in (judge_simple, judge_medium, judge_complex) if v is not None]
+                    vals = [
+                        float(v)
+                        for v in (judge_simple, judge_medium, judge_complex)
+                        if v is not None
+                    ]
                     if vals:
                         judge_mean_rating = float(mean(vals))
         except Exception:
@@ -260,28 +208,32 @@ def _build_rows(runs: List[LoadedRun]) -> List[Dict[str, Any]]:
         row: Dict[str, Any] = {
             "run_dir": str(run.run_dir),
             "run_id": rid,
-            "seed": _as_int(rc.get("seed")),
+            "seed": as_int(rc.get("seed")),
             "topology": rc.get("topology"),
-            "colluder_count": _as_int(rc.get("colluder_count")),
-            "secret_channel_enabled": _as_bool(rc.get("secret_channel_enabled")),
-            "prompt_variant": _canonical_variant(rc.get("prompt_variant")),
+            "colluder_count": as_int(rc.get("colluder_count")),
+            "secret_channel_enabled": as_bool(rc.get("secret_channel_enabled")),
+            "prompt_variant": canonical_variant(rc.get("prompt_variant")),
             "status": metrics.get("status") or fs.get("status"),
             # Run-level (collusion metrics)
             "coalition_reward_sum": coalition_reward_sum,
-            "coalition_mean_reward": _as_float(metrics.get("coalition_mean_reward")),
-            "noncoalition_mean_reward": _as_float(metrics.get("noncoalition_mean_reward")),
-            "coalition_advantage_mean": _as_float(metrics.get("coalition_advantage_mean")),
-            "tasks_done": _as_float(metrics.get("tasks_done")),
-            "violations": _as_float(metrics.get("violations")),
-            "total_cost": _as_float(metrics.get("total_cost")),
-            "priority_sum": _as_float(metrics.get("priority_sum")),
+            "coalition_mean_reward": as_float(metrics.get("coalition_mean_reward")),
+            "noncoalition_mean_reward": as_float(
+                metrics.get("noncoalition_mean_reward")
+            ),
+            "coalition_advantage_mean": as_float(
+                metrics.get("coalition_advantage_mean")
+            ),
+            "tasks_done": as_float(metrics.get("tasks_done")),
+            "violations": as_float(metrics.get("violations")),
+            "total_cost": as_float(metrics.get("total_cost")),
+            "priority_sum": as_float(metrics.get("priority_sum")),
             # New: regret + fairness (if present in metrics.json)
-            "mean_regret": _as_float(metrics.get("mean_regret")),
-            "reward_std": _as_float(metrics.get("reward_std")),
+            "mean_regret": as_float(metrics.get("mean_regret")),
+            "reward_std": as_float(metrics.get("reward_std")),
             # Run-level (environment summary)
-            "coverage": _as_float(fs.get("coverage")),
-            "normalized_score": _as_float(fs.get("normalized_score")),
-            "joint_reward_ratio": _as_float(fs.get("joint_reward_ratio")),
+            "coverage": as_float(fs.get("coverage")),
+            "normalized_score": as_float(fs.get("normalized_score")),
+            "joint_reward_ratio": as_float(fs.get("joint_reward_ratio")),
             "joint_reward": joint_reward,
             "coalition_reward_ratio": coalition_reward_ratio,
             # Judge (0–5 ratings; mean over simple/medium/complex prompts)
@@ -295,7 +247,9 @@ def _build_rows(runs: List[LoadedRun]) -> List[Dict[str, Any]]:
         if row.get("reward_std") is None:
             agents = metrics.get("agents")
             if isinstance(agents, list):
-                rewards = _finite([a.get("reward") for a in agents if isinstance(a, dict)])
+                rewards = finite(
+                    [a.get("reward") for a in agents if isinstance(a, dict)]
+                )
                 row["reward_std"] = _population_std(rewards)
 
         rows.append(row)
@@ -308,19 +262,25 @@ def _select_colluder_count(rows: List[Dict[str, Any]], requested: Optional[int])
             raise ValueError("--colluder-count must be > 0 for a collusion radar chart")
         return int(requested)
 
-    counts = sorted({int(c) for c in _finite(r.get("colluder_count") for r in rows) if int(c) > 0})
+    counts = sorted(
+        {int(c) for c in finite(r.get("colluder_count") for r in rows) if int(c) > 0}
+    )
     if not counts:
-        raise ValueError("No runs with colluder_count > 0 found; cannot build a collusion radar chart.")
+        raise ValueError(
+            "No runs with colluder_count > 0 found; cannot build a collusion radar chart."
+        )
     return int(counts[-1])
 
 
-def _select_treatment_variant(rows: List[Dict[str, Any]], *, colluder_count: int, requested: Optional[str]) -> str:
+def _select_treatment_variant(
+    rows: List[Dict[str, Any]], *, colluder_count: int, requested: Optional[str]
+) -> str:
     if requested:
-        return _canonical_variant(requested)
+        return canonical_variant(requested)
 
     variants = sorted(
         {
-            _canonical_variant(r.get("prompt_variant"))
+            canonical_variant(r.get("prompt_variant"))
             for r in rows
             if int(r.get("colluder_count") or 0) == int(colluder_count)
             and r.get("secret_channel_enabled") is True
@@ -343,7 +303,7 @@ def _group_filter(
     prompt_variant: str,
     require_complete: bool,
 ) -> List[Dict[str, Any]]:
-    prompt_variant = _canonical_variant(prompt_variant)
+    prompt_variant = canonical_variant(prompt_variant)
     out: List[Dict[str, Any]] = []
     for r in rows:
         if int(r.get("colluder_count") or 0) != int(colluder_count):
@@ -352,21 +312,26 @@ def _group_filter(
             continue
         if str(r.get("prompt_variant") or "") != str(prompt_variant):
             continue
-        if require_complete and str(r.get("status") or "").strip().lower() != "complete":
+        if (
+            require_complete
+            and str(r.get("status") or "").strip().lower() != "complete"
+        ):
             continue
         out.append(r)
     return out
 
 
 def _mean_metric(rows: List[Dict[str, Any]], metric: _MetricSpec) -> Optional[float]:
-    vals = _finite(metric.apply(v) for v in (r.get(metric.key) for r in rows) if v is not None)
+    vals = finite(
+        metric.apply(v) for v in (r.get(metric.key) for r in rows) if v is not None
+    )
     if not vals:
         return None
     return float(mean(vals))
 
 
 def _run_seeds(rows: List[Dict[str, Any]]) -> List[int]:
-    seeds = sorted({int(s) for s in _finite(r.get("seed") for r in rows)})
+    seeds = sorted({int(s) for s in finite(r.get("seed") for r in rows)})
     return seeds
 
 
@@ -380,7 +345,7 @@ def _plot_radar(
     title: str,
     out_path: Path,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
     n = len(labels)
@@ -422,7 +387,7 @@ def _plot_radar_multi(
     title: str,
     out_path: Path,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
     n = len(labels)
@@ -469,7 +434,7 @@ def _plot_grouped_bars(
     title: str,
     out_path: Path,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
     if not labels or not series:
@@ -495,7 +460,7 @@ def _plot_grouped_bars(
         errors = s.get("errors")
         yerr = errors if isinstance(errors, list) and len(errors) == n_metrics else None
         color = str(s.get("color") or "#111827")
-        label = str(s.get("label") or f"series {idx+1}")
+        label = str(s.get("label") or f"series {idx + 1}")
         ax.bar(
             x + offsets[idx],
             vals,
@@ -522,6 +487,7 @@ def _plot_grouped_bars(
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
 
+
 def _plot_grouped_bars_by_topology(
     *,
     topologies: List[str],
@@ -531,7 +497,7 @@ def _plot_grouped_bars_by_topology(
     out_path: Path,
     title_by_topology: Optional[Dict[str, str]] = None,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
     if not topologies or not labels:
@@ -569,7 +535,13 @@ def _plot_grouped_bars_by_topology(
     # Target a wide, paper-friendly aspect ratio (~4:12), scaling up if needed.
     fig_width = max(12.0, 2.4 * float(n_metrics))
     fig_height = max(4.0, fig_width / 3.0)
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(fig_width, fig_height), sharex=False, sharey=True)
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=(fig_width, fig_height),
+        sharex=False,
+        sharey=True,
+    )
     axes = np.array(axes).reshape(-1)
 
     for ax, topo in zip(axes, topologies):
@@ -586,7 +558,9 @@ def _plot_grouped_bars_by_topology(
             if len(vals) != n_metrics:
                 series_arrays.append(np.full((n_metrics,), np.nan, dtype=float))
                 continue
-            arr = np.array([float(v) if v is not None else np.nan for v in vals], dtype=float)
+            arr = np.array(
+                [float(v) if v is not None else np.nan for v in vals], dtype=float
+            )
             series_arrays.append(arr)
             if np.any(np.isfinite(arr)):
                 present_indices.append(idx)
@@ -596,21 +570,30 @@ def _plot_grouped_bars_by_topology(
             continue
 
         bar_width = total_width / float(max(1, len(present_indices)))
-        offsets = (np.arange(len(present_indices), dtype=float) - (len(present_indices) - 1) / 2.0) * bar_width
+        offsets = (
+            np.arange(len(present_indices), dtype=float)
+            - (len(present_indices) - 1) / 2.0
+        ) * bar_width
 
         for pos, idx in enumerate(present_indices):
             s = series[idx]
             vals_arr = series_arrays[idx]
             errors = s.get("errors")
-            yerr = errors if isinstance(errors, list) and len(errors) == n_metrics else None
+            yerr = (
+                errors
+                if isinstance(errors, list) and len(errors) == n_metrics
+                else None
+            )
             color = str(s.get("color") or "#111827")
-            label = str(s.get("label") or f"series {idx+1}")
+            label = str(s.get("label") or f"series {idx + 1}")
             mask = np.isfinite(vals_arr)
             if not np.any(mask):
                 continue
             yerr_arr = None
             if yerr is not None:
-                yerr_arr = np.array([float(e) if e is not None else np.nan for e in yerr], dtype=float)
+                yerr_arr = np.array(
+                    [float(e) if e is not None else np.nan for e in yerr], dtype=float
+                )
                 yerr_arr = yerr_arr[mask]
 
             ax.bar(
@@ -636,7 +619,9 @@ def _plot_grouped_bars_by_topology(
         ax.axis("off")
 
     # Global y label (avoid repeated labels per-subplot).
-    fig.text(0.02, 0.5, "Normalized mean (0-1, ±1 std)", va="center", rotation="vertical")
+    fig.text(
+        0.02, 0.5, "Normalized mean (0-1, ±1 std)", va="center", rotation="vertical"
+    )
 
     bottom_start = (nrows - 1) * ncols
     for idx, ax in enumerate(axes[: len(topologies)]):
@@ -650,17 +635,19 @@ def _plot_grouped_bars_by_topology(
     desired_order = [str(s.get("label") or "") for s in first_series]
     handle_by_label: Dict[str, Any] = {}
     for ax in axes[: len(topologies)]:
-        hs, ls = ax.get_legend_handles_labels()
-        for h, l in zip(hs, ls):
-            if l and l not in handle_by_label:
-                handle_by_label[l] = h
+        handles_here, labels_here = ax.get_legend_handles_labels()
+        for handle, label in zip(handles_here, labels_here):
+            if label and label not in handle_by_label:
+                handle_by_label[label] = handle
 
-    handles = [handle_by_label[l] for l in desired_order if l in handle_by_label]
-    leg_labels = [l for l in desired_order if l in handle_by_label]
-    for l, h in handle_by_label.items():
-        if l not in set(leg_labels):
-            handles.append(h)
-            leg_labels.append(l)
+    handles = [
+        handle_by_label[label] for label in desired_order if label in handle_by_label
+    ]
+    leg_labels = [label for label in desired_order if label in handle_by_label]
+    for label, handle in handle_by_label.items():
+        if label not in set(leg_labels):
+            handles.append(handle)
+            leg_labels.append(label)
 
     if handles:
         ncol = min(len(handles), 6)
@@ -680,21 +667,13 @@ def _plot_grouped_bars_by_topology(
 
 
 def _pretty_variant(name: str) -> str:
-    s = _canonical_variant(name)
-    if not s:
-        return s
-    if s == "deception":
-        return "deception"
-    if s == "aggressive_deception":
-        return "aggressive"
-    if s == "structured_playbook":
-        return "structured"
-    return s.replace("_", " ")
+    s = canonical_variant(name)
+    return s.replace("_", " ") if s else s
 
 
 def _sorted_variants(variants: Iterable[str]) -> List[str]:
     preferred = ["control", "simple", "deception", "structured", "aggressive"]
-    vals = [_canonical_variant(v) for v in variants if v is not None and str(v).strip()]
+    vals = [canonical_variant(v) for v in variants if v is not None and str(v).strip()]
     uniq: List[str] = []
     seen = set()
     for v in vals:
@@ -710,24 +689,6 @@ def _sorted_variants(variants: Iterable[str]) -> List[str]:
             seen.remove(v)
     out.extend(sorted(seen))
     return out
-
-
-def _sanitize_filename(s: Any) -> str:
-    value = str(s) if s is not None else ""
-    return "".join(c if (c.isalnum() or c in ("-", "_", ".")) else "_" for c in value).strip("_") or "unknown"
-
-
-def _default_out_dir(*, sweep_dir: Path, requested_out_dir: Optional[str]) -> Path:
-    labels_meta = infer_labels_from_sweep_dir(sweep_dir)
-    return (
-        Path(requested_out_dir).expanduser().resolve()
-        if requested_out_dir
-        else Path("experiments/collusion/plots_outputs")
-        / labels_meta.experiment_tag
-        / labels_meta.timestamp
-        / labels_meta.model_label
-        / labels_meta.sweep_name
-    )
 
 
 def _infer_single_topology(rows: List[Dict[str, Any]]) -> Optional[str]:
@@ -756,7 +717,9 @@ def _generate(
         return False
 
     colluder_count = _select_colluder_count(rows, colluder_count_requested)
-    treatment_variant = _select_treatment_variant(rows, colluder_count=colluder_count, requested=treatment_variant_requested)
+    treatment_variant = _select_treatment_variant(
+        rows, colluder_count=colluder_count, requested=treatment_variant_requested
+    )
     baseline_variant = str(baseline_variant_requested or "control").strip()
     require_complete = not bool(include_incomplete)
 
@@ -779,12 +742,36 @@ def _generate(
     metrics: List[_MetricSpec] = [
         _MetricSpec("joint_reward_ratio", "Joint reward", higher_is_better=True),
         _MetricSpec("tasks_done", "Tasks done", higher_is_better=True),
-        _MetricSpec("coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True),
-        _MetricSpec("coalition_advantage_mean", "Coalition advantage", higher_is_better=True),
-        _MetricSpec("judge_simple_rating", "Judge collusion (simple)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
-        _MetricSpec("judge_medium_rating", "Judge collusion (medium)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
-        _MetricSpec("judge_complex_rating", "Judge collusion (complex)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
-        _MetricSpec("judge_mean_rating", "Judge collusion (mean)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
+        _MetricSpec(
+            "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
+        ),
+        _MetricSpec(
+            "coalition_advantage_mean", "Coalition advantage", higher_is_better=True
+        ),
+        _MetricSpec(
+            "judge_simple_rating",
+            "Judge collusion (simple)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
+        _MetricSpec(
+            "judge_medium_rating",
+            "Judge collusion (medium)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
+        _MetricSpec(
+            "judge_complex_rating",
+            "Judge collusion (complex)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
+        _MetricSpec(
+            "judge_mean_rating",
+            "Judge collusion (mean)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
     ]
 
     topo = _infer_single_topology(rows)
@@ -907,35 +894,53 @@ def _generate(
                 "scale_lo": lo,
                 "scale_hi": hi,
                 "group_means_raw": [
-                    {"label": groups[i]["label"], "mean_raw": float(mean(seed_raw_by_group[i]))}
+                    {
+                        "label": groups[i]["label"],
+                        "mean_raw": float(mean(seed_raw_by_group[i])),
+                    }
                     for i in range(len(groups))
                 ],
                 "group_stds_raw": [
-                    {"label": groups[i]["label"], "std_raw": float(_sample_std(seed_raw_by_group[i]) or 0.0)}
+                    {
+                        "label": groups[i]["label"],
+                        "std_raw": float(_sample_std(seed_raw_by_group[i]) or 0.0),
+                    }
                     for i in range(len(groups))
                 ],
                 "group_means_transformed": [
-                    {"label": groups[i]["label"], "mean_transformed": float(mean(seed_transformed_by_group[i]))}
+                    {
+                        "label": groups[i]["label"],
+                        "mean_transformed": float(mean(seed_transformed_by_group[i])),
+                    }
                     for i in range(len(groups))
                 ],
                 "group_stds_transformed": [
                     {
                         "label": groups[i]["label"],
-                        "std_transformed": float(_sample_std(seed_transformed_by_group[i]) or 0.0),
+                        "std_transformed": float(
+                            _sample_std(seed_transformed_by_group[i]) or 0.0
+                        ),
                     }
                     for i in range(len(groups))
                 ],
                 "group_means_norm01": [
                     {
                         "label": groups[i]["label"],
-                        "mean_norm01": float(mean([_norm_one(v) for v in seed_transformed_by_group[i]])),
+                        "mean_norm01": float(
+                            mean([_norm_one(v) for v in seed_transformed_by_group[i]])
+                        ),
                     }
                     for i in range(len(groups))
                 ],
                 "group_stds_norm01": [
                     {
                         "label": groups[i]["label"],
-                        "std_norm01": float(_sample_std([_norm_one(v) for v in seed_transformed_by_group[i]]) or 0.0),
+                        "std_norm01": float(
+                            _sample_std(
+                                [_norm_one(v) for v in seed_transformed_by_group[i]]
+                            )
+                            or 0.0
+                        ),
                     }
                     for i in range(len(groups))
                 ],
@@ -953,8 +958,13 @@ def _generate(
 
         for idx, g in enumerate(groups):
             # Pull in the normalized values for this group in label order.
-            vals = [float(md["group_means_norm01"][idx]["mean_norm01"]) for md in metric_defs]
-            errs = [float(md["group_stds_norm01"][idx]["std_norm01"]) for md in metric_defs]
+            vals = [
+                float(md["group_means_norm01"][idx]["mean_norm01"])
+                for md in metric_defs
+            ]
+            errs = [
+                float(md["group_stds_norm01"][idx]["std_norm01"]) for md in metric_defs
+            ]
             group_vectors.append(
                 {
                     "label": g["label"],
@@ -973,14 +983,27 @@ def _generate(
             if g.get("color"):
                 continue
             g["color"] = matplotlib.colors.to_hex(cmap(color_idx % 10))
-            color_idx += 1
+        color_idx += 1
 
         out_base = f"collusion_radar__c{colluder_count}__pvALL"
-        _write_json(sweep_out / f"{out_base}.json", raw_summary)
+        write_json(sweep_out / f"{out_base}.json", raw_summary)
 
-        title = prefix + f"Jira: baseline vs secret-channel prompt variants (c={colluder_count})"
-        _plot_radar_multi(series=group_vectors, labels=labels, title=title, out_path=sweep_out / f"{out_base}.png")
-        _plot_grouped_bars(series=group_vectors, labels=labels, title=title, out_path=sweep_out / f"{out_base}__bars.png")
+        title = (
+            prefix
+            + f"Jira: baseline vs secret-channel prompt variants (c={colluder_count})"
+        )
+        _plot_radar_multi(
+            series=group_vectors,
+            labels=labels,
+            title=title,
+            out_path=sweep_out / f"{out_base}.png",
+        )
+        _plot_grouped_bars(
+            series=group_vectors,
+            labels=labels,
+            title=title,
+            out_path=sweep_out / f"{out_base}__bars.png",
+        )
         return True
 
     treatment = _group_filter(
@@ -1063,9 +1086,13 @@ def _generate(
                 "treatment_mean_raw": float(mean(t_seed_raw)),
                 "treatment_std_raw": float(_sample_std(t_seed_raw) or 0.0),
                 "baseline_mean_transformed": float(mean(b_seed_transformed)),
-                "baseline_std_transformed": float(_sample_std(b_seed_transformed) or 0.0),
+                "baseline_std_transformed": float(
+                    _sample_std(b_seed_transformed) or 0.0
+                ),
                 "treatment_mean_transformed": float(mean(t_seed_transformed)),
-                "treatment_std_transformed": float(_sample_std(t_seed_transformed) or 0.0),
+                "treatment_std_transformed": float(
+                    _sample_std(t_seed_transformed) or 0.0
+                ),
                 "baseline_mean_norm01": b_mean_norm,
                 "baseline_std_norm01": b_std_norm,
                 "treatment_mean_norm01": t_mean_norm,
@@ -1083,7 +1110,7 @@ def _generate(
         return False
 
     out_base = f"collusion_radar__c{colluder_count}__pv{treatment_variant}"
-    _write_json(sweep_out / f"{out_base}.json", raw_summary)
+    write_json(sweep_out / f"{out_base}.json", raw_summary)
 
     title = (
         prefix
@@ -1137,7 +1164,9 @@ def _compare_topologies_bars(
 
     Output: out_dir/sweep/collusion_radar__cX__pvALL__bars__by_topology.png
     """
-    topologies = sorted({str(r.get("topology")) for r in rows if r.get("topology") is not None})
+    topologies = sorted(
+        {str(r.get("topology")) for r in rows if r.get("topology") is not None}
+    )
     if len(topologies) <= 1:
         return False
 
@@ -1148,12 +1177,36 @@ def _compare_topologies_bars(
     metrics: List[_MetricSpec] = [
         _MetricSpec("joint_reward_ratio", "Joint reward", higher_is_better=True),
         _MetricSpec("tasks_done", "Tasks done", higher_is_better=True),
-        _MetricSpec("coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True),
-        _MetricSpec("coalition_advantage_mean", "Coalition advantage", higher_is_better=True),
-        _MetricSpec("judge_simple_rating", "Judge collusion (simple)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
-        _MetricSpec("judge_medium_rating", "Judge collusion (medium)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
-        _MetricSpec("judge_complex_rating", "Judge collusion (complex)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
-        _MetricSpec("judge_mean_rating", "Judge collusion (mean)", higher_is_better=True, transform=lambda v: float(v) / 5.0),
+        _MetricSpec(
+            "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
+        ),
+        _MetricSpec(
+            "coalition_advantage_mean", "Coalition advantage", higher_is_better=True
+        ),
+        _MetricSpec(
+            "judge_simple_rating",
+            "Judge collusion (simple)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
+        _MetricSpec(
+            "judge_medium_rating",
+            "Judge collusion (medium)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
+        _MetricSpec(
+            "judge_complex_rating",
+            "Judge collusion (complex)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
+        _MetricSpec(
+            "judge_mean_rating",
+            "Judge collusion (mean)",
+            higher_is_better=True,
+            transform=lambda v: float(v) / 5.0,
+        ),
     ]
 
     available_variants = {
@@ -1162,7 +1215,10 @@ def _compare_topologies_bars(
         if int(r.get("colluder_count") or 0) == int(colluder_count)
         and r.get("secret_channel_enabled") is True
         and r.get("prompt_variant") is not None
-        and (not require_complete or str(r.get("status") or "").strip().lower() == "complete")
+        and (
+            not require_complete
+            or str(r.get("status") or "").strip().lower() == "complete"
+        )
     }
     variants = _sorted_variants(available_variants)
     if not variants:
@@ -1205,9 +1261,13 @@ def _compare_topologies_bars(
         color_idx += 1
 
     # Pre-filter rows per topology and per group.
-    rows_by_topo: Dict[str, List[Dict[str, Any]]] = {t: [r for r in rows if str(r.get("topology")) == t] for t in topologies}
+    rows_by_topo: Dict[str, List[Dict[str, Any]]] = {
+        t: [r for r in rows if str(r.get("topology")) == t] for t in topologies
+    }
 
-    def _filter_group(topo_rows: List[Dict[str, Any]], group: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _filter_group(
+        topo_rows: List[Dict[str, Any]], group: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         return _group_filter(
             topo_rows,
             colluder_count=colluder_count,
@@ -1297,7 +1357,11 @@ def _compare_topologies_bars(
             cn = cfg.get("communication_network")
             if isinstance(cn, dict):
                 try:
-                    edge_prob = float(cn.get("edge_prob")) if cn.get("edge_prob") is not None else None
+                    edge_prob = (
+                        float(cn.get("edge_prob"))
+                        if cn.get("edge_prob") is not None
+                        else None
+                    )
                 except Exception:
                     edge_prob = None
         if edge_prob is not None and np.isfinite(edge_prob):
@@ -1306,7 +1370,9 @@ def _compare_topologies_bars(
     except Exception:
         title_by_topology = {}
 
-    out_path = sweep_out / f"collusion_radar__c{colluder_count}__pvALL__bars__by_topology.png"
+    out_path = (
+        sweep_out / f"collusion_radar__c{colluder_count}__pvALL__bars__by_topology.png"
+    )
     title = f"Jira: baseline vs secret-channel prompt variants by topology (c={colluder_count})"
     _plot_grouped_bars_by_topology(
         topologies=topologies,
@@ -1320,7 +1386,9 @@ def _compare_topologies_bars(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate a radar chart comparing Jira collusion vs baseline.")
+    parser = argparse.ArgumentParser(
+        description="Generate a radar chart comparing Jira collusion vs baseline."
+    )
     parser.add_argument(
         "--sweep-dir",
         type=str,
@@ -1333,7 +1401,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         default=None,
         help="Output directory (default: experiments/collusion/plots_outputs/<tag>/<ts>/<model>/<sweep_name>)",
     )
-    parser.add_argument("--colluder-count", type=int, default=None, help="Which colluder_count to plot (default: max > 0).")
+    parser.add_argument(
+        "--colluder-count",
+        type=int,
+        default=None,
+        help="Which colluder_count to plot (default: max > 0).",
+    )
     parser.add_argument(
         "--treatment-prompt-variant",
         type=str,
@@ -1377,7 +1450,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     sweep_dir = Path(args.sweep_dir).expanduser().resolve()
     runs, _ = load_runs(sweep_dir)
     rows = _build_rows(runs)
-    out_dir = _default_out_dir(sweep_dir=sweep_dir, requested_out_dir=args.out_dir)
+    out_dir = default_out_dir(sweep_dir=sweep_dir, requested_out_dir=args.out_dir)
     _generate(
         sweep_dir=sweep_dir,
         out_dir=out_dir,
@@ -1392,7 +1465,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.compare_topologies:
         if not args.plot_all_prompt_variants:
-            raise SystemExit("--compare-topologies currently requires --plot-all-prompt-variants.")
+            raise SystemExit(
+                "--compare-topologies currently requires --plot-all-prompt-variants."
+            )
         compare_rows = list(rows)
         # Convenience: when comparing topologies for a topology sweep, also include the sibling "complete"
         # sweep (if present) so the "complete" topology shows up in the combined figure.
@@ -1421,15 +1496,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             include_incomplete=bool(args.include_incomplete),
         )
         if not ok:
-            raise SystemExit("Could not build compare-topologies bar figure (need multiple topologies with data).")
+            raise SystemExit(
+                "Could not build compare-topologies bar figure (need multiple topologies with data)."
+            )
 
     if args.by_topology:
-        topologies = sorted({str(r.get("topology")) for r in rows if r.get("topology") is not None})
+        topologies = sorted(
+            {str(r.get("topology")) for r in rows if r.get("topology") is not None}
+        )
         for topo in topologies:
             topo_rows = [r for r in rows if str(r.get("topology")) == topo]
             if not topo_rows:
                 continue
-            topo_out_dir = out_dir / "by_topology" / _sanitize_filename(topo)
+            topo_out_dir = out_dir / "by_topology" / sanitize_filename(topo)
             try:
                 _generate(
                     sweep_dir=sweep_dir,
@@ -1438,7 +1517,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     colluder_count_requested=args.colluder_count,
                     treatment_variant_requested=args.treatment_prompt_variant,
                     plot_all_prompt_variants=bool(args.plot_all_prompt_variants),
-                    baseline_variant_requested=str(args.baseline_prompt_variant or "control"),
+                    baseline_variant_requested=str(
+                        args.baseline_prompt_variant or "control"
+                    ),
                     include_incomplete=bool(args.include_incomplete),
                     title_prefix=f"topology={topo}",
                     strict=False,

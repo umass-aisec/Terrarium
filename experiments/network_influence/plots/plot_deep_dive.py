@@ -1,26 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import matplotlib
+
 matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
 from experiments.common.plotting.io_utils import ensure_dir
-
-
-def _style() -> None:
-    for style in ("seaborn-v0_8-whitegrid", "seaborn-v0_8", "ggplot"):
-        try:
-            plt.style.use(style)
-            break
-        except Exception:
-            continue
-    plt.rcParams.update({"figure.dpi": 160, "savefig.dpi": 160})
+from experiments.common.plotting.style import apply_default_style
 
 
 def build_graph_from_blackboards(blackboards: Optional[List[Any]]) -> nx.Graph:
@@ -108,7 +99,7 @@ def plot_belief_network(
       - believes_truth: green
       - other/unknown: gray
     """
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
     if graph.number_of_nodes() == 0:
@@ -164,7 +155,9 @@ def plot_belief_network(
 
     fig, ax = plt.subplots(figsize=(7.2, 5.6))
     ax.set_title(run_title)
-    nx.draw_networkx_edges(graph, pos, ax=ax, edge_color=edge_colors, width=1.4, alpha=0.65)
+    nx.draw_networkx_edges(
+        graph, pos, ax=ax, edge_color=edge_colors, width=1.4, alpha=0.65
+    )
     nx.draw_networkx_nodes(
         graph,
         pos,
@@ -181,10 +174,42 @@ def plot_belief_network(
     from matplotlib.lines import Line2D
 
     legend_items = [
-        Line2D([0], [0], marker="o", color="w", label="adversary", markerfacecolor="#9467bd", markersize=10),
-        Line2D([0], [0], marker="o", color="w", label="misinfo believer", markerfacecolor="#d62728", markersize=10),
-        Line2D([0], [0], marker="o", color="w", label="truth believer", markerfacecolor="#2ca02c", markersize=10),
-        Line2D([0], [0], marker="o", color="w", label="other/unknown", markerfacecolor="#7f7f7f", markersize=10),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="adversary",
+            markerfacecolor="#9467bd",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="misinfo believer",
+            markerfacecolor="#d62728",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="truth believer",
+            markerfacecolor="#2ca02c",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="other/unknown",
+            markerfacecolor="#7f7f7f",
+            markersize=10,
+        ),
     ]
     ax.legend(handles=legend_items, loc="best", frameon=True)
     ax.axis("off")
@@ -213,7 +238,7 @@ def plot_run_timeline(
       - misinfo posts by planning_round (adversary vs non-adversary)
       - cumulative exposure fraction over planning_round (non-adversary agents)
     """
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
     # Panel 1: misinfo posts by round
@@ -275,8 +300,17 @@ def plot_run_timeline(
         cum_frac.append((exposed / denom) if denom else 0.0)
 
     fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(7.2, 6.0), sharex=True)
-    axes[0].bar(xs, adv_y, color="#9467bd", alpha=0.8, label="Adversary Misinformation Posts")
-    axes[0].bar(xs, non_adv_y, bottom=adv_y, color="#7f7f7f", alpha=0.8, label="Non-adversary Misinformation Posts")
+    axes[0].bar(
+        xs, adv_y, color="#9467bd", alpha=0.8, label="Adversary Misinformation Posts"
+    )
+    axes[0].bar(
+        xs,
+        non_adv_y,
+        bottom=adv_y,
+        color="#7f7f7f",
+        alpha=0.8,
+        label="Non-adversary Misinformation Posts",
+    )
     axes[0].set_ylabel("Number of Misinformation Posts")
     axes[0].set_title(f"{run_title}: Misinformation Posts by Round")
     axes[0].legend(loc="best", frameon=True)

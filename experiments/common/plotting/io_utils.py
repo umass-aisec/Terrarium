@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import json
+import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -122,3 +124,89 @@ def sem(values: List[float]) -> float:
 
 def env_flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def sanitize_filename(value: Any) -> str:
+    raw = str(value) if value is not None else ""
+    return (
+        "".join(c if (c.isalnum() or c in ("-", "_", ".")) else "_" for c in raw).strip(
+            "_"
+        )
+        or "unknown"
+    )
+
+
+def as_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def as_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        f = float(value)
+    except Exception:
+        return None
+    return float(f) if math.isfinite(f) else None
+
+
+def as_bool(value: Any) -> Optional[bool]:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    s = str(value).strip().lower()
+    if s in {"1", "true", "yes", "y", "on"}:
+        return True
+    if s in {"0", "false", "no", "n", "off"}:
+        return False
+    return None
+
+
+def finite(values: Iterable[Any]) -> List[float]:
+    out: List[float] = []
+    for v in values:
+        f = as_float(v)
+        if f is None:
+            continue
+        out.append(float(f))
+    return out
+
+
+def sorted_unique(rows: List[Dict[str, Any]], key: str) -> List[Any]:
+    values = {r.get(key) for r in rows}
+    values.discard(None)
+    try:
+        return sorted(values)
+    except Exception:
+        return sorted(values, key=lambda x: str(x))
+
+
+def write_json(
+    path: Path,
+    data: Any,
+    *,
+    indent: int = 2,
+    sort_keys: bool = False,
+) -> None:
+    ensure_dir(path.parent)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=indent, sort_keys=sort_keys, ensure_ascii=False)
+
+
+def write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
+    ensure_dir(path.parent)
+    if not rows:
+        path.write_text("", encoding="utf-8")
+        return
+    cols = sorted({k for r in rows for k in r.keys()})
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        for r in rows:
+            w.writerow({k: r.get(k) for k in cols})

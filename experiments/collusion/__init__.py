@@ -1,1 +1,1 @@
-"""Covert collusion experiments (local protocol; no MCP server)."""
+"""Emergent and Explicit Collusion Experiments."""

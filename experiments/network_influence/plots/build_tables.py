@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
-from experiments.common.plotting.io_utils import flatten_dict
+from experiments.common.plotting.io_utils import as_float, as_int, flatten_dict
 from experiments.common.plotting.load_runs import LoadedRun
 
 
@@ -13,24 +12,6 @@ class Tables:
     run_rows: List[Dict[str, Any]]
     target_rows: List[Dict[str, Any]]
     agent_rows: List[Dict[str, Any]]
-
-
-def _as_float(v: Any) -> Optional[float]:
-    if v is None:
-        return None
-    try:
-        return float(v)
-    except Exception:
-        return None
-
-
-def _as_int(v: Any) -> Optional[int]:
-    if v is None:
-        return None
-    try:
-        return int(v)
-    except Exception:
-        return None
 
 
 def build_tables(runs: List[LoadedRun]) -> Tables:
@@ -42,9 +23,9 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
         rc = run.run_config or {}
         rid = str(rc.get("run_id") or run.run_dir.name)
         topology = rc.get("topology")
-        num_agents = _as_int(rc.get("num_agents"))
-        adversary_count = _as_int(rc.get("adversary_count"))
-        seed = _as_int(rc.get("seed"))
+        num_agents = as_int(rc.get("num_agents"))
+        adversary_count = as_int(rc.get("adversary_count"))
+        seed = as_int(rc.get("seed"))
 
         fs = run.final_summary or {}
         run_row: Dict[str, Any] = {
@@ -59,11 +40,11 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
             "adversary_count": adversary_count,
             "seed": seed,
             "status": fs.get("status"),
-            "joint_reward": _as_float(fs.get("joint_reward")),
-            "joint_reward_ratio": _as_float(fs.get("joint_reward_ratio")),
-            "average_agent_reward": _as_float(fs.get("average_agent_reward")),
-            "variables_assigned": _as_int(fs.get("variables_assigned")),
-            "total_variables": _as_int(fs.get("total_variables")),
+            "joint_reward": as_float(fs.get("joint_reward")),
+            "joint_reward_ratio": as_float(fs.get("joint_reward_ratio")),
+            "average_agent_reward": as_float(fs.get("average_agent_reward")),
+            "variables_assigned": as_int(fs.get("variables_assigned")),
+            "total_variables": as_int(fs.get("total_variables")),
         }
         run_rows.append(run_row)
 
@@ -103,9 +84,9 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 ]:
                     if k in target_row:
                         if k.endswith("diameter"):
-                            target_row[k] = _as_int(target_row[k])
+                            target_row[k] = as_int(target_row[k])
                         else:
-                            target_row[k] = _as_float(target_row[k])
+                            target_row[k] = as_float(target_row[k])
                 for k in [
                     "total_agents",
                     "adversary_count",
@@ -117,7 +98,7 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                     "believes_truth_non_adversary",
                 ]:
                     if k in target_row:
-                        target_row[k] = _as_int(target_row[k])
+                        target_row[k] = as_int(target_row[k])
                 target_rows.append(target_row)
 
                 # Agent rows (optional)
@@ -147,10 +128,10 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                             "first_misinformation_post_round",
                         ]:
                             if k in arow:
-                                arow[k] = _as_int(arow[k])
+                                arow[k] = as_int(arow[k])
                         for k in ["judge_confidence"]:
                             if k in arow:
-                                arow[k] = _as_float(arow[k])
+                                arow[k] = as_float(arow[k])
                         agent_rows.append(arow)
 
     return Tables(run_rows=run_rows, target_rows=target_rows, agent_rows=agent_rows)

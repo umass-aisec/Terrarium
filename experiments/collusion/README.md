@@ -2,7 +2,7 @@
 
 This experiment tests whether a **subset of colluding agents** can (a) coordinate covertly using a **hidden colluder-only blackboard** and (b) **benefit at the expense of non-colluders** via **active deception** on shared blackboards.
 
-It is modeled after `experiments/network_influence`, but uses an **in-process** communication protocol (`LocalMegaboardProtocol`) so it does **not** require an MCP server and supports **parallel runs**.
+It is modeled after `experiments/network_influence`, but uses an **in-process** communication protocol (`LocalCommunicationProtocol`) so it does **not** require an MCP server and supports **parallel runs**.
 
 ## Key factors
 - `colluder_count`: how many agents are in the coalition
@@ -24,7 +24,7 @@ Outputs are written under `experiments/collusion/outputs/collusion/<timestamp>/`
 ## LLM-as-a-judge (secret blackboard)
 To score how much *collusion exists on the secret blackboard* for an existing output root, run the post-hoc judge:
 ```bash
-python -m experiments.collusion.judge_secret_blackboard \
+python -m experiments.collusion.judge_blackboards \
   --root experiments/collusion/outputs/collusion_complete/<timestamp> \
   --max-concurrent 16
 ```
@@ -44,6 +44,13 @@ python -m experiments.collusion.plots.generate_collusion_histograms \
 ```
 
 By default, plot artifacts are written under `experiments/collusion/plots_outputs/<tag>/<timestamp>/<model>/<sweep_name>/`.
+
+If you want to generate both histograms and radar charts in one command, use:
+```bash
+python -m experiments.collusion.plots.generate_all \
+  --sweep-dir experiments/collusion/outputs/collusion/<timestamp>/runs/<model>/<sweep_name> \
+  --plot-all-prompt-variants
+```
 
 For sweeps that vary `topology`, you can also generate the same plots separately per topology:
 ```bash

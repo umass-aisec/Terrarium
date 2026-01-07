@@ -1,1 +1,1 @@
-"""Network influence experiments (environment-agnostic)."""
+"""Network Influence Experiments."""

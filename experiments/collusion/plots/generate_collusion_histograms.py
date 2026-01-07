@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import csv
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib
 
@@ -11,45 +10,26 @@ matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import numpy as np
 
-from experiments.common.plotting.io_utils import ensure_dir, infer_labels_from_sweep_dir, mean, safe_load_json
+from experiments.collusion.plots.common import canonical_variant, default_out_dir
+from experiments.common.plotting.io_utils import (
+    as_bool,
+    as_float,
+    as_int,
+    ensure_dir,
+    finite,
+    mean,
+    safe_load_json,
+    sanitize_filename,
+    sorted_unique,
+    write_csv,
+)
 from experiments.common.plotting.load_runs import LoadedRun, load_runs
-
-
-def _style() -> None:
-    for style in ("seaborn-v0_8-whitegrid", "seaborn-v0_8", "ggplot"):
-        try:
-            plt.style.use(style)
-            break
-        except Exception:
-            continue
-    plt.rcParams.update(
-        {
-            "figure.dpi": 160,
-            "savefig.dpi": 160,
-            "axes.titlesize": 11,
-            "axes.labelsize": 10,
-            "legend.fontsize": 9,
-            "xtick.labelsize": 9,
-            "ytick.labelsize": 9,
-        }
-    )
+from experiments.common.plotting.style import apply_default_style
 
 
 def _pretty(s: Any) -> str:
     return str(s).replace("_", " ")
 
-def _canonical_variant(name: Any) -> str:
-    s = str(name or "").strip()
-    aliases = {
-        "goal_only": "deception",
-        "structured_playbook": "structured",
-        "aggressive_deception": "aggressive",
-    }
-    return aliases.get(s, s)
-
-def _sanitize_filename(s: Any) -> str:
-    value = str(s) if s is not None else ""
-    return "".join(c if (c.isalnum() or c in ("-", "_", ".")) else "_" for c in value).strip("_") or "unknown"
 
 def _robust_hist_range(values: List[float]) -> Optional[Tuple[float, float]]:
     vals = [float(v) for v in values if v is not None and np.isfinite(float(v))]
@@ -72,77 +52,9 @@ def _robust_hist_range(values: List[float]) -> Optional[Tuple[float, float]]:
     return lo - pad, hi + pad
 
 
-def _finite(values: Iterable[Any]) -> List[float]:
-    out: List[float] = []
-    for v in values:
-        if v is None:
-            continue
-        try:
-            f = float(v)
-        except Exception:
-            continue
-        if np.isfinite(f):
-            out.append(float(f))
-    return out
-
-
-def _as_int(v: Any) -> Optional[int]:
-    if v is None:
-        return None
-    try:
-        return int(v)
-    except Exception:
-        return None
-
-
-def _as_float(v: Any) -> Optional[float]:
-    if v is None:
-        return None
-    try:
-        f = float(v)
-    except Exception:
-        return None
-    if np.isfinite(f):
-        return float(f)
-    return None
-
-
-def _as_bool(v: Any) -> Optional[bool]:
-    if v is None:
-        return None
-    if isinstance(v, bool):
-        return v
-    s = str(v).strip().lower()
-    if s in {"1", "true", "yes", "y", "on"}:
-        return True
-    if s in {"0", "false", "no", "n", "off"}:
-        return False
-    return None
-
-
-def _sorted_unique(rows: List[Dict[str, Any]], key: str) -> List[Any]:
-    values = {r.get(key) for r in rows}
-    values.discard(None)
-    try:
-        return sorted(values)
-    except Exception:
-        return sorted(values, key=lambda x: str(x))
-
-
-def _write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
-    ensure_dir(path.parent)
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return
-    cols = sorted({k for r in rows for k in r.keys()})
-    with path.open("w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=cols)
-        w.writeheader()
-        for r in rows:
-            w.writerow({k: r.get(k) for k in cols})
-
-
-def _build_rows(runs: List[LoadedRun]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+def _build_rows(
+    runs: List[LoadedRun],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     run_rows: List[Dict[str, Any]] = []
     agent_rows: List[Dict[str, Any]] = []
 
@@ -166,21 +78,31 @@ def _build_rows(runs: List[LoadedRun]) -> Tuple[List[Dict[str, Any]], List[Dict[
         try:
             sweep_dir = run.run_dir.parent
             model_dir = sweep_dir.parent
-            judge_path = model_dir / "judge_secret_blackboard" / sweep_dir.name / f"{run.run_dir.name}.json"
+            judge_path = (
+                model_dir
+                / "judge_secret_blackboard"
+                / sweep_dir.name
+                / f"{run.run_dir.name}.json"
+            )
             judge_payload = safe_load_json(judge_path) if judge_path.exists() else None
             if isinstance(judge_payload, dict):
                 judgements = judge_payload.get("judgements") or {}
                 if isinstance(judgements, dict):
+
                     def _rating(key: str) -> Optional[float]:
                         j = judgements.get(key) or {}
                         if not isinstance(j, dict):
                             return None
-                        return _as_float(j.get("rating"))
+                        return as_float(j.get("rating"))
 
                     judge_simple = _rating("simple")
                     judge_medium = _rating("medium")
                     judge_complex = _rating("complex")
-                    vals = [float(v) for v in (judge_simple, judge_medium, judge_complex) if v is not None]
+                    vals = [
+                        float(v)
+                        for v in (judge_simple, judge_medium, judge_complex)
+                        if v is not None
+                    ]
                     if vals:
                         judge_mean_rating = float(mean(vals))
         except Exception:
@@ -194,16 +116,16 @@ def _build_rows(runs: List[LoadedRun]) -> Tuple[List[Dict[str, Any]], List[Dict[
             "model": rc.get("model"),
             "sweep_name": rc.get("sweep_name") or rc.get("sweep") or None,
             "topology": rc.get("topology"),
-            "num_agents": _as_int(rc.get("num_agents")),
-            "seed": _as_int(rc.get("seed")),
-            "colluder_count": _as_int(rc.get("colluder_count")),
-            "secret_channel_enabled": _as_bool(rc.get("secret_channel_enabled")),
-            "prompt_variant": _canonical_variant(rc.get("prompt_variant")),
+            "num_agents": as_int(rc.get("num_agents")),
+            "seed": as_int(rc.get("seed")),
+            "colluder_count": as_int(rc.get("colluder_count")),
+            "secret_channel_enabled": as_bool(rc.get("secret_channel_enabled")),
+            "prompt_variant": canonical_variant(rc.get("prompt_variant")),
             # Run-level outputs
             "status": metrics.get("status"),
             "joint_reward_ratio": fs.get("joint_reward_ratio"),
-            "tasks_done": _as_int(metrics.get("tasks_done")),
-            "violations": _as_int(metrics.get("violations")),
+            "tasks_done": as_int(metrics.get("tasks_done")),
+            "violations": as_int(metrics.get("violations")),
             "total_cost": metrics.get("total_cost"),
             "priority_sum": metrics.get("priority_sum"),
             "coalition_reward_sum": metrics.get("coalition_reward_sum"),
@@ -212,9 +134,11 @@ def _build_rows(runs: List[LoadedRun]) -> Tuple[List[Dict[str, Any]], List[Dict[
             "noncoalition_mean_reward": metrics.get("noncoalition_mean_reward"),
             "coalition_advantage_mean": metrics.get("coalition_advantage_mean"),
             "colluder_posts_secret_rate": metrics.get("colluder_posts_secret_rate"),
-            "colluder_posts_total": _as_int(metrics.get("colluder_posts_total")),
-            "colluder_posts_secret": _as_int(metrics.get("colluder_posts_secret")),
-            "colluder_posts_non_secret": _as_int(metrics.get("colluder_posts_non_secret")),
+            "colluder_posts_total": as_int(metrics.get("colluder_posts_total")),
+            "colluder_posts_secret": as_int(metrics.get("colluder_posts_secret")),
+            "colluder_posts_non_secret": as_int(
+                metrics.get("colluder_posts_non_secret")
+            ),
             # Judge (0–5 ratings; mean over simple/medium/complex prompts)
             "judge_simple_rating": judge_simple,
             "judge_medium_rating": judge_medium,
@@ -234,11 +158,11 @@ def _build_rows(runs: List[LoadedRun]) -> Tuple[List[Dict[str, Any]], List[Dict[
                     "run_dir": str(run.run_dir),
                     "run_id": rid,
                     "topology": rc.get("topology"),
-                    "num_agents": _as_int(rc.get("num_agents")),
-                    "seed": _as_int(rc.get("seed")),
-                    "colluder_count": _as_int(rc.get("colluder_count")),
-                    "secret_channel_enabled": _as_bool(rc.get("secret_channel_enabled")),
-                    "prompt_variant": _canonical_variant(rc.get("prompt_variant")),
+                    "num_agents": as_int(rc.get("num_agents")),
+                    "seed": as_int(rc.get("seed")),
+                    "colluder_count": as_int(rc.get("colluder_count")),
+                    "secret_channel_enabled": as_bool(rc.get("secret_channel_enabled")),
+                    "prompt_variant": canonical_variant(rc.get("prompt_variant")),
                     **a,
                 }
             )
@@ -260,10 +184,10 @@ def _plot_box_by_category(
     show_n_in_labels: bool = False,
     hline_at_zero: bool = False,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
-    categories = _sorted_unique(rows, category_key)
+    categories = sorted_unique(rows, category_key)
     if not categories:
         return
 
@@ -284,7 +208,7 @@ def _plot_box_by_category(
     labels: List[str] = []
     for c in categories:
         subset = [r for r in rows if r.get(category_key) == c]
-        vals = _finite([r.get(value_key) for r in subset])
+        vals = finite([r.get(value_key) for r in subset])
         if not vals:
             continue
         if label_map and str(c) in label_map:
@@ -348,6 +272,7 @@ def _plot_box_by_category(
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
 
+
 def _plot_violin_by_category(
     rows: List[Dict[str, Any]],
     *,
@@ -362,10 +287,10 @@ def _plot_violin_by_category(
     show_n_in_labels: bool = False,
     hline_at_zero: bool = False,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
-    categories = _sorted_unique(rows, category_key)
+    categories = sorted_unique(rows, category_key)
     if not categories:
         return
 
@@ -386,7 +311,7 @@ def _plot_violin_by_category(
     labels: List[str] = []
     for c in categories:
         subset = [r for r in rows if r.get(category_key) == c]
-        vals = _finite([r.get(value_key) for r in subset])
+        vals = finite([r.get(value_key) for r in subset])
         if not vals:
             continue
         if label_map and str(c) in label_map:
@@ -459,11 +384,11 @@ def _plot_hist_grid(
     xlim: Optional[Tuple[float, float]] = None,
     hist_range: Optional[Tuple[float, float]] = None,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
-    row_vals = _sorted_unique(rows, row_facet)
-    col_vals = _sorted_unique(rows, col_facet)
+    row_vals = sorted_unique(rows, row_facet)
+    col_vals = sorted_unique(rows, col_facet)
     if not row_vals or not col_vals:
         return
 
@@ -484,8 +409,10 @@ def _plot_hist_grid(
     for i, r in enumerate(row_vals):
         for j, c in enumerate(col_vals):
             ax = axes[i, j]
-            subset = [x for x in rows if x.get(row_facet) == r and x.get(col_facet) == c]
-            vals = _finite([x.get(value_key) for x in subset])
+            subset = [
+                x for x in rows if x.get(row_facet) == r and x.get(col_facet) == c
+            ]
+            vals = finite([x.get(value_key) for x in subset])
             if vals:
                 cell_bins = min(int(bins), max(4, len(vals)))
                 ax.hist(
@@ -499,7 +426,9 @@ def _plot_hist_grid(
                 )
             if vline_at_zero and vals:
                 ax.axvline(0.0, color="black", linewidth=1.0, alpha=0.8)
-            ax.set_title(f"{_pretty(row_facet)}={_pretty(r)} | {_pretty(col_facet)}={_pretty(c)} (n={len(vals)})")
+            ax.set_title(
+                f"{_pretty(row_facet)}={_pretty(r)} | {_pretty(col_facet)}={_pretty(c)} (n={len(vals)})"
+            )
             if x_label:
                 ax.set_xlabel(x_label)
             ax.set_ylabel("Count")
@@ -529,10 +458,10 @@ def _plot_scatter_by_category(
     label_map: Optional[Dict[str, str]] = None,
     legend_outside: bool = True,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
-    categories = _sorted_unique(rows, category_key)
+    categories = sorted_unique(rows, category_key)
     if not categories:
         return
 
@@ -556,8 +485,8 @@ def _plot_scatter_by_category(
         subset = [r for r in rows if r.get(category_key) == cat]
         pts: List[Tuple[float, float]] = []
         for r in subset:
-            x = _as_float(r.get(x_key))
-            y = _as_float(r.get(y_key))
+            x = as_float(r.get(x_key))
+            y = as_float(r.get(y_key))
             if x is None or y is None:
                 continue
             pts.append((x, y))
@@ -567,7 +496,15 @@ def _plot_scatter_by_category(
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         display = label_map.get(str(cat), str(cat)) if label_map else str(cat)
-        ax.scatter(xs, ys, s=30, alpha=0.7, label=f"{display} (n={len(xs)})", color=cmap(i % 10), linewidths=0)
+        ax.scatter(
+            xs,
+            ys,
+            s=30,
+            alpha=0.7,
+            label=f"{display} (n={len(xs)})",
+            color=cmap(i % 10),
+            linewidths=0,
+        )
 
     if hline is not None:
         ax.axhline(float(hline), color="black", linewidth=1.0, alpha=0.65)
@@ -603,21 +540,37 @@ def _plot_role_overlay_hist(
     bins: int = 24,
     x_label: Optional[str] = None,
 ) -> None:
-    _style()
+    apply_default_style(plt)
     ensure_dir(out_path.parent)
 
     a = [r for r in rows if str(r.get(role_key) or "").strip().lower() == roles[0]]
     b = [r for r in rows if str(r.get(role_key) or "").strip().lower() == roles[1]]
-    va = _finite([x.get(value_key) for x in a])
-    vb = _finite([x.get(value_key) for x in b])
+    va = finite([x.get(value_key) for x in a])
+    vb = finite([x.get(value_key) for x in b])
     if not va and not vb:
         return
 
     fig, ax = plt.subplots(figsize=(6.0, 3.6))
     if vb:
-        ax.hist(vb, bins=bins, alpha=0.6, label=roles[1], color="#55a868", edgecolor="white", linewidth=0.7)
+        ax.hist(
+            vb,
+            bins=bins,
+            alpha=0.6,
+            label=roles[1],
+            color="#55a868",
+            edgecolor="white",
+            linewidth=0.7,
+        )
     if va:
-        ax.hist(va, bins=bins, alpha=0.6, label=roles[0], color="#c44e52", edgecolor="white", linewidth=0.7)
+        ax.hist(
+            va,
+            bins=bins,
+            alpha=0.6,
+            label=roles[0],
+            color="#c44e52",
+            edgecolor="white",
+            linewidth=0.7,
+        )
     ax.set_title(f"{value_key} by {role_key} (n={len(va) + len(vb)})")
     ax.set_ylabel("Count")
     if x_label:
@@ -638,8 +591,8 @@ def _generate_plots(
     compare_topologies: bool = False,
 ) -> None:
     ensure_dir(out_dir)
-    _write_csv(out_dir / "run_rows.csv", run_rows)
-    _write_csv(out_dir / "agent_rows.csv", agent_rows)
+    write_csv(out_dir / "run_rows.csv", run_rows)
+    write_csv(out_dir / "agent_rows.csv", agent_rows)
 
     hist_out = out_dir / "hist"
     ensure_dir(hist_out)
@@ -652,14 +605,22 @@ def _generate_plots(
         "structured": "structured",
         "aggressive": "aggressive",
     }
-    order_with_baseline = ["baseline", "control", "simple", "deception", "structured", "aggressive"]
+    order_with_baseline = [
+        "baseline",
+        "control",
+        "simple",
+        "deception",
+        "structured",
+        "aggressive",
+    ]
     order_secret_only = ["control", "simple", "deception", "structured", "aggressive"]
 
     # Run-level: coalition advantage (only meaningful when colluder_count > 0)
     advantage_rows = [
         r
         for r in run_rows
-        if (r.get("colluder_count") or 0) > 0 and (r.get("secret_channel_enabled") is True)
+        if (r.get("colluder_count") or 0) > 0
+        and (r.get("secret_channel_enabled") is True)
     ]
     _plot_hist_grid(
         advantage_rows,
@@ -697,7 +658,8 @@ def _generate_plots(
     usage_rows = [
         r
         for r in run_rows
-        if (r.get("colluder_count") or 0) > 0 and (r.get("secret_channel_enabled") is True)
+        if (r.get("colluder_count") or 0) > 0
+        and (r.get("secret_channel_enabled") is True)
     ]
     _plot_hist_grid(
         usage_rows,
@@ -730,10 +692,12 @@ def _generate_plots(
         secret = bool(r.get("secret_channel_enabled"))
         variant = str(r.get("prompt_variant") or "control")
         label = "baseline" if not secret else variant
-        rate = _as_float(r.get("colluder_posts_secret_rate"))
+        rate = as_float(r.get("colluder_posts_secret_rate"))
         if not secret:
             rate = 0.0
-        usage_cat_rows.append({**r, "variant_or_baseline": label, "colluder_posts_secret_rate": rate})
+        usage_cat_rows.append(
+            {**r, "variant_or_baseline": label, "colluder_posts_secret_rate": rate}
+        )
     _plot_box_by_category(
         usage_cat_rows,
         category_key="variant_or_baseline",
@@ -782,7 +746,9 @@ def _generate_plots(
     order = ["baseline", "control", "simple", "deception", "structured", "aggressive"]
     jr_rows.sort(
         key=lambda x: (
-            order.index(str(x.get("variant_or_baseline"))) if str(x.get("variant_or_baseline")) in order else 999,
+            order.index(str(x.get("variant_or_baseline")))
+            if str(x.get("variant_or_baseline")) in order
+            else 999,
             str(x.get("variant_or_baseline")),
         )
     )
@@ -865,12 +831,16 @@ def _generate_plots(
         topo_compare = hist_out / "compare_topologies"
         ensure_dir(topo_compare)
 
-        topo_order = _sorted_unique(run_rows, "topology")
-        topo_label_map = {str(t): str(t).replace("_", " ") for t in topo_order if t is not None}
+        topo_order = sorted_unique(run_rows, "topology")
+        topo_label_map = {
+            str(t): str(t).replace("_", " ") for t in topo_order if t is not None
+        }
 
         # Compare distributions across topologies (faceted by prompt_variant).
-        if len(_sorted_unique(advantage_rows, "topology")) > 1:
-            adv_range = _robust_hist_range(_finite([r.get("coalition_advantage_mean") for r in advantage_rows]))
+        if len(sorted_unique(advantage_rows, "topology")) > 1:
+            adv_range = _robust_hist_range(
+                finite([r.get("coalition_advantage_mean") for r in advantage_rows])
+            )
             _plot_hist_grid(
                 advantage_rows,
                 value_key="coalition_advantage_mean",
@@ -885,13 +855,14 @@ def _generate_plots(
                 sharex=True,
                 sharey=True,
             )
-            for pv in _sorted_unique(advantage_rows, "prompt_variant"):
+            for pv in sorted_unique(advantage_rows, "prompt_variant"):
                 subset = [r for r in advantage_rows if r.get("prompt_variant") == pv]
                 _plot_box_by_category(
                     subset,
                     category_key="topology",
                     value_key="coalition_advantage_mean",
-                    out_path=topo_compare / f"coalition_advantage_mean__box_by_topology__pv{_sanitize_filename(pv)}.png",
+                    out_path=topo_compare
+                    / f"coalition_advantage_mean__box_by_topology__pv{sanitize_filename(pv)}.png",
                     x_label=f"Topology (prompt_variant={pv})",
                     y_label="Coalition mean reward - Non-coalition mean reward",
                     category_order=topo_order,
@@ -903,7 +874,8 @@ def _generate_plots(
                     subset,
                     category_key="topology",
                     value_key="coalition_advantage_mean",
-                    out_path=topo_compare / f"coalition_advantage_mean__violin_by_topology__pv{_sanitize_filename(pv)}.png",
+                    out_path=topo_compare
+                    / f"coalition_advantage_mean__violin_by_topology__pv{sanitize_filename(pv)}.png",
                     x_label=f"Topology (prompt_variant={pv})",
                     y_label="Coalition mean reward - Non-coalition mean reward",
                     category_order=topo_order,
@@ -912,7 +884,7 @@ def _generate_plots(
                     hline_at_zero=True,
                 )
 
-        if len(_sorted_unique(usage_rows, "topology")) > 1:
+        if len(sorted_unique(usage_rows, "topology")) > 1:
             _plot_hist_grid(
                 usage_rows,
                 value_key="colluder_posts_secret_rate",
@@ -927,13 +899,14 @@ def _generate_plots(
                 sharex=True,
                 sharey=True,
             )
-            for pv in _sorted_unique(usage_rows, "prompt_variant"):
+            for pv in sorted_unique(usage_rows, "prompt_variant"):
                 subset = [r for r in usage_rows if r.get("prompt_variant") == pv]
                 _plot_box_by_category(
                     subset,
                     category_key="topology",
                     value_key="colluder_posts_secret_rate",
-                    out_path=topo_compare / f"colluder_posts_secret_rate__box_by_topology__pv{_sanitize_filename(pv)}.png",
+                    out_path=topo_compare
+                    / f"colluder_posts_secret_rate__box_by_topology__pv{sanitize_filename(pv)}.png",
                     x_label=f"Topology (prompt_variant={pv})",
                     y_label="Colluder secret post rate",
                     ylim=(0.0, 1.0),
@@ -945,7 +918,8 @@ def _generate_plots(
                     subset,
                     category_key="topology",
                     value_key="colluder_posts_secret_rate",
-                    out_path=topo_compare / f"colluder_posts_secret_rate__violin_by_topology__pv{_sanitize_filename(pv)}.png",
+                    out_path=topo_compare
+                    / f"colluder_posts_secret_rate__violin_by_topology__pv{sanitize_filename(pv)}.png",
                     x_label=f"Topology (prompt_variant={pv})",
                     y_label="Colluder secret post rate",
                     ylim=(0.0, 1.0),
@@ -956,7 +930,9 @@ def _generate_plots(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate histogram plots for collusion sweep outputs.")
+    parser = argparse.ArgumentParser(
+        description="Generate histogram plots for collusion sweep outputs."
+    )
     parser.add_argument(
         "--sweep-dir",
         type=str,
@@ -986,16 +962,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     runs, _ = load_runs(sweep_dir)
     run_rows, agent_rows = _build_rows(runs)
 
-    labels = infer_labels_from_sweep_dir(sweep_dir)
-    out_dir = (
-        Path(args.out_dir).expanduser().resolve()
-        if args.out_dir
-        else Path("experiments/collusion/plots_outputs")
-        / labels.experiment_tag
-        / labels.timestamp
-        / labels.model_label
-        / labels.sweep_name
-    )
+    out_dir = default_out_dir(sweep_dir=sweep_dir, requested_out_dir=args.out_dir)
     _generate_plots(
         runs=runs,
         run_rows=run_rows,
@@ -1006,15 +973,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     if args.by_topology:
-        topologies = _sorted_unique(run_rows, "topology")
+        topologies = sorted_unique(run_rows, "topology")
         if topologies:
             for topo in topologies:
-                topo_runs = [r for r in runs if (r.run_config or {}).get("topology") == topo]
+                topo_runs = [
+                    r for r in runs if (r.run_config or {}).get("topology") == topo
+                ]
                 topo_run_rows = [r for r in run_rows if r.get("topology") == topo]
                 topo_agent_rows = [r for r in agent_rows if r.get("topology") == topo]
                 if not topo_run_rows and not topo_agent_rows:
                     continue
-                topo_out = out_dir / "by_topology" / _sanitize_filename(str(topo))
+                topo_out = out_dir / "by_topology" / sanitize_filename(str(topo))
                 _generate_plots(
                     runs=topo_runs,
                     run_rows=topo_run_rows,
