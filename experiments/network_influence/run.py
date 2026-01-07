@@ -33,10 +33,10 @@ from experiments.network_influence.agents import (
     NetworkInfluenceMeetingAgent,
 )
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
-from experiments.network_influence.judge import JudgeConfig, judge_agent_belief
+from experiments.network_influence.judge_beliefs import JudgeConfig, judge_agent_belief
 from experiments.network_influence.metrics import compute_run_metrics
 from experiments.network_influence.prompts import NetworkInfluencePrompts
-from experiments.network_influence.protocol import LocalMegaboardProtocol
+from experiments.common.local_protocol import LocalCommunicationProtocol
 from llm_server.clients.openai_client import OpenAIClient
 from src.networks import build_communication_network
 from src.logger import AgentTrajectoryLogger
@@ -326,7 +326,7 @@ def _augment_context(base: Dict[str, Any], *, extra: Dict[str, Any]) -> Dict[str
 def _log_blackboards_txt(
     *,
     bb_logger: ExperimentBlackboardLogger,
-    protocol: LocalMegaboardProtocol,
+    protocol: LocalCommunicationProtocol,
     iteration: int,
     phase: str,
     agent_name: str,
@@ -386,7 +386,7 @@ async def _run_single(
         str(cfg.get("experiment", {}).get("tag", "network_influence"))
     ]
 
-    protocol = LocalMegaboardProtocol(config=cfg)
+    protocol = LocalCommunicationProtocol(config=cfg)
     env_cls = _resolve_environment_class(cfg.get("environment") or {})
     env = env_cls(protocol, cfg, tool_logger=type("TL", (), {"log_dir": run_dir})())
     bb_logger = ExperimentBlackboardLogger(cfg, log_root=run_dir)

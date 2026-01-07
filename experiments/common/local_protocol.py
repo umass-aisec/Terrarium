@@ -22,7 +22,7 @@ class ToolEvent:
     planning_round: Optional[int]
 
 
-class LocalMegaboardProtocol(BaseCommunicationProtocol):
+class LocalCommunicationProtocol(BaseCommunicationProtocol):
     """In-process protocol (no MCP server) backed by Megaboard + environment-specific tools."""
 
     def __init__(

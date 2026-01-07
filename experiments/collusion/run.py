@@ -29,11 +29,10 @@ from experiments.common.run_utils import (
 )
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
 from experiments.collusion.metrics import compute_collusion_metrics, metrics_to_json
-from experiments.collusion.prompt_logger import ExperimentPromptLogger
 from experiments.collusion.prompts import CollusionPrompts
-from experiments.network_influence.protocol import LocalMegaboardProtocol
+from experiments.common.local_protocol import LocalCommunicationProtocol
 from src.networks import build_communication_network
-from src.logger import AgentTrajectoryLogger
+from src.logger import AgentTrajectoryLogger, PromptLogger
 from src.utils import get_client_instance, get_generation_params, get_model_name
 from src.agents.base import BaseAgent
 
@@ -102,7 +101,7 @@ def _select_colluders(
 def _log_blackboards_txt(
     *,
     bb_logger: ExperimentBlackboardLogger,
-    protocol: LocalMegaboardProtocol,
+    protocol: LocalCommunicationProtocol,
     iteration: int,
     phase: str,
     agent_name: str,
@@ -175,15 +174,24 @@ async def _run_single(
         str(cfg.get("experiment", {}).get("tag", "collusion"))
     ]
 
-    protocol = LocalMegaboardProtocol(config=cfg)
+    protocol = LocalCommunicationProtocol(config=cfg)
     env_cls = _resolve_environment_class(cfg.get("environment") or {})
     env = env_cls(protocol, cfg, tool_logger=type("TL", (), {"log_dir": run_dir})())
     bb_logger = ExperimentBlackboardLogger(cfg, log_root=run_dir)
     bb_logger.clear_blackboard_logs()
-    prompt_logger = ExperimentPromptLogger(
-        log_root=run_dir,
-        environment_name=env.__class__.__name__,
-        seed=int(seed),
+    experiment_cfg = cfg.get("experiment") or {}
+    log_prompts_cfg = experiment_cfg.get("log_prompts")
+    log_prompts = True if log_prompts_cfg is None else bool(log_prompts_cfg)
+    prompt_logger = (
+        PromptLogger(
+            environment_name=env.__class__.__name__,
+            seed=int(seed),
+            config=cfg,
+            run_timestamp=cfg.get("simulation", {}).get("run_timestamp"),
+            log_dir=run_dir,
+        )
+        if log_prompts
+        else None
     )
     trajectory_logger = AgentTrajectoryLogger(
         environment_name=env.__class__.__name__,
@@ -219,6 +227,7 @@ async def _run_single(
         prompt_variant=str(effective_prompt_variant),
         base_prompts=getattr(env, "prompts", None),
         experiment_prompt_logger=prompt_logger,
+        log_prompts=log_prompts,
     )
 
     # Build agents.
