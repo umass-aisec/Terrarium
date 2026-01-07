@@ -772,14 +772,18 @@ class PromptLogger:
         seed: int = 0,
         config: Dict[str, Any] = None,
         run_timestamp: Optional[str] = None,
+        log_dir: Optional[Path] = None,
     ):
         self.environment_name = environment_name
         self.seed = seed
-        tag_model = get_tag_model_subdir(config or {})
         self.run_timestamp = _resolve_run_timestamp(config, run_timestamp)
-        self.log_dir = build_log_dir(
-            environment_name, tag_model, seed, self.run_timestamp
-        )
+        if log_dir is not None:
+            self.log_dir = Path(log_dir)
+        else:
+            tag_model = get_tag_model_subdir(config or {})
+            self.log_dir = build_log_dir(
+                environment_name, tag_model, seed, self.run_timestamp
+            )
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         # JSON log for programmatic access
@@ -789,7 +793,7 @@ class PromptLogger:
 
         if not self.log_file_path.exists():
             with self.log_file_path.open("w") as f:
-                json.dump([], f)
+                json.dump([], f, ensure_ascii=False)
         if not self.md_log_path.exists():
             with self.md_log_path.open("w") as f:
                 f.write(f"# Agent Prompts Log - {environment_name} (Seed: {seed})\n\n")
@@ -828,7 +832,7 @@ class PromptLogger:
             entries.append(log_entry)
 
             with self.log_file_path.open("w") as f:
-                json.dump(entries, f, indent=2)
+                json.dump(entries, f, indent=2, ensure_ascii=False)
 
             # Write to Markdown file (for human readability)
             # Build metadata string
@@ -869,7 +873,7 @@ class PromptLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         with self.log_file_path.open("w") as f:
-            json.dump([], f)
+            json.dump([], f, ensure_ascii=False)
 
         with self.md_log_path.open("w") as f:
             f.write(
