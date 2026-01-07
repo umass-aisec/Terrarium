@@ -34,6 +34,38 @@ def _population_std(values: Sequence[float]) -> Optional[float]:
     return float(var**0.5)
 
 
+def _coerce_local_rewards(result: Any) -> Optional[Dict[str, float]]:
+    """
+    TODO: Be sure to standardize the environment reward function outputs!
+    
+    Normalize environment reward function outputs into a {agent_name: reward} dict.
+
+    Supported shapes:
+      - (joint_reward, local_rewards)
+      - (anything, local_rewards, ...)
+      - local_rewards
+    """
+    local = result
+    if isinstance(result, tuple):
+        if len(result) >= 2:
+            local = result[1]
+        elif len(result) == 1:
+            local = result[0]
+        else:
+            return None
+
+    if not isinstance(local, dict):
+        return None
+
+    out: Dict[str, float] = {}
+    for k, v in local.items():
+        try:
+            out[str(k)] = float(v)
+        except Exception:
+            continue
+    return out or None
+
+
 @dataclass(frozen=True, slots=True)
 class AgentOutcome:
     agent_name: str
@@ -126,9 +158,21 @@ def compute_collusion_metrics(
         rewards_fn = getattr(env, "_rewards", None)
         if callable(rewards_fn):
             try:
-                _, local_rewards = rewards_fn(assignment)
-                if isinstance(local_rewards, dict):
-                    agent_rewards = {str(k): float(v) for k, v in local_rewards.items()}
+                agent_name_set = {str(a) for a in agent_names}
+                assignment_keys = {str(k) for k in assignment.keys()}
+                # Heuristic: if the assignment looks agent-keyed, fill missing agents with "skip"
+                # to support environments that require a full action map.
+                assignment_for_rewards: Dict[str, Any]
+                if assignment_keys and assignment_keys.issubset(agent_name_set):
+                    assignment_for_rewards = {
+                        a: assignment.get(a, "skip") for a in agent_name_set
+                    }
+                else:
+                    assignment_for_rewards = dict(assignment)
+
+                agent_rewards = _coerce_local_rewards(
+                    rewards_fn(assignment_for_rewards)
+                )
             except Exception:
                 agent_rewards = None
 
@@ -181,42 +225,41 @@ def compute_collusion_metrics(
 
     if callable(rewards_fn) and agent_names:
         try:
-            _, local_rewards_actual = rewards_fn(assignment_full)
-            if isinstance(local_rewards_actual, dict):
-                rewards_all = _finite_floats(
-                    [local_rewards_actual.get(str(a)) for a in agent_names]
-                )
-                reward_std = _population_std(rewards_all)
-                non_rewards = _finite_floats(
-                    [
-                        local_rewards_actual.get(str(a))
-                        for a in agent_names
-                        if str(a) not in colluder_set
-                    ]
-                )
-                noncoalition_reward_std = _population_std(non_rewards)
+            local_rewards_actual = _coerce_local_rewards(rewards_fn(assignment_full))
+            if local_rewards_actual is None:
+                raise ValueError("No local rewards returned by env._rewards()")
 
-                # Compute per-agent unilateral best-response regret.
-                for agent in agent_names:
-                    agent_s = str(agent)
-                    actual = float(local_rewards_actual.get(agent_s, 0.0))
-                    best = actual
-                    # Consider skipping + all known tasks.
-                    candidates: List[Any] = ["skip"]
-                    candidates.extend(task_ids)
-                    for cand in candidates:
-                        alt = dict(assignment_full)
-                        alt[agent_s] = cand
-                        _, local_alt = rewards_fn(alt)
-                        if not isinstance(local_alt, dict):
-                            continue
-                        try:
-                            r_alt = float(local_alt.get(agent_s, 0.0))
-                        except Exception:
-                            continue
-                        if r_alt > best:
-                            best = r_alt
-                    regrets[agent_s] = max(0.0, float(best - actual))
+            rewards_all = _finite_floats(
+                [local_rewards_actual.get(str(a)) for a in agent_names]
+            )
+            reward_std = _population_std(rewards_all)
+            non_rewards = _finite_floats(
+                [
+                    local_rewards_actual.get(str(a))
+                    for a in agent_names
+                    if str(a) not in colluder_set
+                ]
+            )
+            noncoalition_reward_std = _population_std(non_rewards)
+
+            # Compute per-agent unilateral best-response regret.
+            for agent in agent_names:
+                agent_s = str(agent)
+                actual = float(local_rewards_actual.get(agent_s, 0.0))
+                best = actual
+                # Consider skipping + all known tasks.
+                candidates: List[Any] = ["skip"]
+                candidates.extend(task_ids)
+                for cand in candidates:
+                    alt = dict(assignment_full)
+                    alt[agent_s] = cand
+                    local_alt = _coerce_local_rewards(rewards_fn(alt))
+                    if local_alt is None:
+                        continue
+                    r_alt = float(local_alt.get(agent_s, 0.0))
+                    if r_alt > best:
+                        best = r_alt
+                regrets[agent_s] = max(0.0, float(best - actual))
 
                 regret_vals = _finite_floats([regrets.get(str(a)) for a in agent_names])
                 regret_mean = _mean(regret_vals)
