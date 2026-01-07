@@ -6,6 +6,7 @@ import csv
 import json
 import re
 import sys
+import traceback
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -15,7 +16,7 @@ from tqdm import tqdm
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from llm_server.clients.openai_client import OpenAIClient  # noqa: E402
+from llm_server.clients.openai_client import OpenAIClient
 
 
 @dataclass(frozen=True)
@@ -140,80 +141,6 @@ def _fallback_parse_rating(text: str) -> Dict[str, Any]:
     }
 
 
-def _format_secret_blackboard_transcript(
-    *,
-    run_dir: Path,
-    secret_blackboard_id: Optional[int],
-) -> Tuple[str, List[str], Optional[str]]:
-    if secret_blackboard_id is None:
-        return "", [], "no_secret_blackboard_id"
-
-    bb_path = run_dir / "blackboards.json"
-    if not bb_path.exists():
-        return "", [], f"missing_file:{bb_path.name}"
-
-    try:
-        blackboards = json.loads(bb_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        return "", [], f"invalid_json:{bb_path.name}:{exc}"
-
-    if not isinstance(blackboards, list):
-        return "", [], f"invalid_format:{bb_path.name}"
-
-    target_id = str(secret_blackboard_id)
-    bb = None
-    for entry in blackboards:
-        if not isinstance(entry, dict):
-            continue
-        if str(entry.get("blackboard_id")) == target_id:
-            bb = entry
-            break
-
-    if bb is None:
-        return "", [], "secret_blackboard_not_found"
-
-    participants = bb.get("participants") or []
-    if not isinstance(participants, list):
-        participants = []
-    participants = [str(p) for p in participants if p is not None and str(p).strip()]
-
-    events = bb.get("events") or []
-    if not isinstance(events, list):
-        events = []
-
-    lines: List[str] = []
-    for e in events:
-        if not isinstance(e, dict):
-            continue
-        kind = str(e.get("kind") or "").strip().lower()
-        agent = str(e.get("agent") or "").strip()
-        payload = e.get("payload") or {}
-        if not isinstance(payload, dict):
-            payload = {}
-
-        if kind == "context":
-            msg = str(payload.get("message") or "").strip()
-            if msg:
-                lines.append(f"SYSTEM: {msg}")
-            continue
-
-        if kind == "communication":
-            content = str(payload.get("content") or "").strip()
-            if content:
-                lines.append(f"{agent}: {content}" if agent else content)
-            continue
-
-    transcript = "\n".join(lines).strip()
-    if participants:
-        header = (
-            f"Blackboard ID: {target_id}\nParticipants: {', '.join(participants)}\n"
-        )
-    else:
-        header = f"Blackboard ID: {target_id}\nParticipants: (unknown)\n"
-    transcript = (header + "\n" + transcript).strip() if transcript else header.strip()
-    return transcript, participants, None
-
-
 def _format_blackboard_entry_transcript(
     entry: Dict[str, Any],
 ) -> Tuple[str, List[str], bool]:
@@ -260,6 +187,84 @@ def _format_blackboard_entry_transcript(
     return transcript, participants, has_communication
 
 
+def _load_blackboards(run_dir: Path) -> List[Dict[str, Any]]:
+    bb_path = run_dir / "blackboards.json"
+    try:
+        raw = bb_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"{run_dir.name}: missing {bb_path}") from exc
+
+    try:
+        parsed = json.loads(raw)
+    except Exception as exc:
+        raise ValueError(f"{run_dir.name}: invalid JSON in {bb_path}") from exc
+
+    if not isinstance(parsed, list):
+        raise TypeError(
+            f"{run_dir.name}: expected a list in {bb_path} (got {type(parsed).__name__})"
+        )
+
+    blackboards = [b for b in parsed if isinstance(b, dict)]
+    if not blackboards:
+        raise ValueError(f"{run_dir.name}: no blackboards found in {bb_path}")
+    return blackboards
+
+
+def _find_blackboard(blackboards: List[Dict[str, Any]], blackboard_id: int) -> Dict[str, Any]:
+    target_id = str(int(blackboard_id))
+    for entry in blackboards:
+        if str(entry.get("blackboard_id") or "") == target_id:
+            return entry
+    raise KeyError(f"blackboard_id={target_id} not found")
+
+
+def _base_payload(
+    *,
+    run_dir: Path,
+    run_cfg: Dict[str, Any],
+    secret_channel_enabled: bool,
+    secret_blackboard_id: Optional[int],
+    participants: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "run_id": str(run_cfg.get("run_id") or run_dir.name),
+        "run_dir": str(run_dir),
+        "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
+        "model_label": str(run_cfg.get("model_label") or run_dir.parent.parent.name),
+        "provider": run_cfg.get("provider"),
+        "model": run_cfg.get("model"),
+        "seed": run_cfg.get("seed"),
+        "topology": run_cfg.get("topology"),
+        "prompt_variant": run_cfg.get("prompt_variant"),
+        "secret_channel_enabled": bool(secret_channel_enabled),
+        "secret_blackboard_id": secret_blackboard_id,
+    }
+    if participants is not None:
+        payload["participants"] = participants
+    return payload
+
+
+def _write_payload(out_file: Path, payload: Dict[str, Any]) -> None:
+    _ensure_dir(out_file.parent)
+    _atomic_write_json(out_file, payload)
+
+
+def _zero_judgements(*, rationale: str) -> Dict[str, Dict[str, Any]]:
+    return {
+        p.name: asdict(
+            JudgeResult(
+                rating=0,
+                rationale=rationale,
+                raw_json={"rating": 0, "rationale": rationale},
+                raw_text=None,
+                parse_error=None,
+                request_error=None,
+            )
+        )
+        for p in JUDGE_PROMPTS
+    }
+
+
 def _judge_once(
     *,
     judge_cfg: JudgeConfig,
@@ -292,19 +297,9 @@ def _judge_once(
         "tools": [],
     }
 
-    try:
-        client = OpenAIClient()
-        context = client.init_context(system, user)
-        _, response_text = client.generate_response(input=context, params=params)
-    except Exception as exc:
-        return JudgeResult(
-            rating=0,
-            rationale=None,
-            raw_json={},
-            raw_text=None,
-            parse_error=None,
-            request_error=str(exc),
-        )
+    client = OpenAIClient()
+    context = client.init_context(system, user)
+    _, response_text = client.generate_response(input=context, params=params)
 
     parsed, err = _extract_json(response_text)
     if parsed is None:
@@ -329,6 +324,34 @@ def _judge_once(
         parse_error=err,
         request_error=None,
     )
+
+
+async def _judge_with_retries(
+    *,
+    judge_cfg: JudgeConfig,
+    prompt: JudgePrompt,
+    transcript: str,
+    max_retries: int,
+) -> JudgeResult:
+    last_exc: Optional[BaseException] = None
+    for attempt in range(max(0, int(max_retries)) + 1):
+        try:
+            return await asyncio.to_thread(
+                _judge_once,
+                judge_cfg=judge_cfg,
+                prompt=prompt,
+                transcript=transcript,
+            )
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_retries:
+                await asyncio.sleep(min(8.0, 2.0**attempt))
+                continue
+            raise RuntimeError(
+                f"Judge request failed after {attempt + 1} attempt(s)."
+            ) from exc
+
+    raise RuntimeError("Unreachable") from last_exc
 
 
 def _iter_run_dirs(root: Path) -> Iterable[Path]:
@@ -385,19 +408,10 @@ async def _evaluate_run(
     out_file = _result_file_for_run(run_dir)
 
     run_cfg_path = run_dir / "run_config.json"
-    if not run_cfg_path.exists():
-        return "skipped_missing_run_config", run_dir.name
-
     try:
         run_cfg = _read_json(run_cfg_path)
     except Exception as exc:
-        payload = {
-            "run_dir": str(run_dir),
-            "error": f"invalid_json:run_config.json:{exc}",
-        }
-        _ensure_dir(out_file.parent)
-        _atomic_write_json(out_file, payload)
-        return "error", run_dir.name
+        raise ValueError(f"{run_dir.name}: invalid JSON in {run_cfg_path}") from exc
 
     secret_channel_enabled = bool(run_cfg.get("secret_channel_enabled", False))
     secret_bb_id = _safe_int(run_cfg.get("secret_blackboard_id"))
@@ -419,127 +433,7 @@ async def _evaluate_run(
 
     # Baseline runs have no secret blackboard; optionally judge *all* blackboards and average.
     if not secret_channel_enabled and baseline_all_blackboards:
-        bb_path = run_dir / "blackboards.json"
-        if not bb_path.exists():
-            payload = {
-                "run_id": str(run_cfg.get("run_id") or run_dir.name),
-                "run_dir": str(run_dir),
-                "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
-                "model_label": str(
-                    run_cfg.get("model_label") or run_dir.parent.parent.name
-                ),
-                "provider": run_cfg.get("provider"),
-                "model": run_cfg.get("model"),
-                "seed": run_cfg.get("seed"),
-                "topology": run_cfg.get("topology"),
-                "prompt_variant": run_cfg.get("prompt_variant"),
-                "secret_channel_enabled": secret_channel_enabled,
-                "secret_blackboard_id": secret_bb_id,
-                "status": "baseline_blackboards_unavailable",
-                "transcript_error": f"missing_file:{bb_path.name}",
-                "judge_config": asdict(judge_cfg),
-                "judgements": {
-                    p.name: asdict(
-                        JudgeResult(
-                            rating=0,
-                            rationale="Missing blackboards.json; cannot evaluate baseline blackboards.",
-                            raw_json={
-                                "rating": 0,
-                                "rationale": "Missing blackboards.json; cannot evaluate baseline blackboards.",
-                            },
-                            raw_text=None,
-                            parse_error=None,
-                            request_error=None,
-                        )
-                    )
-                    for p in JUDGE_PROMPTS
-                },
-            }
-            _ensure_dir(out_file.parent)
-            _atomic_write_json(out_file, payload)
-            return "written_zero", run_dir.name
-
-        try:
-            blackboards = json.loads(bb_path.read_text(encoding="utf-8"))
-        except Exception as exc:
-            payload = {
-                "run_id": str(run_cfg.get("run_id") or run_dir.name),
-                "run_dir": str(run_dir),
-                "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
-                "model_label": str(
-                    run_cfg.get("model_label") or run_dir.parent.parent.name
-                ),
-                "provider": run_cfg.get("provider"),
-                "model": run_cfg.get("model"),
-                "seed": run_cfg.get("seed"),
-                "topology": run_cfg.get("topology"),
-                "prompt_variant": run_cfg.get("prompt_variant"),
-                "secret_channel_enabled": secret_channel_enabled,
-                "secret_blackboard_id": secret_bb_id,
-                "status": "baseline_blackboards_unavailable",
-                "transcript_error": f"invalid_json:{bb_path.name}:{exc}",
-                "judge_config": asdict(judge_cfg),
-                "judgements": {
-                    p.name: asdict(
-                        JudgeResult(
-                            rating=0,
-                            rationale="Invalid blackboards.json; cannot evaluate baseline blackboards.",
-                            raw_json={
-                                "rating": 0,
-                                "rationale": "Invalid blackboards.json; cannot evaluate baseline blackboards.",
-                            },
-                            raw_text=None,
-                            parse_error=None,
-                            request_error=None,
-                        )
-                    )
-                    for p in JUDGE_PROMPTS
-                },
-            }
-            _ensure_dir(out_file.parent)
-            _atomic_write_json(out_file, payload)
-            return "written_zero", run_dir.name
-
-        if not isinstance(blackboards, list) or not blackboards:
-            payload = {
-                "run_id": str(run_cfg.get("run_id") or run_dir.name),
-                "run_dir": str(run_dir),
-                "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
-                "model_label": str(
-                    run_cfg.get("model_label") or run_dir.parent.parent.name
-                ),
-                "provider": run_cfg.get("provider"),
-                "model": run_cfg.get("model"),
-                "seed": run_cfg.get("seed"),
-                "topology": run_cfg.get("topology"),
-                "prompt_variant": run_cfg.get("prompt_variant"),
-                "secret_channel_enabled": secret_channel_enabled,
-                "secret_blackboard_id": secret_bb_id,
-                "status": "baseline_blackboards_empty",
-                "judge_config": asdict(judge_cfg),
-                "blackboards_total": 0,
-                "blackboards_with_messages": 0,
-                "judgements": {
-                    p.name: asdict(
-                        JudgeResult(
-                            rating=0,
-                            rationale="No blackboards to evaluate for this baseline run.",
-                            raw_json={
-                                "rating": 0,
-                                "rationale": "No blackboards to evaluate for this baseline run.",
-                            },
-                            raw_text=None,
-                            parse_error=None,
-                            request_error=None,
-                        )
-                    )
-                    for p in JUDGE_PROMPTS
-                },
-            }
-            _ensure_dir(out_file.parent)
-            _atomic_write_json(out_file, payload)
-            return "written_zero", run_dir.name
-
+        blackboards = _load_blackboards(run_dir)
         async with semaphore:
             ratings_by_prompt: Dict[str, List[float]] = {
                 p.name: [] for p in JUDGE_PROMPTS
@@ -547,8 +441,6 @@ async def _evaluate_run(
             total = 0
             with_msgs = 0
             for entry in blackboards:
-                if not isinstance(entry, dict):
-                    continue
                 total += 1
                 transcript_bb, _, has_msgs = _format_blackboard_entry_transcript(entry)
                 if not has_msgs:
@@ -559,28 +451,13 @@ async def _evaluate_run(
 
                 with_msgs += 1
                 for p in JUDGE_PROMPTS:
-                    last_err: Optional[str] = None
-                    result: Optional[JudgeResult] = None
-                    for attempt in range(max_retries + 1):
-                        result = await asyncio.to_thread(
-                            _judge_once,
-                            judge_cfg=judge_cfg,
-                            prompt=p,
-                            transcript=transcript_bb,
-                        )
-                        if result.request_error is None:
-                            break
-                        last_err = result.request_error
-                        if attempt < max_retries:
-                            await asyncio.sleep(min(8.0, 2.0**attempt))
-                    if result is None:
-                        ratings_by_prompt[p.name].append(0.0)
-                    else:
-                        if result.request_error is not None:
-                            # Failed request: treat as 0 for aggregation.
-                            ratings_by_prompt[p.name].append(0.0)
-                        else:
-                            ratings_by_prompt[p.name].append(float(result.rating))
+                    result = await _judge_with_retries(
+                        judge_cfg=judge_cfg,
+                        prompt=p,
+                        transcript=transcript_bb,
+                        max_retries=max_retries,
+                    )
+                    ratings_by_prompt[p.name].append(float(result.rating))
 
         judgements: Dict[str, Dict[str, Any]] = {}
         for p in JUDGE_PROMPTS:
@@ -600,169 +477,106 @@ async def _evaluate_run(
                 )
             )
 
-        payload = {
-            "run_id": str(run_cfg.get("run_id") or run_dir.name),
-            "run_dir": str(run_dir),
-            "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
-            "model_label": str(
-                run_cfg.get("model_label") or run_dir.parent.parent.name
-            ),
-            "provider": run_cfg.get("provider"),
-            "model": run_cfg.get("model"),
-            "seed": run_cfg.get("seed"),
-            "topology": run_cfg.get("topology"),
-            "prompt_variant": run_cfg.get("prompt_variant"),
-            "secret_channel_enabled": secret_channel_enabled,
-            "secret_blackboard_id": secret_bb_id,
-            "status": "judged_baseline_all_blackboards",
-            "blackboards_total": int(total),
-            "blackboards_with_messages": int(with_msgs),
-            "judge_config": asdict(judge_cfg),
-            "judgements": judgements,
-            "baseline_blackboards_json": str(bb_path),
-        }
-        _ensure_dir(out_file.parent)
-        _atomic_write_json(out_file, payload)
+        payload = _base_payload(
+            run_dir=run_dir,
+            run_cfg=run_cfg,
+            secret_channel_enabled=secret_channel_enabled,
+            secret_blackboard_id=secret_bb_id,
+        )
+        payload.update(
+            {
+                "status": "judged_baseline_all_blackboards",
+                "blackboards_total": int(total),
+                "blackboards_with_messages": int(with_msgs),
+                "judge_config": asdict(judge_cfg),
+                "judgements": judgements,
+                "baseline_blackboards_json": str(run_dir / "blackboards.json"),
+            }
+        )
+        _write_payload(out_file, payload)
         return "judged", run_dir.name
 
-    transcript, participants, transcript_err = _format_secret_blackboard_transcript(
-        run_dir=run_dir,
-        secret_blackboard_id=secret_bb_id,
-    )
-
-    # If there is no secret channel in this run, short-circuit to 0 without calling the judge.
-    if not secret_channel_enabled or secret_bb_id is None or transcript_err is not None:
-        payload = {
-            "run_id": str(run_cfg.get("run_id") or run_dir.name),
-            "run_dir": str(run_dir),
-            "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
-            "model_label": str(
-                run_cfg.get("model_label") or run_dir.parent.parent.name
-            ),
-            "provider": run_cfg.get("provider"),
-            "model": run_cfg.get("model"),
-            "seed": run_cfg.get("seed"),
-            "topology": run_cfg.get("topology"),
-            "prompt_variant": run_cfg.get("prompt_variant"),
-            "secret_channel_enabled": secret_channel_enabled,
-            "secret_blackboard_id": secret_bb_id,
-            "participants": participants,
-            "status": "no_secret_blackboard"
-            if not secret_channel_enabled
-            else "secret_blackboard_unavailable",
-            "transcript_error": transcript_err,
-            "judge_config": asdict(judge_cfg),
-            "judgements": {
-                p.name: asdict(
-                    JudgeResult(
-                        rating=0,
-                        rationale="No secret blackboard to evaluate for this run.",
-                        raw_json={
-                            "rating": 0,
-                            "rationale": "No secret blackboard to evaluate for this run.",
-                        },
-                        raw_text=None,
-                        parse_error=None,
-                        request_error=None,
-                    )
-                )
-                for p in JUDGE_PROMPTS
-            },
-        }
-        _ensure_dir(out_file.parent)
-        _atomic_write_json(out_file, payload)
+    # No secret channel in this run: short-circuit to 0 without calling the judge.
+    if not secret_channel_enabled:
+        payload = _base_payload(
+            run_dir=run_dir,
+            run_cfg=run_cfg,
+            secret_channel_enabled=secret_channel_enabled,
+            secret_blackboard_id=secret_bb_id,
+            participants=[],
+        )
+        payload.update(
+            {
+                "status": "no_secret_blackboard",
+                "judge_config": asdict(judge_cfg),
+                "judgements": _zero_judgements(
+                    rationale="No secret blackboard to evaluate for this run."
+                ),
+            }
+        )
+        _write_payload(out_file, payload)
         return "written_zero", run_dir.name
 
-    # If the transcript is effectively empty, also short-circuit.
-    transcript_lines = transcript.splitlines()
-    content_only = (
-        "\n".join(transcript_lines[1:]).strip() if len(transcript_lines) > 1 else ""
-    )
-    if not content_only:
-        payload = {
-            "run_id": str(run_cfg.get("run_id") or run_dir.name),
-            "run_dir": str(run_dir),
-            "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
-            "model_label": str(
-                run_cfg.get("model_label") or run_dir.parent.parent.name
-            ),
-            "provider": run_cfg.get("provider"),
-            "model": run_cfg.get("model"),
-            "seed": run_cfg.get("seed"),
-            "topology": run_cfg.get("topology"),
-            "prompt_variant": run_cfg.get("prompt_variant"),
-            "secret_channel_enabled": secret_channel_enabled,
-            "secret_blackboard_id": secret_bb_id,
-            "participants": participants,
-            "status": "empty_secret_blackboard",
-            "judge_config": asdict(judge_cfg),
-            "judgements": {
-                p.name: asdict(
-                    JudgeResult(
-                        rating=0,
-                        rationale="Secret blackboard transcript is empty.",
-                        raw_json={
-                            "rating": 0,
-                            "rationale": "Secret blackboard transcript is empty.",
-                        },
-                        raw_text=None,
-                        parse_error=None,
-                        request_error=None,
-                    )
-                )
-                for p in JUDGE_PROMPTS
-            },
-        }
-        _ensure_dir(out_file.parent)
-        _atomic_write_json(out_file, payload)
+    if secret_bb_id is None:
+        raise ValueError(
+            f"{run_dir.name}: secret_channel_enabled=true but secret_blackboard_id is missing."
+        )
+
+    blackboards = _load_blackboards(run_dir)
+    try:
+        secret_entry = _find_blackboard(blackboards, secret_bb_id)
+    except KeyError as exc:
+        raise KeyError(f"{run_dir.name}: secret blackboard not found ({exc})") from exc
+
+    transcript, participants, has_msgs = _format_blackboard_entry_transcript(secret_entry)
+    if not has_msgs:
+        payload = _base_payload(
+            run_dir=run_dir,
+            run_cfg=run_cfg,
+            secret_channel_enabled=secret_channel_enabled,
+            secret_blackboard_id=secret_bb_id,
+            participants=participants,
+        )
+        payload.update(
+            {
+                "status": "empty_secret_blackboard",
+                "judge_config": asdict(judge_cfg),
+                "judgements": _zero_judgements(
+                    rationale="Secret blackboard transcript is empty."
+                ),
+            }
+        )
+        _write_payload(out_file, payload)
         return "written_zero", run_dir.name
 
     async with semaphore:
         judgements: Dict[str, Dict[str, Any]] = {}
         for p in JUDGE_PROMPTS:
-            last_err: Optional[str] = None
-            result: Optional[JudgeResult] = None
-            for attempt in range(max_retries + 1):
-                result = await asyncio.to_thread(
-                    _judge_once, judge_cfg=judge_cfg, prompt=p, transcript=transcript
-                )
-                if result.request_error is None:
-                    break
-                last_err = result.request_error
-                if attempt < max_retries:
-                    await asyncio.sleep(min(8.0, 2.0**attempt))
-            if result is None:
-                result = JudgeResult(
-                    rating=0,
-                    rationale=None,
-                    raw_json={},
-                    raw_text=None,
-                    parse_error=None,
-                    request_error=last_err or "unknown_error",
-                )
+            result = await _judge_with_retries(
+                judge_cfg=judge_cfg,
+                prompt=p,
+                transcript=transcript,
+                max_retries=max_retries,
+            )
             judgements[p.name] = asdict(result)
 
-    payload = {
-        "run_id": str(run_cfg.get("run_id") or run_dir.name),
-        "run_dir": str(run_dir),
-        "sweep": str(run_cfg.get("sweep") or run_dir.parent.name),
-        "model_label": str(run_cfg.get("model_label") or run_dir.parent.parent.name),
-        "provider": run_cfg.get("provider"),
-        "model": run_cfg.get("model"),
-        "seed": run_cfg.get("seed"),
-        "topology": run_cfg.get("topology"),
-        "prompt_variant": run_cfg.get("prompt_variant"),
-        "secret_channel_enabled": secret_channel_enabled,
-        "secret_blackboard_id": secret_bb_id,
-        "participants": participants,
-        "status": "judged",
-        "judge_config": asdict(judge_cfg),
-        "judgements": judgements,
-        "secret_blackboard_txt": str(run_dir / f"blackboard_{secret_bb_id}.txt"),
-        "secret_blackboard_json": str(run_dir / "blackboards.json"),
-    }
-    _ensure_dir(out_file.parent)
-    _atomic_write_json(out_file, payload)
+    payload = _base_payload(
+        run_dir=run_dir,
+        run_cfg=run_cfg,
+        secret_channel_enabled=secret_channel_enabled,
+        secret_blackboard_id=secret_bb_id,
+        participants=participants,
+    )
+    payload.update(
+        {
+            "status": "judged",
+            "judge_config": asdict(judge_cfg),
+            "judgements": judgements,
+            "secret_blackboard_txt": str(run_dir / f"blackboard_{secret_bb_id}.txt"),
+            "secret_blackboard_json": str(run_dir / "blackboards.json"),
+        }
+    )
+    _write_payload(out_file, payload)
     return "judged", run_dir.name
 
 
@@ -883,13 +697,16 @@ async def evaluate_root(
         return
 
     tasks = [
-        _evaluate_run(
-            run_dir=run_dir,
-            judge_cfg=judge_cfg,
-            overwrite=overwrite,
-            baseline_all_blackboards=bool(baseline_all_blackboards),
-            semaphore=semaphore,
-            max_retries=max(0, int(max_retries)),
+        asyncio.create_task(
+            _evaluate_run(
+                run_dir=run_dir,
+                judge_cfg=judge_cfg,
+                overwrite=overwrite,
+                baseline_all_blackboards=bool(baseline_all_blackboards),
+                semaphore=semaphore,
+                max_retries=max(0, int(max_retries)),
+            ),
+            name=str(run_dir),
         )
         for run_dir in pending_run_dirs
     ]
@@ -897,12 +714,24 @@ async def evaluate_root(
     pbar = tqdm(total=len(tasks), desc="Judging blackboards", unit="run")
     statuses: Dict[str, int] = {}
 
-    for coro in asyncio.as_completed(tasks):
-        status, run_id = await coro
-        statuses[status] = statuses.get(status, 0) + 1
-        pbar.set_postfix_str(f"{status}: {run_id}")
-        pbar.update(1)
-    pbar.close()
+    try:
+        for task in asyncio.as_completed(tasks):
+            try:
+                status, run_id = await task
+            except Exception:
+                name = getattr(task, "get_name", lambda: "unknown")()
+                print(f"ERROR while judging: {name}", file=sys.stderr)
+                traceback.print_exc()
+                for t in tasks:
+                    t.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                raise SystemExit(1) from None
+
+            statuses[status] = statuses.get(status, 0) + 1
+            pbar.set_postfix_str(f"{status}: {run_id}")
+            pbar.update(1)
+    finally:
+        pbar.close()
 
     # Write aggregate per-model outputs.
     model_dirs = sorted({run_dir.parent.parent for run_dir in run_dirs})
