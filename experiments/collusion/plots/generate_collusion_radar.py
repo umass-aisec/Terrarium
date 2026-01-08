@@ -13,6 +13,7 @@ import matplotlib
 matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 
 from experiments.collusion.plots.common import canonical_variant, default_out_dir
 from experiments.common.plotting.io_utils import (
@@ -35,6 +36,45 @@ from experiments.common.plotting.style import apply_default_style
 
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_load_config(path: Path) -> Optional[Dict[str, Any]]:
+    if not path.exists():
+        return None
+    suffix = path.suffix.lower()
+    try:
+        if suffix == ".json":
+            payload = safe_load_json(path)
+            return payload if isinstance(payload, dict) else None
+        if suffix in {".yaml", ".yml"}:
+            payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+            return payload if isinstance(payload, dict) else None
+        payload = safe_load_json(path)
+        if isinstance(payload, dict):
+            return payload
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+def _pretty_topology_label(
+    topo: str, *, title_by_topology: Optional[Dict[str, str]] = None
+) -> str:
+    if title_by_topology and topo in title_by_topology:
+        return str(title_by_topology[topo])
+    s = str(topo or "").strip()
+    if not s:
+        return s
+    key = s.lower().replace("-", "_").replace(" ", "_")
+    canonical = {
+        "erdos_renyi": "Erdős–Rényi",
+        "barabasi_albert": "Barabási–Albert",
+        "watts_strogatz": "Watts–Strogatz",
+    }
+    if key in canonical:
+        return canonical[key]
+    return s.replace("_", " ").title()
 
 
 def _sample_std(values: Iterable[Any]) -> Optional[float]:
@@ -526,20 +566,7 @@ def _plot_grouped_bars_by_topology(
     total_width = 0.86
 
     def _pretty_topology(topo: str) -> str:
-        if title_by_topology and topo in title_by_topology:
-            return str(title_by_topology[topo])
-        s = str(topo or "").strip()
-        if not s:
-            return s
-        key = s.lower().replace("-", "_").replace(" ", "_")
-        canonical = {
-            "erdos_renyi": "Erdős–Rényi",
-            "barabasi_albert": "Barabási–Albert",
-            "watts_strogatz": "Watts–Strogatz",
-        }
-        if key in canonical:
-            return canonical[key]
-        return s.replace("_", " ").title()
+        return _pretty_topology_label(topo, title_by_topology=title_by_topology)
 
     ncols = 2
     nrows = int(math.ceil(len(topologies) / float(ncols)))
@@ -678,6 +705,112 @@ def _plot_grouped_bars_by_topology(
     plt.close(fig)
 
 
+def _plot_grouped_bars_single_topology(
+    *,
+    series: List[Dict[str, Any]],
+    labels: List[str],
+    title: str,
+    out_path: Path,
+) -> None:
+    apply_default_style(plt)
+    ensure_dir(out_path.parent)
+
+    if not labels or not series:
+        return
+
+    labels_wrapped = _wrap_labels(labels, width=14)
+    n_metrics = len(labels_wrapped)
+    x = np.arange(n_metrics, dtype=float)
+    total_width = 0.86
+
+    # Keep series order stable, but drop all-NaN series and mask per-metric NaNs.
+    series_arrays: List[np.ndarray] = []
+    present_indices: List[int] = []
+    for idx, s in enumerate(series):
+        vals = list(s.get("values") or [])
+        if len(vals) != n_metrics:
+            series_arrays.append(np.full((n_metrics,), np.nan, dtype=float))
+            continue
+        arr = np.array(
+            [float(v) if v is not None else np.nan for v in vals], dtype=float
+        )
+        series_arrays.append(arr)
+        if np.any(np.isfinite(arr)):
+            present_indices.append(idx)
+
+    if not present_indices:
+        return
+
+    bar_width = total_width / float(max(1, len(present_indices)))
+    offsets = (
+        np.arange(len(present_indices), dtype=float)
+        - (len(present_indices) - 1) / 2.0
+    ) * bar_width
+
+    # Match the per-panel feel of _plot_grouped_bars_by_topology: wide enough for unrotated tick labels.
+    fig_width = max(12.0, 1.2 * float(n_metrics))
+    fig_height = 4.6 if len(present_indices) <= 4 else 5.0
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+    for pos, idx in enumerate(present_indices):
+        s = series[idx]
+        vals_arr = series_arrays[idx]
+        errors = s.get("errors")
+        yerr = errors if isinstance(errors, list) and len(errors) == n_metrics else None
+        color = str(s.get("color") or "#111827")
+        label = str(s.get("label") or f"series {idx + 1}")
+
+        mask = np.isfinite(vals_arr)
+        if not np.any(mask):
+            continue
+
+        yerr_arr = None
+        if yerr is not None:
+            yerr_arr = np.array(
+                [float(e) if e is not None else np.nan for e in yerr], dtype=float
+            )
+            yerr_arr = yerr_arr[mask]
+
+        ax.bar(
+            (x[mask] + offsets[pos]),
+            vals_arr[mask],
+            width=bar_width * 0.92,
+            yerr=yerr_arr,
+            capsize=3,
+            label=label,
+            color=color,
+            edgecolor="white",
+            linewidth=0.8,
+            alpha=0.92,
+        )
+
+    ax.set_title(title)
+    ax.set_ylabel("Normalized mean (0-1, ±1 std)")
+    ax.set_ylim(0.0, 1.0)
+    ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    ax.grid(True, axis="y", linestyle="--", alpha=0.35)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels_wrapped, rotation=0, ha="center")
+
+    handles, leg_labels = ax.get_legend_handles_labels()
+    if handles:
+        ncol = min(len(handles), 6)
+        fig.legend(
+            handles,
+            leg_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, 0.04),
+            ncol=ncol,
+            frameon=True,
+        )
+
+    # Reserve room for multi-line x tick labels and the bottom legend (keep tight).
+    fig.tight_layout(rect=(0.02, 0.12, 0.99, 1.0))
+    fig.savefig(out_path, bbox_inches="tight")
+    log_saved_plot(out_path, logger=logger)
+    plt.close(fig)
+
+
 def _pretty_variant(name: str) -> str:
     s = canonical_variant(name)
     return s.replace("_", " ") if s else s
@@ -761,6 +894,9 @@ def _generate(
             "noncoalition_mean_reward",
             "Non-coalition mean reward",
             higher_is_better=True,
+        ),
+        _MetricSpec(
+            "coalition_advantage_mean", "Coalition advantage", higher_is_better=True
         ),
         _MetricSpec(
             "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
@@ -1174,6 +1310,7 @@ def _compare_topologies_bars(
     colluder_count_requested: Optional[int],
     baseline_variant_requested: str,
     include_incomplete: bool,
+    titles_config_path: Optional[Path] = None,
 ) -> bool:
     """
     Builds a single multi-panel grouped-bar figure:
@@ -1201,6 +1338,9 @@ def _compare_topologies_bars(
             "noncoalition_mean_reward",
             "Non-coalition mean reward",
             higher_is_better=True,
+        ),
+        _MetricSpec(
+            "coalition_advantage_mean", "Coalition advantage", higher_is_better=True
         ),
         _MetricSpec(
             "coalition_reward_ratio", "Coalition reward ratio", higher_is_better=True
@@ -1372,9 +1512,16 @@ def _compare_topologies_bars(
     # Optional topology parameter display (e.g., Erdős–Rényi edge prob p).
     title_by_topology: Dict[str, str] = {}
     try:
-        cfg_path = sweep_dir.parent.parent.parent / "config.json"
-        cfg = safe_load_json(cfg_path) if cfg_path.exists() else None
+        cfg_path = (
+            titles_config_path
+            if titles_config_path is not None
+            else (sweep_dir.parent.parent.parent / "config.json")
+        )
+        cfg = _safe_load_config(cfg_path) if cfg_path is not None else None
         edge_prob = None
+        watts_k = None
+        watts_rewire_prob = None
+        ba_m = None
         if isinstance(cfg, dict):
             cn = cfg.get("communication_network")
             if isinstance(cn, dict):
@@ -1386,9 +1533,41 @@ def _compare_topologies_bars(
                     )
                 except Exception:
                     edge_prob = None
+                try:
+                    watts_k = int(cn.get("k")) if cn.get("k") is not None else None
+                except Exception:
+                    watts_k = None
+                try:
+                    watts_rewire_prob = (
+                        float(cn.get("rewire_prob"))
+                        if cn.get("rewire_prob") is not None
+                        else None
+                    )
+                except Exception:
+                    watts_rewire_prob = None
+                try:
+                    ba_m = int(cn.get("m")) if cn.get("m") is not None else None
+                except Exception:
+                    ba_m = None
         if edge_prob is not None and np.isfinite(edge_prob):
             p_str = (f"{float(edge_prob):.3f}").rstrip("0").rstrip(".")
             title_by_topology["erdos_renyi"] = f"Erdős–Rényi (p={p_str})"
+        has_watts_rewire_p = watts_rewire_prob is not None and np.isfinite(
+            watts_rewire_prob
+        )
+        if watts_k is not None or has_watts_rewire_p:
+            parts: List[str] = []
+            if watts_k is not None:
+                parts.append(f"k={int(watts_k)}")
+            if has_watts_rewire_p:
+                p_str = (f"{float(watts_rewire_prob):.3f}").rstrip("0").rstrip(".")
+                parts.append(f"p={p_str}")
+            if parts:
+                title_by_topology["watts_strogatz"] = (
+                    "Watts–Strogatz (" + ", ".join(parts) + ")"
+                )
+        if ba_m is not None:
+            title_by_topology["barabasi_albert"] = f"Barabási–Albert (m={int(ba_m)})"
     except Exception:
         title_by_topology = {}
 
@@ -1404,6 +1583,24 @@ def _compare_topologies_bars(
         out_path=out_path,
         title_by_topology=title_by_topology or None,
     )
+
+    # Also write one PNG per topology (split panels) under out_dir/hist/topologies/.
+    topo_out = out_dir / "hist" / "topologies"
+    ensure_dir(topo_out)
+    for topo in topologies:
+        topo_series = series_by_topology.get(topo) or []
+        if not topo_series:
+            continue
+        topo_title = _pretty_topology_label(
+            topo, title_by_topology=title_by_topology or None
+        )
+        _plot_grouped_bars_single_topology(
+            series=topo_series,
+            labels=labels,
+            title=str(topo_title),
+            out_path=topo_out
+            / f"collusion_radar__c{colluder_count}__pvALL__bars__{sanitize_filename(topo)}.png",
+        )
     return True
 
 
@@ -1467,6 +1664,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         default=[],
         help="Additional sweep dirs to include in --compare-topologies aggregation. Can be specified multiple times.",
     )
+    parser.add_argument(
+        "--titles-config",
+        type=str,
+        default=None,
+        help="Optional YAML/JSON config used to annotate topology titles with parameters (e.g., p/k/rewire_prob/m). "
+        "Defaults to <output_root>/config.json inferred from --sweep-dir.",
+    )
     args = parser.parse_args(argv)
 
     sweep_dir = Path(args.sweep_dir).expanduser().resolve()
@@ -1509,6 +1713,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             extra_dir = Path(str(extra)).expanduser().resolve()
             extra_runs, _ = load_runs(extra_dir)
             compare_rows.extend(_build_rows(extra_runs))
+        titles_config_path = (
+            Path(str(args.titles_config)).expanduser().resolve()
+            if args.titles_config
+            else None
+        )
         ok = _compare_topologies_bars(
             sweep_dir=sweep_dir,
             out_dir=out_dir,
@@ -1516,6 +1725,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             colluder_count_requested=args.colluder_count,
             baseline_variant_requested=str(args.baseline_prompt_variant or "control"),
             include_incomplete=bool(args.include_incomplete),
+            titles_config_path=titles_config_path,
         )
         if not ok:
             raise SystemExit(
