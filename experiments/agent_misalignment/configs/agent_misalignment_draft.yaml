@@ -1,0 +1,132 @@
+experiment:
+  tag: agent_misalignment
+  output_dir: experiments/agent_misalignment/outputs/misalignment
+  planning_rounds: 2
+  max_conversation_steps: 5
+  # Run-level parallelism. Higher values increase API concurrency (watch rate limits/cost).
+  max_concurrent_runs: 1
+  # Default seeds used for every sweep combination (runs = len(seeds) unless runs_per_setting is set).
+  seeds: [42, 1, 2]
+  # Optional: cap how many seeds to use from the list above.
+  # runs_per_setting: 2
+  
+  adversary:
+    strategy: random  # random | highest_degree | center
+    attack_frequency: always # always | once (Controls how often they front-run)
+    # The following keys are kept for structural similarity but may be unused in this specific attack
+    victim_assignment: random 
+    force_seed: true 
+
+  info:
+    code_prefix: MISALIGN_DOS
+    
+  # Judge block is preserved for structure but typically unused for pure reward-based metrics
+  judge:
+    model: gpt-4.1-2025-04-14
+    params:
+      max_tokens: 512
+      temperature: 0.0
+
+  sweeps:
+    - name: adversary_role_sweep
+      topologies: [complete, star] 
+      num_agents: [8]
+      adversary_counts: [1]
+      # This tests if a "Center" (Hub) adversary is more effective than a random leaf
+      strategies: [random] # [random, highest_degree, center]
+
+    - name: adversary_impact_sweep
+      topologies: [complete] # Hospitals typically imply full connectivity
+      num_agents: [8]       # 2 hospitals * 4 services
+      adversary_counts: [0, 1, 2, 4]
+    
+    - name: scaling_sweep
+      topologies: [complete]
+      num_agents: [4, 8, 12]
+      adversary_counts: [1]
+
+# Baseline simulation config (used as a template; each run overrides llm + comm_network fields)
+simulation:
+  seed: 1
+  max_iterations: 1
+  max_planning_rounds: 2
+  max_conversation_steps: 3
+
+environment:
+  # Using Hospital Environment
+  # import_path allows loading the class dynamically without hardcoding in the runner
+  import_path: "envs.dcops.hospital.hospital_env:HospitalEnvironment"
+  name: HospitalEnvironment
+  num_patients: 8
+  # Hospital specific params
+  num_hospitals: 2
+  services: ["Triage", "Radiology", "Surgery", "Ward"]
+
+communication_network:
+  topology: complete
+  num_agents: 8
+  consolidate_channels: true
+  center: 0
+
+llm_models:
+  - label: openai-gpt-4.1-mini
+    llm:
+      provider: openai
+      openai:
+        model: gpt-4.1-mini-2025-04-14
+        params:
+          max_tokens: 768
+          temperature: 0.7
+  - label: vllm-qwen2.5-7b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: false
+        health_check_path: "/models"
+        startup_timeout: 420
+        params:
+          max_tokens: 1024
+          temperature: 0.7
+        models:
+          - checkpoint: "Qwen/Qwen2.5-7B-Instruct"
+            host: "127.0.0.1"
+            port: 8020
+            tensor_parallel_size: 1
+            gpu_memory_utilization: 0.9
+            max_model_len: 16000
+            trust_remote_code: true
+            additional_args:
+              - "--enable-auto-tool-choice"
+  - label: together-gpt-oss-120b
+    llm:
+      provider: together
+      together:
+        model: openai/gpt-oss-120b
+        params:
+          max_tokens: 768
+          temperature: 0.7
+  - label: together-qwen3-235b
+    llm:
+      provider: together
+      together:
+        model: Qwen/Qwen3-235B-A22B-Instruct-2507-tput
+        params:
+          max_tokens: 768
+          temperature: 0.7
+  - label: together-kimik2-Instruct
+    llm:
+      provider: together
+      together:
+        model: moonshotai/Kimi-K2-Instruct-0905
+        params:
+          max_tokens: 768
+          temperature: 0.7
+  - label: together-llama3.3-70b
+    llm:
+      provider: together
+      together:
+        model: meta-llama/Llama-3.3-70B-Instruct-Turbo
+        params:
+          max_tokens: 768
+          temperature: 0.7

@@ -1,0 +1,82 @@
+experiment:
+  tag: agent_misalignment_full_sweep
+  output_dir: experiments/agent_misalignment/outputs/misalignment
+  planning_rounds: 2
+  max_conversation_steps: 5
+  max_concurrent_runs: 1
+  seeds: [1, 2]
+  
+  adversary:
+    strategy: random
+    attack_frequency: always
+
+  info:
+    code_prefix: MISALIGN_DOS
+    
+  judge:
+    model: gpt-4.1-2025-04-14
+    params:
+      max_tokens: 512
+      temperature: 0.0
+
+  sweeps:
+    - name: baseline_benign
+      topologies: [complete, star, path]
+      adversary_counts: [0]
+      strategies: [random]
+      num_agents: [4, 8, 12]
+      num_patients: [8, 12, 16]
+
+    - name: comprehensive_attack_sweep
+      topologies: [complete, star, path]
+      adversary_counts: [1]
+      strategies: [role_based]
+      target_roles: [Triage, Ward, Radiology, Surgery] 
+      num_agents: [4, 8, 12]
+      num_patients: [8, 12, 16]
+
+simulation:
+  seed: 1
+  max_iterations: 1
+  max_planning_rounds: 2
+  max_conversation_steps: 5
+
+environment:
+  import_path: "envs.dcops.hospital.hospital_env:HospitalEnvironment"
+  name: HospitalEnvironment
+  num_patients: 8
+  num_hospitals: 2
+  services: ["Triage", "Radiology", "Surgery", "Ward"]
+
+communication_network:
+  topology: complete
+  num_agents: 8
+  consolidate_channels: true
+  center: 0
+
+llm_models:
+  - label: vllm-qwen2.5-7b-awq
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: false
+        health_check_path: "/models"
+        startup_timeout: 420
+        params:
+          max_tokens: 1024
+          temperature: 0.7
+        models:
+          # 1. Use the AWQ checkpoint (Natively 4-bit)
+          - checkpoint: "Qwen/Qwen2.5-7B-Instruct-AWQ"
+            host: "127.0.0.1"
+            port: 8020
+            tensor_parallel_size: 1      # Fits easily on 1 GPU (requires ~10-12GB VRAM)
+            gpu_memory_utilization: 0.9
+            max_model_len: 8192          # Reduced slightly to ensure plenty of KV cache space
+            trust_remote_code: true
+            additional_args:
+              - "--enable-auto-tool-choice"
+              # 2. Tell vLLM to use the AWQ kernel
+              - "--quantization"
+              - "awq"
