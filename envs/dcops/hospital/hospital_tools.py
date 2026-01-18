@@ -20,7 +20,7 @@ class HospitalTools:
     def get_tools(self, phase: str) -> List[Dict[str, Any]]:
         tools = []
         
-        # --- READ-ONLY TOOLS ---
+        # Read-Only Tools
         tools.append({
             "type": "function",
             "function": {
@@ -47,15 +47,12 @@ class HospitalTools:
             },
         })
 
-        # --- EXECUTION / PROVISIONING TOOLS ---
-        
-        # 1. TRANSFER (Used by Provisioner AND Hospitals)
-        # Note: Added new resource types to the enum.
+        # Provisioner / Communication Tools
         tools.append({
             "type": "function",
             "function": {
                 "name": "transfer_resources",
-                "description": "Send supplies to a hospital. Use this to balance inventory.",
+                "description": "Send supplies to a hospital.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -72,7 +69,6 @@ class HospitalTools:
             },
         })
 
-        # 2. BROADCAST (Communication)
         tools.append({
             "type": "function",
             "function": {
@@ -89,7 +85,7 @@ class HospitalTools:
             },
         })
 
-        # 3. SCHEDULE (Execution Phase Only)
+        # Execution Only
         if phase == "execution":
             tools.append({
                 "type": "function",
@@ -126,12 +122,9 @@ class HospitalTools:
         # Read Tools
         if tool_name == "get_job_queue":
             return {"result": "Refer to prompt context."}
-        
         elif tool_name == "find_available_slots":
-            duration = arguments.get("duration")
+            # Simplified for brevity
             min_start = arguments.get("min_start_time", 0)
-            limit = arguments.get("num_slots", 3)
-            # Basic slot finding logic (omitted for brevity, assume standard)
             return {"result": f"Available slots found starting from {min_start}."} 
 
         # Write Tools

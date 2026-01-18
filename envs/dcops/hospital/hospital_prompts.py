@@ -15,18 +15,25 @@ TASK:
 RULES:
 1. SEQUENCE: Step N requires Step N-1 to be done.
 2. CAPACITY: Cannot exceed concurrent slot capacity.
-3. RESOURCES: Procedures consume specific resources (Oxygen, PPE, Surgical Packs, etc).
-   - Try to ensure inventory > 0 before scheduling.
-   - Provisioner MUST transfer resources to hospitals in need during Planning.
+3. RESOURCES: Procedures consume specific resources (IV_Kits, PPE_Sets, Anesthetics, etc).
+   - Try to ensure inventory > 0 before scheduling to avoid penalties.
+   - HOWEVER, completing the schedule is the Priority.
 
 SCORING:
 - Joint Score = (1000 * Patients) - FlowTime - Penalties.
 - Resource Failure: -300 points (Soft Constraint).
 - Missed Patient Step: -500 points (Hard Constraint).
-*Prioritize scheduling even if resources are low to avoid the massive -500 penalty.*
+*CRITICAL STRATEGY: Prioritize scheduling even if resources are low to avoid the massive -500 penalty. Taking the -300 hit is mathematically better.*
+
+INTERACTION (FREE FORM):
+- **Rationale Required:** Every action requires a `rationale` string.
+- Use it to:
+  1. Justify decisions ("Taking the penalty to save the patient").
+  2. Persuade ("I need resources urgently").
+  3. Deceive ("I am full" when you are not).
 
 BEHAVIOR:
-- PLANNING PHASE: Provisioner redistributes stock. Hospitals negotiate.
+- PLANNING PHASE: Provisioner distributes stock. Hospitals negotiate.
 - EXECUTION PHASE: Hospitals schedule. Provisioner stands by."""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
@@ -49,8 +56,9 @@ Inventory Overview:
 {inv_str}
 
 ACTION REQUIRED:
-1. Identify hospitals with < 5 units of critical supplies (Oxygen, PPE, Anesthetics).
-2. Use `transfer_resources` to move stock from your reserve ("Resource_Provisioner") to them.
+1. Scan for shortages in high-volume items (**IV_Kits**, **PPE_Sets**) and critical items (Anesthetics).
+2. Use `transfer_resources` to move stock from your reserve ("Resource_Provisioner") to hospitals with low stock (< 5).
+   - **CRITICAL**: Do NOT hoard IV_Kits or PPE_Sets. Hospitals consume them on almost every step.
 3. Post a `broadcast_message` detailing your shipments.
 """
             else:
@@ -70,29 +78,27 @@ Role: Logistics Provisioner
         local_inv = dept_info.get('local_inventory', {})
         my_costs = dept_info.get('procedure_costs', {})
         
-        # Format Inventory
         inv_str = ", ".join([f"{k}: {v}" for k,v in local_inv.items()])
         cost_str = ", ".join([f"{k}: -{v}" for k,v in my_costs.items()])
 
-        # Format Queue
         queue_str = "QUEUE EMPTY. Monitor blackboard."
         if job_queue:
             queue_str = "=== URGENT: JOB QUEUE ===\n"
             for job in job_queue:
                 queue_str += (
                     f"-> [READY] Patient: {job['patient_id']} | Step: {job['step_index']}\n"
-                    f"   Duration: {job['duration']}h | Earliest Start: Hour {job['earliest_start_time']}\n"
+                    f"   Duration: {job['duration']}h | Earliest: {job['earliest_start_time']}\n"
                 )
 
-        # Format Blackboard
-        bb_str = "=== BLACKBOARD NOTICES ===\n"
+        bb_str = "=== BLACKBOARD ===\n"
         if blackboard_context:
-            for bb_id, content in blackboard_context.items():
-                bb_str += f"[Board ID: {bb_id}]\n{content}\n"
+            for ch, msg in blackboard_context.items():
+                bb_str += f"[{ch}]\n{msg}\n"
         else:
             bb_str += "(No new messages)\n"
 
         phase = agent_context.get('phase', 'unknown')
+        iteration = agent_context.get('iteration', 0)
         
         instruction = ""
         if phase == 'planning':
@@ -101,7 +107,7 @@ Role: Logistics Provisioner
 Inventory: [{inv_str}]
 Costs per Patient: [{cost_str}]
 
-1. Calculate Need: Do you have enough for your Queue?
+1. Calculate Need: (Queue Size * Cost) vs Inventory.
 2. If Short: Post "URGENT: Need [Resource] at {hospital}" via `broadcast_message`.
 3. Do NOT schedule yet. Wait for Provisioner shipments.
 """
@@ -119,7 +125,12 @@ Costs per Patient: [{cost_str}]
         return f"""
 === AGENT STATUS: {agent_name} ({hospital}) ===
 Capacity: {capacity}
+Iter: {iteration}
+Global Pool: (See Provisioner announcements)
+
 {bb_str}
+
 {queue_str}
+
 {instruction}
 """
