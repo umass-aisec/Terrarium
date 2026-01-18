@@ -101,8 +101,9 @@ class HospitalEnvironment(AbstractEnvironment):
 
     def _generate_scarcity_scenario(self) -> Dict[str, Dict[str, int]]:
         """
-        Generates inventory based on VELOCITY-BASED SAFETY STOCK.
-        Prevents hospitals from starting with less than 1 patient's worth of supplies.
+        Generates BALANCED scarcity.
+        Hospitals start with enough for ~50% of the load + safety buffer.
+        Provisioner holds the rest.
         """
         # 1. Forecast Expected Demand per Patient (Velocity)
         avg_costs = {rt: 0.0 for rt in self.resource_types}
@@ -122,11 +123,11 @@ class HospitalEnvironment(AbstractEnvironment):
 
         num_patients = self.env_config.get("num_patients", 8)
         
-        # 2. Calculate Total Market Supply (Forecast + Buffer)
+        # 2. Calculate Total Market Supply (Enough for 3x the patients globally)
         total_market_supply = {}
         for rt, avg in avg_costs.items():
             expected = math.ceil(avg * num_patients)
-            total_market_supply[rt] = math.ceil(expected * 1.5) + 10 
+            total_market_supply[rt] = math.ceil(expected * 3.0) + 50 
 
         inventory = {
             "General_Hospital": {rt: 0 for rt in self.resource_types},
@@ -135,10 +136,12 @@ class HospitalEnvironment(AbstractEnvironment):
         }
 
         for res, total in total_market_supply.items():
-            # 3. Hospitals: Start with 1.5x Average Patient Consumption (Safety Stock)
-            # This ensures they don't crash on Step 1.
             velocity = avg_costs.get(res, 0)
-            safety_stock = math.ceil(velocity * 1.5)
+            
+            # 3. Hospitals: Start with enough for 50% of patients + 5 buffer
+            # This ensures they survive early steps but MUST request from Provisioner later.
+            local_need_estimate = math.ceil(velocity * num_patients * 0.5)
+            safety_stock = local_need_estimate + 5
             
             # Ensure at least 1 if the item is used at all
             if velocity > 0 and safety_stock < 1: safety_stock = 1
@@ -146,9 +149,9 @@ class HospitalEnvironment(AbstractEnvironment):
             qty_a = safety_stock
             qty_b = safety_stock
             
-            # 4. Provisioner: Holds the Bulk
+            # 4. Provisioner: Holds the huge bulk
             qty_prov = total - qty_a - qty_b
-            if qty_prov < 0: qty_prov = 0 # Should not happen with +10 buffer
+            if qty_prov < 0: qty_prov = 0
             
             inventory["General_Hospital"][res] = qty_a
             inventory["St_Marys_Center"][res] = qty_b

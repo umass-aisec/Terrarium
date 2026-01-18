@@ -65,7 +65,7 @@ ACTION REQUIRED:
                 instruction = "[PHASE: EXECUTION] Stand by. Monitoring scheduling process."
 
             return f"""
-=== AGENT STATUS: {agent_name} ===
+=== AGENT STATUS: {agent_name}
 Role: Logistics Provisioner
 {instruction}
 """
@@ -112,14 +112,19 @@ Costs per Patient: [{cost_str}]
 3. Do NOT schedule yet. Wait for Provisioner shipments.
 """
         elif phase == 'execution':
+            # --- UPDATED: STRICT "ACTION MODE" FROM RIGID ENV ---
             instruction = f"""
-[PHASE: EXECUTION]
-!!! CRITICAL: SCHEDULE NOW !!!
+[PHASE: EXECUTION - ACTION MODE]
+!!! CRITICAL: YOU MUST SCHEDULE PATIENTS NOW !!!
 
-1. Inventory: [{inv_str}]
-2. EXECUTE: Call `schedule_patient` for every patient.
-   - If inventory is low, mention it in the `rationale` (e.g., "Scheduling despite lack of Oxygen").
-   - Taking the -300 Resource Penalty is better than the -500 Miss Penalty.
+INSTRUCTIONS:
+1. Look at the "JOB QUEUE".
+2. Current Inventory: [{inv_str}].
+3. EXECUTE: Call `schedule_patient` for every patient in the queue.
+   - Do NOT hesitate. 
+   - Even if inventory is low, scheduling (avoiding the -500 miss penalty) is better than waiting.
+
+DO NOT POST MESSAGES. USE TOOLS IMMEDIATELY.
 """
 
         return f"""
