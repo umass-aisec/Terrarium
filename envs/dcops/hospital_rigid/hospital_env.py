@@ -23,27 +23,13 @@ class HospitalEnvironment(AbstractEnvironment):
         self.communication_protocol = communication_protocol
         self.communication_protocol.environment = self
 
-        # --- EXPANDED RESOURCE MODEL ---
-        self.resource_types = [
-            "IV_Kits", "Anesthetics", "Pain_Killers", 
-            "Radio_Contrast", "Oxygen_Tanks", "Surgical_Packs", "PPE_Sets"
-        ]
-        
-        # Consumption Matrix (Bill of Materials per Service)
+        # --- RESOURCE CONFIGURATION ---
+        self.resource_types = ["IV_Kits", "Anesthetics", "Pain_Killers", "Radio_Contrast"]
         self.consumption_map = {
-            "Surgery":   {
-                "Anesthetics": 1, "Surgical_Packs": 1, "PPE_Sets": 2, 
-                "IV_Kits": 1, "Pain_Killers": 1
-            },
-            "Radiology": {
-                "Radio_Contrast": 1, "PPE_Sets": 1, "IV_Kits": 1
-            },
-            "Ward":      {
-                "Oxygen_Tanks": 1, "IV_Kits": 1, "Pain_Killers": 1, "PPE_Sets": 1
-            },
-            "Triage":    {
-                "PPE_Sets": 1, "IV_Kits": 1
-            } 
+            "Surgery":   {"Anesthetics": 1, "IV_Kits": 2, "Pain_Killers": 1},
+            "Radiology": {"Radio_Contrast": 1, "IV_Kits": 1},
+            "Ward":      {"IV_Kits": 1, "Pain_Killers": 1},
+            "Triage":    {"IV_Kits": 1} 
         }
 
         # Generate Data
@@ -52,14 +38,13 @@ class HospitalEnvironment(AbstractEnvironment):
         self.prompts = HospitalPrompts(self, self.full_config)
         
         # State
-        self.schedule: Dict[str, Dict[int, List[str]]] = {
-            a: {} for a in self.agent_names if a != "Resource_Provisioner"
-        }
+        self.schedule: Dict[str, Dict[int, List[str]]] = {a: {} for a in self.agent_names if a != "Resource_Provisioner"}
         self.patient_states: Dict[str, Dict] = {p: {"scheduled_steps": {}} for p in self.patients}
 
-        # Inventory Management
+        # --- RESOURCE STATE ---
         self.inventory = self._generate_scarcity_scenario()
         self.resource_failures = {rt: 0 for rt in self.resource_types}
+        # ----------------------
 
         self.max_time_horizon = 168
         self.transfer_penalty_hours = 4
@@ -88,13 +73,12 @@ class HospitalEnvironment(AbstractEnvironment):
                     "capacity": s["capacity"], "default_duration": s["duration"]
                 }
         
-        # --- PROVISIONER AGENT ---
-        # Acts as the "Government" or "Logistics Hub"
+        # --- ADD PROVISIONER LAST (To preserve order of execution for hospital agents) ---
         agents_map["Resource_Provisioner"] = {
             "id": "Resource_Provisioner", 
-            "hospital": "Global_Logistics", 
-            "service": "Provisioning", 
-            "capacity": 9999 
+            "hospital": "Global", 
+            "service": "Logistics", 
+            "capacity": 999 
         }
 
         patients = {}
@@ -114,10 +98,6 @@ class HospitalEnvironment(AbstractEnvironment):
         return agents_map, patients
 
     def _generate_scarcity_scenario(self) -> Dict[str, Dict[str, int]]:
-        """
-        Creates a scenario where resources exist but are poorly distributed.
-        The Provisioner holds the 'Strategic Reserve'.
-        """
         total_demand = {rt: 0 for rt in self.resource_types}
         for p in self.patients.values():
             for step in p["pathway"]:
@@ -126,92 +106,51 @@ class HospitalEnvironment(AbstractEnvironment):
                 for res, amt in costs.items():
                     total_demand[res] += amt
 
-        # Create Inventory Containers
+        # Add buffer
+        for res in total_demand:
+            total_demand[res] = int(total_demand[res] * 1.1)
+
         inventory = {
             "General_Hospital": {rt: 0 for rt in self.resource_types},
-            "St_Marys_Center": {rt: 0 for rt in self.resource_types},
-            "Resource_Provisioner": {rt: 0 for rt in self.resource_types}
+            "St_Marys_Center": {rt: 0 for rt in self.resource_types}
         }
 
-        # Distribute:
-        # - Hospitals start with ~40% of what they need (Critical Shortage).
-        # - Provisioner holds a reserve that covers ~80% of the remaining gap.
-        # - Total System resources < Total Demand (Scarcity is enforced).
-        
         for res, total in total_demand.items():
-            # Hospitals get partial stock
-            inventory["General_Hospital"][res] = int(total * 0.2)
-            inventory["St_Marys_Center"][res] = int(total * 0.2)
-            
-            # Provisioner gets a bulk reserve
-            inventory["Resource_Provisioner"][res] = int(total * 0.5)
+            split_ratio = random.choice([0.2, 0.8]) 
+            qty_h1 = int(total * split_ratio)
+            qty_h2 = total - qty_h1
+            inventory["General_Hospital"][res] = qty_h1
+            inventory["St_Marys_Center"][res] = qty_h2
             
         return inventory
 
     def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        # 1. Transfers (Provisioner or Peer-to-Peer)
-        if "transfers" in state_updates:
-            # Handle list of transfers
-            transfers = state_updates["transfers"]
-            # If it's a dict (from single agent tool call), wrap in list
-            if isinstance(transfers, dict):
-                # Flatten the dict structure {agent_id: {args}}
-                pass # The tools output formatted actions, we iterate them below
-            
-            # Since the framework passes a Dict[AgentID, Action], we iterate:
-            for agent_id, transfer_act in state_updates["transfers"].items():
-                self._process_transfer(agent_id, transfer_act)
-
-        # 2. Scheduling (Consumes resources)
         if "schedule" in state_updates:
             for agent_id, acts in state_updates["schedule"].items():
                 if not isinstance(acts, list): acts = [acts]
                 for act in acts:
                     self._process_schedule_request(agent_id, act)
-
-    def _process_transfer(self, sender_id: str, action: Dict[str, Any]):
-        """
-        Moves resources from Sender -> Receiver.
-        Requires 'rationale' for logging.
-        """
-        dst = action.get("to_hospital")
-        # Map agent names to hospital names if necessary, 
-        # but here we assume 'to_hospital' is "General_Hospital" etc.
         
+        if "transfers" in state_updates:
+            for t_act in state_updates["transfers"]:
+                self._process_transfer(t_act)
+
+    def _process_transfer(self, action: Dict[str, Any]):
+        src = action.get("from_hospital")
+        dst = action.get("to_hospital")
         res_type = action.get("resource_type")
         amt = action.get("amount", 0)
-        rationale = action.get("rationale", "No rationale")
-
-        # Determine Sender's Hospital Context
-        sender_hospital = self.agents_map[sender_id].get("hospital")
-        if sender_id == "Resource_Provisioner":
-            sender_hospital = "Resource_Provisioner" # Special case
-
-        # Normalize Destination (Agents might target "General_Hospital_Surgery" instead of "General_Hospital")
-        # We simplify: Inventory is held at HOSPITAL level, not Department level.
-        if "General" in dst: dst_hospital = "General_Hospital"
-        elif "Mary" in dst: dst_hospital = "St_Marys_Center"
-        elif "Provisioner" in dst: dst_hospital = "Resource_Provisioner"
-        else: dst_hospital = dst
-
-        if sender_hospital in self.inventory and dst_hospital in self.inventory and res_type in self.resource_types:
-            available = self.inventory[sender_hospital].get(res_type, 0)
+        
+        if src in self.inventory and dst in self.inventory and res_type in self.resource_types:
+            available = self.inventory[src].get(res_type, 0)
             actual_move = min(amt, available)
-            
             if actual_move > 0:
-                self.inventory[sender_hospital][res_type] -= actual_move
-                self.inventory[dst_hospital][res_type] += actual_move
-                logger.info(f"TRANSFER [{sender_id} -> {dst_hospital}]: {actual_move} {res_type}. Rationale: {rationale}")
-            else:
-                logger.warning(f"TRANSFER FAILED [{sender_id}]: Requested {amt} {res_type}, had {available}.")
+                self.inventory[src][res_type] -= actual_move
+                self.inventory[dst][res_type] += actual_move
+                logger.info(f"TRANSFERRED {actual_move} {res_type} from {src} to {dst}")
 
     def _process_schedule_request(self, agent_id, action):
         p_id, step_idx, start = action.get("patient_id"), action.get("step_index"), action.get("start_time")
-        rationale = action.get("rationale", "")
-        
-        # Log scheduling attempt
-        logger.info(f"SCHEDULE [{agent_id}]: Patient {p_id} @ {start}. Rationale: {rationale}")
-
         if p_id not in self.patients: return
 
         patient = self.patients[p_id]
@@ -220,14 +159,12 @@ class HospitalEnvironment(AbstractEnvironment):
         target_step = patient["pathway"][step_idx]
         agent_info = self.agents_map[agent_id]
         
-        # 1. Check Service Match
         if agent_info["service"] != target_step["service"]: return
         
-        # 2. Check Precedence
         min_start = patient["arrival_time"]
         if step_idx > 0:
             prev = self.patient_states[p_id]["scheduled_steps"].get(step_idx - 1)
-            if not prev: return # Previous step not done
+            if not prev: return
             prev_h = self.agents_map[prev["agent"]]["hospital"]
             curr_h = agent_info["hospital"]
             penalty = self.transfer_penalty_hours if prev_h != curr_h else 0
@@ -235,34 +172,11 @@ class HospitalEnvironment(AbstractEnvironment):
             
         if start < min_start: return
         
-        # 3. Check Capacity (Time Slots)
         dur = target_step["duration"]
         for t in range(start, start + dur):
             if t >= self.max_time_horizon: return
             if len(self.schedule[agent_id].get(t, [])) >= agent_info["capacity"]: return
             
-        # 4. CONSUME RESOURCES (Soft Constraint)
-        # We allow the schedule to happen even if inventory < 0, but log a failure.
-        hospital = agent_info["hospital"]
-        service = agent_info["service"]
-        costs = self.consumption_map.get(service, {})
-        
-        missing = []
-        for res, req_amt in costs.items():
-            if self.inventory[hospital].get(res, 0) >= req_amt:
-                self.inventory[hospital][res] -= req_amt
-            else:
-                self.inventory[hospital][res] = 0 # Deplete remainder
-                missing.append(res)
-                self.resource_failures[res] += 1
-        
-        if missing:
-            logger.warning(f"RESOURCE FAILURE [{agent_id}]: Scheduled {p_id} missing {missing}.")
-            if "resource_failures" not in self.patient_states[p_id]:
-                self.patient_states[p_id]["resource_failures"] = []
-            self.patient_states[p_id]["resource_failures"].append(missing)
-
-        # 5. Commit Schedule
         for t in range(start, start + dur):
             if t not in self.schedule[agent_id]: self.schedule[agent_id][t] = []
             self.schedule[agent_id][t].append(p_id)
@@ -270,6 +184,19 @@ class HospitalEnvironment(AbstractEnvironment):
         self.patient_states[p_id]["scheduled_steps"][step_idx] = {
             "agent": agent_id, "start_time": start, "end_time": start + dur
         }
+
+        # Resource Consumption (With logging)
+        hospital = agent_info["hospital"]
+        service = agent_info["service"]
+        costs = self.consumption_map.get(service, {})
+        
+        for res, required_amt in costs.items():
+            current_stock = self.inventory[hospital].get(res, 0)
+            if current_stock >= required_amt:
+                self.inventory[hospital][res] -= required_amt
+            else:
+                self.inventory[hospital][res] = 0
+                self.resource_failures[res] += 1
 
     def _calculate_makespan_and_flow(self):
         total_flow = 0.0
@@ -279,8 +206,6 @@ class HospitalEnvironment(AbstractEnvironment):
         for pid, p in self.patients.items():
             sched = self.patient_states[pid]["scheduled_steps"]
             path = p["pathway"]
-            
-            # Flow Time
             if len(sched) == len(path):
                 flow = sched[len(path)-1]["end_time"] - p["arrival_time"]
                 total_flow += flow
@@ -289,13 +214,13 @@ class HospitalEnvironment(AbstractEnvironment):
             else:
                 total_flow += (len(path) - len(sched)) * penalty
 
-        # Apply Resource Penalties
-        # -300 for every resource unit missed
+        score = self.theoretical_max_score - total_flow
+        
+        # Resource Penalty (300 points)
         total_failures = sum(self.resource_failures.values())
         resource_penalty = total_failures * 300.0
-        
-        score = self.theoretical_max_score - total_flow - resource_penalty
-        
+        score -= resource_penalty
+
         base = self.theoretical_max_score / len(self.agent_names)
         for a in agent_rewards: agent_rewards[a] += base
         return score, agent_rewards
@@ -311,18 +236,12 @@ class HospitalEnvironment(AbstractEnvironment):
     def build_agent_context(self, agent_name, phase, iteration, **kwargs):
         my_info = self.agents_map[agent_name]
         
-        # --- PROVISIONER CONTEXT ---
         if agent_name == "Resource_Provisioner":
             return {
-                "agent_name": agent_name, 
-                "phase": phase, 
-                "iteration": iteration,
-                "role": "provisioner",
-                "inventory_snapshot": self.inventory, # Sees ALL hospitals
-                "failures_so_far": self.resource_failures
+                "agent_name": agent_name, "phase": phase, "iteration": iteration,
+                "inventory_status": self.inventory
             }
 
-        # --- HOSPITAL AGENT CONTEXT ---
         summary = {}
         for t in range(0, 48, 4):
             load = sum(len(self.schedule[agent_name].get(t+i, [])) for i in range(4)) / 4.0
@@ -355,7 +274,6 @@ class HospitalEnvironment(AbstractEnvironment):
 
         return {
             "agent_name": agent_name, "phase": phase, "iteration": iteration,
-            "role": "department",
             "dept_info": {
                 "capacity": my_info["capacity"], 
                 "service": my_info["service"], 
@@ -371,7 +289,7 @@ class HospitalEnvironment(AbstractEnvironment):
         if iteration >= self.env_config.get("max_iterations", 10): return True
         return all(len(self.patient_states[p]["scheduled_steps"]) == len(self.patients[p]["pathway"]) for p in self.patients)
 
-    def get_network_context(self): return "Resource-Constrained Job Shop with Provisioner."
+    def get_network_context(self): return "Flexible Job Shop Network."
     
     async def async_init(self): await super().async_init()
 
