@@ -1,5 +1,5 @@
 simulation:
-  max_iterations: 1      # Increased for scheduling dialogues
+  max_iterations: 1
   max_planning_rounds: 2
   max_conversation_steps: 5
   seed: 42
@@ -28,7 +28,7 @@ communication_network:
 llm:
   # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
   # Switched to "openai" (GPT-4o) as scheduling requires high arithmetic precision
-  provider: "together"
+  provider: "openai"
   
   openai:
     model: "gpt-4.1-mini-2025-04-14"

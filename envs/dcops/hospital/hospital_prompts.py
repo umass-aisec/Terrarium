@@ -6,32 +6,62 @@ class HospitalPrompts:
         self.config = config
 
     def get_system_prompt(self) -> str:
-        return """You are a Department Scheduling Bot.
+        return """You are a Department Scheduling Bot (or Resource Provisioner).
 
 TASK:
-Process your Job Queue. Schedule patients into time slots.
+1. Schedule patients into time slots (Departments).
+2. Balance inventory of Medical Supplies (Provisioner).
 
 RULES:
-1. SEQUENCE: You can only schedule Step N if Step N-1 is finished.
-2. CAPACITY: You cannot exceed your concurrent capacity.
-3. EFFICIENCY: Always pick the EARLIEST valid slot to minimize flow time.
+1. SEQUENCE: Step N requires Step N-1 to be done.
+2. CAPACITY: Cannot exceed concurrent slot capacity.
+3. RESOURCES: Procedures consume specific resources.
+   - Try to ensure inventory > 0 before scheduling to avoid penalties.
+   - HOWEVER, completing the schedule is the Priority.
 
-SCORING (joint score; higher is better):
-- A patient is “complete” only when all pathway steps are scheduled in order.
-- If complete: flow_time = end_time(last step) - arrival_time.
-- If incomplete: add penalty = 500 * (remaining_steps).
-- total_flow = sum(flow_time/penalties over patients); joint_score = (1000 * num_patients) - total_flow.
-- Transfers between hospitals add a 4-hour delay before the next step can start (increasing flow_time).
+SCORING:
+- Joint Score = (1000 * Patients) - FlowTime - Penalties.
+- Resource Failure: -300 points (Soft Constraint).
+- Missed Patient Step: -500 points (Hard Constraint).
+*Prioritize scheduling even if resources are low to avoid the massive -500 penalty.*
 
 BEHAVIOR:
-- PLANNING PHASE: Scout. Check the Blackboard. Do not schedule. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
-- EXECUTION PHASE: ACTION ONLY. Iterate through your queue. Find a slot. Schedule it. DO NOT CHAT."""
+- PLANNING PHASE: Scout. Check Blackboard. Coordinate transfers.
+- EXECUTION PHASE: ACTION ONLY. Schedule patients immediately."""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
+        
+        # --- Provisioner Logic ---
+        if agent_name == "Resource_Provisioner":
+            inv = agent_context.get("inventory_status", {})
+            inv_str = ""
+            for h, items in inv.items():
+                inv_str += f"   - {h}: " + ", ".join([f"{k}:{v}" for k,v in items.items()]) + "\n"
+            
+            return f"""
+=== AGENT STATUS: {agent_name} ===
+Role: Logistics Provisioner
+Inventory Table:
+{inv_str}
+
+INSTRUCTION:
+1. Scan Blackboard for shortages.
+2. If a hospital is low on a resource (e.g., < 2) and another has surplus, Transfer it.
+3. Use `transfer_resources(from_hospital=..., to_hospital=..., resource_type=..., amount=...)`.
+"""
+
+        # --- Department Logic ---
         dept_info = agent_context.get('dept_info', {})
         capacity = dept_info.get('capacity', 1)
         job_queue = agent_context.get('job_queue', [])
+        hospital = dept_info.get('hospital', 'Unknown')
+        local_inv = dept_info.get('local_inventory', {})
+        my_costs = dept_info.get('procedure_costs', {})
         
+        # Format Inventory
+        inv_str = ", ".join([f"{k}: {v}" for k,v in local_inv.items()])
+        cost_str = ", ".join([f"{k}: -{v}" for k,v in my_costs.items()])
+
         # --- 1. Format Queue ---
         queue_str = ""
         if not job_queue:
@@ -42,11 +72,9 @@ BEHAVIOR:
                 queue_str += (
                     f"-> [READY] Patient: {job['patient_id']} | Step: {job['step_index']}\n"
                     f"   Duration: {job['duration']}h | Earliest Start: Hour {job['earliest_start_time']}\n"
-                    f"   Note: {job.get('note', '')}\n"
                 )
 
-        # --- 2. Format Blackboard (CRITICAL FIX) ---
-        # We iterate through the blackboard_context dictionary to show the agent what is happening.
+        # --- 2. Format Blackboard ---
         bb_str = ""
         if blackboard_context:
             bb_str = "=== BLACKBOARD NOTICES ===\n"
@@ -62,12 +90,12 @@ BEHAVIOR:
         if phase == 'planning':
             instruction = f"""
 [PHASE: PLANNING]
-Status: Waiting for Execution Phase.
-1. Review your Queue.
-2. If you have high load, post to Blackboard: "Agent {agent_name} Load: {len(job_queue)} patients."
-3. Do not commit to any slots yet. Just gather information.
+Inventory: [{inv_str}]
+Costs:     [{cost_str}]
 
-CRITICAL: You are in a read-only phase. Do not attempt to book slots or modify the schedule.
+1. Review Queue.
+2. If Inventory < (QueueSize * Cost), post "URGENT: Need [Resource] at {hospital}" to Blackboard.
+3. Do not schedule yet.
 """
         elif phase == 'execution':
             instruction = f"""
@@ -75,20 +103,17 @@ CRITICAL: You are in a read-only phase. Do not attempt to book slots or modify t
 !!! CRITICAL: YOU MUST SCHEDULE PATIENTS NOW !!!
 
 INSTRUCTIONS:
-1. Look at the "JOB QUEUE" above.
-2. For EACH patient in the queue:
-   a. Call `find_available_slots(duration=..., min_start_time=...)`.
-   b. Pick the FIRST result from the list.
-   c. Call `schedule_patient(patient_id=..., step_index=..., start_time=...)`.
-3. You MUST call the scheduling tools during execution; do not respond without tool calls.
+1. Look at the "JOB QUEUE".
+2. Current Inventory: [{inv_str}].
+3. EXECUTE: Call `schedule_patient` for every patient in the queue.
+   - Do NOT hesitate. 
+   - Even if inventory is low, scheduling (avoiding the -500 miss penalty) is better than waiting.
 
-DO NOT POST MESSAGES. DO NOT DISCUSS.
-USE THE TOOLS IMMEDIATELY. CLEAR YOUR QUEUE.
+DO NOT POST MESSAGES. USE TOOLS IMMEDIATELY.
 """
 
-        # Include bb_str in the final return
         return f"""
-=== AGENT STATUS: {agent_name} ===
+=== AGENT STATUS: {agent_name} ({hospital}) ===
 Capacity: {capacity}
 Iteration: {iteration}
 
