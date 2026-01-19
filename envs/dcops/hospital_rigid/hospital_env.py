@@ -286,8 +286,26 @@ class HospitalEnvironment(AbstractEnvironment):
         }
 
     def done(self, iteration):
-        if iteration >= self.env_config.get("max_iterations", 10): return True
-        return all(len(self.patient_states[p]["scheduled_steps"]) == len(self.patients[p]["pathway"]) for p in self.patients)
+        # NOTE: `examples/base_main.py` already bounds the loop by `simulation.max_iterations`.
+        # This method is for early-stopping when the schedule has truly converged.
+        max_iterations = self.simulation_config.get(
+            "max_iterations", self.env_config.get("max_iterations", 10)
+        )
+        try:
+            if iteration > int(max_iterations):
+                return True
+        except Exception:
+            pass
+
+        # Converged only if every patient has all steps scheduled AND no resource failures occurred.
+        for pid, patient in self.patients.items():
+            scheduled = self.patient_states.get(pid, {}).get("scheduled_steps", {})
+            pathway = patient.get("pathway", [])
+            if len(scheduled) != len(pathway):
+                return False
+            if self.patient_states.get(pid, {}).get("resource_failures"):
+                return False
+        return True
 
     def get_network_context(self): return "Flexible Job Shop Network."
     

@@ -2,7 +2,7 @@ experiment:
   tag: covert_max_coalition_sweep
   output_dir: experiments/agent_misalignment/outputs/covert_max_coalition
   max_concurrent_runs: 1
-  seeds: [1]
+  seeds: [42]
 
   adversary:
     strategy: covert_max_coalition_reward

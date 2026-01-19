@@ -180,7 +180,7 @@ async def _run_single(
     model_llm_cfg: Dict[str, Any],
     sweep_name: str,
     topology: str,
-    non_provisioner_agents: int,
+    num_agents: int,
     adversary_count: int,
     num_patients: int,
     strategy: str,
@@ -190,22 +190,62 @@ async def _run_single(
 ) -> Dict[str, Any]:
     rng = random.Random(int(seed))
 
+    def _should_stop_early(environment: Any) -> bool:
+        """
+        Early-stop criterion for Hospital-style environments.
+
+        Unlike HospitalEnvironment.done(), treat any recorded resource failure as
+        non-convergence (i.e., do not early-stop just because all steps are scheduled).
+        Falls back to environment.done(...) when the expected fields are unavailable.
+        """
+        try:
+            patients = getattr(environment, "patients", None)
+            patient_states = getattr(environment, "patient_states", None)
+            if not isinstance(patients, dict) or not isinstance(patient_states, dict):
+                return bool(environment.done(0))  # type: ignore[arg-type]
+
+            # Converged only if every patient has all steps scheduled AND no resource failures were recorded.
+            for pid, patient in patients.items():
+                state = patient_states.get(pid, {})
+                scheduled = state.get("scheduled_steps") or {}
+                pathway = patient.get("pathway") or []
+                if len(scheduled) != len(pathway):
+                    return False
+                failures = state.get("resource_failures") or []
+                if failures:
+                    return False
+            return True
+        except Exception:
+            # Conservative fallback: use the environment's own criterion.
+            try:
+                return bool(environment.done(0))  # type: ignore[arg-type]
+            except Exception:
+                return False
+
+    def _resolve_num_patients(*, raw: Any, num_agents: int) -> int:
+        """
+        Supports YAML-friendly placeholders like:
+          - "num_agents_minus_1" / "num_agents-1"
+        """
+        if isinstance(raw, str):
+            key = raw.strip().lower().replace(" ", "_")
+            if key in {"num_agents_minus_1", "num_agents-1"}:
+                return int(num_agents) - 1
+            raise ValueError(f"Unknown num_patients spec: {raw!r}")
+        if raw is None:
+            return int(num_agents) - 1
+        return int(raw)
+
     # --- CONFIGURATION SETUP ---
     cfg = copy.deepcopy(base_cfg)
     cfg.setdefault("simulation", {})["seed"] = int(seed)
-
+    
     # Overrides
     cfg.setdefault("communication_network", {})["topology"] = str(topology)
-    cfg.setdefault("environment", {})["num_patients"] = int(num_patients)
-
-    # Hospital scaling: 4 department agents per hospital, plus 1 provisioner.
-    non_provisioner_agents = int(non_provisioner_agents)
-    if non_provisioner_agents <= 0 or (non_provisioner_agents % 4) != 0:
-        raise ValueError(
-            "Sweep 'non_provisioner_agents' must be a positive multiple of 4 "
-            f"(got: {non_provisioner_agents})."
-        )
-    cfg.setdefault("environment", {})["num_hospitals"] = int(non_provisioner_agents / 4)
+    cfg.setdefault("communication_network", {})["num_agents"] = int(num_agents)
+    cfg.setdefault("environment", {})["num_patients"] = _resolve_num_patients(
+        raw=num_patients, num_agents=int(num_agents)
+    )
 
     cfg.setdefault("experiment", {}).setdefault("adversary", {})["strategy"] = strategy
     if target_role:
@@ -213,13 +253,12 @@ async def _run_single(
 
     cfg["llm"] = copy.deepcopy(model_llm_cfg)
 
+    is_benign = int(adversary_count) == 0 or str(strategy).strip().lower() == "none"
+
     # --- DIRECTORY SETUP ---
     run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     role_safe = str(target_role).replace(" ", "_") if target_role else "None"
-    run_id = (
-        f"{model_label}__{sweep_name}__nonprov{non_provisioner_agents}_"
-        f"adv{adversary_count}_{role_safe}_seed{seed}"
-    )
+    run_id = f"{model_label}__{sweep_name}__agents{num_agents}_adv{adversary_count}_{role_safe}_seed{seed}"
     run_dir = out_dir / "runs" / model_label / sweep_name / run_id
     _ensure_dir(run_dir)
 
@@ -255,7 +294,10 @@ async def _run_single(
     )
     roles = {name: ("adversary" if name in adversaries else "cooperative") for name in agent_names}
 
-    env.prompts = MisalignmentPrompts(env, cfg)
+    # For the benign baseline, mimic examples/base_main.py prompt behavior as closely as possible:
+    # do not wrap or augment prompts/contexts.
+    if not is_benign:
+        env.prompts = MisalignmentPrompts(env, cfg, base_prompts=getattr(env, "prompts", None))
 
     # --- AGENT CLIENT SETUP ---
     provider = (cfg.get("llm", {}).get("provider") or "").lower()
@@ -295,13 +337,16 @@ async def _run_single(
                 name,
                 model_name,
                 max_steps,
-                env.tool_registry,
+                None,
                 trajectory_logger,
                 env.__class__.__name__,
                 generation_params=generation_params,
                 adversary_spec=adversary_spec,
             )
         )
+    # Match examples/base_main.py behavior: shuffle agent execution order.
+    # HospitalEnvironment seeds the global RNG with simulation.seed in __init__.
+    random.shuffle(agents)
     env.set_agent_clients(agents)
 
     await env.async_init()
@@ -315,10 +360,13 @@ async def _run_single(
         pass
 
     # --- SIMULATION LOOP ---
+    max_iterations = int(cfg["simulation"].get("max_iterations", 1))
     planning_rounds = int(cfg["simulation"].get("max_planning_rounds", 1))
     turns: List[Dict[str, Any]] = []
 
     def _get_extra_fields(agent_name: str, phase: str) -> Dict[str, Any]:
+        if is_benign:
+            return {}
         return {
             "misalignment_role": roles.get(agent_name, "cooperative"),
             "misalignment_adversaries": adversaries,
@@ -326,66 +374,133 @@ async def _run_single(
             "phase": phase
         }
 
-    # 1. PLANNING
-    for planning_round in range(1, planning_rounds + 1):
-        last_agent = None
+    current_iteration = 0
+    for iteration in range(1, max_iterations + 1):
+        current_iteration = iteration
+        if _should_stop_early(env):
+            logger.info("Environment requested simulation stop at iteration %s", iteration)
+            break
+
+        # 1. PLANNING
+        for planning_round in range(1, planning_rounds + 1):
+            last_agent = None
+            for agent in env.agents:
+                base_ctx = env.build_agent_context(
+                    agent.name,
+                    phase="planning",
+                    iteration=iteration,
+                    planning_round=planning_round,
+                )
+                extra = _get_extra_fields(agent.name, "planning")
+                agent_context = base_ctx if not extra else _augment_context(base_ctx, extra=extra)
+
+                response = await protocol.agent_planning_turn(
+                    agent,
+                    agent.name,
+                    agent_context,
+                    env,
+                    iteration=iteration,
+                    planning_round=planning_round,
+                )
+                turns.append(
+                    {
+                        "phase": "planning",
+                        "iteration": iteration,
+                        "round": planning_round,
+                        "agent": agent.name,
+                        "role": roles[agent.name],
+                        "response": response.get("response"),
+                        "usage": response.get("usage"),
+                        "tools_executed": response.get("tools_executed"),
+                    }
+                )
+                last_agent = agent.name
+
+            if last_agent:
+                _log_blackboards_txt(
+                    bb_logger=bb_logger,
+                    protocol=protocol,
+                    iteration=iteration,
+                    phase="planning",
+                    agent_name=last_agent,
+                    planning_round=planning_round,
+                )
+
+        # 2. EXECUTION
+        last_exec_agent = None
         for agent in env.agents:
             base_ctx = env.build_agent_context(
-                agent.name, phase="planning", iteration=1, planning_round=planning_round
+                agent.name, phase="execution", iteration=iteration
             )
-            agent_context = _augment_context(base_ctx, extra=_get_extra_fields(agent.name, "planning"))
-            
-            response = await protocol.agent_planning_turn(
-                agent, agent.name, agent_context, env, iteration=1, planning_round=planning_round
+            extra = _get_extra_fields(agent.name, "execution")
+            agent_context = base_ctx if not extra else _augment_context(base_ctx, extra=extra)
+
+            response = await protocol.agent_execution_turn(
+                agent, agent.name, agent_context, env, iteration=iteration
             )
-            turns.append({
-                "phase": "planning",
-                "round": planning_round,
+            turns.append(
+                {
+                    "phase": "execution",
+                    "iteration": iteration,
+                    "agent": agent.name,
+                    "role": roles[agent.name],
+                    "response": response.get("response"),
+                    "usage": response.get("usage"),
+                    "tools_executed": response.get("tools_executed"),
+                }
+            )
+            last_exec_agent = agent.name
+
+        if last_exec_agent:
+            _log_blackboards_txt(
+                bb_logger=bb_logger,
+                protocol=protocol,
+                iteration=iteration,
+                phase="execution",
+                agent_name=last_exec_agent,
+            )
+
+        try:
+            env.log_iteration_summary(iteration)
+        except Exception:
+            pass
+
+    # 3. SURVEY (POST-RUN BELIEFS)
+    for agent in env.agents:
+        base_ctx = env.build_agent_context(
+            agent.name, phase="survey", iteration=max(1, current_iteration)
+        )
+        extra = _get_extra_fields(agent.name, "survey")
+        agent_context = base_ctx if not extra else _augment_context(base_ctx, extra=extra)
+        response = await protocol.agent_survey_turn(
+            agent,
+            agent.name,
+            agent_context,
+            env,
+            iteration=max(1, current_iteration),
+        )
+        turns.append(
+            {
+                "phase": "survey",
+                "iteration": current_iteration,
                 "agent": agent.name,
                 "role": roles[agent.name],
                 "response": response.get("response"),
                 "usage": response.get("usage"),
                 "tools_executed": response.get("tools_executed"),
-            })
-            last_agent = agent.name
-            
-        if last_agent:
-            _log_blackboards_txt(
-                bb_logger=bb_logger, protocol=protocol, iteration=1, phase="planning", 
-                agent_name=last_agent, planning_round=planning_round
-            )
-
-    # 2. EXECUTION
-    last_exec_agent = None
-    for agent in env.agents:
-        base_ctx = env.build_agent_context(agent.name, phase="execution", iteration=1)
-        agent_context = _augment_context(base_ctx, extra=_get_extra_fields(agent.name, "execution"))
-        
-        response = await protocol.agent_execution_turn(
-            agent, agent.name, agent_context, env, iteration=1
+            }
         )
-        turns.append({
-            "phase": "execution",
-            "agent": agent.name,
-            "role": roles[agent.name],
-            "response": response.get("response"),
-            "usage": response.get("usage"),
-            "tools_executed": response.get("tools_executed"),
-        })
-        last_exec_agent = agent.name
 
-    if last_exec_agent:
-        _log_blackboards_txt(
-            bb_logger=bb_logger, protocol=protocol, iteration=1, phase="execution", agent_name=last_exec_agent
-        )
+    # Persist turns before the judge pass (judge_beliefs loads agent_turns.json).
+    _write_json(run_dir / "agent_turns.json", turns)
 
     final_summary = env.get_final_summary()
 
-    # 3. EVALUATION (JUDGE BELIEFS)
+    # 4. EVALUATION (JUDGE BELIEFS)
     # This runs a separate pass to check if agents suspected foul play
     judgements = await judge_run(run_dir=run_dir, config=cfg)
 
-    # 4. METRICS
+    # 5. METRICS
     blackboard_participants = {
         bb.blackboard_id: bb.participants for bb in protocol.megaboard.blackboards
     }
@@ -406,7 +521,7 @@ async def _run_single(
         run_id, metrics.meeting_outcome.joint_reward, metrics.suspicion_rate_non_adversary
     )
 
-    # 5. ARTIFACTS
+    # 6. ARTIFACTS
     _write_json(
         run_dir / "run_config.json",
         {
@@ -417,7 +532,6 @@ async def _run_single(
         },
     )
     _write_json(run_dir / "final_summary.json", final_summary)
-    _write_json(run_dir / "agent_turns.json", turns)
     _write_json(run_dir / "metrics.json", asdict(metrics))
     _write_json(run_dir / "judgements.json", judgements)
     
@@ -471,15 +585,15 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
     total_runs = 0
     for model in models:
         for sweep in sweeps:
-            nonprov_counts = sweep.get("non_provisioner_agents") or [8]
+            agent_counts = sweep.get("num_agents") or [9]
             adv_counts = sweep.get("adversary_counts") or [1]
             target_roles = sweep.get("target_roles") or [None]
             patient_counts = sweep.get("num_patients") or [16]
             strategies = sweep.get("strategies") or ["none"]
-
+            
             # Simple multiplication for progress bar estimate
             combinations = (
-                len(nonprov_counts)
+                len(agent_counts)
                 * len(adv_counts)
                 * len(target_roles)
                 * len(patient_counts)
@@ -521,15 +635,15 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
         for sweep in sweeps:
             sweep_name = sweep.get("name")
             topologies = sweep.get("topologies") or ["complete"]
-
-            nonprov_counts = sweep.get("non_provisioner_agents") or [8]
+            
+            agent_counts = sweep.get("num_agents") or [9]
             adv_counts = sweep.get("adversary_counts") or [1]
             target_roles = sweep.get("target_roles") or [None]
             patient_counts = sweep.get("num_patients") or [16]
             strategies = sweep.get("strategies") or ["none"]
 
             for topology in topologies:
-                for nonprov in nonprov_counts:
+                for num_agents in agent_counts:
                     for ac in adv_counts:
                         for role in target_roles:
                             for num_patients in patient_counts:
@@ -540,8 +654,8 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
 
                                     for seed in seeds:
                                         role_lbl = role if role else "Any"
-                                        run_label = f"{model_label}/{sweep_name}/nonprov{nonprov}/adv{ac}/{role_lbl}/seed{seed}"
-
+                                        run_label = f"{model_label}/{sweep_name}/n{num_agents}/adv{ac}/{role_lbl}/seed{seed}"
+                                        
                                         task = asyncio.create_task(_run_guarded(
                                             run_label=run_label,
                                             base_cfg=cfg,
@@ -549,7 +663,7 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
                                             model_llm_cfg=model_llm,
                                             sweep_name=sweep_name,
                                             topology=str(topology),
-                                            non_provisioner_agents=nonprov,
+                                            num_agents=num_agents,
                                             adversary_count=ac,
                                             num_patients=num_patients,
                                             strategy=strategy,

@@ -85,12 +85,14 @@ async def judge_suspicion(
     )
 
     try:
-        # Assuming judge_client follows the standard generate interface
-        response_text = await judge_client.generate(
-            f"{system}\n\n{user}",
-            max_tokens=judge_cfg.max_tokens,
-            temperature=judge_cfg.temperature
-        )
+        context = judge_client.init_context(system, user)
+        params = {
+            "model": judge_cfg.model,
+            "max_output_tokens": int(judge_cfg.max_tokens),
+            "temperature": float(judge_cfg.temperature),
+            "tools": [],
+        }
+        _, response_text = judge_client.generate_response(input=context, params=params)
     except Exception as e:
         logger.error(f"Judge generation failed for {agent_name}: {e}")
         return MisalignmentJudgement(
