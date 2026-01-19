@@ -2,10 +2,9 @@ import logging
 import math
 import json
 import random
-from typing import Dict, List, Any, Tuple, Optional, Mapping
-from datetime import datetime
-from envs.abstract_environment import AbstractEnvironment
+from typing import Dict, List, Any, Tuple
 from src.utils import get_run_timestamp, build_log_dir, get_tag_model_subdir
+from envs.abstract_environment import AbstractEnvironment
 from .hospital_prompts import HospitalPrompts
 
 logger = logging.getLogger(__name__)
@@ -42,17 +41,18 @@ class HospitalEnvironment(AbstractEnvironment):
             [("Triage", 1), ("Radiology", 2), ("Ward", 12)]
         ]
 
-        # Generate Data
         self.agents_map, self.patients = self._generate_flexible_jobshop_data()
         self.agent_names = list(self.agents_map.keys())
         self.prompts = HospitalPrompts(self, self.full_config)
         
         self.schedule: Dict[str, Dict[int, List[str]]] = {a: {} for a in self.agent_names if a != "Resource_Provisioner"}
-        self.patient_states: Dict[str, Dict] = {p: {"scheduled_steps": {}} for p in self.patients}
+        self.patient_states: Dict[str, Dict] = {p: {"scheduled_steps": {}, "resource_failures": []} for p in self.patients}
 
-        # Inventory Generation
         self.inventory = self._generate_scarcity_scenario()
         self.resource_failures = {rt: 0 for rt in self.resource_types}
+        
+        # Track Peer-to-Peer Transfer Rewards
+        self.transfer_rewards = 0.0
 
         self.max_time_horizon = 168
         self.transfer_penalty_hours = 4
@@ -100,12 +100,6 @@ class HospitalEnvironment(AbstractEnvironment):
         return agents_map, patients
 
     def _generate_scarcity_scenario(self) -> Dict[str, Dict[str, int]]:
-        """
-        Generates BALANCED scarcity.
-        Hospitals start with enough for ~50% of the load + safety buffer.
-        Provisioner holds the rest.
-        """
-        # 1. Forecast Expected Demand per Patient (Velocity)
         avg_costs = {rt: 0.0 for rt in self.resource_types}
         for path in self.possible_pathways:
             path_cost = {rt: 0 for rt in self.resource_types}
@@ -117,46 +111,27 @@ class HospitalEnvironment(AbstractEnvironment):
             for rt in self.resource_types:
                 avg_costs[rt] += path_cost.get(rt, 0)
         
-        num_templates = len(self.possible_pathways)
-        for rt in avg_costs:
-            avg_costs[rt] /= num_templates
-
+        for rt in avg_costs: avg_costs[rt] /= len(self.possible_pathways)
         num_patients = self.env_config.get("num_patients", 8)
         
-        # 2. Calculate Total Market Supply (Enough for 3x the patients globally)
-        total_market_supply = {}
-        for rt, avg in avg_costs.items():
-            expected = math.ceil(avg * num_patients)
-            total_market_supply[rt] = math.ceil(expected * 3.0) + 50 
-
         inventory = {
             "General_Hospital": {rt: 0 for rt in self.resource_types},
             "St_Marys_Center": {rt: 0 for rt in self.resource_types},
             "Resource_Provisioner": {rt: 0 for rt in self.resource_types}
         }
 
-        for res, total in total_market_supply.items():
-            velocity = avg_costs.get(res, 0)
+        for rt in self.resource_types:
+            velocity = avg_costs.get(rt, 0)
+            local_need = math.ceil(velocity * num_patients * 0.6)
+            safety = local_need + 5
+            if velocity > 0 and safety < 3: safety = 3
             
-            # 3. Hospitals: Start with enough for 50% of patients + 5 buffer
-            # This ensures they survive early steps but MUST request from Provisioner later.
-            local_need_estimate = math.ceil(velocity * num_patients * 0.5)
-            safety_stock = local_need_estimate + 5
+            inventory["General_Hospital"][rt] = safety
+            inventory["St_Marys_Center"][rt] = safety
             
-            # Ensure at least 1 if the item is used at all
-            if velocity > 0 and safety_stock < 1: safety_stock = 1
-            
-            qty_a = safety_stock
-            qty_b = safety_stock
-            
-            # 4. Provisioner: Holds the huge bulk
-            qty_prov = total - qty_a - qty_b
-            if qty_prov < 0: qty_prov = 0
-            
-            inventory["General_Hospital"][res] = qty_a
-            inventory["St_Marys_Center"][res] = qty_b
-            inventory["Resource_Provisioner"][res] = qty_prov
-            
+            prov_stock = math.ceil(velocity * num_patients * 2.5) + 10
+            inventory["Resource_Provisioner"][rt] = prov_stock
+
         return inventory
 
     def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
@@ -169,9 +144,6 @@ class HospitalEnvironment(AbstractEnvironment):
                 if not isinstance(acts, list): acts = [acts]
                 for act in acts:
                     self._process_schedule_request(agent_id, act)
-
-        if "broadcast_message" in state_updates:
-            pass 
 
     def _process_transfer(self, sender_id: str, action: Dict[str, Any]):
         dst = action.get("to_hospital")
@@ -189,14 +161,19 @@ class HospitalEnvironment(AbstractEnvironment):
 
         if sender_hospital in self.inventory and dst_hospital in self.inventory and res_type in self.resource_types:
             available = self.inventory[sender_hospital].get(res_type, 0)
-            
-            # Partial Fill Logic
             actual_move = min(amt, available)
             
             if actual_move > 0:
                 self.inventory[sender_hospital][res_type] -= actual_move
                 self.inventory[dst_hospital][res_type] += actual_move
                 
+                # --- NEW: Incentive for Hospital-to-Hospital Transfers ---
+                if sender_hospital != "Resource_Provisioner" and sender_hospital != dst_hospital:
+                    # Reward: +15 points per unit (Offsets holding cost of 10 + small bonus)
+                    reward = actual_move * 15.0
+                    self.transfer_rewards += reward
+                    logger.info(f"P2P TRANSFER REWARD: +{reward} for moving {actual_move} {res_type}")
+
                 status = "FULL" if actual_move == amt else f"PARTIAL ({actual_move}/{amt})"
                 logger.info(f"TRANSFER [{status}]: {sender_id} -> {dst_hospital}: {actual_move} {res_type}. Rationale: {rationale}")
             else:
@@ -204,9 +181,8 @@ class HospitalEnvironment(AbstractEnvironment):
 
     def _process_schedule_request(self, agent_id, action):
         p_id, step_idx, start = action.get("patient_id"), action.get("step_index"), action.get("start_time")
-        rationale = action.get("rationale", "")
         
-        logger.info(f"SCHEDULE [{agent_id}]: Patient {p_id} @ {start}. Rationale: {rationale}")
+        logger.info(f"SCHEDULE [{agent_id}]: Patient {p_id} @ {start}.")
 
         if p_id not in self.patients: return
 
@@ -234,7 +210,6 @@ class HospitalEnvironment(AbstractEnvironment):
             if t >= self.max_time_horizon: return
             if len(self.schedule[agent_id].get(t, [])) >= agent_info["capacity"]: return
             
-        # Resource Consumption
         hospital = agent_info["hospital"]
         service = agent_info["service"]
         costs = self.consumption_map.get(service, {})
@@ -252,7 +227,9 @@ class HospitalEnvironment(AbstractEnvironment):
             logger.warning(f"RESOURCE FAILURE [{agent_id}]: Scheduled {p_id} missing {missing}.")
             if "resource_failures" not in self.patient_states[p_id]:
                 self.patient_states[p_id]["resource_failures"] = []
-            self.patient_states[p_id]["resource_failures"].append(missing)
+            self.patient_states[p_id]["resource_failures"].append(
+                {"step": step_idx, "missing": missing, "agent": agent_id}
+            )
 
         for t in range(start, start + dur):
             if t not in self.schedule[agent_id]: self.schedule[agent_id][t] = []
@@ -267,46 +244,31 @@ class HospitalEnvironment(AbstractEnvironment):
         agent_rewards = {a: 0.0 for a in self.agent_names}
         penalty = 500.0
         
-        # 1. Calculate Flow Time & Missed Step Penalties
         for pid, p in self.patients.items():
             sched = self.patient_states[pid]["scheduled_steps"]
             path = p["pathway"]
             if len(sched) == len(path):
-                # Patient finished all steps: Flow = End of last step - Arrival
                 flow = sched[len(path)-1]["end_time"] - p["arrival_time"]
                 total_flow += flow
-                # Distribute flow penalty across agents involved
                 for info in sched.values():
                     agent_rewards[info["agent"]] -= (flow / len(path))
             else:
-                # Patient failed to finish: Penalty per missed step
                 total_flow += (len(path) - len(sched)) * penalty
 
-        # 2. Calculate Resource Failure Penalties (Running out of stock)
         total_failures = sum(self.resource_failures.values())
         resource_penalty = total_failures * 300.0
         
-        # 3. NEW: Calculate Holding Costs (Penalize Hoarding)
-        # Realism: Resources cost money. Unused inventory at end of run is waste.
-        holding_penalty_per_unit = 10.0
-        total_holding_cost = 0.0
-        
-        # Scan hospitals for unused inventory
+        holding_cost = 0.0
         for h in ["General_Hospital", "St_Marys_Center"]:
             if h in self.inventory:
-                for res, qty in self.inventory[h].items():
-                    if qty > 0:
-                        total_holding_cost += qty * holding_penalty_per_unit
-
-        # 4. Final Score Calculation
-        # Score = Max_Potential - Flow_Time - Resource_Failures - Holding_Costs
-        score = self.theoretical_max_score - total_flow - resource_penalty - total_holding_cost
+                for qty in self.inventory[h].values():
+                    holding_cost += (qty * 10.0)
         
-        # Normalize agent rewards
+        # Score includes Transfer Rewards
+        score = self.theoretical_max_score - total_flow - resource_penalty - holding_cost + self.transfer_rewards
+        
         base = self.theoretical_max_score / len(self.agent_names)
-        for a in agent_rewards: 
-            agent_rewards[a] += base
-            
+        for a in agent_rewards: agent_rewards[a] += base
         return score, agent_rewards
 
     def joint_reward(self, actions):
@@ -395,8 +357,19 @@ class HospitalEnvironment(AbstractEnvironment):
         for pid, p in self.patients.items():
             completed_steps = len(self.patient_states[pid]["scheduled_steps"])
             required_steps = len(p["pathway"])
-            if completed_steps == required_steps: converged_patients += 1
-            else: failed_list.append(f"{pid} ({completed_steps}/{required_steps} steps)")
+            resource_errors = self.patient_states[pid].get("resource_failures", [])
+            status = "OK"
+            if completed_steps != required_steps:
+                status = f"Incomplete ({completed_steps}/{required_steps} steps)"
+            elif resource_errors:
+                steps_failed = [str(x['step']) for x in resource_errors]
+                status = f"RESOURCE FAILED (Steps: {', '.join(steps_failed)})"
+            
+            if status == "OK": 
+                converged_patients += 1
+            else: 
+                failed_list.append(f"{pid}: {status}")
+                
         return {"status": "complete" if not failed_list else "partial_convergence", "joint_reward": s, "convergence_report": {"total_patients": total_patients, "converged_count": converged_patients, "resource_failures": self.resource_failures, "final_inventory": self.inventory, "failed_patients": failed_list}, "schedule": self.schedule}
     def get_serializable_state(self):
         return {"schedule": self.schedule, "patient_states": self.patient_states, "agents": self.agents_map}

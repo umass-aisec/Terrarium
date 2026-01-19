@@ -22,13 +22,23 @@ CORE RULES:
 3. **Execution**: 
    - Schedule strictly based on the `step_index` in your Job Queue.
    - Do not "guess" step indices.
+4. **Tool Usage (Provisioner)**:
+   - `broadcast_message` is for TALKING.
+   - `transfer_resources` is for SENDING.
+   - You MUST call `transfer_resources` to actually move items.
 
 SCORING:
 - Resource Failure: -300 points (Soft).
 - Missed Patient Step: -500 points (Hard).
-*Priority: Complete the schedule.*"""
+- **Holding Cost**: -10 points/unit for unused inventory.
+- **Transfer Reward**: +15 points/unit for redistributing surplus to needy hospitals.
+*Priority: Complete the schedule efficiently.*"""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
+        
+        # --- DYNAMIC BLACKBOARD ID DETECTION ---
+        available_boards = list(blackboard_context.keys())
+        main_board_id = available_boards[0] if available_boards else "0"
         
         # --- Provisioner Logic ---
         if agent_name == "Resource_Provisioner":
@@ -50,14 +60,17 @@ Inventory Overview:
 **ECONOMIC REALITY CHECK:**
 - Every unit sent to a hospital that is NOT used costs the team **-10 points**.
 - **DO NOT DUMP INVENTORY.** Only send exactly what is needed.
+- **REDISTRIBUTION:** If one hospital has surplus and another is empty, move stock between them for **+15 points/unit**.
 
 ACTION REQUIRED:
 1. Check the Blackboard for "URGENT" requests.
-   - If a hospital asks for X, try to send X (not X+20).
+   - If a hospital asks for X, send X **immediately** using `transfer_resources`.
 2. Scan for CRITICAL shortages (< 2).
-   - If critical, send a small "Just-in-Time" batch (e.g., 3-5 units).
+   - Send small top-ups (3-5 units).
+3. Scan for IMBALANCES.
+   - If Hospital A > 10 and Hospital B = 0, transfer A -> B.
    
-Your Goal: Zero Failures AND Zero Waste.
+Your Goal: Zero Failures, Zero Waste, Maximize Rewards.
 """
             else:
                 instruction = "[PHASE: EXECUTION] Stand by. Monitoring scheduling process."
@@ -91,7 +104,7 @@ Role: Logistics Provisioner
                 )
             queue_str += "==============================================\n"
 
-        bb_str = "=== BLACKBOARD (READ ONLY - DO NOT EXECUTE FROM HERE) ===\n"
+        bb_str = f"=== BLACKBOARD (ID: {main_board_id}) ===\n"
         if blackboard_context:
             for ch, msg in blackboard_context.items():
                 bb_str += f"[{ch}]\n{msg}\n"
@@ -110,8 +123,8 @@ Costs per Patient: [{cost_str}]
 
 1. Review your "MANDATORY TASK LIST" above.
 2. Calculate Need: (Queue Size * Cost) vs Inventory.
-3. If Short: Post "URGENT: Need [Resource] at {hospital}" via `broadcast_message`.
-4. Do NOT schedule yet. Wait for Provisioner shipments.
+3. If Short: Post "URGENT: Need [Resource] at {hospital}" to Blackboard ID '{main_board_id}'.
+4. **HAVE SURPLUS?** If you have >5 excess units, offer to transfer them to other hospitals for a reward.
 """
         elif phase == 'execution':
             instruction = f"""
@@ -130,6 +143,7 @@ INSTRUCTIONS:
 
 3. INVENTORY CHECK: [{inv_str}]
    - If inventory is low, schedule ANYWAY to avoid the -500 Step Miss Penalty.
+   - (Scheduling without resources costs -300, which is better than -500).
 
 DO NOT POST MESSAGES. USE TOOLS IMMEDIATELY.
 """
