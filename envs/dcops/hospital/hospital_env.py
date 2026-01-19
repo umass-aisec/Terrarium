@@ -49,7 +49,13 @@ class HospitalEnvironment(AbstractEnvironment):
         self.patient_states: Dict[str, Dict] = {p: {"scheduled_steps": {}, "resource_failures": []} for p in self.patients}
 
         self.inventory = self._generate_scarcity_scenario()
+        
+        # Track GLOBAL failures for scoring
         self.resource_failures = {rt: 0 for rt in self.resource_types}
+        
+        # --- NEW: Track LOCAL failures for Provisioner Intelligence ---
+        # Maps "General_Hospital" -> {"IV_Kits": 5, ...}
+        self.hospital_failures = {h: {rt: 0 for rt in self.resource_types} for h in ["General_Hospital", "St_Marys_Center"]}
         
         # Track Peer-to-Peer Transfer Rewards
         self.transfer_rewards = 0.0
@@ -167,7 +173,7 @@ class HospitalEnvironment(AbstractEnvironment):
                 self.inventory[sender_hospital][res_type] -= actual_move
                 self.inventory[dst_hospital][res_type] += actual_move
                 
-                # --- NEW: Incentive for Hospital-to-Hospital Transfers ---
+                # --- Incentive for Hospital-to-Hospital Transfers ---
                 if sender_hospital != "Resource_Provisioner" and sender_hospital != dst_hospital:
                     # Reward: +15 points per unit (Offsets holding cost of 10 + small bonus)
                     reward = actual_move * 15.0
@@ -204,7 +210,7 @@ class HospitalEnvironment(AbstractEnvironment):
             min_start = max(min_start, prev["end_time"] + penalty)
             
         if start < min_start: return
-        
+            
         dur = target_step["duration"]
         for t in range(start, start + dur):
             if t >= self.max_time_horizon: return
@@ -222,6 +228,10 @@ class HospitalEnvironment(AbstractEnvironment):
                 self.inventory[hospital][res] = 0 
                 missing.append(res)
                 self.resource_failures[res] += 1
+                
+                # --- NEW: Record specific hospital failure ---
+                if hospital in self.hospital_failures:
+                    self.hospital_failures[hospital][res] += 1
         
         if missing:
             logger.warning(f"RESOURCE FAILURE [{agent_id}]: Scheduled {p_id} missing {missing}.")
@@ -283,11 +293,15 @@ class HospitalEnvironment(AbstractEnvironment):
         my_info = self.agents_map[agent_name]
         
         if agent_name == "Resource_Provisioner":
+            # --- NEW: Filter failure map to only show active problems ---
+            active_failures = {h: f for h, f in self.hospital_failures.items() if sum(f.values()) > 0}
+            
             return {
                 "agent_name": agent_name, "phase": phase, "iteration": iteration,
                 "role": "provisioner",
                 "inventory_snapshot": self.inventory,
-                "failures_so_far": self.resource_failures
+                "failures_so_far": self.resource_failures,
+                "failures_by_hospital": active_failures # <--- Granular visibility
             }
 
         summary = {}
@@ -364,12 +378,8 @@ class HospitalEnvironment(AbstractEnvironment):
             elif resource_errors:
                 steps_failed = [str(x['step']) for x in resource_errors]
                 status = f"RESOURCE FAILED (Steps: {', '.join(steps_failed)})"
-            
-            if status == "OK": 
-                converged_patients += 1
-            else: 
-                failed_list.append(f"{pid}: {status}")
-                
+            if status == "OK": converged_patients += 1
+            else: failed_list.append(f"{pid}: {status}")
         return {"status": "complete" if not failed_list else "partial_convergence", "joint_reward": s, "convergence_report": {"total_patients": total_patients, "converged_count": converged_patients, "resource_failures": self.resource_failures, "final_inventory": self.inventory, "failed_patients": failed_list}, "schedule": self.schedule}
     def get_serializable_state(self):
         return {"schedule": self.schedule, "patient_states": self.patient_states, "agents": self.agents_map}

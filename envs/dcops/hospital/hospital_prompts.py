@@ -43,10 +43,18 @@ SCORING:
         # --- Provisioner Logic ---
         if agent_name == "Resource_Provisioner":
             inv = agent_context.get("inventory_snapshot", {})
+            # --- NEW: Consume granular failure map ---
+            failures = agent_context.get("failures_by_hospital", {})
+            
             inv_str = ""
             for h, items in inv.items():
                 inv_str += f"   - {h}: " + ", ".join([f"{k}:{v}" for k,v in items.items()]) + "\n"
             
+            # --- NEW: Construct Critical Alerts ---
+            alert_str = "None"
+            if failures:
+                alert_str = "\n".join([f"   !!! ALERT: {h} needs {f}" for h, f in failures.items()])
+
             phase = agent_context.get('phase', 'unknown')
             
             instruction = ""
@@ -57,17 +65,21 @@ You are the LOGISTICS MANAGER.
 Inventory Overview:
 {inv_str}
 
+**CRITICAL ALERTS (Active Resource Failures):**
+{alert_str}
+
 **ECONOMIC REALITY CHECK:**
 - Every unit sent to a hospital that is NOT used costs the team **-10 points**.
 - **DO NOT DUMP INVENTORY.** Only send exactly what is needed.
 - **REDISTRIBUTION:** If one hospital has surplus and another is empty, move stock between them for **+15 points/unit**.
 
 ACTION REQUIRED:
-1. Check the Blackboard for "URGENT" requests.
+1. **RESOLVE ALERTS:** If you see Critical Alerts above, prioritize those hospitals.
+2. Check the Blackboard for "URGENT" or "DEFICIT" requests.
    - If a hospital asks for X, send X **immediately** using `transfer_resources`.
-2. Scan for CRITICAL shortages (< 2).
+3. Scan for CRITICAL shortages (< 2).
    - Send small top-ups (3-5 units).
-3. Scan for IMBALANCES.
+4. Scan for IMBALANCES.
    - If Hospital A > 10 and Hospital B = 0, transfer A -> B.
    
 Your Goal: Zero Failures, Zero Waste, Maximize Rewards.
@@ -125,6 +137,10 @@ Costs per Patient: [{cost_str}]
 2. Calculate Need: (Queue Size * Cost) vs Inventory.
 3. If Short: Post "URGENT: Need [Resource] at {hospital}" to Blackboard ID '{main_board_id}'.
 4. **HAVE SURPLUS?** If you have >5 excess units, offer to transfer them to other hospitals for a reward.
+
+**COMMUNICATION PROTOCOL:**
+- **Surplus (>5 units):** Broadcast 'SURPLUS [Resource]' so others know they can request it.
+- **Deficit (0 units):** Broadcast 'DEFICIT [Resource]' to signal urgent need.
 """
         elif phase == 'execution':
             instruction = f"""
