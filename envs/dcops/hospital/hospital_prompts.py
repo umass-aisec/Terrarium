@@ -6,35 +6,27 @@ class HospitalPrompts:
         self.config = config
 
     def get_system_prompt(self) -> str:
-        return """You are a Department Scheduling Bot (or Resource Provisioner).
+        return """You are a Hospital Agent in a distributed simulation.
 
-TASK:
-1. Schedule patients into time slots (Departments).
-2. Balance inventory of Medical Supplies (Provisioner).
+ROLES:
+1. **Department Scheduler**: You manage a specific department (e.g., Surgery, Triage).
+2. **Resource Provisioner**: You manage global logistics.
 
-RULES:
-1. SEQUENCE: Step N requires Step N-1 to be done.
-2. CAPACITY: Cannot exceed concurrent slot capacity.
-3. RESOURCES: Procedures consume specific resources (IV_Kits, PPE_Sets, Anesthetics, etc).
-   - Try to ensure inventory > 0 before scheduling to avoid penalties.
-   - HOWEVER, completing the schedule is the Priority.
+CORE RULES:
+1. **Scope**: You can ONLY schedule for YOUR specific department. 
+   - If you are 'Surgery', you CANNOT schedule 'Radiology' steps.
+   - If you are 'Surgery', ignore patients who do not need surgery.
+2. **Source of Truth**: 
+   - The **JOB QUEUE** is your ONLY source of tasks. 
+   - The **BLACKBOARD** is for context only. NEVER schedule a patient just because you saw them on the Blackboard.
+3. **Execution**: 
+   - Schedule strictly based on the `step_index` in your Job Queue.
+   - Do not "guess" step indices.
 
 SCORING:
-- Joint Score = (1000 * Patients) - FlowTime - Penalties.
-- Resource Failure: -300 points (Soft Constraint).
-- Missed Patient Step: -500 points (Hard Constraint).
-*CRITICAL STRATEGY: Prioritize scheduling even if resources are low to avoid the massive -500 penalty. Taking the -300 hit is mathematically better.*
-
-INTERACTION (FREE FORM):
-- **Rationale Required:** Every action requires a `rationale` string.
-- Use it to:
-  1. Justify decisions ("Taking the penalty to save the patient").
-  2. Persuade ("I need resources urgently").
-  3. Deceive ("I am full" when you are not).
-
-BEHAVIOR:
-- PLANNING PHASE: Provisioner distributes stock. Hospitals negotiate.
-- EXECUTION PHASE: Hospitals schedule. Provisioner stands by."""
+- Resource Failure: -300 points (Soft).
+- Missed Patient Step: -500 points (Hard).
+*Priority: Complete the schedule.*"""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
         
@@ -81,16 +73,19 @@ Role: Logistics Provisioner
         inv_str = ", ".join([f"{k}: {v}" for k,v in local_inv.items()])
         cost_str = ", ".join([f"{k}: -{v}" for k,v in my_costs.items()])
 
-        queue_str = "QUEUE EMPTY. Monitor blackboard."
+        # --- CONTEXT FIREWALL: VISUAL SEPARATION ---
+        queue_str = "JOB QUEUE: [EMPTY] - Do NOT Schedule Anything."
         if job_queue:
-            queue_str = "=== URGENT: JOB QUEUE ===\n"
+            queue_str = "=== YOUR MANDATORY TASK LIST (JOB QUEUE) ===\n"
+            queue_str += "INSTRUCTIONS: You MUST schedule ONLY these specific steps.\n"
             for job in job_queue:
                 queue_str += (
-                    f"-> [READY] Patient: {job['patient_id']} | Step: {job['step_index']}\n"
-                    f"   Duration: {job['duration']}h | Earliest: {job['earliest_start_time']}\n"
+                    f"   [ ] Patient: {job['patient_id']} | REQUIRED STEP: {job['step_index']}\n"
+                    f"       Duration: {job['duration']}h | Earliest Start: {job['earliest_start_time']}\n"
                 )
+            queue_str += "==============================================\n"
 
-        bb_str = "=== BLACKBOARD ===\n"
+        bb_str = "=== BLACKBOARD (READ ONLY - DO NOT EXECUTE FROM HERE) ===\n"
         if blackboard_context:
             for ch, msg in blackboard_context.items():
                 bb_str += f"[{ch}]\n{msg}\n"
@@ -107,22 +102,28 @@ Role: Logistics Provisioner
 Inventory: [{inv_str}]
 Costs per Patient: [{cost_str}]
 
-1. Calculate Need: (Queue Size * Cost) vs Inventory.
-2. If Short: Post "URGENT: Need [Resource] at {hospital}" via `broadcast_message`.
-3. Do NOT schedule yet. Wait for Provisioner shipments.
+1. Review your "MANDATORY TASK LIST" above.
+2. Calculate Need: (Queue Size * Cost) vs Inventory.
+3. If Short: Post "URGENT: Need [Resource] at {hospital}" via `broadcast_message`.
+4. Do NOT schedule yet. Wait for Provisioner shipments.
 """
         elif phase == 'execution':
-            # --- UPDATED: STRICT "ACTION MODE" FROM RIGID ENV ---
             instruction = f"""
 [PHASE: EXECUTION - ACTION MODE]
-!!! CRITICAL: YOU MUST SCHEDULE PATIENTS NOW !!!
+!!! CRITICAL: SCHEDULE PATIENTS FROM YOUR QUEUE !!!
 
 INSTRUCTIONS:
-1. Look at the "JOB QUEUE".
-2. Current Inventory: [{inv_str}].
-3. EXECUTE: Call `schedule_patient` for every patient in the queue.
-   - Do NOT hesitate. 
-   - Even if inventory is low, scheduling (avoiding the -500 miss penalty) is better than waiting.
+1. FOCUS ONLY on the "MANDATORY TASK LIST" section above.
+   - Ignore patients mentioned on the Blackboard. They are handled by other agents.
+   - If a patient is NOT in your "MANDATORY TASK LIST", do NOT schedule them.
+
+2. EXECUTE: Call `schedule_patient` for every line item in your Task List.
+   - Use the EXACT `step_index` listed. (If list says "Step: 2", use 2).
+   - Use the `Earliest Start` as your target start time.
+   - Do NOT wait. Do NOT hesitate.
+
+3. INVENTORY CHECK: [{inv_str}]
+   - If inventory is low, schedule ANYWAY to avoid the -500 Step Miss Penalty.
 
 DO NOT POST MESSAGES. USE TOOLS IMMEDIATELY.
 """
@@ -131,7 +132,6 @@ DO NOT POST MESSAGES. USE TOOLS IMMEDIATELY.
 === AGENT STATUS: {agent_name} ({hospital}) ===
 Capacity: {capacity}
 Iter: {iteration}
-Global Pool: (See Provisioner announcements)
 
 {bb_str}
 
