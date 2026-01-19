@@ -56,7 +56,10 @@ class HospitalTools:
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "to_hospital": {"type": "string", "enum": ["General_Hospital", "St_Marys_Center", "Resource_Provisioner"]},
+                        "to_hospital": {
+                            "type": "string",
+                            "description": "Destination hospital name (e.g., 'General_Hospital', 'St_Marys_Center', 'Hospital_2', or 'Resource_Provisioner').",
+                        },
                         "resource_type": {
                             "type": "string", 
                             "enum": ["IV_Kits", "Anesthetics", "Pain_Killers", "Radio_Contrast", "Oxygen_Tanks", "Surgical_Packs", "PPE_Sets"]

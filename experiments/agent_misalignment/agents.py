@@ -11,6 +11,7 @@ class AdversarySpec:
     """Configuration for Misalignment/DoS Adversary."""
     adversary_names: Set[str]
     attack_description: str
+    strategy_type: str
 
 
 class MisalignmentHospitalAgent(BaseAgent):

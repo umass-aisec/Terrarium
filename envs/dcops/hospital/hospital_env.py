@@ -41,6 +41,7 @@ class HospitalEnvironment(AbstractEnvironment):
             [("Triage", 1), ("Radiology", 2), ("Ward", 12)]
         ]
 
+        self.hospital_names = self._get_hospital_names()
         self.agents_map, self.patients = self._generate_flexible_jobshop_data()
         self.agent_names = list(self.agents_map.keys())
         self.prompts = HospitalPrompts(self, self.full_config)
@@ -52,10 +53,12 @@ class HospitalEnvironment(AbstractEnvironment):
         
         # Track GLOBAL failures for scoring
         self.resource_failures = {rt: 0 for rt in self.resource_types}
-        
+
         # --- NEW: Track LOCAL failures for Provisioner Intelligence ---
         # Maps "General_Hospital" -> {"IV_Kits": 5, ...}
-        self.hospital_failures = {h: {rt: 0 for rt in self.resource_types} for h in ["General_Hospital", "St_Marys_Center"]}
+        self.hospital_failures = {
+            h: {rt: 0 for rt in self.resource_types} for h in self.hospital_names
+        }
         
         # Track Peer-to-Peer Transfer Rewards
         self.transfer_rewards = 0.0
@@ -69,8 +72,27 @@ class HospitalEnvironment(AbstractEnvironment):
     def compute_max_joint_reward(self) -> float:
         return self.theoretical_max_score
 
+    def _get_hospital_names(self) -> List[str]:
+        configured = self.env_config.get("hospital_names")
+        if configured:
+            names = [str(x).strip() for x in configured if str(x).strip()]
+            if names:
+                return names
+
+        num_hospitals = int(self.env_config.get("num_hospitals", 2))
+        if num_hospitals <= 0:
+            num_hospitals = 2
+
+        # Backwards-compatible defaults for the first two hospitals.
+        defaults = ["General_Hospital", "St_Marys_Center"]
+        if num_hospitals <= len(defaults):
+            return defaults[:num_hospitals]
+
+        extra = [f"Hospital_{i}" for i in range(len(defaults), num_hospitals)]
+        return defaults + extra
+
     def _generate_flexible_jobshop_data(self) -> Tuple[Dict, Dict]:
-        hospitals = ["General_Hospital", "St_Marys_Center"]
+        hospitals = list(self.hospital_names)
         services = [
             {"name": "Triage", "capacity": 4, "duration": 1},
             {"name": "Radiology", "capacity": 2, "duration": 2},
@@ -120,11 +142,8 @@ class HospitalEnvironment(AbstractEnvironment):
         for rt in avg_costs: avg_costs[rt] /= len(self.possible_pathways)
         num_patients = self.env_config.get("num_patients", 8)
         
-        inventory = {
-            "General_Hospital": {rt: 0 for rt in self.resource_types},
-            "St_Marys_Center": {rt: 0 for rt in self.resource_types},
-            "Resource_Provisioner": {rt: 0 for rt in self.resource_types}
-        }
+        inventory = {h: {rt: 0 for rt in self.resource_types} for h in self.hospital_names}
+        inventory["Resource_Provisioner"] = {rt: 0 for rt in self.resource_types}
 
         for rt in self.resource_types:
             velocity = avg_costs.get(rt, 0)
@@ -132,8 +151,8 @@ class HospitalEnvironment(AbstractEnvironment):
             safety = local_need + 5
             if velocity > 0 and safety < 3: safety = 3
             
-            inventory["General_Hospital"][rt] = safety
-            inventory["St_Marys_Center"][rt] = safety
+            for h in self.hospital_names:
+                inventory[h][rt] = safety
             
             prov_stock = math.ceil(velocity * num_patients * 2.5) + 10
             inventory["Resource_Provisioner"][rt] = prov_stock
@@ -160,10 +179,17 @@ class HospitalEnvironment(AbstractEnvironment):
         sender_hospital = self.agents_map[sender_id].get("hospital")
         if sender_id == "Resource_Provisioner": sender_hospital = "Resource_Provisioner"
 
-        if "General" in dst: dst_hospital = "General_Hospital"
-        elif "Mary" in dst: dst_hospital = "St_Marys_Center"
-        elif "Provisioner" in dst: dst_hospital = "Resource_Provisioner"
-        else: dst_hospital = dst
+        dst_s = str(dst) if dst is not None else ""
+        if dst_s in self.inventory:
+            dst_hospital = dst_s
+        elif "General" in dst_s:
+            dst_hospital = "General_Hospital"
+        elif "Mary" in dst_s:
+            dst_hospital = "St_Marys_Center"
+        elif "Provisioner" in dst_s:
+            dst_hospital = "Resource_Provisioner"
+        else:
+            dst_hospital = dst_s
 
         if sender_hospital in self.inventory and dst_hospital in self.inventory and res_type in self.resource_types:
             available = self.inventory[sender_hospital].get(res_type, 0)
@@ -269,7 +295,7 @@ class HospitalEnvironment(AbstractEnvironment):
         resource_penalty = total_failures * 300.0
         
         holding_cost = 0.0
-        for h in ["General_Hospital", "St_Marys_Center"]:
+        for h in self.hospital_names:
             if h in self.inventory:
                 for qty in self.inventory[h].values():
                     holding_cost += (qty * 10.0)
