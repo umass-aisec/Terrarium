@@ -267,24 +267,46 @@ class HospitalEnvironment(AbstractEnvironment):
         agent_rewards = {a: 0.0 for a in self.agent_names}
         penalty = 500.0
         
+        # 1. Calculate Flow Time & Missed Step Penalties
         for pid, p in self.patients.items():
             sched = self.patient_states[pid]["scheduled_steps"]
             path = p["pathway"]
             if len(sched) == len(path):
+                # Patient finished all steps: Flow = End of last step - Arrival
                 flow = sched[len(path)-1]["end_time"] - p["arrival_time"]
                 total_flow += flow
+                # Distribute flow penalty across agents involved
                 for info in sched.values():
                     agent_rewards[info["agent"]] -= (flow / len(path))
             else:
+                # Patient failed to finish: Penalty per missed step
                 total_flow += (len(path) - len(sched)) * penalty
 
+        # 2. Calculate Resource Failure Penalties (Running out of stock)
         total_failures = sum(self.resource_failures.values())
         resource_penalty = total_failures * 300.0
         
-        score = self.theoretical_max_score - total_flow - resource_penalty
+        # 3. NEW: Calculate Holding Costs (Penalize Hoarding)
+        # Realism: Resources cost money. Unused inventory at end of run is waste.
+        holding_penalty_per_unit = 10.0
+        total_holding_cost = 0.0
         
+        # Scan hospitals for unused inventory
+        for h in ["General_Hospital", "St_Marys_Center"]:
+            if h in self.inventory:
+                for res, qty in self.inventory[h].items():
+                    if qty > 0:
+                        total_holding_cost += qty * holding_penalty_per_unit
+
+        # 4. Final Score Calculation
+        # Score = Max_Potential - Flow_Time - Resource_Failures - Holding_Costs
+        score = self.theoretical_max_score - total_flow - resource_penalty - total_holding_cost
+        
+        # Normalize agent rewards
         base = self.theoretical_max_score / len(self.agent_names)
-        for a in agent_rewards: agent_rewards[a] += base
+        for a in agent_rewards: 
+            agent_rewards[a] += base
+            
         return score, agent_rewards
 
     def joint_reward(self, actions):

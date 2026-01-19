@@ -47,11 +47,17 @@ You are the LOGISTICS MANAGER.
 Inventory Overview:
 {inv_str}
 
+**ECONOMIC REALITY CHECK:**
+- Every unit sent to a hospital that is NOT used costs the team **-10 points**.
+- **DO NOT DUMP INVENTORY.** Only send exactly what is needed.
+
 ACTION REQUIRED:
-1. Scan for shortages in high-volume items (**IV_Kits**, **PPE_Sets**) and critical items (Anesthetics).
-2. Use `transfer_resources` to move stock from your reserve ("Resource_Provisioner") to hospitals with low stock (< 5).
-   - **CRITICAL**: Do NOT hoard IV_Kits or PPE_Sets. Hospitals consume them on almost every step.
-3. Post a `broadcast_message` detailing your shipments.
+1. Check the Blackboard for "URGENT" requests.
+   - If a hospital asks for X, try to send X (not X+20).
+2. Scan for CRITICAL shortages (< 2).
+   - If critical, send a small "Just-in-Time" batch (e.g., 3-5 units).
+   
+Your Goal: Zero Failures AND Zero Waste.
 """
             else:
                 instruction = "[PHASE: EXECUTION] Stand by. Monitoring scheduling process."
