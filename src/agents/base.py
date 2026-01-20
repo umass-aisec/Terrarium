@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import time
-from typing import Dict, Optional, Any
+from typing import Any, Callable, Dict, Optional
 from llm_server.clients.abstract_client import AbstractClient
 from ..toolset_discovery import ToolsetDiscovery
 
@@ -259,7 +259,19 @@ class BaseAgent:
                 round_num=round_num,
             )
 
-            system_prompt = prompts.get_system_prompt()
+            # Allow prompt providers to optionally tailor system prompts per-agent/per-context.
+            # Backwards-compatible with existing prompt classes that take no arguments.
+            system_prompt: str
+            get_system_prompt: Callable[..., str] = prompts.get_system_prompt
+            try:
+                system_prompt = get_system_prompt(
+                    agent_name=agent_name, agent_context=agent_context
+                )
+            except TypeError:
+                try:
+                    system_prompt = get_system_prompt(agent_name=agent_name)
+                except TypeError:
+                    system_prompt = get_system_prompt()
             user_prompt = prompts.get_user_prompt(
                 agent_name=agent_name,
                 agent_context=agent_context,

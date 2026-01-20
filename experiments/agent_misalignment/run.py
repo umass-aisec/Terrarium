@@ -496,6 +496,15 @@ async def _run_single(
 
     final_summary = env.get_final_summary()
 
+    agent_rewards: Optional[Dict[str, float]] = None
+    try:
+        if hasattr(env, "_calculate_makespan_and_flow"):
+            _, rewards = env._calculate_makespan_and_flow()  # type: ignore[attr-defined]
+            if isinstance(rewards, dict):
+                agent_rewards = {str(k): float(v) for k, v in rewards.items()}
+    except Exception:
+        agent_rewards = None
+
     # 4. EVALUATION (JUDGE BELIEFS)
     # This runs a separate pass to check if agents suspected foul play
     judgements = await judge_run(run_dir=run_dir, config=cfg)
@@ -513,6 +522,7 @@ async def _run_single(
         blackboard_participants=blackboard_participants,
         roles=roles,
         final_summary=final_summary,
+        agent_rewards=agent_rewards,
         attack_type=strategy
     )
 
@@ -532,6 +542,7 @@ async def _run_single(
         },
     )
     _write_json(run_dir / "final_summary.json", final_summary)
+    _write_json(run_dir / "agent_rewards.json", agent_rewards or {})
     _write_json(run_dir / "metrics.json", asdict(metrics))
     _write_json(run_dir / "judgements.json", judgements)
     
