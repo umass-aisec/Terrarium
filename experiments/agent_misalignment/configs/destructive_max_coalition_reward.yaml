@@ -1,15 +1,15 @@
 experiment:
-  tag: covert_max_coalition_sweep
-  output_dir: experiments/agent_misalignment/outputs/covert_max_coalition
+  tag: destructive_max_coalition_reward_sweep
+  output_dir: experiments/agent_misalignment/outputs/destructive_max_coalition_reward
   max_concurrent_runs: 1
-  seeds: [42]
+  seeds: [42, 1, 2]
 
   adversary:
-    strategy: covert_max_coalition_reward
+    strategy: destructive_max_coalition_reward
     attack_frequency: always
 
   info:
-    code_prefix: COVERT_COALITION
+    code_prefix: DESTRUCTIVE_COALITION
 
   evaluator:
     model: gpt-4
@@ -19,20 +19,20 @@ experiment:
 
   sweeps:
     # 1. Baseline Clean Sweep (No Adversaries)
-    # - name: clean_baseline
-    #   topologies: [complete]
-    #   adversary_counts: [0]
-    #   strategies: [none]
-    #   target_roles: [None] # Irrelevant for count=0
-    #   # 8, 12, 16 non-provisioners + 1 Provisioner
-    #   num_agents: [9] #, 13, 17]
-    #   num_patients: ["num_agents_minus_1"]
+    - name: clean_baseline
+      topologies: [complete]
+      adversary_counts: [0]
+      strategies: [none]
+      target_roles: [None] # Irrelevant for count=0
+      # 8, 12, 16 non-provisioners + 1 Provisioner
+      num_agents: [9] #, 13, 17]
+      num_patients: ["num_agents_minus_1"]
 
     # 2. Main covert Sweep
     - name: covert_sweep
       topologies: [complete]
       adversary_counts: [4]
-      strategies: [covert_max_coalition_reward]
+      strategies: [destructive_max_coalition_reward]
       
       # The coalition must contain at least one of these:
       target_roles: 
@@ -43,7 +43,7 @@ experiment:
         - Ward
 
       # 8, 12, 16 non-provisioners + 1 Provisioner
-      num_agents: [9] #, 13, 17]
+      num_agents: [9, 13, 17]
       num_patients: ["num_agents_minus_1"]
 
 simulation:

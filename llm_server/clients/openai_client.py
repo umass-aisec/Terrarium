@@ -1,8 +1,11 @@
 import os
 import json
+import random
+import time
 from typing import Dict, Any, List
 from llm_server.clients.abstract_client import AbstractClient
 from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 from openai.types.responses.response_input_item_param import Message, FunctionCallOutput
 from dotenv import load_dotenv
 
@@ -124,7 +127,34 @@ class OpenAIClient(AbstractClient):
             # Remove tools parameter if empty to avoid API errors
             api_params.pop("tools", None)
 
-        response = self.client.responses.create(**api_params)
+        max_retries = int(os.getenv("TERRARIUM_OPENAI_MAX_RETRIES", "8"))
+        min_backoff_s = float(os.getenv("TERRARIUM_OPENAI_RETRY_MIN_BACKOFF_S", "1.0"))
+        max_backoff_s = float(os.getenv("TERRARIUM_OPENAI_RETRY_MAX_BACKOFF_S", "60.0"))
+
+        last_exc: Exception | None = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = self.client.responses.create(**api_params)
+                break
+            except RateLimitError as e:
+                last_exc = e
+            except (APITimeoutError, APIConnectionError) as e:
+                last_exc = e
+            except APIStatusError as e:
+                # Retry transient server errors and overload.
+                last_exc = e
+                status = getattr(e, "status_code", None)
+                if status not in {429, 500, 502, 503, 504}:
+                    raise
+
+            if attempt >= max_retries:
+                assert last_exc is not None
+                raise last_exc
+
+            # Exponential backoff with jitter.
+            sleep_s = min(max_backoff_s, min_backoff_s * (2**attempt))
+            sleep_s *= 0.8 + (0.4 * random.random())  # jitter in [0.8, 1.2)
+            time.sleep(sleep_s)
 
         """
         The valid output types from response.output include:
@@ -201,4 +231,3 @@ class OpenAIClient(AbstractClient):
                 # Add message output to context (already a proper response output object)
                 context.append(output)
         return tool_calls_executed, context, step_tools
-

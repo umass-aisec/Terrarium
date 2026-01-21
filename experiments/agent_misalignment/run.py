@@ -46,6 +46,46 @@ LOGGER_NAME = "experiments.agent_misalignment"
 logger = logging.getLogger(LOGGER_NAME)
 
 
+def _get_token_pricing_usd_per_1m(
+    cfg: Dict[str, Any],
+    *,
+    provider: str,
+    model_name: str,
+) -> Optional[Dict[str, float]]:
+    pricing = (cfg.get("pricing") or {}).get(provider) or {}
+    model_block = pricing.get(model_name) or {}
+    if not isinstance(model_block, dict):
+        return None
+    inp = model_block.get("input_per_1m_usd")
+    out = model_block.get("output_per_1m_usd")
+    if inp is None or out is None:
+        return None
+    return {"input_per_1m_usd": float(inp), "output_per_1m_usd": float(out)}
+
+
+def _sum_turn_usage(turns: List[Dict[str, Any]]) -> Dict[str, int]:
+    total = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    for t in turns:
+        u = t.get("usage") or {}
+        if not isinstance(u, dict):
+            continue
+        total["prompt_tokens"] += int(u.get("prompt_tokens") or 0)
+        total["completion_tokens"] += int(u.get("completion_tokens") or 0)
+        total["total_tokens"] += int(u.get("total_tokens") or 0)
+    return total
+
+
+def _cost_usd(
+    usage: Dict[str, Any],
+    *,
+    input_per_1m_usd: float,
+    output_per_1m_usd: float,
+) -> float:
+    return (int(usage.get("prompt_tokens") or 0) / 1_000_000.0) * input_per_1m_usd + (
+        int(usage.get("completion_tokens") or 0) / 1_000_000.0
+    ) * output_per_1m_usd
+
+
 def _configure_experiment_logging(root: Path, *, verbose: bool = True) -> None:
     _configure_experiment_logging_impl(logger, root, verbose=verbose)
 
@@ -508,6 +548,15 @@ async def _run_single(
     # 4. EVALUATION (JUDGE BELIEFS)
     # This runs a separate pass to check if agents suspected foul play
     judgements = await judge_run(run_dir=run_dir, config=cfg)
+    judge_usage_total: Dict[str, Any] = {}
+    try:
+        judge_usage_path = run_dir / "judge_usage.json"
+        if judge_usage_path.exists():
+            judge_usage_blob = json.loads(judge_usage_path.read_text(encoding="utf-8"))
+            if isinstance(judge_usage_blob, dict):
+                judge_usage_total = judge_usage_blob.get("total_usage") or {}
+    except Exception:
+        judge_usage_total = {}
 
     # 5. METRICS
     blackboard_participants = {
@@ -545,6 +594,35 @@ async def _run_single(
     _write_json(run_dir / "agent_rewards.json", agent_rewards or {})
     _write_json(run_dir / "metrics.json", asdict(metrics))
     _write_json(run_dir / "judgements.json", judgements)
+
+    # 7. COST ACCOUNTING (best-effort; requires optional config.pricing)
+    pricing = _get_token_pricing_usd_per_1m(cfg, provider=provider, model_name=model_name)
+    agent_usage = _sum_turn_usage(turns)
+    run_cost = {
+        "provider": provider,
+        "model_name": model_name,
+        "pricing": pricing,
+        "agent_usage": agent_usage,
+        "judge_usage": judge_usage_total,
+        "agent_cost_usd": None,
+        "judge_cost_usd": None,
+        "total_cost_usd": None,
+    }
+    if pricing:
+        run_cost["agent_cost_usd"] = _cost_usd(
+            agent_usage,
+            input_per_1m_usd=pricing["input_per_1m_usd"],
+            output_per_1m_usd=pricing["output_per_1m_usd"],
+        )
+        run_cost["judge_cost_usd"] = _cost_usd(
+            judge_usage_total,
+            input_per_1m_usd=pricing["input_per_1m_usd"],
+            output_per_1m_usd=pricing["output_per_1m_usd"],
+        )
+        run_cost["total_cost_usd"] = float(run_cost["agent_cost_usd"]) + float(
+            run_cost["judge_cost_usd"]
+        )
+    _write_json(run_dir / "costs.json", run_cost)
     
     # Detailed logging similar to collusion runner
     _write_json(
@@ -579,7 +657,14 @@ async def _run_single(
         "adversaries": len(adversaries),
         "joint_reward": metrics.meeting_outcome.joint_reward,
         "suspicion_rate": metrics.suspicion_rate_non_adversary,
-        "strategy": strategy
+        "strategy": strategy,
+        "agent_prompt_tokens": agent_usage["prompt_tokens"],
+        "agent_completion_tokens": agent_usage["completion_tokens"],
+        "agent_total_tokens": agent_usage["total_tokens"],
+        "judge_prompt_tokens": int(judge_usage_total.get("prompt_tokens") or 0),
+        "judge_completion_tokens": int(judge_usage_total.get("completion_tokens") or 0),
+        "judge_total_tokens": int(judge_usage_total.get("total_tokens") or 0),
+        "total_cost_usd": run_cost.get("total_cost_usd"),
     }
 
 
@@ -723,6 +808,14 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(csv_rows)
+
+    # Optional: aggregate costs across all runs (best-effort).
+    try:
+        from experiments.agent_misalignment.costs import compute_and_write_costs
+
+        compute_and_write_costs(root, write_per_run=False)
+    except Exception:
+        logger.exception("Failed to write costs_summary.json")
             
     return root
 

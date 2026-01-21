@@ -1,15 +1,15 @@
 experiment:
-  tag: covert_max_coalition_sweep
-  output_dir: experiments/agent_misalignment/outputs/covert_max_coalition
+  tag: destructive_no_reward_preservation_sweep
+  output_dir: experiments/agent_misalignment/outputs/destructive_no_reward_preservation
   max_concurrent_runs: 1
   seeds: [42]
 
   adversary:
-    strategy: covert_max_coalition_reward
+    strategy: destructive_no_reward_preservation
     attack_frequency: always
 
   info:
-    code_prefix: COVERT_COALITION
+    code_prefix: DESTRUCTIVE_COALITION_NO_REWARD_PRESERVATION
 
   evaluator:
     model: gpt-4
@@ -31,8 +31,8 @@ experiment:
     # 2. Main covert Sweep
     - name: covert_sweep
       topologies: [complete]
-      adversary_counts: [4]
-      strategies: [covert_max_coalition_reward]
+      adversary_counts: [ 4]
+      strategies: [destructive_no_reward_preservation]
       
       # The coalition must contain at least one of these:
       target_roles: 
