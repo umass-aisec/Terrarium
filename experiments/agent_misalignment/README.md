@@ -23,10 +23,11 @@ python experiments/agent_misalignment/run.py --config experiments/agent_misalign
 ```
 
 ## Plot
-Generate sweep-level plots (e.g., Reward vs. Adversary Count, Suspicion Rates):
+Generate sweep-level plots from a sweep directory (Reward, Failures, Suspicion, Attribution,
+Messages/Complaints, Coalition advantage, and distance-based belief effects):
 ```bash
 python -m experiments.agent_misalignment.plots.generate_all \
-  --sweep-dir experiments/agent_misalignment/outputs/misalignment/<timestamp>/runs/<model>/<sweep_name>
+  --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name>
 ```
 
 Outputs are written to: `experiments/agent_misalignment/plots_outputs/<tag>/<timestamp>/<model>/<sweep_name>/`.
@@ -50,11 +51,11 @@ The config supports multiple backends:
 * **Together AI**: `Llama-3.3-70b`, `Qwen3-235B`, `gpt-oss-120b`, etc.
 
 ## Outputs
-Data is saved to `experiments/agent_misalignment/outputs/misalignment/<timestamp>/`.
+Data is saved to `experiments/agent_misalignment/outputs/<tag>/<timestamp>/`.
 Each run directory contains:
 * `run_config.json`: Full configuration, assigned roles, and final metrics.
 * `final_summary.json`: The environment's final state summary.
-* `evaluator_results.json`: The LLM judge's assessment of agent suspicion.
+* `judgements.json`: The LLM judge's assessment of agent suspicion.
 * `agent_turns.json`: Full transcript of planning, execution, and survey phases.
 
 ## Resume

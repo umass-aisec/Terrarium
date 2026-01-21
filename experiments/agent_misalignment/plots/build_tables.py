@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List
 
-from experiments.common.plotting.io_utils import as_float, as_int, flatten_dict
+from experiments.common.plotting.io_utils import as_float, as_int
 from experiments.common.plotting.load_runs import LoadedRun
 
 
@@ -14,6 +16,67 @@ class Tables:
     agent_rows: List[Dict[str, Any]]
 
 
+_RUN_ID_RE = re.compile(
+    r"""
+    ^(?P<model>.+?)__                           # model label
+    (?P<sweep>.+?)__                            # sweep name
+    agents(?P<num_agents>\d+)_                  # agentsN
+    adv(?P<adversary_count>\d+)_                # advK
+    (?P<target_role>.+?)_                       # target role (can include underscores)
+    seed(?P<seed>\d+)$                          # seedS
+    """,
+    re.VERBOSE,
+)
+
+
+def _infer_run_fields(run_dir: Path, run_config: Dict[str, Any]) -> Dict[str, Any]:
+    rid = str(run_config.get("run_id") or run_dir.name)
+    out: Dict[str, Any] = {"run_id": rid}
+
+    m = _RUN_ID_RE.match(rid)
+    if m:
+        out.update(
+            {
+                "model_label": m.group("model"),
+                "sweep_name": m.group("sweep"),
+                "num_agents": as_int(m.group("num_agents")),
+                "adversary_count": as_int(m.group("adversary_count")),
+                "target_role": m.group("target_role"),
+                "seed": as_int(m.group("seed")),
+            }
+        )
+    else:
+        # Fallback: infer sweep/model from directory structure.
+        # run_dir: .../runs/<model>/<sweep>/<run_id>
+        try:
+            out["sweep_name"] = run_dir.parent.name
+            out["model_label"] = run_dir.parent.parent.name
+        except Exception:
+            pass
+
+    adversaries = run_config.get("adversaries")
+    if isinstance(adversaries, list):
+        out["adversary_count"] = int(len(adversaries))
+    roles = run_config.get("roles")
+    if isinstance(roles, dict):
+        out["num_agents"] = int(len(roles))
+
+    return out
+
+
+def _sum_resource_failures(final_summary: Dict[str, Any]) -> int | None:
+    convergence = final_summary.get("convergence_report")
+    if not isinstance(convergence, dict):
+        return None
+    failures = convergence.get("resource_failures")
+    if not isinstance(failures, dict):
+        return None
+    try:
+        return int(sum(int(v or 0) for v in failures.values()))
+    except Exception:
+        return None
+
+
 def build_tables(runs: List[LoadedRun]) -> Tables:
     run_rows: List[Dict[str, Any]] = []
     target_rows: List[Dict[str, Any]] = []
@@ -21,117 +84,108 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
 
     for run in runs:
         rc = run.run_config or {}
-        rid = str(rc.get("run_id") or run.run_dir.name)
-        topology = rc.get("topology")
-        num_agents = as_int(rc.get("num_agents"))
-        adversary_count = as_int(rc.get("adversary_count"))
-        seed = as_int(rc.get("seed"))
+        inferred = _infer_run_fields(run.run_dir, rc)
+        rid = str(inferred.get("run_id") or run.run_dir.name)
 
         fs = run.final_summary or {}
-        run_row: Dict[str, Any] = {
-            "run_dir": str(run.run_dir),
-            "run_id": rid,
-            "model_label": rc.get("model_label"),
-            "provider": rc.get("provider"),
-            "model": rc.get("model"),
-            "sweep_name": rc.get("sweep_name") or rc.get("sweep") or None,
-            "topology": topology,
-            "num_agents": num_agents,
-            "adversary_count": adversary_count,
-            "seed": seed,
-            "status": fs.get("status"),
-            "joint_reward": as_float(fs.get("joint_reward")),
-            "joint_reward_ratio": as_float(fs.get("joint_reward_ratio")),
-            "average_agent_reward": as_float(fs.get("average_agent_reward")),
-            "variables_assigned": as_int(fs.get("variables_assigned")),
-            "total_variables": as_int(fs.get("total_variables")),
-        }
-        run_rows.append(run_row)
+        if not isinstance(fs, dict):
+            fs = {}
+        convergence = fs.get("convergence_report")
+        if not isinstance(convergence, dict):
+            convergence = {}
 
         metrics = run.metrics or {}
-        by_target = metrics.get("by_target") if isinstance(metrics, dict) else None
-        if isinstance(by_target, dict):
-            for target_agent, tmetrics in by_target.items():
-                if not isinstance(tmetrics, dict):
+        if not isinstance(metrics, dict):
+            metrics = {}
+
+        meeting = metrics.get("meeting_outcome")
+        if not isinstance(meeting, dict):
+            meeting = {}
+        graph = metrics.get("graph")
+        if not isinstance(graph, dict):
+            graph = {}
+
+        run_rows.append(
+            {
+                "run_dir": str(run.run_dir),
+                "run_id": rid,
+                "model_label": inferred.get("model_label"),
+                "sweep_name": inferred.get("sweep_name"),
+                "num_agents": inferred.get("num_agents"),
+                "adversary_count": inferred.get("adversary_count"),
+                "target_role": inferred.get("target_role"),
+                "seed": inferred.get("seed"),
+                "status": fs.get("status"),
+                "attack_type": metrics.get("attack_type"),
+                "joint_reward": as_float(fs.get("joint_reward")),
+                "converged_patients": as_int(convergence.get("converged_count")),
+                "total_patients": as_int(convergence.get("total_patients")),
+                "resource_failures_total": _sum_resource_failures(fs),
+                "failed_patients_count": as_int(
+                    len(convergence.get("failed_patients") or [])
+                ),
+                "suspicion_rate_non_adversary": as_float(
+                    metrics.get("suspicion_rate_non_adversary")
+                ),
+                "correct_attribution_rate_non_adversary": as_float(
+                    metrics.get("correct_attribution_rate_non_adversary")
+                ),
+                "total_messages": as_int(metrics.get("total_messages")),
+                "complaint_messages": as_int(metrics.get("complaint_messages")),
+                "avg_distance_to_adversary_suspicious_agents": as_float(
+                    metrics.get("avg_distance_to_adversary_suspicious_agents")
+                ),
+                "coalition_reward_avg": as_float(metrics.get("coalition_reward_avg")),
+                "noncoalition_reward_avg": as_float(
+                    metrics.get("noncoalition_reward_avg")
+                ),
+                "coalition_minus_noncoalition_avg": as_float(
+                    metrics.get("coalition_minus_noncoalition_avg")
+                ),
+                # Convenience flattened nested values
+                "meeting_outcome_joint_reward": as_float(meeting.get("joint_reward")),
+                "meeting_outcome_variables_assigned": as_int(
+                    meeting.get("variables_assigned")
+                ),
+                "meeting_outcome_total_variables": as_int(meeting.get("total_variables")),
+                "graph_density": as_float(graph.get("density")),
+                "graph_avg_degree": as_float(graph.get("avg_degree")),
+                "graph_avg_clustering": as_float(graph.get("avg_clustering")),
+            }
+        )
+
+        # Agent rows from metrics.json["agents"]
+        agents = metrics.get("agents")
+        if isinstance(agents, list):
+            for a in agents:
+                if not isinstance(a, dict):
                     continue
-                flat = flatten_dict(tmetrics, prefix="")
-                # Avoid embedding large nested structures in the target-level row.
-                flat.pop("agents", None)
-                # Make sure key identifiers are always present
-                target_row: Dict[str, Any] = {
+                arow: Dict[str, Any] = {
                     "run_dir": str(run.run_dir),
                     "run_id": rid,
-                    "topology": topology,
-                    "num_agents": num_agents,
-                    "adversary_count": adversary_count,
-                    "seed": seed,
-                    "target_agent": target_agent,
+                    "model_label": inferred.get("model_label"),
+                    "sweep_name": inferred.get("sweep_name"),
+                    "num_agents": inferred.get("num_agents"),
+                    "adversary_count": inferred.get("adversary_count"),
+                    "target_role": inferred.get("target_role"),
+                    "seed": inferred.get("seed"),
                 }
-                target_row.update(flat)
-                # Normalize a few common numeric fields
+                arow.update(a)
                 for k in [
-                    "propagation_rate_misinfo_non_adversary",
-                    "propagation_rate_truth_non_adversary",
-                    "avg_distance_to_adversary_misinfo_believers",
-                    "meeting_outcome.joint_reward",
-                    "meeting_outcome.joint_reward_ratio",
-                    "meeting_outcome.average_agent_reward",
-                    "graph.density",
-                    "graph.avg_degree",
-                    "graph.avg_clustering",
-                    "graph.diameter",
-                    "graph.avg_shortest_path_length",
+                    "degree",
+                    "distance_to_nearest_adversary",
+                    "total_posts",
+                    "complaint_posts",
+                    "complaint_exposures",
+                    "first_complaint_exposure_round",
+                    "first_complaint_post_round",
                 ]:
-                    if k in target_row:
-                        if k.endswith("diameter"):
-                            target_row[k] = as_int(target_row[k])
-                        else:
-                            target_row[k] = as_float(target_row[k])
-                for k in [
-                    "total_agents",
-                    "adversary_count",
-                    "total_messages",
-                    "misinformation_messages",
-                    "believes_misinformation_total",
-                    "believes_misinformation_non_adversary",
-                    "believes_truth_total",
-                    "believes_truth_non_adversary",
-                ]:
-                    if k in target_row:
-                        target_row[k] = as_int(target_row[k])
-                target_rows.append(target_row)
+                    if k in arow:
+                        arow[k] = as_int(arow[k])
+                if "judge_confidence" in arow:
+                    arow["judge_confidence"] = as_float(arow.get("judge_confidence"))
+                agent_rows.append(arow)
 
-                # Agent rows (optional)
-                agents = tmetrics.get("agents") if isinstance(tmetrics, dict) else None
-                if isinstance(agents, list):
-                    for a in agents:
-                        if not isinstance(a, dict):
-                            continue
-                        arow: Dict[str, Any] = {
-                            "run_dir": str(run.run_dir),
-                            "run_id": rid,
-                            "topology": topology,
-                            "num_agents": num_agents,
-                            "adversary_count": adversary_count,
-                            "seed": seed,
-                            "target_agent": target_agent,
-                        }
-                        arow.update(a)
-                        # Normalize
-                        for k in [
-                            "degree",
-                            "distance_to_nearest_adversary",
-                            "total_posts",
-                            "misinformation_posts",
-                            "misinformation_exposures",
-                            "first_misinformation_exposure_round",
-                            "first_misinformation_post_round",
-                        ]:
-                            if k in arow:
-                                arow[k] = as_int(arow[k])
-                        for k in ["judge_confidence"]:
-                            if k in arow:
-                                arow[k] = as_float(arow[k])
-                        agent_rows.append(arow)
-
+    # target_rows unused for this experiment (kept for compatibility with the CLI output tables)
     return Tables(run_rows=run_rows, target_rows=target_rows, agent_rows=agent_rows)
+
