@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 import matplotlib
 
@@ -14,6 +14,15 @@ from experiments.common.plotting.logging_utils import log_saved_plot
 from experiments.common.plotting.style import apply_default_style
 
 logger = logging.getLogger(__name__)
+
+_STYLE = {
+    # Paper-friendly defaults (reasonable in LaTeX figures).
+    "font.size": 18,
+    "axes.labelsize": 18,
+    "xtick.labelsize": 18,
+    "ytick.labelsize": 18,
+    "legend.fontsize": 18,
+}
 
 
 def _unique_non_null(rows: List[Dict[str, Any]], key: str) -> List[Any]:
@@ -63,6 +72,7 @@ def _plot_metric_by_x(
     out_path: Path,
 ) -> None:
     apply_default_style(plt)
+    plt.rcParams.update(_STYLE)
     ensure_dir(out_path.parent)
 
     xs = [r.get(x_key) for r in run_rows]
@@ -70,8 +80,7 @@ def _plot_metric_by_x(
         return
     numeric_x = _is_numeric(xs)
 
-    fig, ax = plt.subplots(figsize=(7.2, 4.8))
-    ax.set_title(f"{y_label} vs {x_label}")
+    fig, ax = plt.subplots(figsize=(6.5, 4.0))
 
     if numeric_x:
         by_x = groupby(run_rows, (x_key,))
@@ -126,7 +135,7 @@ def _plot_metric_by_x(
         ax.set_ylabel(y_label)
 
     fig.tight_layout()
-    fig.savefig(out_path)
+    fig.savefig(out_path, format="pdf", bbox_inches="tight")
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
@@ -142,6 +151,7 @@ def plot_distance_effects(
       - correct attribution rate by distance to nearest adversary
     """
     apply_default_style(plt)
+    plt.rcParams.update(_STYLE)
     ensure_dir(out_path.parent)
 
     rows = [
@@ -172,17 +182,16 @@ def plot_distance_effects(
         susp_rates.append(susp / denom)
         corr_rates.append(corr / denom)
 
-    fig, ax = plt.subplots(figsize=(7.2, 4.8))
+    fig, ax = plt.subplots(figsize=(6.5, 4.0))
     ax.plot(ds, susp_rates, marker="o", label="Suspicion rate (non-adversary)")
     ax.plot(ds, corr_rates, marker="o", label="Correct attribution rate (non-adversary)")
-    ax.set_title("Beliefs vs Graph Distance")
     ax.set_xlabel("Distance to Nearest Adversary")
     ax.set_ylabel("Rate")
     ax.set_ylim(0.0, 1.05)
     ax.legend(loc="best")
 
     fig.tight_layout()
-    fig.savefig(out_path)
+    fig.savefig(out_path, format="pdf", bbox_inches="tight")
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
@@ -203,7 +212,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="joint_reward",
         y_label="Joint Reward",
-        out_path=out_dir / "joint_reward.png",
+        out_path=out_dir / "joint_reward.pdf",
     )
     _plot_metric_by_x(
         run_rows,
@@ -211,7 +220,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="resource_failures_total",
         y_label="Total Resource Failures",
-        out_path=out_dir / "resource_failures_total.png",
+        out_path=out_dir / "resource_failures_total.pdf",
     )
     _plot_metric_by_x(
         run_rows,
@@ -219,7 +228,23 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="failed_patients_count",
         y_label="Failed Patients",
-        out_path=out_dir / "failed_patients_count.png",
+        out_path=out_dir / "failed_patients_count.pdf",
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="converged_patients",
+        y_label="Converged Patients",
+        out_path=out_dir / "converged_patients.pdf",
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="meeting_outcome_variables_assigned",
+        y_label="Variables Assigned",
+        out_path=out_dir / "variables_assigned.pdf",
     )
 
     # Belief / judge metrics
@@ -229,7 +254,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="suspicion_rate_non_adversary",
         y_label="Suspicion Rate (Non-adversary)",
-        out_path=out_dir / "suspicion_rate_non_adversary.png",
+        out_path=out_dir / "suspicion_rate_non_adversary.pdf",
     )
     _plot_metric_by_x(
         run_rows,
@@ -237,7 +262,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="correct_attribution_rate_non_adversary",
         y_label="Correct Attribution Rate (Non-adversary)",
-        out_path=out_dir / "correct_attribution_rate_non_adversary.png",
+        out_path=out_dir / "correct_attribution_rate_non_adversary.pdf",
     )
     _plot_metric_by_x(
         run_rows,
@@ -245,7 +270,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="avg_distance_to_adversary_suspicious_agents",
         y_label="Avg Distance to Adversary (Suspicious Non-adversaries)",
-        out_path=out_dir / "avg_distance_suspicious.png",
+        out_path=out_dir / "avg_distance_suspicious.pdf",
     )
 
     # Communication proxies
@@ -255,7 +280,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="total_messages",
         y_label="Total Messages",
-        out_path=out_dir / "total_messages.png",
+        out_path=out_dir / "total_messages.pdf",
     )
     _plot_metric_by_x(
         run_rows,
@@ -263,7 +288,33 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="complaint_messages",
         y_label="Complaint Messages",
-        out_path=out_dir / "complaint_messages.png",
+        out_path=out_dir / "complaint_messages.pdf",
+    )
+
+    # Graph metrics (key logged fields)
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="graph_density",
+        y_label="Graph Density",
+        out_path=out_dir / "graph_density.pdf",
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="graph_avg_degree",
+        y_label="Graph Avg Degree",
+        out_path=out_dir / "graph_avg_degree.pdf",
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="graph_avg_clustering",
+        y_label="Graph Avg Clustering",
+        out_path=out_dir / "graph_avg_clustering.pdf",
     )
 
     # Coalition advantage (if present)
@@ -273,7 +324,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="coalition_minus_noncoalition_avg",
         y_label="Coalition Advantage (Avg Reward Diff)",
-        out_path=out_dir / "coalition_advantage.png",
+        out_path=out_dir / "coalition_advantage.pdf",
     )
     _plot_metric_by_x(
         run_rows,
@@ -281,7 +332,7 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="coalition_reward_avg",
         y_label="Coalition Avg Reward",
-        out_path=out_dir / "coalition_reward_avg.png",
+        out_path=out_dir / "coalition_reward_avg.pdf",
     )
     _plot_metric_by_x(
         run_rows,
@@ -289,9 +340,8 @@ def plot_sweep_metrics(
         x_label=x_label,
         y_key="noncoalition_reward_avg",
         y_label="Non-coalition Avg Reward",
-        out_path=out_dir / "noncoalition_reward_avg.png",
+        out_path=out_dir / "noncoalition_reward_avg.pdf",
     )
 
     # Distance effects (aggregated across runs)
-    plot_distance_effects(agent_rows, out_path=out_dir / "distance_effects.png")
-
+    plot_distance_effects(agent_rows, out_path=out_dir / "distance_effects.pdf")

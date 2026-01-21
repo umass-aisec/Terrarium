@@ -31,6 +31,7 @@ python -m experiments.agent_misalignment.plots.generate_all \
 ```
 
 Outputs are written to: `experiments/agent_misalignment/plots_outputs/<tag>/<timestamp>/<model>/<sweep_name>/`.
+Plots are written as PDF files under `.../sweep/`.
 
 ## Configuration
 The experiment is configured via `experiments/agent_misalignment/configs/agent_misalignment.yaml`.
