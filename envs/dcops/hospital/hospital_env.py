@@ -351,6 +351,63 @@ class HospitalEnvironment(AbstractEnvironment):
         cost_table.sort(key=lambda item: (not item.get("feasible", False), float(item.get("cost", float("inf")))))
         return cost_table
 
+    def _build_provisioner_cost_table(self, failures_by_hospital: Dict[str, Dict[str, int]]) -> List[Dict[str, Any]]:
+        prov_inventory = self.inventory.get("Resource_Provisioner", {}) or {}
+
+        # Heuristic targets informed by the prompt guidance:
+        # - treat <2 as "critical shortage"
+        # - top up toward 5 units
+        critical_threshold = 2
+        target_stock = 5
+
+        cost_table: List[Dict[str, Any]] = []
+        for hospital in self.hospital_names:
+            local_inventory = self.inventory.get(hospital, {}) or {}
+            failures = failures_by_hospital.get(hospital, {}) or {}
+            for resource_type in self.resource_types:
+                on_hand = int(local_inventory.get(resource_type, 0) or 0)
+                prov_on_hand = int(prov_inventory.get(resource_type, 0) or 0)
+                failure_count = int(failures.get(resource_type, 0) or 0)
+
+                shortage = max(0, critical_threshold - on_hand)
+                recommended = max(0, target_stock - on_hand) if (failure_count > 0 or on_hand < critical_threshold) else 0
+                if recommended <= 0:
+                    continue
+
+                amount = min(recommended, prov_on_hand)
+                feasible = amount > 0
+
+                # Lower cost => more urgent/valuable to do.
+                # - failures are likely worth ~300 each (resource failure penalty)
+                # - shortages get some weight even before failures occur
+                # - transfers earn +15/unit, so we subtract that from "cost"
+                urgency = float(failure_count) * 300.0 + float(shortage) * 150.0
+                benefit = float(amount) * 15.0
+                cost = -(urgency + benefit)
+
+                reason_bits = []
+                if failure_count > 0:
+                    reason_bits.append(f"{failure_count} failures")
+                if on_hand < critical_threshold:
+                    reason_bits.append(f"critical stock ({on_hand}<{critical_threshold})")
+                reason = ", ".join(reason_bits) if reason_bits else "top-up"
+
+                cost_table.append(
+                    {
+                        "transfer_id": f"{hospital}::{resource_type}",
+                        "to_hospital": hospital,
+                        "resource_type": resource_type,
+                        "amount": int(amount),
+                        "requested": int(recommended),
+                        "cost": float(cost),
+                        "feasible": bool(feasible),
+                        "reason": reason,
+                    }
+                )
+
+        cost_table.sort(key=lambda item: (not item.get("feasible", False), float(item.get("cost", float("inf")))))
+        return cost_table
+
     def build_agent_context(self, agent_name, phase, iteration, **kwargs):
         my_info = self.agents_map[agent_name]
         
@@ -363,7 +420,8 @@ class HospitalEnvironment(AbstractEnvironment):
                 "role": "provisioner",
                 "inventory_snapshot": self.inventory,
                 "failures_so_far": self.resource_failures,
-                "failures_by_hospital": active_failures # <--- Granular visibility
+                "failures_by_hospital": active_failures,  # <--- Granular visibility
+                "cost_table": self._build_provisioner_cost_table(active_failures),
             }
 
         summary = {}

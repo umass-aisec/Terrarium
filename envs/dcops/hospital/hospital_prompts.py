@@ -45,6 +45,8 @@ SCORING:
             inv = agent_context.get("inventory_snapshot", {})
             # --- NEW: Consume granular failure map ---
             failures = agent_context.get("failures_by_hospital", {})
+            cost_table = agent_context.get("cost_table", [])
+            cost_table_str = ""
             
             inv_str = ""
             for h, items in inv.items():
@@ -59,6 +61,27 @@ SCORING:
             
             instruction = ""
             if phase == 'planning':
+                if cost_table:
+                    lines = []
+                    for entry in cost_table[:25]:
+                        amount = int(entry.get("amount", 0) or 0)
+                        if amount <= 0:
+                            continue
+                        cost_val = float(entry.get("cost", 0.0) or 0.0)
+                        feasible = bool(entry.get("feasible", False))
+                        line = (
+                            f"- {entry.get('to_hospital')}: send {amount} {entry.get('resource_type')} "
+                            f"(requested {entry.get('requested')}) | cost={cost_val:.2f}"
+                        )
+                        if not feasible:
+                            line += " | INFEASIBLE (no stock)"
+                        reason = str(entry.get("reason") or "").strip()
+                        if reason:
+                            line += f" | {reason}"
+                        lines.append(line)
+                    if lines:
+                        cost_table_str = "=== TRANSFER COSTS / PRIORITIES (LOCAL HEURISTIC) ===\n" + "\n".join(lines) + "\n"
+
                 instruction = f"""
 [PHASE: PLANNING]
 You are the LOGISTICS MANAGER.
@@ -90,6 +113,7 @@ Your Goal: Zero Failures, Zero Waste, Maximize Rewards.
             return f"""
 === AGENT STATUS: {agent_name}
 Role: Logistics Provisioner
+{cost_table_str}
 {instruction}
 """
 
