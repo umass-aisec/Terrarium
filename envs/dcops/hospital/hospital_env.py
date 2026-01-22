@@ -397,6 +397,7 @@ class HospitalEnvironment(AbstractEnvironment):
                         "transfer_id": f"{hospital}::{resource_type}",
                         "to_hospital": hospital,
                         "resource_type": resource_type,
+                        "available": int(prov_on_hand),
                         "amount": int(amount),
                         "requested": int(recommended),
                         "cost": float(cost),

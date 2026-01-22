@@ -65,13 +65,13 @@ SCORING:
                     lines = []
                     for entry in cost_table[:25]:
                         amount = int(entry.get("amount", 0) or 0)
-                        if amount <= 0:
-                            continue
+                        requested = int(entry.get("requested", 0) or 0)
+                        available = int(entry.get("available", 0) or 0)
                         cost_val = float(entry.get("cost", 0.0) or 0.0)
                         feasible = bool(entry.get("feasible", False))
                         line = (
-                            f"- {entry.get('to_hospital')}: send {amount} {entry.get('resource_type')} "
-                            f"(requested {entry.get('requested')}) | cost={cost_val:.2f}"
+                            f"- {entry.get('to_hospital')}: {entry.get('resource_type')} | "
+                            f"requested={requested} | available={available} | send={amount} | cost={cost_val:.2f}"
                         )
                         if not feasible:
                             line += " | INFEASIBLE (no stock)"
