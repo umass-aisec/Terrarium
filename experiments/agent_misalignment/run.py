@@ -115,6 +115,8 @@ def _select_adversaries_hospital_coalition(
     if count <= 0:
         return []
 
+    target_role = (str(target_role).strip() if target_role is not None else None) or None
+
     hospitals = set()
     provisioner = None
     hospital_map = {} 
@@ -137,7 +139,14 @@ def _select_adversaries_hospital_coalition(
         hospital_map[h_name].append(name)
 
     hospitals_list = sorted(list(hospitals))
-    
+
+    def _role_sort_key(agent_name: str) -> int:
+        known_roles = ["Triage", "Radiology", "Surgery", "Ward"]
+        for i, r in enumerate(known_roles):
+            if agent_name.endswith(f"_{r}"):
+                return i
+        return 999
+
     # 1. Target Role is Provisioner
     if target_role == "Resource_Provisioner":
         if not provisioner:
@@ -153,6 +162,16 @@ def _select_adversaries_hospital_coalition(
                 return coalition + list(candidates)
             coalition.extend(rng.sample(candidates, remaining_needed))
         return coalition
+
+    # 2. Target Role is "departmental": take a full within-hospital department coalition.
+    # This collapses redundant cases where selecting a specific department role yields the same coalition.
+    if target_role and target_role.lower() == "departmental":
+        chosen_hospital = rng.choice(hospitals_list)
+        candidates = sorted(hospital_map[chosen_hospital], key=_role_sort_key)
+        if count >= len(candidates):
+            return list(candidates)
+        # Prefer deterministic prefix rather than sampling.
+        return list(candidates)[:count]
 
     # 2. Target Role is Department
     if target_role:

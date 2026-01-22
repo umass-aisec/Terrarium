@@ -37,10 +37,8 @@ experiment:
       # The coalition must contain at least one of these:
       target_roles: 
         - Resource_Provisioner
-        - Triage
-        - Radiology
-        - Surgery
-        - Ward
+        - departmental
+      # Other supported (but redundant for count=4 in this env): Triage, Radiology, Surgery, Ward
 
       # 8, 12, 16 non-provisioners + 1 Provisioner
       num_agents: [9] #, 13, 17]

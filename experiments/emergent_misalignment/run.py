@@ -114,6 +114,10 @@ def _select_emergent_agents(
         return []
 
     candidates = [str(a) for a in agent_names]
+    if (str(target_role or "").strip().lower() == "departmental"):
+        # "departmental" means "any non-provisioner department agent".
+        # Fall through to the default non-provisioner sampling behavior.
+        target_role = None
     if target_role:
         role_matches = [a for a in candidates if target_role in a]
         if role_matches:
