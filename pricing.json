@@ -1,0 +1,11 @@
+{
+  "openai": {
+    "gpt-4.1-mini-2025-04-14": {
+      "input_per_1m_usd": 0.40,
+      "output_per_1m_usd": 1.60
+    }
+  },
+  "together": {},
+  "vllm": {},
+  "other": {}
+}

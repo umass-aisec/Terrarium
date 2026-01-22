@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple
@@ -70,28 +71,44 @@ def _resolve_model_pricing(
     Returns (input_per_1m_usd, output_per_1m_usd, source_note).
 
     Pricing resolution order:
-      1) <output_root>/config.json: top-level `pricing.<provider>.<model_name>`
-      2) None (unknown)
+      1) <output_root>/config.json: top-level `pricing.<provider>.<model_name>` (override)
+      2) Terrarium/pricing.json (central registry; default)
+      3) None (unknown)
     """
-    if not config_root:
-        return None, None, "no_config_root"
+    provider = str(provider or "").strip().lower()
+    model_name = str(model_name or "").strip()
+    if not provider or not model_name:
+        return None, None, "missing_provider_or_model"
 
-    cfg_path = config_root / "config.json"
-    if not cfg_path.exists():
-        return None, None, "missing_config.json"
+    if config_root:
+        cfg_path = config_root / "config.json"
+        if cfg_path.exists():
+            cfg = _load_json(cfg_path) or {}
+            pricing = (cfg.get("pricing") or {}).get(provider) or {}
+            model_block = pricing.get(model_name) or {}
+            if isinstance(model_block, dict):
+                inp = model_block.get("input_per_1m_usd")
+                out = model_block.get("output_per_1m_usd")
+                if inp is not None and out is not None:
+                    return float(inp), float(out), "config.json:pricing"
 
-    cfg = _load_json(cfg_path) or {}
-    pricing = (cfg.get("pricing") or {}).get(provider) or {}
-    model_block = pricing.get(model_name) or {}
-    if not isinstance(model_block, dict):
-        return None, None, "invalid_pricing_block"
+    pricing_path = os.getenv("TERRARIUM_PRICING_PATH")
+    if pricing_path:
+        registry_path = Path(pricing_path).expanduser()
+    else:
+        registry_path = Path(__file__).resolve().parents[3] / "pricing.json"
 
-    inp = model_block.get("input_per_1m_usd")
-    out = model_block.get("output_per_1m_usd")
-    if inp is None or out is None:
-        return None, None, "pricing_missing_for_model"
+    if registry_path.exists():
+        registry = _load_json(registry_path) or {}
+        pricing = (registry.get(provider) or {}) if isinstance(registry, dict) else {}
+        model_block = pricing.get(model_name) if isinstance(pricing, dict) else None
+        if isinstance(model_block, dict):
+            inp = model_block.get("input_per_1m_usd")
+            out = model_block.get("output_per_1m_usd")
+            if inp is not None and out is not None:
+                return float(inp), float(out), f"{registry_path}:pricing"
 
-    return float(inp), float(out), "config.json:pricing"
+    return None, None, "pricing_missing_for_model"
 
 
 def _cost_usd(usage: TokenUsage, *, input_per_1m_usd: float, output_per_1m_usd: float) -> float:
