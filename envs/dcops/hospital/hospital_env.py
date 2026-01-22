@@ -315,6 +315,42 @@ class HospitalEnvironment(AbstractEnvironment):
         _, r = self._calculate_makespan_and_flow()
         return r.get(agent_name, 0.0)
 
+    def _build_department_cost_table(self, hospital: str, service: str, job_queue: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        local_inventory = self.inventory.get(hospital, {}) or {}
+        procedure_costs = self.consumption_map.get(service, {}) or {}
+
+        cost_table: List[Dict[str, Any]] = []
+        for job in job_queue:
+            missing: Dict[str, int] = {}
+            missing_types = 0
+            for resource_type, required_qty in procedure_costs.items():
+                on_hand = int(local_inventory.get(resource_type, 0) or 0)
+                deficit = max(0, int(required_qty) - on_hand)
+                if deficit > 0:
+                    missing[resource_type] = deficit
+                    missing_types += 1
+
+            # Rough, local heuristic mirroring the environment penalties:
+            # - each missing resource type implies a likely -300 failure penalty
+            # - earlier + shorter jobs are slightly preferred (flow-time proxy)
+            resource_penalty_est = float(missing_types) * 300.0
+            time_est = float(job.get("earliest_start_time", 0) or 0) + float(job.get("duration", 0) or 0)
+            cost = resource_penalty_est + time_est
+
+            cost_table.append(
+                {
+                    "job_id": f"{job.get('patient_id')}::step{job.get('step_index')}",
+                    "patient_id": job.get("patient_id"),
+                    "step_index": job.get("step_index"),
+                    "cost": float(cost),
+                    "feasible": missing_types == 0,
+                    "missing": missing,
+                }
+            )
+
+        cost_table.sort(key=lambda item: (not item.get("feasible", False), float(item.get("cost", float("inf")))))
+        return cost_table
+
     def build_agent_context(self, agent_name, phase, iteration, **kwargs):
         my_info = self.agents_map[agent_name]
         
@@ -356,6 +392,12 @@ class HospitalEnvironment(AbstractEnvironment):
                         "patient_id": pid, "step_index": idx, 
                         "duration": step["duration"], "earliest_start_time": start, "note": note
                     })
+
+        cost_table = self._build_department_cost_table(
+            hospital=my_info["hospital"],
+            service=my_info["service"],
+            job_queue=queue,
+        )
         return {
             "agent_name": agent_name, "phase": phase, "iteration": iteration,
             "role": "department",
@@ -367,7 +409,8 @@ class HospitalEnvironment(AbstractEnvironment):
                 "procedure_costs": self.consumption_map.get(my_info["service"], {}),
                 "schedule_summary": summary
             },
-            "job_queue": queue
+            "job_queue": queue,
+            "cost_table": cost_table,
         }
 
     def done(self, iteration):

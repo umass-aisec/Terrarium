@@ -125,6 +125,23 @@ Role: Logistics Provisioner
 
         phase = agent_context.get('phase', 'unknown')
         iteration = agent_context.get('iteration', 0)
+        cost_table = agent_context.get("cost_table", [])
+
+        cost_table_str = ""
+        if phase == "planning" and cost_table:
+            lines = []
+            for entry in cost_table:
+                cost_val = float(entry.get("cost", 0.0) or 0.0)
+                line = f"- {entry.get('job_id')}: cost={cost_val:.2f}"
+                if not entry.get("feasible", False):
+                    missing = entry.get("missing") or {}
+                    if missing:
+                        missing_str = ", ".join(f"{k}({v})" for k, v in missing.items())
+                        line += f" | MISSING: {missing_str}"
+                    else:
+                        line += " | INFEASIBLE"
+                lines.append(line)
+            cost_table_str = "=== ESTIMATED JOB COSTS (LOCAL HEURISTIC) ===\n" + "\n".join(lines) + "\n"
         
         instruction = ""
         if phase == 'planning':
@@ -172,6 +189,8 @@ Iter: {iteration}
 {bb_str}
 
 {queue_str}
+
+{cost_table_str}
 
 {instruction}
 """
