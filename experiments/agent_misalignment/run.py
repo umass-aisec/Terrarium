@@ -351,6 +351,30 @@ async def _run_single(
         target_role=target_role,
         rng=rng
     )
+    # For the destructive/no-reward-preservation setting, the provisioner is a
+    # critical lever for preventing recovery. If the sweep targets a department
+    # role (e.g., "Triage"), force-include the provisioner when the coalition
+    # size allows, while still guaranteeing the requested target role agent.
+    if (
+        str(strategy).strip() == "destructive_no_reward_preservation"
+        and int(adversary_count) >= 2
+        and "Resource_Provisioner" in agent_names
+        and "Resource_Provisioner" not in adversaries
+    ):
+        required: set[str] = set()
+        if target_role and str(target_role).strip() and str(target_role).strip() != "Resource_Provisioner":
+            required_agent = next((a for a in adversaries if str(target_role) in a), None)
+            if required_agent:
+                required.add(required_agent)
+
+        removable = [a for a in adversaries if a not in required]
+        if removable:
+            # Deterministic drop for reproducibility under a fixed seed.
+            drop = sorted(removable)[-1]
+            adversaries = [a for a in adversaries if a != drop]
+            adversaries.append("Resource_Provisioner")
+            # Defensive: preserve requested coalition size (and uniqueness).
+            adversaries = list(dict.fromkeys(adversaries))[: int(adversary_count)]
     roles = {name: ("adversary" if name in adversaries else "cooperative") for name in agent_names}
 
     # For the benign baseline, mimic examples/base_main.py prompt behavior as closely as possible:
