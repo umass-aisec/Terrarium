@@ -1,4 +1,5 @@
 import ast
+import inspect
 import json
 import logging
 import re
@@ -259,7 +260,33 @@ class BaseAgent:
                 round_num=round_num,
             )
 
-            system_prompt = prompts.get_system_prompt()
+            system_prompt = None
+            get_system_prompt = getattr(prompts, "get_system_prompt", None)
+            if not callable(get_system_prompt):
+                raise ValueError("prompts.get_system_prompt must be callable")
+            try:
+                sig = inspect.signature(get_system_prompt)
+            except (TypeError, ValueError):
+                sig = None
+            if sig is None or not sig.parameters:
+                system_prompt = get_system_prompt()
+            else:
+                kwargs: Dict[str, Any] = {}
+                for name, param in sig.parameters.items():
+                    if param.kind == inspect.Parameter.VAR_KEYWORD:
+                        kwargs = {
+                            "agent_name": agent_name,
+                            "agent_context": agent_context,
+                            "blackboard_context": blackboard_context,
+                        }
+                        break
+                    if name == "agent_name":
+                        kwargs[name] = agent_name
+                    elif name == "agent_context":
+                        kwargs[name] = agent_context
+                    elif name == "blackboard_context":
+                        kwargs[name] = blackboard_context
+                system_prompt = get_system_prompt(**kwargs)
             user_prompt = prompts.get_user_prompt(
                 agent_name=agent_name,
                 agent_context=agent_context,
