@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Use generic client factory to allow model switching via config
 from src.utils import get_client_instance
+from src.async_utils import run_blocking
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,9 @@ async def judge_suspicion(
             "temperature": float(judge_cfg.temperature),
             "tools": [],
         }
-        response_obj, response_text = judge_client.generate_response(input=context, params=params)
+        response_obj, response_text = await run_blocking(
+            judge_client.generate_response, input=context, params=params
+        )
         usage = judge_client.get_usage(response_obj, usage)
     except Exception as e:
         logger.error(f"Judge generation failed for {agent_name}: {e}")

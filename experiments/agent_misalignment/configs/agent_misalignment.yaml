@@ -1,7 +1,7 @@
 experiment:
   tag: agent_misalignment
   output_dir: experiments/agent_misalignment/outputs/agent_misalignment
-  max_concurrent_runs: 1
+  max_concurrent_runs: 10
   seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
   adversary:

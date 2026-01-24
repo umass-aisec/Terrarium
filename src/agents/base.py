@@ -6,6 +6,7 @@ import time
 from typing import Any, Callable, Dict, Optional
 from llm_server.clients.abstract_client import AbstractClient
 from ..toolset_discovery import ToolsetDiscovery
+from ..async_utils import run_blocking
 
 logger = logging.getLogger(__name__)
 
@@ -321,8 +322,8 @@ class BaseAgent:
         total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         # Get a response and update context for next conversation step
         # response object will have tool calls embedded inside and text response
-        response, response_str = self.client.generate_response(
-            input=context, params=params
+        response, response_str = await run_blocking(
+            self.client.generate_response, input=context, params=params
         )
         total_usage = self.client.get_usage(response, total_usage)
         current_response = response
@@ -360,8 +361,8 @@ class BaseAgent:
 
             # Continue the conversation using the accumulated context
             try:
-                response, response_str = self.client.generate_response(
-                    input=context, params=params
+                response, response_str = await run_blocking(
+                    self.client.generate_response, input=context, params=params
                 )
                 total_usage = self.client.get_usage(response, total_usage)
                 current_response = response

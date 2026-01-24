@@ -259,7 +259,10 @@ async def resume_runs(
                         sweep_name=spec.sweep_name,
                         topology=spec.topology,
                         num_agents=spec.num_agents,
+                        num_patients=spec.num_patients,
                         adversary_count=spec.adversary_count,
+                        strategy=spec.strategy,
+                        target_role=spec.target_role,
                         seed=spec.seed,
                         out_dir=root,
                     )
@@ -300,7 +303,10 @@ async def resume_runs(
                         sweep_name=spec.sweep_name,
                         topology=spec.topology,
                         num_agents=spec.num_agents,
+                        num_patients=spec.num_patients,
                         adversary_count=spec.adversary_count,
+                        strategy=spec.strategy,
+                        target_role=spec.target_role,
                         seed=spec.seed,
                         out_dir=root,
                     )
