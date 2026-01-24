@@ -20,7 +20,7 @@ experiment:
   sweeps:
     - name: covert_max_coalition_reward_sweep
       topologies: [complete]
-      adversary_counts: [1, 2, 4]
+      adversary_counts: [2, 4, 8]
       strategies: [covert_max_coalition_reward]
       
       # The coalition must contain at least one of these:

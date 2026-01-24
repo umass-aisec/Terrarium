@@ -7,6 +7,7 @@ import csv
 import json
 import logging
 import random
+import re
 import importlib
 import asyncio
 from dataclasses import asdict
@@ -44,6 +45,74 @@ from src.utils import get_client_instance, get_generation_params, get_model_name
 
 LOGGER_NAME = "experiments.agent_misalignment"
 logger = logging.getLogger(LOGGER_NAME)
+
+_PATH_COMPONENT_RE = re.compile(r"[^A-Za-z0-9_.-]+")
+
+
+def _sanitize_path_component(value: Any) -> str:
+    s = "None" if value is None else str(value)
+    s = s.strip()
+    if not s:
+        return "None"
+    s = _PATH_COMPONENT_RE.sub("_", s)
+    s = s.strip("_")
+    return s or "None"
+
+
+def _build_run_id(
+    *,
+    model_label: str,
+    sweep_name: str,
+    topology: str,
+    strategy: str,
+    num_agents: int,
+    num_patients: int,
+    adversary_count: int,
+    target_role: Any,
+    seed: int,
+) -> str:
+    model_safe = _sanitize_path_component(model_label)
+    sweep_safe = _sanitize_path_component(sweep_name)
+    topology_safe = _sanitize_path_component(topology)
+    strategy_safe = _sanitize_path_component(strategy)
+    role_safe = _sanitize_path_component(target_role)
+    return (
+        f"{model_safe}__{sweep_safe}"
+        f"__topo{topology_safe}__strat{strategy_safe}"
+        f"__agents{int(num_agents)}_patients{int(num_patients)}"
+        f"_adv{int(adversary_count)}_{role_safe}_seed{int(seed)}"
+    )
+
+
+def _build_run_id_v1(
+    *,
+    model_label: str,
+    sweep_name: str,
+    num_agents: int,
+    adversary_count: int,
+    target_role: Any,
+    seed: int,
+) -> str:
+    role_safe = str(target_role).replace(" ", "_") if target_role else "None"
+    return (
+        f"{model_label}__{sweep_name}"
+        f"__agents{int(num_agents)}_adv{int(adversary_count)}_{role_safe}_seed{int(seed)}"
+    )
+
+
+def _resolve_num_patients_spec(*, raw: Any, num_agents: int) -> int:
+    """
+    Supports YAML-friendly placeholders like:
+      - "num_agents_minus_1" / "num_agents-1"
+    """
+    if isinstance(raw, str):
+        key = raw.strip().lower().replace(" ", "_")
+        if key in {"num_agents_minus_1", "num_agents-1"}:
+            return int(num_agents) - 1
+        raise ValueError(f"Unknown num_patients spec: {raw!r}")
+    if raw is None:
+        return int(num_agents) - 1
+    return int(raw)
 
 
 def _get_token_pricing_usd_per_1m(
@@ -281,20 +350,6 @@ async def _run_single(
             except Exception:
                 return False
 
-    def _resolve_num_patients(*, raw: Any, num_agents: int) -> int:
-        """
-        Supports YAML-friendly placeholders like:
-          - "num_agents_minus_1" / "num_agents-1"
-        """
-        if isinstance(raw, str):
-            key = raw.strip().lower().replace(" ", "_")
-            if key in {"num_agents_minus_1", "num_agents-1"}:
-                return int(num_agents) - 1
-            raise ValueError(f"Unknown num_patients spec: {raw!r}")
-        if raw is None:
-            return int(num_agents) - 1
-        return int(raw)
-
     # --- CONFIGURATION SETUP ---
     cfg = copy.deepcopy(base_cfg)
     cfg.setdefault("simulation", {})["seed"] = int(seed)
@@ -302,9 +357,8 @@ async def _run_single(
     # Overrides
     cfg.setdefault("communication_network", {})["topology"] = str(topology)
     cfg.setdefault("communication_network", {})["num_agents"] = int(num_agents)
-    cfg.setdefault("environment", {})["num_patients"] = _resolve_num_patients(
-        raw=num_patients, num_agents=int(num_agents)
-    )
+    resolved_num_patients = _resolve_num_patients_spec(raw=num_patients, num_agents=int(num_agents))
+    cfg.setdefault("environment", {})["num_patients"] = resolved_num_patients
 
     cfg.setdefault("experiment", {}).setdefault("adversary", {})["strategy"] = strategy
     if target_role:
@@ -316,8 +370,17 @@ async def _run_single(
 
     # --- DIRECTORY SETUP ---
     run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    role_safe = str(target_role).replace(" ", "_") if target_role else "None"
-    run_id = f"{model_label}__{sweep_name}__agents{num_agents}_adv{adversary_count}_{role_safe}_seed{seed}"
+    run_id = _build_run_id(
+        model_label=str(model_label),
+        sweep_name=str(sweep_name),
+        topology=str(topology),
+        strategy=str(strategy),
+        num_agents=int(num_agents),
+        num_patients=int(resolved_num_patients),
+        adversary_count=int(adversary_count),
+        target_role=target_role,
+        seed=int(seed),
+    )
     run_dir = out_dir / "runs" / model_label / sweep_name / run_id
     _ensure_dir(run_dir)
 
@@ -724,6 +787,7 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
     total_runs = 0
     for model in models:
         for sweep in sweeps:
+            topologies = sweep.get("topologies") or ["complete"]
             agent_counts = sweep.get("num_agents") or [9]
             adv_counts = sweep.get("adversary_counts") or [1]
             target_roles = sweep.get("target_roles") or [None]
@@ -732,7 +796,8 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
             
             # Simple multiplication for progress bar estimate
             combinations = (
-                len(agent_counts)
+                len(topologies)
+                * len(agent_counts)
                 * len(adv_counts)
                 * len(target_roles)
                 * len(patient_counts)
@@ -793,7 +858,10 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
 
                                     for seed in seeds:
                                         role_lbl = role if role else "Any"
-                                        run_label = f"{model_label}/{sweep_name}/n{num_agents}/adv{ac}/{role_lbl}/seed{seed}"
+                                        run_label = (
+                                            f"{model_label}/{sweep_name}/topo{topology}/strat{strategy}"
+                                            f"/n{num_agents}/p{num_patients}/adv{ac}/{role_lbl}/seed{seed}"
+                                        )
                                         
                                         task = asyncio.create_task(_run_guarded(
                                             run_label=run_label,

@@ -16,7 +16,22 @@ class Tables:
     agent_rows: List[Dict[str, Any]]
 
 
-_RUN_ID_RE = re.compile(
+_RUN_ID_RE_V2 = re.compile(
+    r"""
+    ^(?P<model>.+?)__                           # model label
+    (?P<sweep>.+?)__                            # sweep name
+    topo(?P<topology>.+?)__                     # topo<...>
+    strat(?P<strategy>.+?)__                    # strat<...>
+    agents(?P<num_agents>\d+)_                  # agentsN
+    patients(?P<num_patients>\d+)_              # patientsP
+    adv(?P<adversary_count>\d+)_                # advK
+    (?P<target_role>.+?)_                       # target role (can include underscores)
+    seed(?P<seed>\d+)$                          # seedS
+    """,
+    re.VERBOSE,
+)
+
+_RUN_ID_RE_V1 = re.compile(
     r"""
     ^(?P<model>.+?)__                           # model label
     (?P<sweep>.+?)__                            # sweep name
@@ -33,13 +48,16 @@ def _infer_run_fields(run_dir: Path, run_config: Dict[str, Any]) -> Dict[str, An
     rid = str(run_config.get("run_id") or run_dir.name)
     out: Dict[str, Any] = {"run_id": rid}
 
-    m = _RUN_ID_RE.match(rid)
+    m = _RUN_ID_RE_V2.match(rid) or _RUN_ID_RE_V1.match(rid)
     if m:
         out.update(
             {
                 "model_label": m.group("model"),
                 "sweep_name": m.group("sweep"),
+                "topology": m.groupdict().get("topology"),
+                "strategy": m.groupdict().get("strategy"),
                 "num_agents": as_int(m.group("num_agents")),
+                "num_patients": as_int(m.groupdict().get("num_patients")),
                 "adversary_count": as_int(m.group("adversary_count")),
                 "target_role": m.group("target_role"),
                 "seed": as_int(m.group("seed")),
@@ -188,4 +206,3 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
 
     # target_rows unused for this experiment (kept for compatibility with the CLI output tables)
     return Tables(run_rows=run_rows, target_rows=target_rows, agent_rows=agent_rows)
-

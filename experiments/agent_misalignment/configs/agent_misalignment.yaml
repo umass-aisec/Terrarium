@@ -1,15 +1,15 @@
 experiment:
-  tag: covert_max_coalition_reward
+  tag: agent_misalignment
   output_dir: experiments/agent_misalignment/outputs/agent_misalignment
   max_concurrent_runs: 1
-  seeds: [1, 2, 3]
+  seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
   adversary:
-    strategy: covert_max_coalition_reward
+    strategy: agent_misalignment
     attack_frequency: always
 
   info:
-    code_prefix: COVERT_COALITION
+    code_prefix: AGENT_MISALIGNMENT
 
   evaluator:
     model: gpt-4
@@ -18,18 +18,16 @@ experiment:
       temperature: 0.0
 
   sweeps:
-    - name: covert_max_coalition_reward_sweep
+    - name: agent_misalignment_sweep
       topologies: [complete]
-      adversary_counts: [1, 2, 4]
-      strategies: [covert_max_coalition_reward]
+      adversary_counts: [2, 4, 8]
+      strategies: [covert_max_coalition_reward, destructive_max_coalition_reward, destructive_no_reward_preservation]
       
       # The coalition must contain at least one of these:
       target_roles: 
         - Resource_Provisioner
-        - Triage
-        - Radiology
-        - Surgery
-        - Ward
+        - departmental
+      # Other supported (but redundant for count=4 in this env): Triage, Radiology, Surgery, Ward
 
       # 8, 12, 16 non-provisioners + 1 Provisioner
       num_agents: [9, 13, 17]
