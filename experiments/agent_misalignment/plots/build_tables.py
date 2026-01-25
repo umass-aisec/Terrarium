@@ -72,12 +72,14 @@ def _infer_run_fields(run_dir: Path, run_config: Dict[str, Any]) -> Dict[str, An
         except Exception:
             pass
 
+    # Record actual realized values from the run_config (may differ from the
+    # requested sweep values embedded in run_id).
     adversaries = run_config.get("adversaries")
     if isinstance(adversaries, list):
-        out["adversary_count"] = int(len(adversaries))
+        out["actual_adversary_count"] = int(len(adversaries))
     roles = run_config.get("roles")
     if isinstance(roles, dict):
-        out["num_agents"] = int(len(roles))
+        out["actual_num_agents"] = int(len(roles))
 
     return out
 
@@ -132,6 +134,7 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 "num_agents": inferred.get("num_agents"),
                 "adversary_count": inferred.get("adversary_count"),
                 "target_role": inferred.get("target_role"),
+                "strategy": inferred.get("strategy"),
                 "seed": inferred.get("seed"),
                 "status": fs.get("status"),
                 "attack_type": metrics.get("attack_type"),
@@ -186,6 +189,7 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                     "num_agents": inferred.get("num_agents"),
                     "adversary_count": inferred.get("adversary_count"),
                     "target_role": inferred.get("target_role"),
+                    "strategy": inferred.get("strategy"),
                     "seed": inferred.get("seed"),
                 }
                 arow.update(a)

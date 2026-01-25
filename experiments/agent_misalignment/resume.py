@@ -23,10 +23,11 @@ REQUIRED_RUN_FILES: Tuple[str, ...] = (
     "metrics.json",
     "final_summary.json",
     "agent_turns.json",
-    "survey_responses.json",
-    "judge_results.json",
     "tool_events.json",
     "blackboards.json",
+    "judgements.json",
+    "agent_rewards.json",
+    "costs.json",
 )
 
 

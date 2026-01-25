@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import matplotlib
 
@@ -70,6 +70,8 @@ def _plot_metric_by_x(
     y_key: str,
     y_label: str,
     out_path: Path,
+    baseline_rows: Optional[List[Dict[str, Any]]] = None,
+    baseline_label: str = "Benign baseline",
 ) -> None:
     apply_default_style(plt)
     plt.rcParams.update(_STYLE)
@@ -81,6 +83,8 @@ def _plot_metric_by_x(
     numeric_x = _is_numeric(xs)
 
     fig, ax = plt.subplots(figsize=(6.5, 4.0))
+
+    baseline_color = "#f58518"
 
     if numeric_x:
         by_x = groupby(run_rows, (x_key,))
@@ -107,6 +111,37 @@ def _plot_metric_by_x(
                 capsize=3,
                 zorder=5,
             )
+
+        if baseline_rows:
+            by_x_base = groupby(baseline_rows, (x_key,))
+            x_vals_base = sorted(
+                [x for x in by_x_base.keys() if x[0] is not None], key=lambda t: float(t[0])
+            )
+            for x_t in x_vals_base:
+                x = x_t[0]
+                rows = by_x_base.get((x,), [])
+                ys = finite([r.get(y_key) for r in rows])
+                if not ys:
+                    continue
+                for r in rows:
+                    y = r.get(y_key)
+                    if y is None:
+                        continue
+                    ax.scatter(float(x), float(y), s=22, alpha=0.55, color=baseline_color)
+                ax.errorbar(
+                    [float(x)],
+                    [mean(ys)],
+                    yerr=[sem(ys)],
+                    fmt="s",
+                    ms=5.5,
+                    color=baseline_color,
+                    capsize=3,
+                    zorder=6,
+                )
+            ax.scatter([], [], s=28, color=baseline_color, label=baseline_label, marker="s")
+            ax.scatter([], [], s=28, color="#4c78a8", label="Main sweep", marker="o")
+            ax.legend(loc="best")
+
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
     else:
@@ -129,6 +164,49 @@ def _plot_metric_by_x(
                 if y is None:
                     continue
                 ax.scatter(i, float(y), s=22, alpha=0.55, color="#222222")
+
+        if baseline_rows:
+            # If the benign/baseline sweep didn't enumerate the same categorical axis
+            # (e.g., it only has target_role="departmental" with adversary_count=0),
+            # treat it as a baseline for *all* categories in the main sweep.
+            baseline_rows_for_plot = baseline_rows
+            base_cats = [str(v) for v in _unique_non_null(baseline_rows, x_key)]
+            if len(base_cats) == 1 and len(cats) > 1:
+                baseline_rows_for_plot = []
+                for c in cats:
+                    for r in baseline_rows:
+                        rr = dict(r)
+                        rr[x_key] = c
+                        baseline_rows_for_plot.append(rr)
+
+            by_x_base = groupby(baseline_rows_for_plot, (x_key,))
+            offset = 0.22
+            for i, c in enumerate(cats):
+                rows = by_x_base.get((c,), [])
+                if not rows:
+                    continue
+                ys = finite([r.get(y_key) for r in rows])
+                if not ys:
+                    continue
+                for r in rows:
+                    y = r.get(y_key)
+                    if y is None:
+                        continue
+                    ax.scatter(i + offset, float(y), s=22, alpha=0.55, color=baseline_color)
+                ax.errorbar(
+                    [i + offset],
+                    [mean(ys)],
+                    yerr=[sem(ys)],
+                    fmt="s",
+                    ms=5.5,
+                    color=baseline_color,
+                    capsize=3,
+                    zorder=6,
+                )
+            ax.scatter([], [], s=28, color=baseline_color, label=baseline_label, marker="s")
+            ax.scatter([], [], s=28, color="#4c78a8", label="Main sweep", marker="o")
+            ax.legend(loc="best")
+
         ax.set_xticks(range(len(cats)))
         ax.set_xticklabels(cats, rotation=30, ha="right")
         ax.set_xlabel(x_label)
@@ -201,9 +279,28 @@ def plot_sweep_metrics(
     run_rows: List[Dict[str, Any]],
     agent_rows: List[Dict[str, Any]],
     out_dir: Path,
+    baseline_run_rows: Optional[List[Dict[str, Any]]] = None,
+    baseline_agent_rows: Optional[List[Dict[str, Any]]] = None,
+    baseline_label: str = "Benign baseline",
 ) -> None:
     ensure_dir(out_dir)
     x_key, x_label = _infer_x_key(run_rows)
+
+    # Some metrics are undefined in benign runs (no coalition). For plotting, treat
+    # coalition advantage as 0 when adversary_count == 0.
+    baseline_run_rows_coalition_adv = baseline_run_rows
+    if baseline_run_rows:
+        patched: List[Dict[str, Any]] = []
+        for r in baseline_run_rows:
+            rr = dict(r)
+            try:
+                ac = int(rr.get("adversary_count") or 0)
+            except Exception:
+                ac = 0
+            if ac == 0 and rr.get("coalition_minus_noncoalition_avg") is None:
+                rr["coalition_minus_noncoalition_avg"] = 0.0
+            patched.append(rr)
+        baseline_run_rows_coalition_adv = patched
 
     # Core outcomes
     _plot_metric_by_x(
@@ -213,6 +310,8 @@ def plot_sweep_metrics(
         y_key="joint_reward",
         y_label="Joint Reward",
         out_path=out_dir / "joint_reward.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -221,6 +320,8 @@ def plot_sweep_metrics(
         y_key="resource_failures_total",
         y_label="Total Resource Failures",
         out_path=out_dir / "resource_failures_total.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -229,6 +330,8 @@ def plot_sweep_metrics(
         y_key="failed_patients_count",
         y_label="Failed Patients",
         out_path=out_dir / "failed_patients_count.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -237,6 +340,8 @@ def plot_sweep_metrics(
         y_key="converged_patients",
         y_label="Converged Patients",
         out_path=out_dir / "converged_patients.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -245,6 +350,8 @@ def plot_sweep_metrics(
         y_key="meeting_outcome_variables_assigned",
         y_label="Variables Assigned",
         out_path=out_dir / "variables_assigned.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
 
     # Belief / judge metrics
@@ -255,6 +362,8 @@ def plot_sweep_metrics(
         y_key="suspicion_rate_non_adversary",
         y_label="Suspicion Rate (Non-adversary)",
         out_path=out_dir / "suspicion_rate_non_adversary.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -263,6 +372,8 @@ def plot_sweep_metrics(
         y_key="correct_attribution_rate_non_adversary",
         y_label="Correct Attribution Rate (Non-adversary)",
         out_path=out_dir / "correct_attribution_rate_non_adversary.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -271,6 +382,8 @@ def plot_sweep_metrics(
         y_key="avg_distance_to_adversary_suspicious_agents",
         y_label="Avg Distance to Adversary (Suspicious Non-adversaries)",
         out_path=out_dir / "avg_distance_suspicious.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
 
     # Communication proxies
@@ -281,6 +394,8 @@ def plot_sweep_metrics(
         y_key="total_messages",
         y_label="Total Messages",
         out_path=out_dir / "total_messages.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -289,6 +404,8 @@ def plot_sweep_metrics(
         y_key="complaint_messages",
         y_label="Complaint Messages",
         out_path=out_dir / "complaint_messages.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
 
     # Graph metrics (key logged fields)
@@ -299,6 +416,8 @@ def plot_sweep_metrics(
         y_key="graph_density",
         y_label="Graph Density",
         out_path=out_dir / "graph_density.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -307,6 +426,8 @@ def plot_sweep_metrics(
         y_key="graph_avg_degree",
         y_label="Graph Avg Degree",
         out_path=out_dir / "graph_avg_degree.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -315,6 +436,8 @@ def plot_sweep_metrics(
         y_key="graph_avg_clustering",
         y_label="Graph Avg Clustering",
         out_path=out_dir / "graph_avg_clustering.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
 
     # Coalition advantage (if present)
@@ -323,8 +446,10 @@ def plot_sweep_metrics(
         x_key=x_key,
         x_label=x_label,
         y_key="coalition_minus_noncoalition_avg",
-        y_label="Coalition Advantage (Avg Reward Diff)",
+        y_label="Coalition Advantage",
         out_path=out_dir / "coalition_advantage.pdf",
+        baseline_rows=baseline_run_rows_coalition_adv,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -333,6 +458,8 @@ def plot_sweep_metrics(
         y_key="coalition_reward_avg",
         y_label="Coalition Avg Reward",
         out_path=out_dir / "coalition_reward_avg.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
     _plot_metric_by_x(
         run_rows,
@@ -341,6 +468,8 @@ def plot_sweep_metrics(
         y_key="noncoalition_reward_avg",
         y_label="Non-coalition Avg Reward",
         out_path=out_dir / "noncoalition_reward_avg.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
     )
 
     # Distance effects (aggregated across runs)

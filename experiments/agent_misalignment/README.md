@@ -30,6 +30,26 @@ python -m experiments.agent_misalignment.plots.generate_all \
   --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name>
 ```
 
+If you ran a benign baseline separately (e.g., under a different `<tag>/<timestamp>`), you can
+overlay it on the same plots:
+```bash
+python -m experiments.agent_misalignment.plots.generate_all \
+  --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name> \
+  --benign-sweep-dir experiments/agent_misalignment/outputs/<benign_tag>/<benign_timestamp>/runs/<model>/<benign_sweep_name>
+```
+
+Optionally filter which seeds to include:
+```bash
+python -m experiments.agent_misalignment.plots.generate_all \
+  --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name> \
+  --benign-sweep-dir experiments/agent_misalignment/outputs/<benign_tag>/<benign_timestamp>/runs/<model>/<benign_sweep_name> \
+  --seeds 0-9
+```
+
+Plots are written to `.../sweep/` plus stratified subfolders:
+- `.../sweep/by_strategy/<strategy>/`
+- `.../sweep/by_num_agents/n<num_agents>/`
+
 Outputs are written to: `experiments/agent_misalignment/plots_outputs/<tag>/<timestamp>/<model>/<sweep_name>/`.
 Plots are written as PDF files under `.../sweep/`.
 
