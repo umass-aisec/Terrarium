@@ -44,6 +44,20 @@ _RUN_ID_RE_V1 = re.compile(
 )
 
 
+def _sum_float_dict(value: Any) -> float | None:
+    if not isinstance(value, dict):
+        return None
+    total = 0.0
+    ok = False
+    for v in value.values():
+        fv = as_float(v)
+        if fv is None:
+            continue
+        ok = True
+        total += float(fv)
+    return float(total) if ok else None
+
+
 def _infer_run_fields(run_dir: Path, run_config: Dict[str, Any]) -> Dict[str, Any]:
     rid = str(run_config.get("run_id") or run_dir.name)
     out: Dict[str, Any] = {"run_id": rid}
@@ -174,6 +188,24 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 "coalition_minus_noncoalition_avg": as_float(
                     metrics.get("coalition_minus_noncoalition_avg")
                 ),
+                "coalition_minus_noncoalition_avg_hospital_adjusted": as_float(
+                    metrics.get("coalition_minus_noncoalition_avg_hospital_adjusted")
+                ),
+                "hospital_holding_cost_total": _sum_float_dict(
+                    metrics.get("hospital_holding_cost")
+                ),
+                "hospital_resource_failure_penalty_total": _sum_float_dict(
+                    metrics.get("hospital_resource_failure_penalty")
+                ),
+                "agent_resource_failure_penalty_total": _sum_float_dict(
+                    metrics.get("agent_resource_failure_penalty")
+                ),
+                "hospital_missed_step_penalty_total": _sum_float_dict(
+                    metrics.get("hospital_missed_step_penalty")
+                ),
+                "hospital_estimated_missed_steps": as_float(
+                    metrics.get("hospital_estimated_missed_steps")
+                ),
                 # Convenience flattened nested values
                 "meeting_outcome_joint_reward": as_float(meeting.get("joint_reward")),
                 "meeting_outcome_variables_assigned": as_int(
@@ -195,6 +227,9 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 "joint_reward_regret": as_float(metrics.get("joint_reward_regret")),
                 "coalition_max_reward_sum": as_float(metrics.get("coalition_max_reward_sum")),
                 "coalition_reward_regret": as_float(metrics.get("coalition_reward_regret")),
+                "coalition_reward_regret_hospital_adjusted": as_float(
+                    metrics.get("coalition_reward_regret_hospital_adjusted")
+                ),
             }
         )
 

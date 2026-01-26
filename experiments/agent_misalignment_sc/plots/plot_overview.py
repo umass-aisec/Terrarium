@@ -334,6 +334,16 @@ def plot_overview(
             _lines_over_adversary_count(
                 run_rows=run_rows,
                 benign_rows=benign_run_rows,
+                metric_key="coalition_minus_noncoalition_avg_hospital_adjusted",
+                metric_label="Coalition Advantage",
+                num_agents=int(n),
+                target_role=role,
+                adv_counts=spec.adv_counts,
+                out_path=n_dir / "coalition_advantage_hospital_adjusted_vs_adv_count.pdf",
+            )
+            _lines_over_adversary_count(
+                run_rows=run_rows,
+                benign_rows=benign_run_rows,
                 metric_key="joint_reward_regret",
                 metric_label="Overall Regret",
                 num_agents=int(n),
@@ -350,6 +360,26 @@ def plot_overview(
                 target_role=role,
                 adv_counts=spec.adv_counts,
                 out_path=n_dir / "coalition_regret_vs_adv_count.pdf",
+            )
+            _lines_over_adversary_count(
+                run_rows=run_rows,
+                benign_rows=benign_run_rows,
+                metric_key="coalition_reward_regret_hospital_adjusted",
+                metric_label="Coalition Regret",
+                num_agents=int(n),
+                target_role=role,
+                adv_counts=spec.adv_counts,
+                out_path=n_dir / "coalition_regret_hospital_adjusted_vs_adv_count.pdf",
+            )
+            _lines_over_adversary_count(
+                run_rows=run_rows,
+                benign_rows=benign_run_rows,
+                metric_key="agent_resource_failure_penalty_total",
+                metric_label="Resource Failure Penalty",
+                num_agents=int(n),
+                target_role=role,
+                adv_counts=spec.adv_counts,
+                out_path=n_dir / "resource_failure_penalty_total_agent_attributed_vs_adv_count.pdf",
             )
 
             # Bar plots across strategy types, per adversary count (2/4/8).
@@ -377,6 +407,61 @@ def plot_overview(
                 _bar_across_strategies(
                     run_rows=run_rows,
                     benign_rows=benign_run_rows,
+                    metric_key="coalition_minus_noncoalition_avg_hospital_adjusted",
+                    metric_label="Coalition Advantage",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"coalition_advantage_hospital_adjusted_by_strategy_adv{int(ac)}.pdf",
+                )
+
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
+                    metric_key="hospital_holding_cost_total",
+                    metric_label="Holding Cost",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir / f"holding_cost_total_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
+                    metric_key="hospital_resource_failure_penalty_total",
+                    metric_label="Resource Failure Penalty",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"resource_failure_penalty_total_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
+                    metric_key="agent_resource_failure_penalty_total",
+                    metric_label="Resource Failure Penalty",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"resource_failure_penalty_total_agent_attributed_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
+                    metric_key="hospital_missed_step_penalty_total",
+                    metric_label="Missed-Step Penalty",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"missed_step_penalty_total_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
                     metric_key="joint_reward_regret",
                     metric_label="Overall Regret",
                     num_agents=int(n),
@@ -393,4 +478,15 @@ def plot_overview(
                     target_role=role,
                     adversary_count=int(ac),
                     out_path=n_dir / f"coalition_regret_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
+                    metric_key="coalition_reward_regret_hospital_adjusted",
+                    metric_label="Coalition Regret",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"coalition_regret_hospital_adjusted_by_strategy_adv{int(ac)}.pdf",
                 )

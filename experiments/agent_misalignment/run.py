@@ -730,6 +730,59 @@ async def _run_single(
     _write_json(run_dir / "agent_turns.json", turns)
 
     final_summary = env.get_final_summary()
+    # Include richer failure attribution when available (kept backward compatible).
+    # Always include keys so downstream analytics can rely on their presence.
+    step_fails: List[Dict[str, Any]] = []
+    hf: Optional[Dict[str, Any]] = None
+    try:
+        hf_raw = getattr(env, "hospital_failures", None)
+        if isinstance(hf_raw, dict):
+            hf = hf_raw
+            final_summary["hospital_failures"] = hf_raw
+    except Exception:
+        hf = None
+    try:
+        ps = getattr(env, "patient_states", None)
+        if isinstance(ps, dict):
+            for pid, st in ps.items():
+                if not isinstance(st, dict):
+                    continue
+                for ev in st.get("resource_failures") or []:
+                    if not isinstance(ev, dict):
+                        continue
+                    step_fails.append(
+                        {
+                            "patient_id": pid,
+                            "step_index": ev.get("step"),
+                            "missing": ev.get("missing"),
+                            "agent": ev.get("agent"),
+                        }
+                    )
+    except Exception:
+        pass
+    final_summary["step_resource_failures"] = step_fails
+
+    # At end of run: list which agents have outstanding resource failures (by hospital).
+    # This uses the per-hospital failure counters; it does not depend on who "caused" them.
+    try:
+        agent_out: Dict[str, Dict[str, int]] = {}
+        agents_map = getattr(env, "agents_map", None)
+        if isinstance(hf, dict) and isinstance(agents_map, dict):
+            for agent_name, info in agents_map.items():
+                if not isinstance(info, dict):
+                    continue
+                hospital = info.get("hospital")
+                if hospital not in hf:
+                    continue
+                counts = hf.get(hospital) or {}
+                if not isinstance(counts, dict):
+                    continue
+                nonzero = {str(r): int(v or 0) for r, v in counts.items() if int(v or 0) > 0}
+                if nonzero:
+                    agent_out[str(agent_name)] = nonzero
+        final_summary["agent_outstanding_resource_failures"] = agent_out
+    except Exception:
+        final_summary["agent_outstanding_resource_failures"] = {}
 
     agent_rewards: Optional[Dict[str, float]] = None
     try:

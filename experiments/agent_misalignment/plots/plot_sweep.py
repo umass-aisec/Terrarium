@@ -224,7 +224,8 @@ def _plot_metric_by_x(
             ax.legend(loc="best")
 
         ax.set_xticks(range(len(cats)))
-        ax.set_xticklabels(cats, rotation=30, ha="right")
+        rot = 0 if max((len(c) for c in cats), default=0) <= 12 else 90
+        ax.set_xticklabels(cats, rotation=rot, ha="right" if rot else "center")
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
 
@@ -330,8 +331,26 @@ def plot_sweep_metrics(
                 ac = 0
             if ac == 0 and rr.get("coalition_minus_noncoalition_avg") is None:
                 rr["coalition_minus_noncoalition_avg"] = 0.0
+            if ac == 0 and rr.get("coalition_minus_noncoalition_avg_hospital_adjusted") is None:
+                rr["coalition_minus_noncoalition_avg_hospital_adjusted"] = 0.0
             patched.append(rr)
         baseline_run_rows_coalition_adv = patched
+
+    baseline_run_rows_coalition_regret = baseline_run_rows
+    if baseline_run_rows:
+        patched: List[Dict[str, Any]] = []
+        for r in baseline_run_rows:
+            rr = dict(r)
+            try:
+                ac = int(rr.get("adversary_count") or 0)
+            except Exception:
+                ac = 0
+            if ac == 0 and rr.get("coalition_reward_regret") is None:
+                rr["coalition_reward_regret"] = 0.0
+            if ac == 0 and rr.get("coalition_reward_regret_hospital_adjusted") is None:
+                rr["coalition_reward_regret_hospital_adjusted"] = 0.0
+            patched.append(rr)
+        baseline_run_rows_coalition_regret = patched
 
     # Core outcomes
     _plot_metric_by_x(
@@ -341,6 +360,16 @@ def plot_sweep_metrics(
         y_key="joint_reward",
         y_label="Joint Reward",
         out_path=out_dir / "joint_reward.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="joint_reward_regret",
+        y_label="Overall Regret",
+        out_path=out_dir / "overall_regret.pdf",
         baseline_rows=baseline_run_rows,
         baseline_label=baseline_label,
     )
@@ -486,6 +515,36 @@ def plot_sweep_metrics(
         run_rows,
         x_key=x_key,
         x_label=x_label,
+        y_key="coalition_minus_noncoalition_avg_hospital_adjusted",
+        y_label="Coalition Advantage",
+        out_path=out_dir / "coalition_advantage_hospital_adjusted.pdf",
+        baseline_rows=baseline_run_rows_coalition_adv,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="coalition_reward_regret",
+        y_label="Coalition Regret",
+        out_path=out_dir / "coalition_regret.pdf",
+        baseline_rows=baseline_run_rows_coalition_regret,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="coalition_reward_regret_hospital_adjusted",
+        y_label="Coalition Regret",
+        out_path=out_dir / "coalition_regret_hospital_adjusted.pdf",
+        baseline_rows=baseline_run_rows_coalition_regret,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
         y_key="coalition_reward_avg",
         y_label="Coalition Avg Reward",
         out_path=out_dir / "coalition_reward_avg.pdf",
@@ -505,3 +564,45 @@ def plot_sweep_metrics(
 
     # Distance effects (aggregated across runs)
     plot_distance_effects(agent_rows, out_path=out_dir / "distance_effects.pdf")
+
+    # Hospital penalty component totals (optional).
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="hospital_holding_cost_total",
+        y_label="Holding Cost",
+        out_path=out_dir / "holding_cost_total.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="hospital_resource_failure_penalty_total",
+        y_label="Resource Failure Penalty",
+        out_path=out_dir / "resource_failure_penalty_total.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="agent_resource_failure_penalty_total",
+        y_label="Resource Failure Penalty",
+        out_path=out_dir / "resource_failure_penalty_total_agent_attributed.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
+        y_key="hospital_missed_step_penalty_total",
+        y_label="Missed-Step Penalty",
+        out_path=out_dir / "missed_step_penalty_total.pdf",
+        baseline_rows=baseline_run_rows,
+        baseline_label=baseline_label,
+    )
