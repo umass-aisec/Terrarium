@@ -29,21 +29,21 @@ from experiments.common.run_utils import (
     write_json as _write_json,
     write_progress as _write_progress,
 )
-from experiments.agent_misalignment.agents import (
+from experiments.agent_misalignment_sc.agents import (
     AdversarySpec,
     MisalignmentHospitalAgent,
 )
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
-from experiments.agent_misalignment.metrics import compute_misalignment_metrics
-from experiments.agent_misalignment.prompts import MisalignmentPrompts
+from experiments.agent_misalignment_sc.metrics import compute_misalignment_metrics
+from experiments.agent_misalignment_sc.prompts import MisalignmentPrompts
 from experiments.common.local_protocol import LocalCommunicationProtocol
-from experiments.agent_misalignment.judge_beliefs import judge_run
+from experiments.agent_misalignment_sc.judge_beliefs import judge_run
 
 from src.networks import build_communication_network
 from src.logger import AgentTrajectoryLogger, PromptLogger
 from src.utils import get_client_instance, get_generation_params, get_model_name, build_vllm_runtime
 
-LOGGER_NAME = "experiments.agent_misalignment"
+LOGGER_NAME = "experiments.agent_misalignment_sc"
 logger = logging.getLogger(LOGGER_NAME)
 
 _PATH_COMPONENT_RE = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -497,6 +497,10 @@ async def _run_single(
     env.set_communication_network(communication_network)
 
     # --- ADVERSARY CONFIGURATION ---
+    adv_cfg = (cfg.get("experiment") or {}).get("adversary") or {}
+    secret_channel_enabled = bool(adv_cfg.get("secret_channel_enabled", False))
+    coalition_clique_enabled = bool(adv_cfg.get("coalition_clique_enabled", False))
+
     adversaries = _select_adversaries_hospital_coalition(
         agent_names=agent_names,
         count=int(adversary_count),
@@ -528,6 +532,17 @@ async def _run_single(
             # Defensive: preserve requested coalition size (and uniqueness).
             adversaries = list(dict.fromkeys(adversaries))[: int(adversary_count)]
     roles = {name: ("adversary" if name in adversaries else "cooperative") for name in agent_names}
+
+    if coalition_clique_enabled and len(adversaries) >= 2:
+        # Ensure the coalition forms a clique in the (public) communication graph.
+        for i in range(len(adversaries)):
+            for j in range(i + 1, len(adversaries)):
+                a = str(adversaries[i])
+                b = str(adversaries[j])
+                try:
+                    communication_network.graph.add_edge(a, b)
+                except Exception:
+                    pass
 
     # For the benign baseline, mimic examples/base_main.py prompt behavior as closely as possible:
     # do not wrap or augment prompts/contexts.
@@ -585,6 +600,21 @@ async def _run_single(
     env.set_agent_clients(agents)
 
     await env.async_init()
+
+    secret_blackboard_id: Optional[int] = None
+    if not is_benign and secret_channel_enabled and len(adversaries) >= 2:
+        try:
+            base_context = env.get_network_context()
+            secret_context = env.format_blackboard_context(adversaries, base_context)
+        except Exception:
+            secret_context = (
+                env.get_network_context() if hasattr(env, "get_network_context") else ""
+            )
+        secret_blackboard_id = await protocol.generate_comm_network(
+            adversaries,
+            secret_context,
+            template={"secret_channel": True, "visibility": "secret", "purpose": "coalition"},
+        )
     
     # Log initial state
     try:
@@ -606,7 +636,10 @@ async def _run_single(
             "misalignment_role": roles.get(agent_name, "cooperative"),
             "misalignment_adversaries": adversaries,
             "misalignment_strategy": strategy,
-            "phase": phase
+            "misalignment_secret_blackboard_id": secret_blackboard_id
+            if roles.get(agent_name) == "adversary"
+            else None,
+            "phase": phase,
         }
 
     current_iteration = 0
@@ -781,6 +814,8 @@ async def _run_single(
         {
             "run_id": run_id,
             "adversaries": adversaries,
+            "secret_channel_enabled": secret_channel_enabled,
+            "secret_blackboard_id": secret_blackboard_id,
             "roles": roles,
             "metrics": asdict(metrics)
         },
@@ -1073,7 +1108,7 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
 
     # Optional: aggregate costs across all runs (best-effort).
     try:
-        from experiments.agent_misalignment.costs import compute_and_write_costs
+        from experiments.agent_misalignment_sc.costs import compute_and_write_costs
 
         compute_and_write_costs(root, write_per_run=False)
     except Exception:

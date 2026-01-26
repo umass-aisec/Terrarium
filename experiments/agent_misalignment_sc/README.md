@@ -26,21 +26,21 @@ python experiments/agent_misalignment/run.py --config experiments/agent_misalign
 Generate sweep-level plots from a sweep directory (Reward, Failures, Suspicion, Attribution,
 Messages/Complaints, Coalition advantage, and distance-based belief effects):
 ```bash
-python -m experiments.agent_misalignment.plots.generate_all \
+python -m experiments.agent_misalignment_sc.plots.generate_all \
   --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name>
 ```
 
 If you ran a benign baseline separately (e.g., under a different `<tag>/<timestamp>`), you can
 overlay it on the same plots:
 ```bash
-python -m experiments.agent_misalignment.plots.generate_all \
+python -m experiments.agent_misalignment_sc.plots.generate_all \
   --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name> \
   --benign-sweep-dir experiments/agent_misalignment/outputs/<benign_tag>/<benign_timestamp>/runs/<model>/<benign_sweep_name>
 ```
 
 Optionally filter which seeds to include:
 ```bash
-python -m experiments.agent_misalignment.plots.generate_all \
+python -m experiments.agent_misalignment_sc.plots.generate_all \
   --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name> \
   --benign-sweep-dir experiments/agent_misalignment/outputs/<benign_tag>/<benign_timestamp>/runs/<model>/<benign_sweep_name> \
   --seeds 0-9
@@ -62,7 +62,7 @@ stratified by `target_role` and `num_agents`.
 The experiment is configured via `experiments/agent_misalignment/configs/agent_misalignment.yaml`.
 
 ### Environment
-* **Class**: `MisalignmentHospitalEnvironment` (defined in `experiments.agent_misalignment.environment`)
+* **Class**: `MisalignmentHospitalEnvironment` (defined in `experiments.agent_misalignment_sc.environment`)
 * **Topology**: Defaults to `complete` (fully connected) for hospital coordination.
 * **Scaling**: the sweep uses `non_provisioner_agents: [8, 12, 16]`, which maps to `environment.num_hospitals` assuming 4 department agents per hospital.
 
@@ -89,12 +89,12 @@ If a sweep is interrupted, you can resume it without re-running completed settin
 
 ```bash
 # Dry run to preview pending runs
-python -m experiments.agent_misalignment.resume \
+python -m experiments.agent_misalignment_sc.resume \
   --root experiments/agent_misalignment/outputs/misalignment/<timestamp> \
   --dry-run
 
 # Actual resume
-python -m experiments.agent_misalignment.resume \
+python -m experiments.agent_misalignment_sc.resume \
   --root experiments/agent_misalignment/outputs/misalignment/<timestamp>
 ```
 

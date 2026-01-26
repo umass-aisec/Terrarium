@@ -71,6 +71,41 @@ class LocalCommunicationProtocol(BaseCommunicationProtocol):
             )
         )
 
+    def _scrub_secret_blackboards(self) -> None:
+        """
+        Remove tool-action trace events from secret blackboards.
+
+        Some environment tool implementations call `blackboard_manager.log_action_to_blackboards(...)`,
+        which logs actions to every blackboard an agent belongs to. For secret coalition channels,
+        we want them to be used only for communication/scheming, not for action traces.
+        """
+        try:
+            boards = getattr(self.megaboard, "blackboards", None)
+            if not isinstance(boards, list):
+                return
+            for bb in boards:
+                tmpl = getattr(bb, "template", None)
+                if not isinstance(tmpl, dict):
+                    continue
+                is_secret = bool(tmpl.get("secret_channel")) or str(
+                    tmpl.get("visibility") or ""
+                ).lower() == "secret"
+                if not is_secret:
+                    continue
+                logs = getattr(bb, "logs", None)
+                if not isinstance(logs, list) or not logs:
+                    continue
+                bb.logs = [
+                    e
+                    for e in logs
+                    if not (
+                        isinstance(e, dict)
+                        and str(e.get("kind") or "") == "action_executed"
+                    )
+                ]
+        except Exception:
+            return
+
     async def _prefetch_blackboard_events(
         self,
         agent_name: str,
@@ -180,6 +215,8 @@ class LocalCommunicationProtocol(BaseCommunicationProtocol):
             phase=phase,
             iteration=iteration,
         )
+        # Ensure secret channels remain communication-only (no action traces).
+        self._scrub_secret_blackboards()
         return response
 
     async def blackboard_handle_tool_call(
@@ -206,6 +243,8 @@ class LocalCommunicationProtocol(BaseCommunicationProtocol):
             phase=phase,
             iteration=iteration,
         )
+        # Be defensive: keep secret channels communication-only.
+        self._scrub_secret_blackboards()
         return result
 
     async def get_all_blackboard_ids(self) -> List[str]:
