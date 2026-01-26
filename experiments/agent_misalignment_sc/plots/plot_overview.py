@@ -175,6 +175,10 @@ def _bar_across_strategies(
     fig, ax = plt.subplots(figsize=(9.2, 4.4))
     ax.grid(False)
     ax.bar(xs, heights, yerr=yerrs, capsize=3, color=bar_colors, alpha=0.9)
+    # Make zero-height bars visible (e.g., benign regret is exactly 0).
+    for x, h, c in zip(xs, heights, bar_colors):
+        if abs(float(h)) < 1e-12:
+            ax.plot([x], [0.0], marker="_", markersize=18, color=c, zorder=6)
     ax.set_xticks(xs)
     ax.set_xticklabels(labels, rotation=0, ha="center")
     ax.set_ylabel(metric_label)
