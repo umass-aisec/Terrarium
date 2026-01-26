@@ -26,6 +26,9 @@ NEW_KEYS = {
     "coalition_reward_sum_hospital_adjusted",
     "coalition_reward_avg_hospital_adjusted",
     "coalition_reward_regret_hospital_adjusted",
+    "agent_rewards_hospital_adjusted_normalized",
+    "agent_rewards_hospital_adjusted_normalized_offset",
+    "coalition_minus_noncoalition_avg_hospital_adjusted_normalized",
 }
 
 

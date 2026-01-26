@@ -525,6 +525,16 @@ def plot_sweep_metrics(
         run_rows,
         x_key=x_key,
         x_label=x_label,
+        y_key="coalition_minus_noncoalition_avg_hospital_adjusted_normalized",
+        y_label="Coalition Advantage",
+        out_path=out_dir / "coalition_advantage_hospital_adjusted_normalized.pdf",
+        baseline_rows=baseline_run_rows_coalition_adv,
+        baseline_label=baseline_label,
+    )
+    _plot_metric_by_x(
+        run_rows,
+        x_key=x_key,
+        x_label=x_label,
         y_key="coalition_reward_regret",
         y_label="Coalition Regret",
         out_path=out_dir / "coalition_regret.pdf",
