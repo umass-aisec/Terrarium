@@ -62,6 +62,8 @@ class HospitalEnvironment(AbstractEnvironment):
         
         # Track Peer-to-Peer Transfer Rewards
         self.transfer_rewards = 0.0
+        # Attribution for P2P transfer rewards (donor agent who executed the transfer).
+        self.transfer_rewards_by_agent: Dict[str, float] = {}
 
         self.max_time_horizon = 168
         self.transfer_penalty_hours = 4
@@ -204,6 +206,9 @@ class HospitalEnvironment(AbstractEnvironment):
                     # Reward: +15 points per unit (Offsets holding cost of 10 + small bonus)
                     reward = actual_move * 15.0
                     self.transfer_rewards += reward
+                    self.transfer_rewards_by_agent[sender_id] = float(
+                        self.transfer_rewards_by_agent.get(sender_id, 0.0) + reward
+                    )
                     logger.info(f"P2P TRANSFER REWARD: +{reward} for moving {actual_move} {res_type}")
 
                 status = "FULL" if actual_move == amt else f"PARTIAL ({actual_move}/{amt})"
@@ -276,35 +281,141 @@ class HospitalEnvironment(AbstractEnvironment):
         }
 
     def _calculate_makespan_and_flow(self):
+        """
+        Joint reward:
+          score = theoretical_max_score - total_flow - resource_penalty - holding_cost + transfer_rewards
+
+        Per-agent rewards returned by this method are an *exact decomposition* of the joint reward:
+          - Base: each patient contributes +1000, split evenly across its pathway steps (1000/len(path) per step),
+            attributed to the agent responsible for that step.
+          - Flow-time penalty: for each patient, split its flow penalty evenly across the same pathway steps
+            (patient-based attribution).
+          - Resource failure penalty: -300 per missing resource item, attributed to the agent where it occurs.
+          - Holding cost: -10 per leftover unit of hospital inventory, shared uniformly across that hospital's agents.
+          - Transfer rewards: attributed to the donor agent that executed the rewarded transfer.
+
+        By construction: sum(agent_rewards.values()) == joint_reward (up to float error).
+        """
         total_flow = 0.0
-        agent_rewards = {a: 0.0 for a in self.agent_names}
-        penalty = 500.0
-        
+        missed_step_penalty = 500.0
+        agent_rewards: Dict[str, float] = {a: 0.0 for a in self.agent_names}
+
+        def _infer_step_agent(
+            *,
+            patient_id: str,
+            step_idx: int,
+            service: str,
+            sched: Dict[int, Dict[str, Any]],
+        ) -> str:
+            info = sched.get(step_idx)
+            if isinstance(info, dict):
+                a = str(info.get("agent") or "")
+                if a:
+                    return a
+
+            # If a step isn't scheduled, infer a plausible agent so we can still allocate
+            # missed-step penalties and the base per-patient reward consistently.
+            inferred_hospital = self.hospital_names[0] if self.hospital_names else "General_Hospital"
+            if step_idx > 0:
+                prev = sched.get(step_idx - 1)
+                if isinstance(prev, dict):
+                    prev_a = str(prev.get("agent") or "")
+                    if prev_a and prev_a in self.agents_map:
+                        inferred_hospital = str(self.agents_map[prev_a].get("hospital") or inferred_hospital)
+            return f"{inferred_hospital}_{service}"
+
+        # Patient-based base + flow attribution.
         for pid, p in self.patients.items():
             sched = self.patient_states[pid]["scheduled_steps"]
-            path = p["pathway"]
-            if len(sched) == len(path):
-                flow = sched[len(path)-1]["end_time"] - p["arrival_time"]
-                total_flow += flow
-                for info in sched.values():
-                    agent_rewards[info["agent"]] -= (flow / len(path))
-            else:
-                total_flow += (len(path) - len(sched)) * penalty
+            path = p.get("pathway") or []
+            if not path:
+                continue
 
-        total_failures = sum(self.resource_failures.values())
+            step_credit = 1000.0 / float(len(path))
+
+            step_agents: List[str] = []
+            for step in path:
+                idx = int(step.get("step_index"))
+                service = str(step.get("service"))
+                step_agents.append(
+                    _infer_step_agent(patient_id=pid, step_idx=idx, service=service, sched=sched)
+                )
+
+            # Base credit: sums to +1000 per patient.
+            for a in step_agents:
+                if a in agent_rewards:
+                    agent_rewards[a] += step_credit
+
+            # Flow penalty: matches prior logic.
+            if len(sched) == len(path):
+                flow = float(sched[len(path) - 1]["end_time"]) - float(p["arrival_time"])
+            else:
+                flow = float(len(path) - len(sched)) * float(missed_step_penalty)
+            total_flow += float(flow)
+
+            per_step_flow = float(flow) / float(len(path))
+            for a in step_agents:
+                if a in agent_rewards:
+                    agent_rewards[a] -= per_step_flow
+
+        # Resource failures: exact -300 per missing resource item (type), attributed to failing agent.
+        total_failures = float(sum(self.resource_failures.values()))
         resource_penalty = total_failures * 300.0
-        
+        for pid in self.patients.keys():
+            failures = self.patient_states.get(pid, {}).get("resource_failures", []) or []
+            for ev in failures:
+                agent = str(ev.get("agent") or "")
+                missing = ev.get("missing") or []
+                if not agent or agent not in agent_rewards:
+                    continue
+                if isinstance(missing, list) and missing:
+                    agent_rewards[agent] -= 300.0 * float(len(missing))
+
+        # Holding cost: exact -10 per leftover unit in hospital inventories; shared uniformly among hospital agents.
         holding_cost = 0.0
+        holding_units_by_hospital: Dict[str, float] = {}
         for h in self.hospital_names:
+            units = 0.0
             if h in self.inventory:
                 for qty in self.inventory[h].values():
-                    holding_cost += (qty * 10.0)
-        
-        # Score includes Transfer Rewards
+                    units += float(qty)
+            holding_units_by_hospital[h] = units
+            holding_cost += units * 10.0
+
+        for h in self.hospital_names:
+            units = float(holding_units_by_hospital.get(h, 0.0))
+            if units <= 0.0:
+                continue
+            agents_h = [
+                a
+                for a, info in self.agents_map.items()
+                if info.get("hospital") == h and a != "Resource_Provisioner"
+            ]
+            if not agents_h:
+                continue
+            share = (units * 10.0) / float(len(agents_h))
+            for a in agents_h:
+                if a in agent_rewards:
+                    agent_rewards[a] -= share
+
+        # Transfer rewards: attribute to donor agent that executed the rewarded transfer.
+        for a, v in (self.transfer_rewards_by_agent or {}).items():
+            if a in agent_rewards:
+                agent_rewards[a] += float(v)
+
+        # Score includes transfer rewards.
         score = self.theoretical_max_score - total_flow - resource_penalty - holding_cost + self.transfer_rewards
-        
-        base = self.theoretical_max_score / len(self.agent_names)
-        for a in agent_rewards: agent_rewards[a] += base
+
+        # Debug sanity check (should be exact by construction).
+        try:
+            tot = float(sum(agent_rewards.values()))
+            if abs(tot - float(score)) > 1e-6:
+                logger.warning(
+                    f"agent_rewards sum mismatch: sum={tot:.6f} score={float(score):.6f} diff={tot-float(score):.6f}"
+                )
+        except Exception:
+            pass
+
         return score, agent_rewards
 
     def joint_reward(self, actions):
@@ -330,12 +441,19 @@ class HospitalEnvironment(AbstractEnvironment):
                     missing[resource_type] = deficit
                     missing_types += 1
 
-            # Rough, local heuristic mirroring the environment penalties:
+            # Local heuristic aligned with the env decomposition:
+            # - base credit per step is +1000/len(path) (typically +250); we subtract it from "cost"
             # - each missing resource type implies a likely -300 failure penalty
-            # - earlier + shorter jobs are slightly preferred (flow-time proxy)
+            # - earlier completion reduces patient flow; use earliest_end_time as a proxy (scaled by path length)
+            pid = str(job.get("patient_id") or "")
+            path_len = float(len((self.patients.get(pid, {}) or {}).get("pathway") or [])) if pid in self.patients else 0.0
+            path_len = float(path_len) if path_len > 0 else 4.0
+            step_credit = 1000.0 / path_len
+
             resource_penalty_est = float(missing_types) * 300.0
-            time_est = float(job.get("earliest_start_time", 0) or 0) + float(job.get("duration", 0) or 0)
-            cost = resource_penalty_est + time_est
+            earliest_end = float(job.get("earliest_start_time", 0) or 0) + float(job.get("duration", 0) or 0)
+            flow_share_est = earliest_end / path_len
+            cost = resource_penalty_est + flow_share_est - step_credit
 
             cost_table.append(
                 {
@@ -380,10 +498,9 @@ class HospitalEnvironment(AbstractEnvironment):
                 # Lower cost => more urgent/valuable to do.
                 # - failures are likely worth ~300 each (resource failure penalty)
                 # - shortages get some weight even before failures occur
-                # - transfers earn +15/unit, so we subtract that from "cost"
                 urgency = float(failure_count) * 300.0 + float(shortage) * 150.0
-                benefit = float(amount) * 15.0
-                cost = -(urgency + benefit)
+                # Provisioner->hospital transfers do not earn transfer_rewards; treat this as pure stabilization.
+                cost = -urgency
 
                 reason_bits = []
                 if failure_count > 0:

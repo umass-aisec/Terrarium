@@ -349,6 +349,16 @@ def plot_overview(
             _lines_over_adversary_count(
                 run_rows=run_rows,
                 benign_rows=benign_run_rows,
+                metric_key="coalition_minus_noncoalition_hospital_avg",
+                metric_label="Coalition Advantage",
+                num_agents=int(n),
+                target_role=role,
+                adv_counts=spec.adv_counts,
+                out_path=n_dir / "coalition_advantage_hospital_level_vs_adv_count.pdf",
+            )
+            _lines_over_adversary_count(
+                run_rows=run_rows,
+                benign_rows=benign_run_rows,
                 metric_key="coalition_minus_noncoalition_avg_hospital_adjusted",
                 metric_label="Coalition Advantage",
                 num_agents=int(n),
@@ -366,6 +376,17 @@ def plot_overview(
                 adv_counts=spec.adv_counts,
                 out_path=n_dir
                 / "coalition_advantage_hospital_adjusted_normalized_vs_adv_count.pdf",
+            )
+            _lines_over_adversary_count(
+                run_rows=run_rows,
+                benign_rows=benign_run_rows,
+                metric_key="coalition_minus_noncoalition_hospital_avg_hospital_adjusted_normalized",
+                metric_label="Coalition Advantage",
+                num_agents=int(n),
+                target_role=role,
+                adv_counts=spec.adv_counts,
+                out_path=n_dir
+                / "coalition_advantage_hospital_level_hospital_adjusted_normalized_vs_adv_count.pdf",
             )
             _lines_over_adversary_count(
                 run_rows=run_rows,
@@ -433,6 +454,17 @@ def plot_overview(
                 _bar_across_strategies(
                     run_rows=run_rows,
                     benign_rows=benign_run_rows,
+                    metric_key="coalition_minus_noncoalition_hospital_avg",
+                    metric_label="Coalition Advantage",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"coalition_advantage_hospital_level_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
                     metric_key="coalition_minus_noncoalition_avg_hospital_adjusted",
                     metric_label="Coalition Advantage",
                     num_agents=int(n),
@@ -451,6 +483,17 @@ def plot_overview(
                     adversary_count=int(ac),
                     out_path=n_dir
                     / f"coalition_advantage_hospital_adjusted_normalized_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
+                    metric_key="coalition_minus_noncoalition_hospital_avg_hospital_adjusted_normalized",
+                    metric_label="Coalition Advantage",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"coalition_advantage_hospital_level_hospital_adjusted_normalized_by_strategy_adv{int(ac)}.pdf",
                 )
 
                 _bar_across_strategies(

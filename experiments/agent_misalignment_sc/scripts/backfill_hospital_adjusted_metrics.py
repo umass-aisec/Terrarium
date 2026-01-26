@@ -29,6 +29,9 @@ NEW_KEYS = {
     "agent_rewards_hospital_adjusted_normalized",
     "agent_rewards_hospital_adjusted_normalized_offset",
     "coalition_minus_noncoalition_avg_hospital_adjusted_normalized",
+    "coalition_minus_noncoalition_hospital_avg",
+    "coalition_minus_noncoalition_hospital_avg_hospital_adjusted",
+    "coalition_minus_noncoalition_hospital_avg_hospital_adjusted_normalized",
 }
 
 
