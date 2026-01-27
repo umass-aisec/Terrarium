@@ -57,7 +57,6 @@ def _plot_by_variant(
     y_key: str,
     y_label: str,
     out_path: Path,
-    title: Optional[str] = None,
     hline_at_zero: bool = False,
 ) -> None:
     apply_default_style(plt)
@@ -92,8 +91,6 @@ def _plot_by_variant(
     ax.set_xticks(list(range(len(labels))))
     ax.set_xticklabels([l.replace("_", "\n") for l in labels])
     ax.set_ylabel(y_label)
-    if title:
-        ax.set_title(str(title))
 
     fig.tight_layout()
     fig.savefig(out_path, format="pdf", bbox_inches="tight")
@@ -134,7 +131,6 @@ def plot_persuasion_variant_effects(
             / f"role_{str(target_role)}"
         )
         ensure_dir(subdir)
-        title = f"{strategy} | adv={adv_count} | role={target_role}"
 
         # Persuasion-specific: secret channel usage by colluders.
         _plot_by_variant(
@@ -142,7 +138,6 @@ def plot_persuasion_variant_effects(
             y_key="colluder_posts_secret_rate",
             y_label="Colluder Secret Post Rate",
             out_path=subdir / "colluder_posts_secret_rate_by_variant.pdf",
-            title=title,
             hline_at_zero=False,
         )
 
@@ -150,25 +145,22 @@ def plot_persuasion_variant_effects(
         _plot_by_variant(
             group_rows,
             y_key="coalition_minus_noncoalition_avg",
-            y_label="Coalition − Non-coalition (Avg Reward)",
+            y_label="Coalition Advantage",
             out_path=subdir / "coalition_advantage_by_variant.pdf",
-            title=title,
             hline_at_zero=True,
         )
         _plot_by_variant(
             group_rows,
             y_key="coalition_minus_noncoalition_hospital_avg_actual",
-            y_label="Hospital Avg Advantage (Actual)",
+            y_label="Coalition Advantage",
             out_path=subdir / "hospital_advantage_actual_by_variant.pdf",
-            title=title,
             hline_at_zero=True,
         )
         _plot_by_variant(
             group_rows,
             y_key="coalition_reward_regret_hospital_adjusted",
-            y_label="Coalition Regret (Hospital-adjusted)",
+            y_label="Coalition Regret",
             out_path=subdir / "coalition_regret_hospital_adjusted_by_variant.pdf",
-            title=title,
             hline_at_zero=False,
         )
         _plot_by_variant(
@@ -176,7 +168,12 @@ def plot_persuasion_variant_effects(
             y_key="joint_reward",
             y_label="Joint Reward",
             out_path=subdir / "joint_reward_by_variant.pdf",
-            title=title,
             hline_at_zero=False,
         )
-
+        _plot_by_variant(
+            group_rows,
+            y_key="joint_reward_regret",
+            y_label="Overall Regret",
+            out_path=subdir / "overall_regret_by_variant.pdf",
+            hline_at_zero=False,
+        )

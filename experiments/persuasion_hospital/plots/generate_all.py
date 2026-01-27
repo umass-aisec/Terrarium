@@ -104,8 +104,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     write_csv(out_dir / "agent_rows.csv", tables.agent_rows)
 
     # Reuse the agent_misalignment_sc suite (metrics now line up).
-    plot_sweep_metrics(run_rows=tables.run_rows, agent_rows=tables.agent_rows, out_dir=out_dir / "misalignment_style")
-    plot_overview(run_rows=tables.run_rows, benign_run_rows=None, out_dir=out_dir / "overview")
+    plot_sweep_metrics(
+        run_rows=tables.run_rows,
+        agent_rows=tables.agent_rows,
+        out_dir=out_dir / "misalignment_style",
+    )
+    plot_overview(
+        run_rows=tables.run_rows,
+        benign_run_rows=None,
+        out_dir=out_dir / "overview",
+    )
 
     # Persuasion-specific plots over prompt variants + secret-channel usage.
     plot_persuasion_variant_effects(run_rows=tables.run_rows, out_dir=out_dir)
@@ -115,4 +123,3 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
