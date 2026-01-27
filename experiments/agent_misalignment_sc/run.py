@@ -254,6 +254,15 @@ def _select_adversaries_hospital_coalition(
         hospital_map[h_name].append(name)
 
     hospitals_list = sorted(list(hospitals))
+    # For reproducibility + fair comparisons across parameter sweeps, we prefer to
+    # fill adversaries from General_Hospital first, then St_Marys_Center, then any
+    # remaining hospitals (alphabetical). This reduces run-to-run differences in
+    # coalition composition when the only intended change is strategy/seed/etc.
+    preferred_hospital_order: List[str] = []
+    for name in ("General_Hospital", "St_Marys_Center"):
+        if name in hospitals_list:
+            preferred_hospital_order.append(name)
+    preferred_hospital_order.extend([h for h in hospitals_list if h not in preferred_hospital_order])
 
     def _role_sort_key(agent_name: str) -> int:
         known_roles = ["Triage", "Radiology", "Surgery", "Ward"]
@@ -283,9 +292,8 @@ def _select_adversaries_hospital_coalition(
         required_hospital: Optional[str],
         total_needed_departments: int,
     ) -> List[str]:
-        # Select hospitals in a reproducible randomized order, but with required first.
-        hs = list(hospitals_list)
-        rng.shuffle(hs)
+        # Select hospitals deterministically, but with required first.
+        hs = list(preferred_hospital_order)
         if required_hospital and required_hospital in hs:
             hs = [required_hospital] + [h for h in hs if h != required_hospital]
         # Keep only hospitals that have department agents (defensive).
@@ -302,7 +310,12 @@ def _select_adversaries_hospital_coalition(
         required_agent = provisioner
     elif target_role and target_role.lower() == "departmental":
         required_agent = None
-        required_hospital = rng.choice(hospitals_list) if hospitals_list else None
+        # Prefer General_Hospital departmental coalitions for comparability.
+        required_hospital = (
+            "General_Hospital"
+            if "General_Hospital" in hospitals_list
+            else (hospitals_list[0] if hospitals_list else None)
+        )
     elif target_role:
         # Specific department role substring (e.g., "Triage")
         for h in hospitals_list:
