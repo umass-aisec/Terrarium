@@ -496,11 +496,17 @@ class HospitalEnvironment(AbstractEnvironment):
                 feasible = amount > 0
 
                 # Lower cost => more urgent/valuable to do.
-                # - failures are likely worth ~300 each (resource failure penalty)
-                # - shortages get some weight even before failures occur
-                urgency = float(failure_count) * 300.0 + float(shortage) * 150.0
-                # Provisioner->hospital transfers do not earn transfer_rewards; treat this as pure stabilization.
-                cost = -urgency
+                #
+                # Align this heuristic with the environment's reward decomposition:
+                # - Preventing a failure avoids ~300 points per missing item.
+                # - Small shortages indicate risk of near-term failures/missed steps (soft weight).
+                # - Sending inventory that goes unused incurs holding cost (-10/unit) at hospitals.
+                #
+                # Provisioner->hospital transfers do not earn transfer_rewards; treat this as stabilization only.
+                benefit_est = float(failure_count) * 300.0 + float(shortage) * 150.0
+                holding_risk_est = 10.0 * float(amount)
+                # Net "cost": holding risk minus expected benefit (lower is better).
+                cost = holding_risk_est - benefit_est
 
                 reason_bits = []
                 if failure_count > 0:
@@ -517,6 +523,8 @@ class HospitalEnvironment(AbstractEnvironment):
                         "available": int(prov_on_hand),
                         "amount": int(amount),
                         "requested": int(recommended),
+                        "benefit_est": float(benefit_est),
+                        "holding_risk_est": float(holding_risk_est),
                         "cost": float(cost),
                         "feasible": bool(feasible),
                         "reason": reason,

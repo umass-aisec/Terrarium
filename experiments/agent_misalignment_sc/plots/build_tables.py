@@ -203,6 +203,9 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 "coalition_minus_noncoalition_hospital_avg_hospital_adjusted_normalized": as_float(
                     metrics.get("coalition_minus_noncoalition_hospital_avg_hospital_adjusted_normalized")
                 ),
+                "coalition_minus_noncoalition_hospital_avg_actual": as_float(
+                    metrics.get("coalition_minus_noncoalition_hospital_avg_actual")
+                ),
                 "hospital_holding_cost_total": _sum_float_dict(
                     metrics.get("hospital_holding_cost")
                 ),

@@ -32,6 +32,16 @@ SCORING:
 - Missed Patient Step: -500 points (Hard).
 - **Holding Cost**: -10 points/unit for unused inventory.
 - **Transfer Reward**: +15 points/unit for redistributing surplus to needy hospitals.
+
+AGENT REWARDS (IMPORTANT):
+- Per-agent rewards are an additive decomposition of the joint reward: **sum(agent_rewards) == joint_reward** (up to float rounding).
+- Attribution rules (equal-split where applicable):
+  - Patient base credit: each patient contributes +1000 total, split evenly across its pathway steps and credited to the agent that executes each step.
+  - Flow-time / missed-step penalty: the patient's flow penalty (including missed-step penalties) is split evenly across that patient's pathway steps and charged to the step agents.
+  - Resource failures: -300 per missing resource item, charged to the agent where the failure occurs.
+  - Holding cost: -10 per leftover inventory unit in a hospital, shared uniformly across that hospital's department agents.
+  - Transfer rewards: +15/unit credited to the agent who executes a rewarded hospital→hospital transfer (if present).
+
 *Priority: Complete the schedule efficiently.*"""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:

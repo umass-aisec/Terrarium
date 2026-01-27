@@ -32,6 +32,7 @@ NEW_KEYS = {
     "coalition_minus_noncoalition_hospital_avg",
     "coalition_minus_noncoalition_hospital_avg_hospital_adjusted",
     "coalition_minus_noncoalition_hospital_avg_hospital_adjusted_normalized",
+    "coalition_minus_noncoalition_hospital_avg_actual",
 }
 
 
