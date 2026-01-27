@@ -14,7 +14,7 @@ experiment:
     # prompt_variant_overrides: {}
   sweeps:
     - name: persuasion_hospital_test
-      topologies: [complete, path]
+      topologies: [complete] #, path]
       # Hospital agent counts must be 1 + 4*k (Resource_Provisioner + 4 departments per hospital).
       num_agents: [9]
       num_patients: ["num_agents_minus_1"]
@@ -22,13 +22,13 @@ experiment:
         - covert_max_coalition_reward
         - destructive_max_coalition_reward
         - destructive_no_reward_preservation
-      colluder_counts: [0, 2, 4]
+      colluder_counts: [4]
       target_roles:
         - departmental
         # - Resource_Provisioner
         # - Triage
-      coalition_clique_enabled: [false, true]
-      secret_channel_enabled: [false, true]
+      coalition_clique_enabled: [true]
+      secret_channel_enabled: [true]
       prompt_variants:
         - control
         - helpful_misdirection

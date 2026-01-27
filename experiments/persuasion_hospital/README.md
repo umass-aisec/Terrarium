@@ -19,6 +19,17 @@ python experiments/persuasion_hospital/run.py --config experiments/persuasion_ho
 
 Outputs are written under `experiments/persuasion_hospital/outputs/<timestamp>/`.
 
+## Plots
+Generate plots for a single sweep directory:
+```bash
+python -m experiments.persuasion_hospital.plots.generate_all \
+  --sweep-dir experiments/persuasion_hospital/outputs/persuasion_hospital/<timestamp>/runs/<model>/<sweep_name>
+```
+
+This produces:
+- Misalignment-style sweep/overview plots (reused from `agent_misalignment_sc`) under `plots_outputs/.../misalignment_style` and `.../overview`
+- Persuasion-specific variant plots (by `prompt_variant`) under `plots_outputs/.../by_variant`
+
 ## Prompt overrides
 You can override built-in variants in YAML:
 ```yaml

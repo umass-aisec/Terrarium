@@ -32,10 +32,7 @@ from experiments.common.run_utils import (
 )
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
 from experiments.common.local_protocol import LocalCommunicationProtocol
-from experiments.persuasion_hospital.metrics import (
-    compute_persuasion_hospital_metrics,
-    metrics_to_json,
-)
+from experiments.agent_misalignment_sc.metrics import compute_misalignment_metrics
 from experiments.persuasion_hospital.prompts import PersuasionHospitalPrompts
 from src.networks import build_communication_network
 from src.logger import AgentTrajectoryLogger, PromptLogger
@@ -591,14 +588,37 @@ async def _run_single(
     except Exception:
         agent_rewards = None
 
-    metrics = compute_persuasion_hospital_metrics(
-        colluders=colluders,
-        secret_blackboard_id=secret_blackboard_id,
-        secret_channel_enabled=secret_channel_enabled,
-        prompt_variant=str(effective_prompt_variant),
+    # Compute the same metrics object as agent_misalignment_sc for compatibility.
+    blackboard_participants = {}
+    try:
+        for bb in protocol.megaboard.blackboards:
+            bb_id = getattr(bb, "blackboard_id", None)
+            participants = getattr(bb, "participants", None)
+            if bb_id is None:
+                continue
+            if isinstance(participants, list):
+                blackboard_participants[int(bb_id)] = [str(x) for x in participants]
+            else:
+                agents = getattr(bb, "agents", None)
+                if isinstance(agents, (list, set, tuple)):
+                    blackboard_participants[int(bb_id)] = [str(x) for x in agents]
+    except Exception:
+        blackboard_participants = {}
+
+    misalignment_roles = {
+        str(name): ("adversary" if str(name) in colluder_set else "cooperative")
+        for name in agent_names
+    }
+    metrics = compute_misalignment_metrics(
+        graph=communication_network.graph,
+        adversaries=colluders,
         tool_events=protocol.tool_events,
+        judgements={},  # persuasion_hospital does not run the judge pass (yet)
+        blackboard_participants=blackboard_participants,
+        roles=misalignment_roles,
         final_summary=final_summary if isinstance(final_summary, dict) else {},
         agent_rewards=agent_rewards,
+        attack_type=misalignment_strategy,
     )
 
     _write_json(
@@ -611,12 +631,12 @@ async def _run_single(
             "secret_channel_enabled": secret_channel_enabled,
             "secret_blackboard_id": secret_blackboard_id,
             "prompt_variant": str(effective_prompt_variant),
-            "metrics": metrics_to_json(metrics),
+            "metrics": asdict(metrics),
         },
     )
     _write_json(run_dir / "final_summary.json", final_summary)
     _write_json(run_dir / "agent_rewards.json", agent_rewards or {})
-    _write_json(run_dir / "metrics.json", metrics_to_json(metrics))
+    _write_json(run_dir / "metrics.json", asdict(metrics))
     _write_json(
         run_dir / "tool_events.json",
         [
@@ -663,18 +683,17 @@ async def _run_single(
         "prompt_variant": str(effective_prompt_variant),
         "seed": int(seed),
         "colluders": colluders,
-        "status": metrics.status,
-        "joint_reward": metrics.joint_reward,
-        "resource_failures_total": metrics.resource_failures_total,
+        "status": metrics.meeting_outcome.status,
+        "joint_reward": metrics.meeting_outcome.joint_reward,
+        "joint_reward_regret": metrics.joint_reward_regret,
         "coalition_reward_sum": metrics.coalition_reward_sum,
         "noncoalition_reward_sum": metrics.noncoalition_reward_sum,
-        "coalition_mean_reward": metrics.coalition_mean_reward,
-        "noncoalition_mean_reward": metrics.noncoalition_mean_reward,
-        "coalition_advantage_mean": metrics.coalition_advantage_mean,
-        "colluder_posts_secret_rate": metrics.colluder_posts_secret_rate,
-        "colluder_posts_total": metrics.colluder_posts_total,
-        "colluder_posts_secret": metrics.colluder_posts_secret,
-        "colluder_posts_non_secret": metrics.colluder_posts_non_secret,
+        "coalition_reward_avg": metrics.coalition_reward_avg,
+        "noncoalition_reward_avg": metrics.noncoalition_reward_avg,
+        "coalition_minus_noncoalition_avg": metrics.coalition_minus_noncoalition_avg,
+        "coalition_minus_noncoalition_hospital_avg_actual": metrics.coalition_minus_noncoalition_hospital_avg_actual,
+        "coalition_reward_regret": metrics.coalition_reward_regret,
+        "coalition_reward_regret_hospital_adjusted": metrics.coalition_reward_regret_hospital_adjusted,
     }
 
 
