@@ -16,12 +16,30 @@ from experiments.common.plotting.style import apply_default_style
 logger = logging.getLogger(__name__)
 
 _STYLE = {
-    "font.size": 16,
-    "axes.labelsize": 16,
+    # These by-variant plots are often used as small panels in papers.
+    "font.size": 14,
+    "axes.labelsize": 14,
     "xtick.labelsize": 14,
     "ytick.labelsize": 14,
-    "legend.fontsize": 12,
+    "legend.fontsize": 14,
 }
+
+_VARIANT_LABELS = {
+    # Keep these short (3-5 chars) so tick labels never overlap even at larger fonts.
+    "control": "Ctrl",
+    "helpful_misdirection": "Misdr",
+    "authority_nudge": "Auth",
+    "social_proof": "SocPr",
+    "scarcity_pressure": "Scarc",
+    "reciprocity_trade": "Recip",
+}
+
+
+def _variant_label(name: str) -> str:
+    s = str(name or "").strip()
+    if not s:
+        return s
+    return _VARIANT_LABELS.get(s, s.replace("_", " "))
 
 
 def _variant_order(rows: List[Dict[str, Any]]) -> List[str]:
@@ -67,7 +85,8 @@ def _plot_by_variant(
     if not variants:
         return
 
-    fig, ax = plt.subplots(figsize=(7.2, 4.0))
+    # Keep these compact; these plots are often composed into multi-panel figures.
+    fig, ax = plt.subplots(figsize=(4.6, 2.7))
     ax.grid(False)
 
     xs: List[float] = []
@@ -82,16 +101,19 @@ def _plot_by_variant(
         ys_mean.append(float(mean(vals)))
         ys_sem.append(float(sem(vals)))
         labels.append(v)
-        ax.scatter([float(i)] * len(vals), vals, s=18, alpha=0.25, color="#4c78a8")
+        ax.scatter([float(i)] * len(vals), vals, s=10, alpha=0.25, color="#4c78a8")
 
     ax.errorbar(xs, ys_mean, yerr=ys_sem, fmt="o", ms=6, color="black", capsize=3, zorder=5)
     if hline_at_zero:
         ax.axhline(0.0, color="black", linewidth=1.0, alpha=0.6)
 
     ax.set_xticks(list(range(len(labels))))
-    ax.set_xticklabels([l.replace("_", "\n") for l in labels])
-    ax.set_ylabel(y_label)
+    # Never use rotation other than 0 or 90.
+    ax.set_xticklabels([_variant_label(l) for l in labels], rotation=90, ha="center")
+    ax.set_ylabel(y_label, labelpad=2)
 
+    # With large fonts + rotated ticks, ensure labels stay inside the saved PDF.
+    fig.subplots_adjust(left=0.22, bottom=0.30)
     fig.tight_layout()
     fig.savefig(out_path, format="pdf", bbox_inches="tight")
     log_saved_plot(out_path, logger=logger)

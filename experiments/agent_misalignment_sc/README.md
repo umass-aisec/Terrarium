@@ -30,6 +30,20 @@ python -m experiments.agent_misalignment_sc.plots.generate_all \
   --sweep-dir experiments/agent_misalignment/outputs/<tag>/<timestamp>/runs/<model>/<sweep_name>
 ```
 
+### Multi-model comparison
+To compare multiple models on the same grouped bar charts (x = strategy type, grouped bars = model), run:
+```bash
+python -m experiments.agent_misalignment_sc.plots.plot_model_comparison \
+  --model-runs-dir /bigtemp/duh6ae/Terrarium/experiments/agent_misalignment_sc/outputs/agent_misalignment/20260127-001451/runs/openai-gpt-4.1-mini \
+  --model-runs-dir /bigtemp/duh6ae/Terrarium/experiments/agent_misalignment_sc/outputs/agent_misalignment/20260127-001615/runs/openai-gpt-4o-mini \
+  --model-runs-dir /bigtemp/duh6ae/Terrarium/experiments/agent_misalignment_sc/outputs/agent_misalignment/20260127-122722/runs/together-kimik2-Instruct \
+  --num-agents 9 \
+  --target-role departmental \
+  --adversary-count 4 \
+  --seeds 0-4 \
+  --out-dir /bigtemp/duh6ae/Terrarium/experiments/agent_misalignment/plots_outputs/misalignment_plots_3_models
+```
+
 If you ran a benign baseline separately (e.g., under a different `<tag>/<timestamp>`), you can
 overlay it on the same plots:
 ```bash

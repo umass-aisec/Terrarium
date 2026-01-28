@@ -9,7 +9,14 @@ import matplotlib
 matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 
-from experiments.common.plotting.io_utils import ensure_dir, finite, groupby, mean, sem
+from experiments.common.plotting.io_utils import (
+    ensure_dir,
+    finite,
+    groupby,
+    mean,
+    sem,
+    write_csv,
+)
 from experiments.common.plotting.logging_utils import log_saved_plot
 from experiments.common.plotting.style import apply_default_style
 
@@ -17,11 +24,11 @@ logger = logging.getLogger(__name__)
 
 _STYLE = {
     # Paper-friendly defaults (reasonable in LaTeX figures).
-    "font.size": 18,
-    "axes.labelsize": 18,
-    "xtick.labelsize": 18,
-    "ytick.labelsize": 18,
-    "legend.fontsize": 18,
+    "font.size": 26,
+    "axes.labelsize": 26,
+    "xtick.labelsize": 26,
+    "ytick.labelsize": 26,
+    "legend.fontsize": 26,
 }
 
 
@@ -100,6 +107,7 @@ def _plot_metric_by_x(
     out_path: Path,
     baseline_rows: Optional[List[Dict[str, Any]]] = None,
     baseline_label: str = "Benign baseline",
+    emit_artifacts: bool = True,
 ) -> None:
     apply_default_style(plt)
     plt.rcParams.update(_STYLE)
@@ -234,11 +242,256 @@ def _plot_metric_by_x(
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
+    if not emit_artifacts:
+        return
+
+    csv_path = out_path.with_suffix(".csv")
+    script_path = out_path.with_name(out_path.stem + "__replot.py")
+
+    baseline_expanded = False
+    baseline_rows_for_plot = baseline_rows
+    if not numeric_x and baseline_rows:
+        base_cats = [str(v) for v in _unique_non_null(baseline_rows, x_key)]
+        cats = [str(v) for v in _unique_non_null(run_rows, x_key)]
+        if len(base_cats) == 1 and len(cats) > 1:
+            baseline_expanded = True
+            baseline_rows_for_plot = []
+            for c in cats:
+                for r in baseline_rows:
+                    rr = dict(r)
+                    rr[x_key] = c
+                    baseline_rows_for_plot.append(rr)
+
+    def _point_rows(rows: List[Dict[str, Any]], *, group: str) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            x = r.get(x_key)
+            y = r.get(y_key)
+            if x is None or y is None:
+                continue
+            out.append(
+                {
+                    "group": group,
+                    "plot_x_key": x_key,
+                    "plot_y_key": y_key,
+                    "plot_x_label": x_label,
+                    "plot_y_label": y_label,
+                    "baseline_label": baseline_label if group == "baseline" else "",
+                    "baseline_expanded": bool(baseline_expanded) if group == "baseline" else False,
+                    x_key: x,
+                    y_key: y,
+                    "run_id": r.get("run_id"),
+                    "seed": r.get("seed"),
+                    "strategy": r.get("strategy"),
+                    "target_role": r.get("target_role"),
+                    "adversary_count": r.get("adversary_count"),
+                    "num_agents": r.get("num_agents"),
+                }
+            )
+        return out
+
+    rows_out: List[Dict[str, Any]] = []
+    rows_out.extend(_point_rows(run_rows, group="main"))
+    if baseline_rows_for_plot:
+        rows_out.extend(_point_rows(list(baseline_rows_for_plot), group="baseline"))
+    write_csv(csv_path, rows_out)
+
+    script = f"""\
+from __future__ import annotations
+
+import csv
+import math
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+
+def _as_float(x: Any) -> Optional[float]:
+    if x is None:
+        return None
+    try:
+        return float(x)
+    except Exception:
+        return None
+
+
+def _mean(xs: List[float]) -> Optional[float]:
+    if not xs:
+        return None
+    return float(sum(xs) / len(xs))
+
+
+def _sem(xs: List[float]) -> float:
+    if len(xs) <= 1:
+        return 0.0
+    m = float(sum(xs) / len(xs))
+    var = sum((x - m) ** 2 for x in xs) / float(len(xs) - 1)
+    return float(math.sqrt(var) / math.sqrt(len(xs)))
+
+
+def _finite(xs: List[Any]) -> List[float]:
+    out: List[float] = []
+    for x in xs:
+        f = _as_float(x)
+        if f is None:
+            continue
+        if math.isfinite(f):
+            out.append(float(f))
+    return out
+
+
+def _is_numeric(values: List[Any]) -> bool:
+    for v in values:
+        if v is None:
+            continue
+        try:
+            float(v)
+        except Exception:
+            return False
+    return True
+
+
+def _group(rows: List[Dict[str, Any]], key: str) -> Dict[Any, List[Dict[str, Any]]]:
+    out: Dict[Any, List[Dict[str, Any]]] = {{}}
+    for r in rows:
+        out.setdefault(r.get(key), []).append(r)
+    return out
+
+
+def main() -> None:
+    here = Path(__file__).resolve().parent
+    csv_path = here / {csv_path.name!r}
+
+    rows: List[Dict[str, Any]] = []
+    with csv_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for r in reader:
+            rows.append(dict(r))
+
+    if not rows:
+        raise SystemExit("No rows in CSV")
+
+    x_key = rows[0].get("plot_x_key") or {x_key!r}
+    y_key = rows[0].get("plot_y_key") or {y_key!r}
+    x_label = rows[0].get("plot_x_label") or {x_label!r}
+    y_label = rows[0].get("plot_y_label") or {y_label!r}
+
+    main_rows = [r for r in rows if (r.get("group") or "") == "main"]
+    base_rows = [r for r in rows if (r.get("group") or "") == "baseline"]
+
+    numeric_x = _is_numeric([r.get(x_key) for r in main_rows])
+
+    fig, ax = plt.subplots(figsize=(6.5, 4.0))
+    ax.grid(False)
+
+    baseline_color = "#f58518"
+    main_color = "#4c78a8"
+
+    def _violin(pos: float, vals: List[float], color: str, alpha: float = 0.35) -> None:
+        if not vals:
+            return
+        parts = ax.violinplot(
+            [vals],
+            positions=[pos],
+            widths=0.28,
+            showmeans=False,
+            showmedians=True,
+            showextrema=False,
+        )
+        for b in parts.get("bodies", []):
+            b.set_facecolor(color)
+            b.set_edgecolor(color)
+            b.set_alpha(alpha)
+        if parts.get("cmedians") is not None:
+            parts["cmedians"].set_color(color)
+            parts["cmedians"].set_linewidth(1.6)
+
+    if numeric_x:
+        by_x = _group(main_rows, x_key)
+        x_vals = sorted([x for x in by_x.keys() if x is not None], key=lambda t: float(t))
+        for x in x_vals:
+            ys = _finite([r.get(y_key) for r in by_x.get(x, [])])
+            if not ys:
+                continue
+            _violin(float(x) - 0.11, ys, main_color)
+            ax.errorbar([float(x)], [_mean(ys)], yerr=[_sem(ys)], fmt="o", ms=6, color="black", capsize=3, zorder=5)
+
+        if base_rows:
+            by_xb = _group(base_rows, x_key)
+            xb_vals = sorted([x for x in by_xb.keys() if x is not None], key=lambda t: float(t))
+            for x in xb_vals:
+                ys = _finite([r.get(y_key) for r in by_xb.get(x, [])])
+                if not ys:
+                    continue
+                _violin(float(x) + 0.11, ys, baseline_color)
+                ax.errorbar([float(x)], [_mean(ys)], yerr=[_sem(ys)], fmt="s", ms=5.5, color=baseline_color, capsize=3, zorder=6)
+            ax.scatter([], [], s=28, color=baseline_color, label=rows[0].get("baseline_label") or "Benign baseline", marker="s")
+            ax.scatter([], [], s=28, color=main_color, label="Main sweep", marker="o")
+            ax.legend(loc="best")
+
+        ax.set_xlabel(str(x_label))
+        ax.set_ylabel(str(y_label))
+    else:
+        cats: List[str] = []
+        seen = set()
+        for r in main_rows:
+            c = str(r.get(x_key))
+            if c in seen:
+                continue
+            seen.add(c)
+            cats.append(c)
+        if not cats:
+            raise SystemExit("No categories")
+
+        by_c = _group(main_rows, x_key)
+        for i, c in enumerate(cats):
+            ys = _finite([r.get(y_key) for r in by_c.get(c, [])])
+            if not ys:
+                continue
+            _violin(float(i) - 0.11, ys, main_color)
+            ax.errorbar([float(i)], [_mean(ys)], yerr=[_sem(ys)], fmt="o", ms=6, color="black", capsize=3, zorder=5)
+
+        if base_rows:
+            by_cb = _group(base_rows, x_key)
+            for i, c in enumerate(cats):
+                ys = _finite([r.get(y_key) for r in by_cb.get(c, [])])
+                if not ys:
+                    continue
+                _violin(float(i) + 0.11, ys, baseline_color)
+                ax.errorbar([float(i)], [_mean(ys)], yerr=[_sem(ys)], fmt="s", ms=5.5, color=baseline_color, capsize=3, zorder=6)
+            ax.scatter([], [], s=28, color=baseline_color, label=rows[0].get("baseline_label") or "Benign baseline", marker="s")
+            ax.scatter([], [], s=28, color=main_color, label="Main sweep", marker="o")
+            ax.legend(loc="best")
+
+        ax.set_xticks(list(range(len(cats))))
+        ax.set_xticklabels(
+            cats,
+            rotation=0 if max((len(c) for c in cats), default=0) <= 12 else 90,
+            ha="right",
+        )
+        ax.set_xlabel(str(x_label))
+        ax.set_ylabel(str(y_label))
+
+    fig.tight_layout()
+    out_pdf = here / {out_path.name!r}
+    fig.savefig(out_pdf, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+
+
+if __name__ == "__main__":
+    main()
+"""
+    script_path.write_text(script, encoding="utf-8")
+
 
 def plot_distance_effects(
     agent_rows: List[Dict[str, Any]],
     *,
     out_path: Path,
+    emit_artifacts: bool = True,
 ) -> None:
     """
     Aggregates non-adversary agents across runs and plots:

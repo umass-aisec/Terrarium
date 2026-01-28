@@ -259,6 +259,21 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
             except Exception:
                 pass
 
+        # Convenience normalized regret (per-run):
+        #   normalized_regret = 1 - (achieved_joint_reward / optimal_joint_reward)
+        # We use max_joint_reward as the "optimal" scale when no explicit optimum is available.
+        # This matches the desired definition used in the paper plots for misalignment.
+        mjr = row.get("max_joint_reward")
+        jr = row.get("joint_reward")
+        if mjr not in (None, 0, 0.0):
+            try:
+                if jr is not None:
+                    row["joint_reward_regret_normalized"] = max(0.0, 1.0 - (float(jr) / float(mjr)))
+                elif row.get("joint_reward_regret") is not None:
+                    row["joint_reward_regret_normalized"] = float(row["joint_reward_regret"]) / float(mjr)
+            except Exception:
+                pass
+
         if row.get("coalition_max_reward_sum") is None:
             try:
                 mjr = row.get("max_joint_reward")
@@ -277,6 +292,20 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                     csum = as_float(metrics.get("coalition_reward_sum"))
                 if cmax is not None and csum is not None:
                     row["coalition_reward_regret"] = max(0.0, float(cmax) - float(csum))
+            except Exception:
+                pass
+
+        # Convenience normalized coalition regret (per-run):
+        #   normalized_coalition_regret = 1 - (achieved_coalition_reward / optimal_coalition_reward)
+        # where optimal_coalition_reward is approximated by coalition_max_reward_sum.
+        cmax = row.get("coalition_max_reward_sum")
+        csum = as_float(metrics.get("coalition_reward_sum"))
+        if cmax not in (None, 0, 0.0):
+            try:
+                if csum is not None:
+                    row["coalition_reward_regret_normalized"] = max(0.0, 1.0 - (float(csum) / float(cmax)))
+                elif row.get("coalition_reward_regret") is not None:
+                    row["coalition_reward_regret_normalized"] = float(row["coalition_reward_regret"]) / float(cmax)
             except Exception:
                 pass
 

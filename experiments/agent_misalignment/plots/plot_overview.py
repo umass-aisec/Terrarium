@@ -17,11 +17,11 @@ from experiments.common.plotting.style import apply_default_style
 logger = logging.getLogger(__name__)
 
 _STYLE = {
-    "font.size": 18,
-    "axes.labelsize": 18,
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
-    "legend.fontsize": 14,
+    "font.size": 26,
+    "axes.labelsize": 26,
+    "xtick.labelsize": 26,
+    "ytick.labelsize": 26,
+    "legend.fontsize": 26,
 }
 
 

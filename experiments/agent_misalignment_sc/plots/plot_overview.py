@@ -10,18 +10,26 @@ import matplotlib
 matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 
-from experiments.common.plotting.io_utils import ensure_dir, finite, groupby, mean, sem, sanitize_filename
+from experiments.common.plotting.io_utils import (
+    ensure_dir,
+    finite,
+    groupby,
+    mean,
+    sem,
+    sanitize_filename,
+    write_csv,
+)
 from experiments.common.plotting.logging_utils import log_saved_plot
 from experiments.common.plotting.style import apply_default_style
 
 logger = logging.getLogger(__name__)
 
 _STYLE = {
-    "font.size": 18,
-    "axes.labelsize": 18,
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
-    "legend.fontsize": 14,
+    "font.size": 24,
+    "axes.labelsize": 24,
+    "xtick.labelsize": 22,
+    "ytick.labelsize": 24,
+    "legend.fontsize": 24,
 }
 
 
@@ -112,6 +120,7 @@ def _bar_across_strategies(
     target_role: str,
     adversary_count: int,
     out_path: Path,
+    emit_artifacts: bool = True,
 ) -> None:
     """
     Bar plot across strategy types for a fixed adversary_count, plus a benign baseline bar.
@@ -143,6 +152,8 @@ def _bar_across_strategies(
     labels: List[str] = []
     bar_colors: List[str] = []
 
+    artifact_rows: List[Dict[str, Any]] = []
+
     for i, stype in enumerate(order):
         rows_for_stype: List[Dict[str, Any]] = []
         if stype == "benign":
@@ -152,6 +163,28 @@ def _bar_across_strategies(
             for (raw_strategy,), rs in grouped_main.items():
                 if _strategy_type(raw_strategy) == stype:
                     rows_for_stype.extend(rs)
+
+        # Artifact: raw points used for this bar.
+        for r in rows_for_stype:
+            v = r.get(metric_key)
+            if v is None:
+                continue
+            artifact_rows.append(
+                {
+                    "plot_type": "bar_across_strategies",
+                    "plot_metric_key": metric_key,
+                    "plot_metric_label": metric_label,
+                    "num_agents": num_agents,
+                    "target_role": target_role,
+                    "adversary_count": adversary_count,
+                    "strategy_type": stype,
+                    "raw_strategy": r.get("strategy"),
+                    "group": "benign" if stype == "benign" else "main",
+                    "value": v,
+                    "run_id": r.get("run_id"),
+                    "seed": r.get("seed"),
+                }
+            )
 
         default_when_missing = None
         if stype == "benign" and metric_key == "coalition_reward_regret":
@@ -188,6 +221,112 @@ def _bar_across_strategies(
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
 
+    if not emit_artifacts:
+        return
+
+    csv_path = out_path.with_suffix(".csv")
+    script_path = out_path.with_name(out_path.stem + "__replot.py")
+    write_csv(csv_path, artifact_rows)
+
+    script = f"""\
+from __future__ import annotations
+
+import csv
+import math
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+
+def _as_float(x: Any) -> Optional[float]:
+    try:
+        return float(x)
+    except Exception:
+        return None
+
+
+def _mean(xs: List[float]) -> Optional[float]:
+    if not xs:
+        return None
+    return float(sum(xs) / len(xs))
+
+
+def _sem(xs: List[float]) -> float:
+    if len(xs) <= 1:
+        return 0.0
+    m = float(sum(xs) / len(xs))
+    var = sum((x - m) ** 2 for x in xs) / float(len(xs) - 1)
+    return float(math.sqrt(var) / math.sqrt(len(xs)))
+
+
+def _finite(xs: List[Any]) -> List[float]:
+    out: List[float] = []
+    for x in xs:
+        f = _as_float(x)
+        if f is None:
+            continue
+        if math.isfinite(f):
+            out.append(float(f))
+    return out
+
+
+def main() -> None:
+    here = Path(__file__).resolve().parent
+    csv_path = here / {csv_path.name!r}
+    rows: List[Dict[str, Any]] = []
+    with csv_path.open("r", encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f):
+            rows.append(dict(r))
+    if not rows:
+        raise SystemExit("No rows in CSV")
+
+    metric_label = str(rows[0].get("plot_metric_label") or {metric_label!r})
+    # Preserve ordering used in the main plot.
+    order = ["benign", "covert", "destructive_max", "destructive_no_preservation"]
+
+    fig, ax = plt.subplots(figsize=(9.2, 4.4))
+    ax.grid(False)
+
+    xs: List[int] = []
+    heights: List[float] = []
+    yerrs: List[float] = []
+    labels: List[str] = []
+    colors = {{
+        "benign": "#f58518",
+        "covert": "#4c78a8",
+        "destructive_max": "#e45756",
+        "destructive_no_preservation": "#72b7b2",
+    }}
+
+    for i, stype in enumerate(order):
+        vals = _finite([r.get("value") for r in rows if str(r.get("strategy_type")) == stype])
+        if not vals:
+            continue
+        xs.append(i)
+        heights.append(float(_mean(vals) or 0.0))
+        yerrs.append(float(_sem(vals)))
+        labels.append(stype.replace("_", " "))
+        ax.scatter([float(i)] * len(vals), vals, s=16, alpha=0.25, color=colors.get(stype, "#999999"))
+
+    ax.bar(xs, heights, yerr=yerrs, capsize=3, color=[colors.get(order[i], "#999999") for i in xs], alpha=0.9)
+    ax.set_xticks(xs)
+    ax.set_xticklabels(labels, rotation=0, ha="center")
+    ax.set_ylabel(metric_label)
+
+    fig.tight_layout()
+    out_pdf = here / {out_path.name!r}
+    fig.savefig(out_pdf, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+
+
+if __name__ == "__main__":
+    main()
+"""
+    script_path.write_text(script, encoding="utf-8")
+
 
 def _lines_over_adversary_count(
     *,
@@ -199,6 +338,7 @@ def _lines_over_adversary_count(
     target_role: str,
     adv_counts: Sequence[int],
     out_path: Path,
+    emit_artifacts: bool = True,
 ) -> None:
     """
     Line plot: x=adversary_count (including 0 benign), separate line per strategy type.
@@ -275,6 +415,165 @@ def _lines_over_adversary_count(
     fig.savefig(out_path, format="pdf", bbox_inches="tight")
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
+
+    if not emit_artifacts:
+        return
+
+    # Artifact: raw per-run points used for the line plot.
+    csv_path = out_path.with_suffix(".csv")
+    script_path = out_path.with_name(out_path.stem + "__replot.py")
+
+    artifact_rows: List[Dict[str, Any]] = []
+    for stype in strategies:
+        for ac in adv_counts:
+            if stype == "benign":
+                if int(ac) != 0:
+                    continue
+                rows = _filter_adv_count(base, 0)
+            else:
+                rows = _filter_adv_count(main, int(ac))
+                rows = [r for r in rows if _strategy_type(r.get("strategy")) == stype]
+
+            default_when_missing = None
+            if stype == "benign" and metric_key == "coalition_reward_regret":
+                default_when_missing = 0.0
+
+            for r in rows:
+                v = r.get(metric_key)
+                if v is None:
+                    continue
+                artifact_rows.append(
+                    {
+                        "plot_type": "lines_over_adversary_count",
+                        "plot_metric_key": metric_key,
+                        "plot_metric_label": metric_label,
+                        "num_agents": num_agents,
+                        "target_role": target_role,
+                        "strategy_type": stype,
+                        "adversary_count": int(ac),
+                        "raw_strategy": r.get("strategy"),
+                        "group": "benign" if stype == "benign" else "main",
+                        "value": v,
+                        "run_id": r.get("run_id"),
+                        "seed": r.get("seed"),
+                    }
+                )
+
+    write_csv(csv_path, artifact_rows)
+
+    script = f"""\
+from __future__ import annotations
+
+import csv
+import math
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+
+def _as_float(x: Any) -> Optional[float]:
+    try:
+        return float(x)
+    except Exception:
+        return None
+
+
+def _mean(xs: List[float]) -> Optional[float]:
+    if not xs:
+        return None
+    return float(sum(xs) / len(xs))
+
+
+def _sem(xs: List[float]) -> float:
+    if len(xs) <= 1:
+        return 0.0
+    m = float(sum(xs) / len(xs))
+    var = sum((x - m) ** 2 for x in xs) / float(len(xs) - 1)
+    return float(math.sqrt(var) / math.sqrt(len(xs)))
+
+
+def _finite(xs: List[Any]) -> List[float]:
+    out: List[float] = []
+    for x in xs:
+        f = _as_float(x)
+        if f is None:
+            continue
+        if math.isfinite(f):
+            out.append(float(f))
+    return out
+
+
+def main() -> None:
+    here = Path(__file__).resolve().parent
+    csv_path = here / {csv_path.name!r}
+    rows: List[Dict[str, Any]] = []
+    with csv_path.open("r", encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f):
+            rows.append(dict(r))
+    if not rows:
+        raise SystemExit("No rows in CSV")
+
+    metric_label = str(rows[0].get("plot_metric_label") or {metric_label!r})
+
+    strategies = ["benign", "covert", "destructive_max", "destructive_no_preservation"]
+    colors = {{
+        "benign": "#f58518",
+        "covert": "#4c78a8",
+        "destructive_max": "#e45756",
+        "destructive_no_preservation": "#72b7b2",
+    }}
+
+    fig, ax = plt.subplots(figsize=(7.6, 4.4))
+    ax.grid(False)
+
+    for stype in strategies:
+        pts = [r for r in rows if str(r.get("strategy_type")) == stype]
+        if not pts:
+            continue
+        advs = sorted(set(int(float(r.get("adversary_count") or 0)) for r in pts))
+        xs: List[int] = []
+        ys: List[float] = []
+        es: List[float] = []
+        for ac in advs:
+            vals = _finite([r.get("value") for r in pts if int(float(r.get("adversary_count") or 0)) == int(ac)])
+            if not vals:
+                continue
+            xs.append(int(ac))
+            ys.append(float(_mean(vals) or 0.0))
+            es.append(float(_sem(vals)))
+        if not xs:
+            continue
+        ax.errorbar(
+            xs,
+            ys,
+            yerr=es,
+            marker="o",
+            linewidth=3.0,
+            markersize=8,
+            elinewidth=2.0,
+            capthick=2.0,
+            capsize=3,
+            color=colors.get(stype, "#999999"),
+            label=stype.replace("_", " "),
+        )
+
+    ax.set_xlabel("Adversary Count")
+    ax.set_ylabel(metric_label)
+    ax.legend(loc="best")
+
+    fig.tight_layout()
+    out_pdf = here / {out_path.name!r}
+    fig.savefig(out_pdf, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+
+
+if __name__ == "__main__":
+    main()
+"""
+    script_path.write_text(script, encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -558,6 +857,17 @@ def plot_overview(
                     target_role=role,
                     adversary_count=int(ac),
                     out_path=n_dir / f"overall_regret_by_strategy_adv{int(ac)}.pdf",
+                )
+                _bar_across_strategies(
+                    run_rows=run_rows,
+                    benign_rows=benign_run_rows,
+                    metric_key="joint_reward_regret_normalized",
+                    metric_label="Overall Regret",
+                    num_agents=int(n),
+                    target_role=role,
+                    adversary_count=int(ac),
+                    out_path=n_dir
+                    / f"overall_regret_normalized_by_strategy_adv{int(ac)}.pdf",
                 )
                 _bar_across_strategies(
                     run_rows=run_rows,

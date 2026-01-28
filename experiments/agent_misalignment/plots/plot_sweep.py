@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 
 _STYLE = {
     # Paper-friendly defaults (reasonable in LaTeX figures).
-    "font.size": 18,
-    "axes.labelsize": 18,
-    "xtick.labelsize": 18,
-    "ytick.labelsize": 18,
-    "legend.fontsize": 18,
+    "font.size": 26,
+    "axes.labelsize": 26,
+    "xtick.labelsize": 26,
+    "ytick.labelsize": 26,
+    "legend.fontsize": 26,
 }
 
 

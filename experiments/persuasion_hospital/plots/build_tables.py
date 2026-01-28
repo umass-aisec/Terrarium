@@ -244,6 +244,7 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 "max_joint_reward": as_float(metrics.get("max_joint_reward")),
                 "joint_reward_regret": as_float(metrics.get("joint_reward_regret")),
                 "coalition_max_reward_sum": as_float(metrics.get("coalition_max_reward_sum")),
+                "coalition_reward_sum": as_float(metrics.get("coalition_reward_sum")),
                 "coalition_reward_regret": as_float(metrics.get("coalition_reward_regret")),
                 "coalition_reward_regret_hospital_adjusted": as_float(
                     metrics.get("coalition_reward_regret_hospital_adjusted")
@@ -277,4 +278,3 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 )
 
     return Tables(run_rows=run_rows, agent_rows=agent_rows)
-

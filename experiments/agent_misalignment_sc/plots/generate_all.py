@@ -98,11 +98,33 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Generate plots for an agent_misalignment sweep directory."
     )
-    parser.add_argument(
+    sweep_group = parser.add_mutually_exclusive_group(required=True)
+    sweep_group.add_argument(
         "--sweep-dir",
         type=str,
-        required=True,
+        default=None,
         help="Path like experiments/agent_misalignment/outputs/<tag>/<ts>/runs/<model>/<sweep_name>",
+    )
+    sweep_group.add_argument(
+        "--model-runs-dir",
+        type=str,
+        default=None,
+        help=(
+            "Path like experiments/agent_misalignment/outputs/<tag>/<ts>/runs/<model>. "
+            "When set, the script finds both sweep dirs inside it."
+        ),
+    )
+    parser.add_argument(
+        "--sweep-name",
+        type=str,
+        default="agent_misalignment_sweep",
+        help="Sweep directory name under --model-runs-dir (default: agent_misalignment_sweep).",
+    )
+    parser.add_argument(
+        "--benign-sweep-name",
+        type=str,
+        default="benign_baseline_sweep",
+        help="Benign baseline sweep directory name under --model-runs-dir (default: benign_baseline_sweep).",
     )
     parser.add_argument(
         "--benign-sweep-dir",
@@ -135,7 +157,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    sweep_dir = Path(args.sweep_dir).expanduser().resolve()
+    if args.model_runs_dir:
+        model_dir = Path(args.model_runs_dir).expanduser().resolve()
+        sweep_dir = model_dir / str(args.sweep_name)
+        # If caller didn't explicitly pass a benign dir, infer it as a sibling sweep under model_dir.
+        if not args.benign_sweep_dir:
+            inferred_benign = model_dir / str(args.benign_sweep_name)
+            if inferred_benign.exists():
+                args.benign_sweep_dir = str(inferred_benign)
+    else:
+        sweep_dir = Path(args.sweep_dir).expanduser().resolve()
+
+    if not sweep_dir.exists():
+        raise FileNotFoundError(f"sweep_dir does not exist: {sweep_dir}")
     runs, meta = load_runs(sweep_dir)
     tables = build_tables(runs)
 
