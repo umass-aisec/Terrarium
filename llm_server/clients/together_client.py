@@ -34,6 +34,17 @@ def _convert_tools(tools: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
     return normalized
 
 
+def _normalize_reasoning(reasoning: Any) -> Optional[Dict[str, Any]]:
+    """Normalize Together `reasoning` param into the expected dict form."""
+    if reasoning is None:
+        return None
+    if isinstance(reasoning, dict):
+        return reasoning
+    if isinstance(reasoning, bool):
+        return {"enabled": reasoning}
+    return None
+
+
 class TogetherClient(AbstractClient):
     """Client that talks to Together.ai's OpenAI-compatible chat endpoint."""
 
@@ -113,9 +124,16 @@ class TogetherClient(AbstractClient):
         if params.get("temperature") is not None:
             payload["temperature"] = params["temperature"]
 
+        reasoning = _normalize_reasoning(params.get("reasoning"))
+        if reasoning is not None:
+            payload["reasoning"] = reasoning
+
         converted_tools = _convert_tools(params.get("tools"))
         if converted_tools:
             payload["tools"] = converted_tools
+            # DeepSeek reasoning mode breaks tool calling; force-disable whenever tools are present.
+            if "reasoning" in payload:
+                payload["reasoning"] = {"enabled": False}
 
         response = self.session.post(
             f"{self.base_url}/chat/completions",
@@ -170,4 +188,3 @@ class TogetherClient(AbstractClient):
             tool_calls_executed += 1
 
         return tool_calls_executed, context, step_tools
-

@@ -183,7 +183,7 @@ All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed
 
 ## License
 
-MIT
+MIT. AA
 
 ## Contributing
 

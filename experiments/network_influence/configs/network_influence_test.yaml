@@ -34,6 +34,7 @@ simulation:
   max_conversation_steps: 3
 environment:
   name: MeetingSchedulingEnvironment
+  assignment_filling: false
   num_meetings: 3
   timeline_length: 12
   min_participants: 2

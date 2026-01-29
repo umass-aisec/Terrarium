@@ -8,6 +8,7 @@ simulation:
   note: "im a note"
 environment:
   name: MeetingSchedulingEnvironment
+  assignment_filling: false
   # CoLLAB v2 MeetingScheduling (attendance intervals)
   num_meetings: 3
   timeline_length: 12

@@ -9,8 +9,6 @@ def apply_default_style(plt: Any) -> None:
     except Exception:
         pass
     # Aim for paper-friendly, text-consistent defaults.
-    # If you change `font_size`, keep the other font-related sizes aligned unless you
-    # intentionally want hierarchy (titles > labels > ticks).
     font_size = 26
     plt.rcParams.update(
         {
@@ -20,7 +18,7 @@ def apply_default_style(plt: Any) -> None:
             "savefig.facecolor": "white",
             "axes.facecolor": "white",
             "axes.edgecolor": "black",
-            "axes.linewidth": 1.2,
+            "axes.linewidth": 1.0,
             "axes.grid": False,
             "axes.spines.top": True,
             "axes.spines.right": True,
@@ -32,6 +30,10 @@ def apply_default_style(plt: Any) -> None:
             "legend.fontsize": font_size,
             "xtick.labelsize": font_size,
             "ytick.labelsize": font_size,
+            "xtick.major.width": 1.0,
+            "ytick.major.width": 1.0,
+            "xtick.major.size": 3.0,
+            "ytick.major.size": 3.0,
             "xtick.color": "black",
             "ytick.color": "black",
             "text.color": "black",
