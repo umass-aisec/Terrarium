@@ -35,6 +35,12 @@ class AbstractEnvironment(ABC):
             want prompt logging. Set to None to disable logging.
     """
 
+    UNASSIGNED_VARIABLE_FALLBACK_NOTE = (
+        "NOTE: If environment.assignment_filling=true and an agent fails to assign a variable, "
+        "the environment will fill any remaining unassigned variables with a uniform-random allowed assignment "
+        "when producing final results."
+    )
+
     # Standard attributes - environments should initialize these in __init__()
     communication_network: CommunicationNetwork
     network_blackboards: Dict[frozenset[str], int]
@@ -52,12 +58,34 @@ class AbstractEnvironment(ABC):
         """
         self.communication_network = communication_network
 
+    def assignment_filling_enabled(self) -> bool:
+        """Return whether the environment should fill unassigned decisions in summaries.
+
+        Controlled by `environment.assignment_filling` in the run config (default: True).
+        """
+        env_config = getattr(self, "env_config", None)
+        if not isinstance(env_config, Mapping):
+            return True
+
+        raw_value = env_config.get("assignment_filling", True)
+        if isinstance(raw_value, str):
+            normalized = raw_value.strip().lower()
+            if normalized in {"1", "true", "yes", "y", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "n", "off", ""}:
+                return False
+        return bool(raw_value)
+
     def get_network_context(self) -> str:
         """Return the base context message to seed every communication blackboard."""
         problem = getattr(self, "problem", None)
         description = getattr(problem, "description", None) if problem is not None else None
         if isinstance(description, str) and description.strip():
-            return description.strip()
+            base_context = description.strip()
+            note = str(getattr(self, "UNASSIGNED_VARIABLE_FALLBACK_NOTE", "")).strip()
+            if note and self.assignment_filling_enabled():
+                return f"{base_context}\n\n{note}"
+            return base_context
         raise ValueError(f"No description found in problem definition for {self.__class__.__name__} environment.")
 
     def format_blackboard_context(self, participants: Sequence[str], base_context: str) -> str:

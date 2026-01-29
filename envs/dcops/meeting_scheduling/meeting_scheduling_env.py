@@ -8,6 +8,7 @@ attendance intervals for a set of meetings on a shared timeline, following
 the updated CoLLAB benchmark.
 """
 from pathlib import Path
+import random
 from typing import Dict, List, Any, Optional, TYPE_CHECKING, Tuple, Mapping
 # CoLLAB v2 problem-layer imports (made available via envs.dcops.__init__)
 from problem_layer.meeting_scheduling import MeetingSchedulingConfig, generate_instance
@@ -278,9 +279,40 @@ class MeetingSchedulingEnvironment(AbstractEnvironment):
         with open(data_file, "w") as f:
             json.dump(score_entry, f, indent=2, ensure_ascii=False)
 
+    def _fill_random_unassigned_variables(self) -> int:
+        """Assign uniform-random domain values to any missing/invalid variables."""
+        problem = getattr(self, "problem", None)
+        if problem is None:
+            return 0
+
+        seed = int(getattr(self, "current_seed", 0))
+        rng = random.Random(seed + 99173)
+
+        filled = 0
+        for var_name in sorted(problem.variables):
+            spec = problem.variables[var_name]
+            domain = list(getattr(spec, "domain", []) or [])
+            if not domain:
+                continue
+
+            value = self.assignment.get(var_name)
+            if value not in domain:
+                self.assignment[var_name] = rng.choice(domain)
+                filled += 1
+
+        return filled
+
     def get_final_summary(self) -> Dict[str, Any]:
         """Get a final summary of the entire simulation."""
         total_vars = len(self.problem.variables)
+        assignment_filling = self.assignment_filling_enabled()
+        random_fallback_fills = (
+            self._fill_random_unassigned_variables()
+            if assignment_filling and self.instance
+            else 0
+        )
+        notes = [self.UNASSIGNED_VARIABLE_FALLBACK_NOTE] if assignment_filling else []
+
         final_attendance_decisions = f"{len(self.assignment)}/{total_vars} variables"
         if not self.instance or len(self.assignment) != total_vars:
             return {
@@ -289,6 +321,8 @@ class MeetingSchedulingEnvironment(AbstractEnvironment):
                 "total_variables": total_vars,
                 "total_agents": len(self.agent_names),
                 "final_attendance_decisions": final_attendance_decisions,
+                "random_fallback_fills": random_fallback_fills,
+                "notes": notes,
             }
 
         joint_reward, agent_rewards = self._rewards(self.assignment)
@@ -303,6 +337,8 @@ class MeetingSchedulingEnvironment(AbstractEnvironment):
             "variables_assigned": len(self.assignment),
             "total_agents": len(self.agent_names),
             "final_attendance_decisions": final_attendance_decisions,
+            "random_fallback_fills": random_fallback_fills,
+            "notes": notes,
         }
 
     #### MCP-specific methods ####

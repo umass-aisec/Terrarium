@@ -39,7 +39,15 @@ class LocalCommunicationProtocol(BaseCommunicationProtocol):
         self._env_tools_env_name: Optional[str] = None
 
     def _get_env_tools(self, environment: Any) -> Any:
-        env_name = environment.__class__.__name__ if environment is not None else ""
+        env_name = ""
+        if environment is not None:
+            # Allow environment subclasses to opt into a base toolset without requiring a
+            # duplicate `*Tools` class to exist under envs/**/_tools.py.
+            env_name = str(
+                getattr(environment, "tools_environment_name", None)
+                or environment.__class__.__name__
+                or ""
+            )
         if not env_name:
             raise EnvironmentToolsNotFoundError(
                 "Environment missing or invalid (no __class__.__name__)."

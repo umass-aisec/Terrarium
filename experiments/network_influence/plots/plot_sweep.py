@@ -2,19 +2,23 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib
 
 matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
 
 from experiments.common.plotting.io_utils import (
+    as_float,
+    as_int,
     ensure_dir,
     finite,
     groupby,
     mean,
+    safe_load_json,
     sem,
     sorted_unique,
 )
@@ -23,6 +27,208 @@ from experiments.common.plotting.style import apply_default_style
 
 
 logger = logging.getLogger(__name__)
+
+
+def _format_param_float(x: float) -> str:
+    s = (f"{float(x):.3f}").rstrip("0").rstrip(".")
+    return s if s else "0"
+
+
+def _finite_int(values: List[Any]) -> List[int]:
+    out: List[int] = []
+    for v in values:
+        if v is None:
+            continue
+        try:
+            out.append(int(v))
+        except Exception:
+            continue
+    return out
+
+
+def _pretty_topology_label(
+    topo: Any,
+    rows: List[Dict[str, Any]],
+    *,
+    cn_params: Optional[Dict[str, Any]] = None,
+    abbreviate_random: bool = False,
+) -> str:
+    s = str(topo or "").strip()
+    if not s:
+        return s
+
+    key = s.lower().replace("-", "_").replace(" ", "_")
+    alias_to_canonical = {"er": "erdos_renyi", "ws": "watts_strogatz", "ba": "barabasi_albert"}
+    canonical = alias_to_canonical.get(key, key)
+
+    full_names = {
+        "erdos_renyi": "Erdős–Rényi",
+        "barabasi_albert": "Barabási–Albert",
+        "watts_strogatz": "Watts–Strogatz",
+    }
+    abbrev_names = {
+        "erdos_renyi": "ER",
+        "barabasi_albert": "BA",
+        "watts_strogatz": "WS",
+    }
+    if abbreviate_random and canonical in abbrev_names:
+        base = abbrev_names[canonical]
+    else:
+        base = full_names.get(canonical, s.replace("_", " ").title())
+
+    if canonical == "erdos_renyi":
+        ps = finite([r.get("cn_edge_prob") for r in rows])
+        if ps:
+            p_unique = sorted({round(float(p), 6) for p in ps})
+            if len(p_unique) == 1:
+                return f"{base} (p={_format_param_float(p_unique[0])})"
+        if cn_params:
+            p = as_float(cn_params.get("edge_prob"))
+            if p is not None:
+                return f"{base} (p={_format_param_float(p)})"
+        return base
+
+    if canonical == "watts_strogatz":
+        ks = _finite_int([r.get("cn_k") for r in rows])
+        ps = finite([r.get("cn_rewire_prob") for r in rows])
+        parts: List[str] = []
+        if ks:
+            k_unique = sorted({int(k) for k in ks})
+            if len(k_unique) == 1:
+                parts.append(f"k={k_unique[0]}")
+        if ps:
+            p_unique = sorted({round(float(p), 6) for p in ps})
+            if len(p_unique) == 1:
+                parts.append(f"p={_format_param_float(p_unique[0])}")
+        if cn_params:
+            if not ks:
+                k = as_int(cn_params.get("k"))
+                if k is not None:
+                    parts.append(f"k={int(k)}")
+            if not ps:
+                p = as_float(cn_params.get("rewire_prob"))
+                if p is not None:
+                    parts.append(f"p={_format_param_float(p)}")
+        if parts:
+            return f"{base} ({', '.join(parts)})"
+        return base
+
+    if canonical == "barabasi_albert":
+        ms = _finite_int([r.get("cn_m") for r in rows])
+        if ms:
+            m_unique = sorted({int(m) for m in ms})
+            if len(m_unique) == 1:
+                return f"{base} (m={m_unique[0]})"
+        if cn_params:
+            m = as_int(cn_params.get("m"))
+            if m is not None:
+                return f"{base} (m={int(m)})"
+        return base
+
+    return base
+
+
+def _ordered_topologies(topologies: List[Any]) -> List[Any]:
+    preferred = [
+        "path",
+        "star",
+        "complete",
+        "watts_strogatz",
+        "barabasi_albert",
+        "erdos_renyi",
+    ]
+    preferred_idx = {name: i for i, name in enumerate(preferred)}
+
+    def _key(t: Any) -> Tuple[int, str]:
+        s = str(t or "")
+        idx = preferred_idx.get(s, preferred_idx.get(s.lower(), 10_000))
+        return (idx, s)
+
+    return sorted(topologies, key=_key)
+
+
+def _mean_sem_series(
+    rows: List[Dict[str, Any]], *, adv_counts: List[Any], y_key: str
+) -> Tuple[List[float], List[float], List[float]]:
+    by_adv = groupby(rows, ("adversary_count",))
+    xs: List[float] = []
+    ys_mean: List[float] = []
+    ys_sem: List[float] = []
+    for a in adv_counts:
+        ys = finite([r.get(y_key) for r in by_adv.get((a,), [])])
+        if not ys:
+            continue
+        xs.append(float(a))
+        ys_mean.append(mean(ys))
+        ys_sem.append(sem(ys))
+    return xs, ys_mean, ys_sem
+
+
+def _plot_mean_with_sem_band(
+    *,
+    ax: Any,
+    rows: List[Dict[str, Any]],
+    adv_counts: List[Any],
+    y_key: str,
+    color: Any,
+    linestyle: str = "-",
+    marker: str = "o",
+    band_alpha: float = 0.22,
+) -> None:
+    xs, ys_mean, ys_sem = _mean_sem_series(rows, adv_counts=adv_counts, y_key=y_key)
+    if not xs:
+        return
+
+    y = np.array(ys_mean, dtype=float)
+    yerr = np.array(ys_sem, dtype=float)
+    ax.fill_between(
+        xs,
+        (y - yerr).tolist(),
+        (y + yerr).tolist(),
+        color=color,
+        alpha=band_alpha,
+        linewidth=0.0,
+    )
+    ax.plot(
+        xs,
+        ys_mean,
+        color=color,
+        linewidth=1.9,
+        linestyle=linestyle,
+        marker=marker,
+        markersize=4.5,
+        alpha=0.95,
+    )
+
+
+def _load_sweep_communication_network_params(
+    run_stats: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """
+    Best-effort load of the sweep-level config.json to recover communication_network params.
+    Needed because run_config.json files may omit these.
+    """
+    for r in run_stats:
+        run_dir = r.get("run_dir")
+        if not run_dir:
+            continue
+        try:
+            sweep_dir = Path(str(run_dir)).expanduser().resolve().parent
+        except Exception:
+            sweep_dir = Path(str(run_dir)).parent
+
+        # Search upwards for config.json (expects it at the timestamp folder).
+        for parent in [sweep_dir, *list(sweep_dir.parents)[:8]]:
+            cfg_path = parent / "config.json"
+            if not cfg_path.exists():
+                continue
+            cfg = safe_load_json(cfg_path)
+            if not isinstance(cfg, dict):
+                continue
+            cn = cfg.get("communication_network")
+            if isinstance(cn, dict) and cn:
+                return cn
+    return {}
 
 
 def _compute_baseline_joint_reward_ratio(
@@ -55,13 +261,31 @@ def build_run_stats(
     """
     Produces one row per run_id with:
       - joint_reward_ratio, delta vs baseline
-      - propagation_rate_misinfo_non_adversary mean/max across targets
+      - misinformation propagation mean/max across targets (computed over non-adversaries, excluding the target agent)
       - misinformation_messages / total_messages mean across targets
       - fraction of misinformation_posts attributable to non-adversaries (mean across targets)
     """
     by_run_targets = groupby(target_rows, ("run_id",))
     by_run_agents = groupby(agent_rows, ("run_id", "target_agent"))
     baseline = _compute_baseline_joint_reward_ratio(run_rows)
+
+    def _prop_rate_from_agents(
+        agents: List[Dict[str, Any]],
+        *,
+        target_agent: str,
+        belief_key: str,
+    ) -> float:
+        denom = 0
+        num = 0
+        for a in agents:
+            if str(a.get("role")) == "adversary":
+                continue
+            if str(a.get("agent_name")) == str(target_agent):
+                continue
+            denom += 1
+            if bool(a.get(belief_key, False)):
+                num += 1
+        return (num / denom) if denom else 0.0
 
     out: List[Dict[str, Any]] = []
     for rr in run_rows:
@@ -79,9 +303,42 @@ def build_run_stats(
                 delta = None
 
         targets = by_run_targets.get((run_id,), [])
-        prop_vals = finite(
-            [t.get("propagation_rate_misinfo_non_adversary") for t in targets]
-        )
+        prop_vals: List[float] = []
+        for t in targets:
+            ta = t.get("target_agent")
+            if not ta:
+                continue
+            agents = by_run_agents.get((run_id, ta), [])
+            if agents:
+                prop_vals.append(
+                    _prop_rate_from_agents(
+                        agents,
+                        target_agent=str(ta),
+                        belief_key="believes_misinformation",
+                    )
+                )
+            else:
+                # Fallback (should be rare): approximate using target-level counts,
+                # assuming the target does not believe misinformation about themselves.
+                total_agents = t.get("total_agents")
+                adv_count = t.get("adversary_count")
+                mis_believers = t.get("believes_misinformation_non_adversary")
+                if (
+                    total_agents is None
+                    or adv_count is None
+                    or mis_believers is None
+                ):
+                    continue
+                try:
+                    non_adv = int(total_agents) - int(adv_count)
+                    denom = non_adv - 1
+                    if denom <= 0:
+                        prop_vals.append(0.0)
+                    else:
+                        rate = float(int(mis_believers)) / float(denom)
+                        prop_vals.append(max(0.0, min(1.0, rate)))
+                except Exception:
+                    continue
         msg_rate_vals: List[float] = []
         for t in targets:
             mm = t.get("misinformation_messages")
@@ -153,116 +410,210 @@ def plot_sweep_summary(
     apply_default_style(plt)
     ensure_dir(out_path.parent)
 
-    topologies = sorted_unique(run_stats, "topology")
-    if not topologies:
+    topologies_present = sorted_unique(run_stats, "topology")
+    if not topologies_present:
         return
 
     adv_counts = sorted_unique(run_stats, "adversary_count")
     prop_key = "prop_misinfo_max" if use_max_propagation else "prop_misinfo_mean"
 
+    cn_params = _load_sweep_communication_network_params(run_stats)
+    topologies = _ordered_topologies(topologies_present)
+    prop_cycle = plt.rcParams.get("axes.prop_cycle")
+    prop_cycle_colors = prop_cycle.by_key().get("color", []) if prop_cycle else []
+
+    color_by_topo: Dict[Any, Any] = {}
+    for i, topo in enumerate(topologies):
+        if prop_cycle_colors:
+            color_by_topo[topo] = prop_cycle_colors[i % len(prop_cycle_colors)]
+        else:
+            color_by_topo[topo] = "#4c72b0"
+
+    deterministic_order = ["path", "star", "complete"]
+    random_order = ["watts_strogatz", "barabasi_albert", "erdos_renyi"]
+    top_row = [t for t in deterministic_order if t in topologies_present]
+    bottom_row = [t for t in random_order if t in topologies_present]
+    extras = [t for t in topologies if t not in top_row and t not in bottom_row]
+    bottom_row.extend(extras)
+
+    ncols = max(len(top_row), len(bottom_row))
+    if ncols <= 0:
+        return
+
+    title_fs = 14
+    label_fs = 13
+    tick_fs = 12
+    legend_fs = 12
+
+    fig_width_scale = 0.5 if not use_max_propagation else 1.0
+    fig_height_scale = 0.7 if not use_max_propagation else 1.0
+
     fig, axes = plt.subplots(
         nrows=2,
-        ncols=len(topologies),
-        figsize=(4.2 * len(topologies), 6.0),
+        ncols=ncols,
+        figsize=(4.2 * ncols * fig_width_scale, 6.2 * fig_height_scale),
         sharex=True,
+        sharey=True,
     )
-    if len(topologies) == 1:
-        axes = np.array(axes).reshape(2, 1)
+    axes = np.array(axes).reshape(2, ncols)
 
-    colors = plt.get_cmap("tab10")
-
-    for col, topo in enumerate(topologies):
-        subset = [r for r in run_stats if r.get("topology") == topo]
-        by_adv = groupby(subset, ("adversary_count",))
-
-        # Row 0: joint reward ratio
-        ax0 = axes[0, col]
-        for i, a in enumerate(adv_counts):
-            rows = by_adv.get((a,), [])
-            ys = finite([r.get("joint_reward_ratio") for r in rows])
-            if not ys:
+    for row in range(2):
+        row_topos = top_row if row == 0 else bottom_row
+        for col in range(ncols):
+            ax = axes[row, col]
+            if col >= len(row_topos):
+                ax.axis("off")
                 continue
-            # scatter per seed
-            for j, r in enumerate(rows):
-                y = r.get("joint_reward_ratio")
-                if y is None:
-                    continue
-                try:
-                    yv = float(y)
-                except Exception:
-                    continue
-                xj = float(a) + (j - (len(rows) - 1) / 2) * 0.06
-                ax0.scatter(xj, yv, s=18, alpha=0.55, color=colors(i % 10))
-            ax0.errorbar(
-                [a],
-                [mean(ys)],
-                yerr=[sem(ys)],
-                fmt="o",
-                ms=6,
-                color="black",
-                capsize=3,
-                zorder=5,
-            )
-        # mean line across adversary_count
-        xs_line: List[float] = []
-        ys_line: List[float] = []
-        for a in adv_counts:
-            ys = finite([r.get("joint_reward_ratio") for r in by_adv.get((a,), [])])
-            if ys:
-                xs_line.append(float(a))
-                ys_line.append(mean(ys))
-        if xs_line:
-            ax0.plot(xs_line, ys_line, color="black", linewidth=1.5, alpha=0.8)
-        ax0.set_title(f"{topo}: Joint Utility")
-        ax0.set_xlabel("Adversary Count")
-        ax0.set_ylabel("Joint Reward Ratio")
-        ax0.set_ylim(0.0, 1.05)
+            topo = row_topos[col]
+            subset = [r for r in run_stats if r.get("topology") == topo]
+            color = color_by_topo.get(topo, "#4c72b0")
 
-        # Row 1: propagation rate
-        ax1 = axes[1, col]
-        for i, a in enumerate(adv_counts):
-            rows = by_adv.get((a,), [])
-            ys = finite([r.get(prop_key) for r in rows])
-            if not ys:
-                continue
-            for j, r in enumerate(rows):
-                y = r.get(prop_key)
-                if y is None:
-                    continue
-                try:
-                    yv = float(y)
-                except Exception:
-                    continue
-                xj = float(a) + (j - (len(rows) - 1) / 2) * 0.06
-                ax1.scatter(xj, yv, s=18, alpha=0.55, color=colors(i % 10))
-            ax1.errorbar(
-                [a],
-                [mean(ys)],
-                yerr=[sem(ys)],
-                fmt="o",
-                ms=6,
-                color="black",
-                capsize=3,
-                zorder=5,
+            # Solid: joint reward ratio
+            _plot_mean_with_sem_band(
+                ax=ax,
+                rows=subset,
+                adv_counts=adv_counts,
+                y_key="joint_reward_ratio",
+                color=color,
+                linestyle="-",
+                marker="o",
+                band_alpha=0.22,
             )
-        xs_line = []
-        ys_line = []
-        for a in adv_counts:
-            ys = finite([r.get(prop_key) for r in by_adv.get((a,), [])])
-            if ys:
-                xs_line.append(float(a))
-                ys_line.append(mean(ys))
-        if xs_line:
-            ax1.plot(xs_line, ys_line, color="black", linewidth=1.5, alpha=0.8)
-        ax1.set_title(f"{topo}: Misinformation Propagation")
-        ax1.set_xlabel("Adversary Count")
-        ax1.set_ylabel("Misinformation Propagation Rate (Non-adversaries)")
-        ax1.set_ylim(0.0, 1.05)
+            # Dashed: misinformation propagation rate
+            _plot_mean_with_sem_band(
+                ax=ax,
+                rows=subset,
+                adv_counts=adv_counts,
+                y_key=prop_key,
+                color=color,
+                linestyle="--",
+                marker="o",
+                band_alpha=0.14,
+            )
 
-    fig.tight_layout()
-    fig.savefig(out_path)
+            ax.set_title(
+                _pretty_topology_label(
+                    topo,
+                    subset,
+                    cn_params=cn_params,
+                    abbreviate_random=not use_max_propagation,
+                ),
+                fontsize=title_fs,
+            )
+            ax.set_ylim(0.0, 1.05)
+            ax.tick_params(axis="both", labelsize=tick_fs)
+
+            if adv_counts:
+                ax.set_xticks(
+                    [float(a) for a in adv_counts],
+                    [str(a) for a in adv_counts],
+                )
+            if row == 1:
+                ax.set_xlabel("Adversary Count", fontsize=label_fs)
+            # Deliberately omit a shared y-axis label; the two plotted metrics have
+            # different semantics but share a common [0, 1] range.
+
+    metric_handles = [
+        Line2D([0], [0], color="#111827", linewidth=2.2, linestyle="-"),
+        Line2D([0], [0], color="#111827", linewidth=2.2, linestyle="--"),
+    ]
+    fig.legend(
+        metric_handles,
+        ["Joint Reward", "Misinformation Propagation Rate"],
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.03),
+        ncol=2,
+        frameon=True,
+        fontsize=legend_fs,
+    )
+
+    fig.tight_layout(rect=(0.0, 0.1, 1.0, 1.0))
+    fig.savefig(out_path, bbox_inches="tight")
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
+
+    # Also generate per-metric faceted PNGs (same deterministic/random layout).
+    def _save_metric_facet(
+        *,
+        y_key: str,
+        y_label: str,
+        fname_suffix: str,
+        linestyle: str,
+        band_alpha: float,
+    ) -> None:
+        fig_s, axes_s = plt.subplots(
+            nrows=2,
+            ncols=ncols,
+            figsize=(4.2 * ncols * fig_width_scale, 6.2 * fig_height_scale),
+            sharex=True,
+            sharey=True,
+        )
+        axes_s = np.array(axes_s).reshape(2, ncols)
+
+        for row in range(2):
+            row_topos = top_row if row == 0 else bottom_row
+            for col in range(ncols):
+                ax = axes_s[row, col]
+                if col >= len(row_topos):
+                    ax.axis("off")
+                    continue
+                topo = row_topos[col]
+                subset = [r for r in run_stats if r.get("topology") == topo]
+                color = color_by_topo.get(topo, "#4c72b0")
+
+                _plot_mean_with_sem_band(
+                    ax=ax,
+                    rows=subset,
+                    adv_counts=adv_counts,
+                    y_key=y_key,
+                    color=color,
+                    linestyle=linestyle,
+                    marker="o",
+                    band_alpha=band_alpha,
+                )
+                ax.set_title(
+                    _pretty_topology_label(
+                        topo,
+                        subset,
+                        cn_params=cn_params,
+                        abbreviate_random=not use_max_propagation,
+                    ),
+                    fontsize=title_fs,
+                )
+                ax.set_ylim(0.0, 1.05)
+                ax.tick_params(axis="both", labelsize=tick_fs)
+                if adv_counts:
+                    ax.set_xticks(
+                        [float(a) for a in adv_counts],
+                        [str(a) for a in adv_counts],
+                    )
+                if row == 1:
+                    ax.set_xlabel("Adversary Count", fontsize=label_fs)
+                if col == 0:
+                    ax.set_ylabel(y_label, fontsize=label_fs)
+
+        fig_s.tight_layout()
+        out_path_s = out_path.with_name(
+            f"{out_path.stem}_{fname_suffix}{out_path.suffix}"
+        )
+        fig_s.savefig(out_path_s, bbox_inches="tight")
+        log_saved_plot(out_path_s, logger=logger)
+        plt.close(fig_s)
+
+    _save_metric_facet(
+        y_key="joint_reward_ratio",
+        y_label="Joint Reward",
+        fname_suffix="joint_reward_ratio",
+        linestyle="-",
+        band_alpha=0.22,
+    )
+    _save_metric_facet(
+        y_key=prop_key,
+        y_label="Misinformation Propagation Rate (excluding target)",
+        fname_suffix="misinfo_propagation_rate",
+        linestyle="--",
+        band_alpha=0.14,
+    )
 
 
 def plot_sweep_slopes(
@@ -327,9 +678,9 @@ def plot_sweep_slopes(
                     label=f"seed {s}",
                 )
         ax0.axhline(0.0, color="black", linewidth=1.0, alpha=0.6)
-        ax0.set_title(f"{topo}: Δ Joint Reward Ratio vs a0")
+        ax0.set_title(f"{topo}: Δ Joint Reward vs a0")
         ax0.set_xlabel("Adversary Count")
-        ax0.set_ylabel("Δ Joint Reward Ratio")
+        ax0.set_ylabel("Δ Joint Reward")
 
         ax1 = axes[1, col]
         for i, s in enumerate(seeds):
@@ -357,7 +708,7 @@ def plot_sweep_slopes(
                 )
         ax1.set_title(f"{topo}: Propagation vs Adversary Count")
         ax1.set_xlabel("Adversary Count")
-        ax1.set_ylabel("Misinformation Propagation Rate (Non-adversaries)")
+        ax1.set_ylabel("Misinformation Propagation Rate (excluding target)")
         ax1.set_ylim(0.0, 1.05)
 
         if col == len(topologies) - 1 and seeds:
@@ -369,7 +720,11 @@ def plot_sweep_slopes(
     plt.close(fig)
 
 
-def plot_heatmaps(run_stats: List[Dict[str, Any]], *, out_dir: Path) -> None:
+def plot_heatmaps(
+    run_stats: List[Dict[str, Any]],
+    *,
+    out_dir: Path,
+) -> None:
     apply_default_style(plt)
     ensure_dir(out_dir)
 
@@ -393,16 +748,19 @@ def plot_heatmaps(run_stats: List[Dict[str, Any]], *, out_dir: Path) -> None:
                     mat[i, j] = mean(vals)
         return mat
 
+    prop_key = "prop_misinfo_mean"
+    prop_title = "Propagation rate (mean across targets, excluding target)"
+
     matrices = [
         (
             "delta_joint_reward_ratio",
-            "Δ Joint Reward Ratio vs a0",
+            "Δ Joint Reward vs a0",
             "heatmap_delta_joint_reward_ratio.png",
             "coolwarm",
         ),
         (
-            "prop_misinfo_mean",
-            "Propagation rate (mean across targets)",
+            prop_key,
+            prop_title,
             "heatmap_propagation_rate.png",
             "viridis",
         ),
@@ -446,15 +804,19 @@ def plot_heatmaps(run_stats: List[Dict[str, Any]], *, out_dir: Path) -> None:
         plt.close(fig)
 
 
-def plot_tradeoff_scatter(run_stats: List[Dict[str, Any]], *, out_path: Path) -> None:
+def plot_tradeoff_scatter(
+    run_stats: List[Dict[str, Any]],
+    *,
+    out_path: Path,
+) -> None:
     apply_default_style(plt)
     ensure_dir(out_path.parent)
 
+    prop_key = "prop_misinfo_mean"
     rows = [
         r
         for r in run_stats
-        if r.get("delta_joint_reward_ratio") is not None
-        and r.get("prop_misinfo_mean") is not None
+        if r.get("delta_joint_reward_ratio") is not None and r.get(prop_key) is not None
     ]
     if not rows:
         return
@@ -466,9 +828,9 @@ def plot_tradeoff_scatter(run_stats: List[Dict[str, Any]], *, out_path: Path) ->
     for t in topologies:
         sub = [r for r in rows if r.get("topology") == t]
         xs = [
-            float(r["prop_misinfo_mean"])
+            float(r[prop_key])
             for r in sub
-            if r.get("prop_misinfo_mean") is not None
+            if r.get(prop_key) is not None
         ]
         ys = [
             float(r["delta_joint_reward_ratio"])
@@ -492,11 +854,11 @@ def plot_tradeoff_scatter(run_stats: List[Dict[str, Any]], *, out_path: Path) ->
         )
 
     ax.axhline(0.0, color="black", linewidth=1.0, alpha=0.6)
-    ax.set_title("Tradeoff: Misinformation Propagation vs Δ Joint Reward Ratio")
+    ax.set_title("Tradeoff: Misinformation Propagation vs Δ Joint Reward")
     ax.set_xlabel(
-        "Misinformation Propagation Rate (Non-adversaries, Mean Across Targets)"
+        "Misinformation Propagation Rate (mean across targets, excluding target)"
     )
-    ax.set_ylabel("Δ Joint Reward Ratio (vs a0 baseline)")
+    ax.set_ylabel("Δ Joint Reward (vs a0 baseline)")
     ax.legend(loc="best", frameon=True)
     fig.tight_layout()
     fig.savefig(out_path)

@@ -8,6 +8,7 @@ simulation:
   note: ""
 environment:
   name: SmartGridEnvironment
+  assignment_filling: false
   # CoLLAB v2 SmartGrid (renewable source allocation)
   timeline_length: 24
   min_machines_per_agent: 2
