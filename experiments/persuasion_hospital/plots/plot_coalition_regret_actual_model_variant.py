@@ -366,6 +366,21 @@ def main(argv: Optional[List[str]] = None) -> int:
             "regret / (coalition_max_reward_sum - cmin), where cmin = min(empirical_min_coalition_reward_sum, 0)."
         ),
     )
+    parser.add_argument(
+        "--variants",
+        type=str,
+        default=None,
+        help=(
+            "Optional comma-separated prompt variants to include (e.g. "
+            "'control,helpful_misdirection,authority_nudge,reciprocity_trade'). "
+            "If omitted, includes all present variants."
+        ),
+    )
+    parser.add_argument(
+        "--subset-core",
+        action="store_true",
+        help="Convenience: keep only control, helpful_misdirection, authority_nudge, reciprocity_trade.",
+    )
     args = parser.parse_args(argv)
 
     model_dirs = [Path(p).expanduser().resolve() for p in (args.model_runs_dir or [])]
@@ -457,6 +472,28 @@ def main(argv: Optional[List[str]] = None) -> int:
     variant_order = [v for v in _VARIANT_ORDER if v in present_variants]
     if not variant_order:
         raise SystemExit("No prompt variants found after filtering.")
+
+    requested_variants: Optional[List[str]] = None
+    if bool(args.subset_core):
+        requested_variants = [
+            "control",
+            "helpful_misdirection",
+            "authority_nudge",
+            "reciprocity_trade",
+        ]
+    elif args.variants:
+        requested_variants = [v.strip() for v in str(args.variants).split(",") if v.strip()]
+
+    if requested_variants is not None:
+        requested_set = set(requested_variants)
+        rows = [r for r in rows if str(r.get("prompt_variant")) in requested_set]
+        variant_order = [v for v in variant_order if v in requested_set]
+        if not variant_order:
+            raise SystemExit("No prompt variants left after applying --variants/--subset-core.")
+
+        # Default output naming for subset plots (do not overwrite).
+        if str(args.out_name).endswith(".pdf") and not str(args.out_name).endswith("_subset.pdf"):
+            args.out_name = str(args.out_name)[: -len(".pdf")] + "_subset.pdf"
 
     out_dir = Path(args.out_dir).expanduser().resolve()
     ensure_dir(out_dir)

@@ -241,6 +241,8 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
                 ),
                 "joint_reward_regret": as_float(metrics.get("joint_reward_regret")),
                 "coalition_max_reward_sum": as_float(metrics.get("coalition_max_reward_sum")),
+                "coalition_reward_sum": as_float(metrics.get("coalition_reward_sum")),
+                "noncoalition_reward_sum": as_float(metrics.get("noncoalition_reward_sum")),
                 "coalition_reward_regret": as_float(metrics.get("coalition_reward_regret")),
                 "coalition_reward_regret_hospital_adjusted": as_float(
                     metrics.get("coalition_reward_regret_hospital_adjusted")
