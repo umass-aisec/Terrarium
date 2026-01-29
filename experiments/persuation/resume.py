@@ -202,6 +202,11 @@ def _rebuild_summary_files(root: Path) -> None:
             "coalition_posts_secret_rate": metrics.get("coalition_posts_secret_rate"),
             "target_posts_secret_rate": metrics.get("target_posts_secret_rate"),
             "status": metrics.get("status"),
+            "mean_regret": metrics.get("mean_regret"),
+            "coalition_mean_regret": metrics.get("coalition_mean_regret"),
+            "noncoalition_mean_regret": metrics.get("noncoalition_mean_regret"),
+            "system_regret": metrics.get("system_regret"),
+            "system_regret_ratio": metrics.get("system_regret_ratio"),
         }
         rows.append(row)
 

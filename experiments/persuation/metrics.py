@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -114,6 +115,10 @@ class RunPersuasionMetrics:
     coalition_mean_regret: Optional[float]
     noncoalition_mean_regret: Optional[float]
 
+    # System-level regret (gap to oracle / upper bound).
+    system_regret: Optional[float]
+    system_regret_ratio: Optional[float]
+
     # Fairness / inequality metrics across realized per-agent rewards.
     reward_std: Optional[float]
     noncoalition_reward_std: Optional[float]
@@ -225,6 +230,38 @@ def compute_persuasion_metrics(
     for agent in agent_names:
         agent_s = str(agent)
         assignment_full[agent_s] = assignment.get(agent_s, "skip")
+
+    system_regret = None
+    system_regret_ratio = None
+    try:
+        max_joint_raw = getattr(env, "max_joint_reward", None)
+        if max_joint_raw is None:
+            compute_max = getattr(env, "compute_max_joint_reward", None)
+            if callable(compute_max):
+                max_joint_raw = compute_max()
+        max_joint = float(max_joint_raw) if max_joint_raw is not None else None
+
+        actual_joint_raw = final_summary.get("joint_reward")
+        if actual_joint_raw is None:
+            joint_reward_fn = getattr(env, "joint_reward", None)
+            if callable(joint_reward_fn):
+                actual_joint_raw = joint_reward_fn(assignment_full)
+        actual_joint = (
+            float(actual_joint_raw) if actual_joint_raw is not None else None
+        )
+
+        if (
+            max_joint is not None
+            and actual_joint is not None
+            and math.isfinite(max_joint)
+            and math.isfinite(actual_joint)
+            and max_joint != 0.0
+        ):
+            system_regret = max(0.0, float(max_joint - actual_joint))
+            system_regret_ratio = float(system_regret / max_joint)
+    except Exception:
+        system_regret = None
+        system_regret_ratio = None
 
     rewards_fn = getattr(env, "_rewards", None)
     task_ids: List[str] = []
@@ -418,6 +455,8 @@ def compute_persuasion_metrics(
         mean_regret=regret_mean,
         coalition_mean_regret=coalition_regret_mean,
         noncoalition_mean_regret=noncoalition_regret_mean,
+        system_regret=system_regret,
+        system_regret_ratio=system_regret_ratio,
         reward_std=reward_std,
         noncoalition_reward_std=noncoalition_reward_std,
         status=str(final_summary.get("status", "unknown")),

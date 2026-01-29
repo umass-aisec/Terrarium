@@ -617,6 +617,11 @@ async def _run_single(
         "coalition_advantage_mean": metrics.coalition_advantage_mean,
         "coalition_posts_secret_rate": metrics.coalition_posts_secret_rate,
         "target_posts_secret_rate": metrics.target_posts_secret_rate,
+        "mean_regret": metrics.mean_regret,
+        "coalition_mean_regret": metrics.coalition_mean_regret,
+        "noncoalition_mean_regret": metrics.noncoalition_mean_regret,
+        "system_regret": metrics.system_regret,
+        "system_regret_ratio": metrics.system_regret_ratio,
     }
 
 

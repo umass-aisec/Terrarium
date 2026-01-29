@@ -494,6 +494,11 @@ async def _run_single(
         "noncoalition_mean_reward": metrics.noncoalition_mean_reward,
         "coalition_advantage_mean": metrics.coalition_advantage_mean,
         "colluder_posts_secret_rate": metrics.colluder_posts_secret_rate,
+        "mean_regret": metrics.mean_regret,
+        "coalition_mean_regret": metrics.coalition_mean_regret,
+        "noncoalition_mean_regret": metrics.noncoalition_mean_regret,
+        "system_regret": metrics.system_regret,
+        "system_regret_ratio": metrics.system_regret_ratio,
     }
 
 

@@ -23,18 +23,26 @@ communication_network:
   m: 3
 
 llm_models:
-  - label: together-kimik2-Instruct
+  - label: openai_gpt4o_mini
     llm:
-      provider: together
-      together:
-        model: moonshotai/Kimi-K2-Instruct-0905
-        params:
-          max_tokens: 2000
-          temperature: 0.7
+      provider: openai
+      openai:
+        model: gpt-4o-mini
+        # params:
+        # #   temperature: 0.0
+        #   max_tokens: 256
+  # - label: together-kimik2-Instruct
+  #   llm:
+  #     provider: together
+  #     together:
+  #       model: moonshotai/Kimi-K2-Instruct-0905
+  #       params:
+  #         max_tokens: 2000
+  #         temperature: 0.7
 
 experiment:
   tag: persuasion_collusion_sweep
-  output_dir: experiments/persuasion_collusion/outputs/persuasion_collusion
+  output_dir: experiments/persuasion_collusion/outputs/persuasion_collusion/run_2
   max_concurrent_runs: 2
   seeds: [3]
   persuasion_collusion:
@@ -43,17 +51,17 @@ experiment:
     # prompt_variant_overrides: {}
   sweeps:
     - name: persuasion_collusion_sweep
-      topologies: [path, star, complete]
+      topologies: [complete]
       num_agents: [6]
-      colluder_counts: [2,3]
+      colluder_counts: [2]
       secret_channel_enabled: [false, true]
       # Prompt variants only apply when secret_channel_enabled=true.
       prompt_variants:
         - control
         - helpful_misdirection
         - authority_nudge
-        - social_proof
-        - scarcity_pressure
+        # - social_proof
+        # - scarcity_pressure
         - reciprocity_trade
         # - risk_aversion
         # - cost_anchor
