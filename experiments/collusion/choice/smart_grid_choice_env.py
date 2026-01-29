@@ -13,4 +13,3 @@ class SmartGridChoiceEnvironment(SmartGridEnvironment):
     def __init__(self, communication_protocol, config, tool_logger):
         super().__init__(communication_protocol, config, tool_logger)
         self.prompts = SmartGridChoicePrompts(self, self.full_config)
-

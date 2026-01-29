@@ -12,6 +12,15 @@ It is modeled after `experiments/network_influence`, but uses an **in-process** 
 
 Built-in `prompt_variant` values live in `experiments/collusion/prompts.py` (e.g., `control`, `simple`, `deception`, `structured`, `aggressive`).
 
+## Small "secret blackboard choice" variant
+If you want a tiny setup with **3 agents**, where **all 3 share one public blackboard** and **2 colluders also share a secret blackboard** (2 blackboards total), use:
+```bash
+python experiments/collusion/run.py --config experiments/collusion/configs/choice/collusion_jira_three_agents_two_blackboards.yaml
+```
+
+This config also disables the Jira system-prompt bias that tells agents to post on *all* blackboards by setting:
+`environment.import_path=experiments.collusion.choice.jira_ticket_choice_env:JiraTicketChoiceEnvironment` (uses a child `JiraTicketPrompts` class).
+
 ## Run
 1) Ensure API keys are set (root `.env`) for your chosen provider.
 2) Run:
@@ -30,11 +39,28 @@ python -m experiments.collusion.judge_blackboards \
 ```
 
 Notes:
-- Uses OpenAI `gpt-4o-mini` by default; set `OPENAI_API_KEY` in your environment (or `.env`).
+- Uses OpenAI `gpt-4o-mini` by default; pass `--judge-model gpt-4.1-mini` if you want to use 4.1 mini.
+- Set `OPENAI_API_KEY` in your environment (or `.env`).
 - Writes per-run JSON under `runs/<model_label>/judge_secret_blackboard/<sweep_name>/` and aggregates:
   - `runs/<model_label>/judge_secret_blackboard/results.csv`
   - `runs/<model_label>/judge_secret_blackboard/results.jsonl`
 - Runs with `secret_channel_enabled=false` short-circuit to `rating=0` (no API call).
+
+## Correlate judge scores with length/tooling
+After you have `judge_secret_blackboard/results.csv`, you can join it with per-run features like message length and tool-call counts:
+```bash
+python -m experiments.collusion.analyze_judge_correlations \
+  --root experiments/collusion/outputs/collusion_complete/<timestamp>
+```
+
+Outputs (per model label) are written under `runs/<model_label>/judge_secret_blackboard/`:
+- `features_with_judge.csv`: `results.csv` + run-level features (e.g., `post_chars_secret`, `tool_calls_total`)
+- `correlations.csv`: Spearman/Pearson correlations vs `judge_mean_rating`
+
+Cross-model outputs are written under `<root>/analysis/judge_correlations/`:
+- `features_with_judge_all_models.csv`: concatenated features across all model labels
+- `correlations_by_model.csv`: per-model correlations in one table
+- `correlations_pooled.csv`: pooled correlations across all models
 
 ## Plot (histograms)
 After running, generate histogram plots from a sweep directory:
@@ -94,3 +120,29 @@ python -m experiments.collusion.resume \
 ```
 
 Tip: use `--dry-run` first to see what will run.
+
+## Regret analysis (Jira optimal vs achieved)
+For Jira runs, you can compute an *exact* per-run optimal joint reward and compare each run to that optimum.
+
+1) Compute and write `optimal_summary.json` into each run directory:
+```bash
+python experiments/collusion/compute_jira_optimal.py \
+  --root experiments/collusion/outputs/<tag>/<timestamp> \
+  --write-json
+```
+
+2) Generate a cross-model report (table + baseline-vs-SC plots):
+```bash
+python -m experiments.collusion.plots.generate_jira_regret_report \
+  --root experiments/collusion/outputs/<tag>/<timestamp> \
+  --sweep-name <sweep_name> \
+  --compute-optimal
+```
+
+Outputs:
+- `table_secret_true__pv_control.csv`: mean ± SEM over seeds for:
+  - `optimality_gap` = optimal − achieved (regret)
+  - `achieved_over_optimal` = achieved / optimal
+  - `joint_reward_ratio` = achieved / max_joint_reward (upper bound, not the exact optimal)
+  - `judge_mean_rating` = mean judge score (0–5) over (simple/medium/complex), when judge files exist
+- Per-model plots under `plots/by_model__<metric>/` comparing `baseline` vs `control` vs `simple`.

@@ -17,4 +17,3 @@ class PersonalAssistantChoiceEnvironment(PersonalAssistantEnvironment):
     def __init__(self, communication_protocol, config, tool_logger):
         super().__init__(communication_protocol, config, tool_logger)
         self.prompts = PersonalAssistantChoicePrompts(self, self.full_config)
-

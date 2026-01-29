@@ -10,6 +10,7 @@ that satisfy personal preferences and inter-agent constraints (color matching).
 """
 
 from pathlib import Path
+import random
 from typing import Dict, List, Any, TYPE_CHECKING, Tuple, Mapping
 
 # CoLLAB v2 problem-layer imports (made available via envs.dcops.__init__)
@@ -351,9 +352,73 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         with open(data_file, "w") as f:
             json.dump(score_entry, f, indent=2, ensure_ascii=False)
 
+    def _fill_random_unassigned_variables(self) -> int:
+        """Assign uniform-random domain values to any missing/invalid variables."""
+        problem = getattr(self, "problem", None)
+        instance = getattr(self, "instance", None)
+        if problem is None:
+            return 0
+
+        seed = int(getattr(self, "current_seed", 0))
+        rng = random.Random(seed + 99173)
+
+        filled = 0
+        filled_assignment: Dict[str, Any] = dict(self.assignment)
+        for var_name in sorted(problem.variables):
+            spec = problem.variables[var_name]
+            domain = list(getattr(spec, "domain", []) or [])
+            if not domain:
+                continue
+
+            value = filled_assignment.get(var_name)
+            if value not in domain:
+                # Common case: a stringified int selection.
+                try:
+                    cast_value = int(value)
+                except Exception:
+                    cast_value = None
+                if cast_value in domain:
+                    value = cast_value
+                else:
+                    value = rng.choice(domain)
+                    filled += 1
+
+            filled_assignment[var_name] = value
+
+        self.assignment = filled_assignment
+
+        # Keep the (agent -> Outfit) view consistent with the filled assignment so
+        # summaries include all agents even if some never acted.
+        wardrobe = getattr(instance, "wardrobe", None) if instance is not None else None
+        if isinstance(wardrobe, dict) and wardrobe:
+            selections: Dict[str, Outfit] = {}
+            for var_name in sorted(problem.variables):
+                spec = problem.variables[var_name]
+                agent_id = spec.owner
+                options = wardrobe.get(agent_id) or []
+                if not options:
+                    continue
+                try:
+                    idx = int(filled_assignment[var_name]) - 1
+                except Exception:
+                    idx = 0
+                idx = max(0, min(len(options) - 1, idx))
+                selections[agent_id] = options[idx]
+            self.outfit_selections = selections
+
+        return filled
+
     def get_final_summary(self) -> Dict[str, Any]:
         """Get a final summary of the entire simulation."""
         total_vars = len(self.problem.variables)
+        assignment_filling = self.assignment_filling_enabled()
+        random_fallback_fills = (
+            self._fill_random_unassigned_variables()
+            if assignment_filling and self.instance
+            else 0
+        )
+        notes = [self.UNASSIGNED_VARIABLE_FALLBACK_NOTE] if assignment_filling else []
+
         final_selections = (
             f"{len(self.outfit_selections)}/{len(self.agent_names)} agents"
         )
@@ -364,6 +429,8 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
                 "total_variables": total_vars,
                 "total_agents": len(self.agent_names),
                 "final_selections": final_selections,
+                "random_fallback_fills": random_fallback_fills,
+                "notes": notes,
             }
 
         joint_reward, agent_rewards = self._rewards(self.assignment)
@@ -382,6 +449,8 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
             "variables_assigned": len(self.assignment),
             "total_agents": len(self.agent_names),
             "final_selections": final_selections,
+            "random_fallback_fills": random_fallback_fills,
+            "notes": notes,
         }
 
     #### MCP-specific methods ####

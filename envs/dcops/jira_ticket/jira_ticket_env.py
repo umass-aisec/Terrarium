@@ -314,7 +314,8 @@ class JiraTicketEnvironment(AbstractEnvironment):
         for agents in task_groups.values():
             if len(agents) <= 1:
                 continue
-            penalty_share = self.violation_penalty / len(agents)
+            penalty_total = self.violation_penalty * (len(agents) - 1)
+            penalty_share = penalty_total / len(agents)
             for agent in agents:
                 local_rewards[agent] -= penalty_share
 
@@ -322,11 +323,14 @@ class JiraTicketEnvironment(AbstractEnvironment):
 
     def get_network_context(self) -> str:
         """Return base context string shown on each blackboard channel."""
-        return (
+        base_context = (
             "JIRA sprint task allocation. Each agent chooses at most one micro-task "
             "(or skips). Maximize tasks completed, prefer higher-priority tasks, then minimize total cost. "
             "Avoid duplicate task selections and infeasible assignments."
         )
+        if self.assignment_filling_enabled():
+            return f"{base_context}\n\n{self.UNASSIGNED_VARIABLE_FALLBACK_NOTE}"
+        return base_context
 
     def build_agent_context(self, agent_name: str, phase: str, iteration: int, **kwargs) -> Dict[str, Any]:
         """Assemble per-agent prompt context for the current phase/iteration."""
@@ -475,14 +479,49 @@ class JiraTicketEnvironment(AbstractEnvironment):
         with open(data_file, "w") as f:
             json.dump(score_entry, f, indent=2, ensure_ascii=False)
 
+    def _fill_random_unassigned_agents(self) -> int:
+        """Assign uniform-random tasks (or skip) to any agents that never acted."""
+        seed = int(getattr(self, "current_seed", 0))
+        rng = getattr(self, "rng", None)
+        if not isinstance(rng, random.Random):
+            rng = random.Random(seed + 99173)
+
+        task_ids = list(self.tasks)
+        allowed: List[Optional[str]] = [None] + [str(t) for t in task_ids]
+        if not allowed:
+            allowed = [None]
+
+        filled = 0
+        for agent in self.agent_names:
+            if agent not in self.assignment:
+                self.assignment[agent] = rng.choice(allowed)
+                filled += 1
+                continue
+
+            value = self.assignment.get(agent)
+            if value == "skip":
+                self.assignment[agent] = None
+                continue
+            if value is not None and str(value) not in self.tasks:
+                self.assignment[agent] = rng.choice(allowed)
+                filled += 1
+
+        return filled
+
     def get_final_summary(self) -> Dict[str, Any]:
         """Return run-level summary including coverage and normalized score."""
+        assignment_filling = self.assignment_filling_enabled()
+        random_fallback_fills = self._fill_random_unassigned_agents() if assignment_filling else 0
+        notes = [self.UNASSIGNED_VARIABLE_FALLBACK_NOTE] if assignment_filling else []
+
         if len(self.assignment) < len(self.agent_names):
             return {
                 "status": "incomplete",
                 "decisions_made": len(self.assignment),
                 "total_agents": len(self.agent_names),
                 "tasks_available": len(self.tasks),
+                "random_fallback_fills": random_fallback_fills,
+                "notes": notes,
             }
 
         eval_result = self._evaluate_assignment(self.assignment)
@@ -506,6 +545,8 @@ class JiraTicketEnvironment(AbstractEnvironment):
             "assignment": self.assignment.copy(),
             "tasks_available": len(self.tasks),
             "total_agents": len(self.agent_names),
+            "random_fallback_fills": random_fallback_fills,
+            "notes": notes,
         }
 
     #### MCP-specific methods ####

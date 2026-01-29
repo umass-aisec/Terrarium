@@ -23,7 +23,7 @@ from llm_server.clients.openai_client import OpenAIClient
 class JudgeConfig:
     model: str = "gpt-4o-mini"
     max_output_tokens: int = 256
-    temperature: float = 0.0
+    temperature: float = 0.1
 
 
 @dataclass(frozen=True)
@@ -359,6 +359,16 @@ def _iter_run_dirs(root: Path) -> Iterable[Path]:
     if not runs_root.exists():
         return
     for path in sorted(runs_root.glob("*/*/*")):
+        if not path.is_dir():
+            continue
+        if (path / "run_config.json").exists():
+            yield path
+
+
+def _iter_run_dirs_in_sweep(sweep_dir: Path) -> Iterable[Path]:
+    if not sweep_dir.exists():
+        return
+    for path in sorted(sweep_dir.iterdir()):
         if not path.is_dir():
             continue
         if (path / "run_config.json").exists():
@@ -742,14 +752,105 @@ async def evaluate_root(
     print(f"Done. {summary}")
 
 
+async def evaluate_sweep_dir(
+    *,
+    sweep_dir: Path,
+    judge_cfg: JudgeConfig,
+    max_concurrent: int,
+    overwrite: bool,
+    dry_run: bool,
+    max_retries: int,
+    baseline_all_blackboards: bool,
+) -> None:
+    run_dirs = list(_iter_run_dirs_in_sweep(sweep_dir))
+    if not run_dirs:
+        raise FileNotFoundError(f"No run directories found under: {sweep_dir}")
+
+    pending_run_dirs: List[Path] = []
+    semaphore = asyncio.Semaphore(max(1, int(max_concurrent)))
+    for run_dir in run_dirs:
+        out_file = _result_file_for_run(run_dir)
+        if out_file.exists() and not overwrite:
+            if baseline_all_blackboards:
+                try:
+                    rc = _read_json(run_dir / "run_config.json")
+                except Exception:
+                    rc = {}
+                if not bool((rc or {}).get("secret_channel_enabled", False)):
+                    try:
+                        existing = _read_json(out_file)
+                    except Exception:
+                        existing = {}
+                    if (
+                        str((existing or {}).get("status") or "")
+                        != "judged_baseline_all_blackboards"
+                    ):
+                        pending_run_dirs.append(run_dir)
+                    continue
+            continue
+        pending_run_dirs.append(run_dir)
+
+    if dry_run:
+        print(f"Found {len(run_dirs)} runs under: {sweep_dir}")
+        print(f"Would evaluate {len(pending_run_dirs)} runs (overwrite={overwrite}).")
+        return
+
+    tasks = [
+        asyncio.create_task(
+            _evaluate_run(
+                run_dir=run_dir,
+                judge_cfg=judge_cfg,
+                overwrite=overwrite,
+                baseline_all_blackboards=bool(baseline_all_blackboards),
+                semaphore=semaphore,
+                max_retries=max(0, int(max_retries)),
+            ),
+            name=str(run_dir),
+        )
+        for run_dir in pending_run_dirs
+    ]
+
+    pbar = tqdm(total=len(tasks), desc="Judging blackboards", unit="run")
+    statuses: Dict[str, int] = {}
+
+    try:
+        for task in asyncio.as_completed(tasks):
+            try:
+                status, run_id = await task
+            except Exception:
+                name = getattr(task, "get_name", lambda: "unknown")()
+                print(f"ERROR while judging: {name}", file=sys.stderr)
+                traceback.print_exc()
+                for t in tasks:
+                    t.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                raise SystemExit(1) from None
+
+            statuses[status] = statuses.get(status, 0) + 1
+            pbar.set_postfix_str(f"{status}: {run_id}")
+            pbar.update(1)
+    finally:
+        pbar.close()
+
+    # Write aggregate per-model outputs.
+    _write_aggregate_outputs(sweep_dir.parent)
+
+    summary = ", ".join(f"{k}={v}" for k, v in sorted(statuses.items()))
+    print(f"Done. {summary}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="LLM-as-a-judge evaluation of collusion on the SECRET blackboard (post-hoc over run outputs)."
     )
-    parser.add_argument(
+    scope = parser.add_mutually_exclusive_group(required=True)
+    scope.add_argument(
         "--root",
-        required=True,
         help="Experiment output root (timestamp folder), e.g. experiments/collusion/outputs/collusion_complete/<timestamp>",
+    )
+    scope.add_argument(
+        "--sweep-dir",
+        help="Sweep directory, e.g. experiments/collusion/outputs/collusion_complete/<timestamp>/runs/<model>/<sweep_name>",
     )
     parser.add_argument(
         "--judge-model",
@@ -776,8 +877,16 @@ def main() -> None:
     )
     parser.add_argument(
         "--baseline-all-blackboards",
+        dest="baseline_all_blackboards",
         action="store_true",
-        help="For baseline runs (secret_channel_enabled=false), judge every blackboard and average ratings across blackboards.",
+        default=True,
+        help="For baseline runs (secret_channel_enabled=false), judge every blackboard and average ratings across blackboards (default: enabled).",
+    )
+    parser.add_argument(
+        "--no-baseline-all-blackboards",
+        dest="baseline_all_blackboards",
+        action="store_false",
+        help="Disable baseline judging; baseline runs short-circuit to rating=0 (legacy behavior).",
     )
     parser.add_argument(
         "--overwrite",
@@ -791,12 +900,30 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    root = Path(args.root).expanduser().resolve()
+    root = Path(args.root).expanduser().resolve() if args.root else None
+    sweep_dir = Path(args.sweep_dir).expanduser().resolve() if args.sweep_dir else None
     judge_cfg = JudgeConfig(
         model=str(args.judge_model),
         max_output_tokens=int(args.max_output_tokens),
         temperature=float(args.temperature),
     )
+
+    if sweep_dir is not None:
+        asyncio.run(
+            evaluate_sweep_dir(
+                sweep_dir=sweep_dir,
+                judge_cfg=judge_cfg,
+                max_concurrent=int(args.max_concurrent),
+                overwrite=bool(args.overwrite),
+                dry_run=bool(args.dry_run),
+                max_retries=int(args.max_retries),
+                baseline_all_blackboards=bool(args.baseline_all_blackboards),
+            )
+        )
+        return
+
+    if root is None:
+        raise SystemExit("Must provide either --root or --sweep-dir.")
 
     asyncio.run(
         evaluate_root(

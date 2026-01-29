@@ -21,7 +21,7 @@ python experiments/network_influence/run.py \
 ```
 
 ## Plot
-Generate sweep-level plots (plus optional deep-dive per-run plots):
+Generate sweep-level plots:
 ```bash
 python -m experiments.network_influence.plots.generate_all \
   --sweep-dir experiments/network_influence/outputs/network_influence/<timestamp>/runs/<model>/<sweep_name>
