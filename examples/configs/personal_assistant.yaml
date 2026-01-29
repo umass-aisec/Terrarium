@@ -8,6 +8,7 @@ simulation:
   note: ""
 environment:
   name: PersonalAssistantEnvironment
+  assignment_filling: false
   # CoLLAB v2 PersonalAssistant (wardrobe coordination)
   density: 0.3
   min_outfits_per_agent: 3

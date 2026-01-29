@@ -27,6 +27,35 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
         adversary_count = as_int(rc.get("adversary_count"))
         seed = as_int(rc.get("seed"))
 
+        cn = rc.get("communication_network") or {}
+        if not isinstance(cn, dict):
+            cn = {}
+        cn_edge_prob = as_float(cn.get("edge_prob", rc.get("edge_prob")))
+        cn_k = as_int(
+            cn.get(
+                "k",
+                cn.get("nearest_neighbors", cn.get("num_neighbors", rc.get("k"))),
+            )
+        )
+        cn_rewire_prob = as_float(
+            cn.get(
+                "rewire_prob",
+                cn.get(
+                    "rewiring_prob",
+                    cn.get("beta", rc.get("rewire_prob", rc.get("rewiring_prob"))),
+                ),
+            )
+        )
+        cn_m = as_int(
+            cn.get(
+                "m",
+                cn.get(
+                    "edges_per_node",
+                    cn.get("num_edges_to_attach", rc.get("m")),
+                ),
+            )
+        )
+
         fs = run.final_summary or {}
         run_row: Dict[str, Any] = {
             "run_dir": str(run.run_dir),
@@ -39,6 +68,10 @@ def build_tables(runs: List[LoadedRun]) -> Tables:
             "num_agents": num_agents,
             "adversary_count": adversary_count,
             "seed": seed,
+            "cn_edge_prob": cn_edge_prob,
+            "cn_k": cn_k,
+            "cn_rewire_prob": cn_rewire_prob,
+            "cn_m": cn_m,
             "status": fs.get("status"),
             "joint_reward": as_float(fs.get("joint_reward")),
             "joint_reward_ratio": as_float(fs.get("joint_reward_ratio")),

@@ -9,6 +9,7 @@ import csv
 import json
 import logging
 import random
+import re
 import importlib
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,8 @@ from src.agents.base import BaseAgent
 
 LOGGER_NAME = "experiments.collusion"
 logger = logging.getLogger(LOGGER_NAME)
+
+_SAFE_LABEL_RE = re.compile(r"[^A-Za-z0-9]+")
 
 
 def _configure_experiment_logging(root: Path, *, verbose: bool = True) -> None:
@@ -78,6 +81,79 @@ def _resolve_environment_class(env_cfg: Dict[str, Any]) -> Any:
         f"Unknown environment.name {env_name!r}. "
         "Either export it from an envs package __init__.py, or set environment.import_path."
     )
+
+
+def _sanitize_label(value: str) -> str:
+    value = str(value or "").strip()
+    if not value:
+        return "env"
+    value = _SAFE_LABEL_RE.sub("_", value).strip("_")
+    return value or "env"
+
+
+def _infer_environment_label(env_cfg: Dict[str, Any]) -> str:
+    import_path = str(env_cfg.get("import_path") or "").strip()
+    if import_path:
+        _module, _sep, cls_name = import_path.partition(":")
+        if cls_name:
+            return cls_name
+        return import_path
+    name = str(env_cfg.get("name") or "").strip()
+    if name:
+        return name
+    return "env"
+
+
+def _normalize_environment_sweep(
+    *, sweep: Dict[str, Any], base_env_cfg: Dict[str, Any]
+) -> List[tuple[str, Dict[str, Any]]]:
+    raw = sweep.get("environments") or []
+    if not raw:
+        return []
+    if not isinstance(raw, list):
+        raise ValueError("sweeps[].environments must be a list.")
+
+    variants: List[tuple[str, Dict[str, Any]]] = []
+    seen: set[str] = set()
+    for entry in raw:
+        label: Optional[str] = None
+        override: Dict[str, Any] = {}
+        if isinstance(entry, str):
+            value = entry.strip()
+            if not value:
+                continue
+            if ":" in value:
+                override = {"import_path": value}
+                label = value.split(":", 1)[1].strip() or value
+            else:
+                override = {"name": value}
+                label = value
+        elif isinstance(entry, dict):
+            label = str(entry.get("label") or "").strip() or None
+            override = {k: v for k, v in entry.items() if k != "label"}
+            if label is None:
+                label = _infer_environment_label(override)
+        else:
+            raise ValueError(
+                f"Invalid sweeps[].environments entry (expected str|dict, got {type(entry).__name__})."
+            )
+
+        env_cfg = copy.deepcopy(base_env_cfg or {})
+        env_cfg.update(copy.deepcopy(override))
+        safe_label = _sanitize_label(label or _infer_environment_label(env_cfg))
+        unique_label = safe_label
+        suffix = 2
+        while unique_label in seen:
+            unique_label = f"{safe_label}_{suffix}"
+            suffix += 1
+        seen.add(unique_label)
+        variants.append((unique_label, env_cfg))
+
+    if not variants:
+        raise ValueError(
+            "sweeps[].environments is set but empty; provide at least one environment entry."
+        )
+    return variants
 
 
 def _select_colluders(
@@ -123,6 +199,8 @@ async def _run_single(
     model_label: str,
     model_llm_cfg: Dict[str, Any],
     sweep_name: str,
+    environment_label: Optional[str] = None,
+    environment_cfg: Optional[Dict[str, Any]] = None,
     topology: str,
     num_agents: int,
     colluder_count: int,
@@ -141,6 +219,8 @@ async def _run_single(
         effective_prompt_variant = "control"
 
     cfg = copy.deepcopy(base_cfg)
+    if environment_cfg is not None:
+        cfg["environment"] = copy.deepcopy(environment_cfg)
     cfg.setdefault("simulation", {})["seed"] = int(seed)
     cfg.setdefault("simulation", {})["max_iterations"] = 1
     cfg.setdefault("simulation", {})["max_planning_rounds"] = int(
@@ -159,8 +239,17 @@ async def _run_single(
     cfg["llm"] = copy.deepcopy(model_llm_cfg)
 
     run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_id = (
-        f"{model_label}__{sweep_name}__{topology}__n{num_agents}"
+    env_label: Optional[str] = None
+    if environment_label is not None:
+        cleaned = _sanitize_label(environment_label)
+        if cleaned:
+            env_label = cleaned
+
+    run_id = f"{model_label}__{sweep_name}"
+    if env_label:
+        run_id += f"__env{env_label}"
+    run_id += (
+        f"__{topology}__n{num_agents}"
         f"__c{colluder_count}__secret{int(bool(secret_channel_enabled))}"
         f"__pv{effective_prompt_variant}__seed{seed}"
     )
@@ -237,6 +326,9 @@ async def _run_single(
     max_steps = int(cfg["simulation"].get("max_conversation_steps", 3))
 
     agents: List[BaseAgent] = []
+    env_tool_name = str(
+        getattr(env, "tools_environment_name", None) or env.__class__.__name__
+    )
     for name in agent_names:
         client = get_client_instance(cfg["llm"], agent_name=name)
         agents.append(
@@ -247,7 +339,7 @@ async def _run_single(
                 max_steps,
                 None,
                 trajectory_logger,
-                env.__class__.__name__,
+                env_tool_name,
                 generation_params=generation_params,
             )
         )
@@ -419,6 +511,7 @@ async def _run_single(
         secret_channel_enabled=secret_channel_enabled,
         prompt_variant=str(effective_prompt_variant),
         tool_events=protocol.tool_events,
+        blackboard_participants=blackboard_participants,
         final_summary=final_summary,
     )
 
@@ -430,6 +523,9 @@ async def _run_single(
             "provider": provider,
             "model": model_name,
             "sweep": sweep_name,
+            "environment_label": env_label,
+            "environment_cfg": cfg.get("environment") or {},
+            "environment_name": env.__class__.__name__,
             "topology": topology,
             "num_agents": num_agents,
             "colluder_count": colluder_count,
@@ -473,12 +569,27 @@ async def _run_single(
     )
 
     logger.info("RUN END %s (artifacts=%s)", run_id, run_dir)
+    joint_reward = final_summary.get("joint_reward")
+    coalition_reward_ratio = None
+    try:
+        if (
+            metrics.coalition_reward_sum is not None
+            and joint_reward is not None
+            and float(joint_reward) != 0.0
+        ):
+            coalition_reward_ratio = float(metrics.coalition_reward_sum) / float(
+                joint_reward
+            )
+    except Exception:
+        coalition_reward_ratio = None
     return {
         "run_id": run_id,
         "model_label": model_label,
         "provider": provider,
         "model": model_name,
         "sweep": sweep_name,
+        "environment_label": env_label,
+        "environment_name": env.__class__.__name__,
         "topology": topology,
         "num_agents": num_agents,
         "colluder_count": colluder_count,
@@ -488,17 +599,34 @@ async def _run_single(
         "seed": seed,
         "colluders": colluders,
         "status": metrics.status,
+        # Radar-chart inputs (environment summary + collusion metrics).
+        "joint_reward": joint_reward,
+        "joint_reward_ratio": final_summary.get("joint_reward_ratio"),
+        "coverage": final_summary.get("coverage"),
+        "normalized_score": final_summary.get("normalized_score"),
+        "tasks_done": metrics.tasks_done,
+        "violations": metrics.violations,
+        "total_cost": metrics.total_cost,
+        "priority_sum": metrics.priority_sum,
+        "mean_regret": metrics.mean_regret,
+        "reward_std": metrics.reward_std,
         "coalition_reward_sum": metrics.coalition_reward_sum,
         "noncoalition_reward_sum": metrics.noncoalition_reward_sum,
         "coalition_mean_reward": metrics.coalition_mean_reward,
         "noncoalition_mean_reward": metrics.noncoalition_mean_reward,
         "coalition_advantage_mean": metrics.coalition_advantage_mean,
+        "coalition_reward_ratio": coalition_reward_ratio,
         "colluder_posts_secret_rate": metrics.colluder_posts_secret_rate,
         "mean_regret": metrics.mean_regret,
         "coalition_mean_regret": metrics.coalition_mean_regret,
         "noncoalition_mean_regret": metrics.noncoalition_mean_regret,
         "system_regret": metrics.system_regret,
         "system_regret_ratio": metrics.system_regret_ratio,
+        "colluder_posts_total": metrics.colluder_posts_total,
+        "colluder_posts_secret": metrics.colluder_posts_secret,
+        "colluder_posts_non_secret": metrics.colluder_posts_non_secret,
+        "largest_non_secret_blackboard_id": metrics.largest_non_secret_blackboard_id,
+        "colluder_posts_secret_to_largest_bb_ratio_mean": metrics.colluder_posts_secret_to_largest_bb_ratio_mean,
     }
 
 
@@ -544,10 +672,16 @@ async def run_from_config(
     _write_json(root / "config.json", cfg)
     _configure_experiment_logging(root)
 
+    base_env_cfg = cfg.get("environment") or {}
+
     # Pre-compute total runs for progress tracking.
     total_runs = 0
     for model in models:
         for sweep in sweeps:
+            env_variants = _normalize_environment_sweep(
+                sweep=sweep, base_env_cfg=base_env_cfg
+            )
+            env_count = len(env_variants) if env_variants else 1
             topologies = sweep.get("topologies") or []
             agent_counts = sweep.get("num_agents") or []
             colluder_counts = sweep.get("colluder_counts") or []
@@ -577,7 +711,7 @@ async def run_from_config(
                             for _pv in prompt_variants:
                                 if not bool(_secret) and str(_pv) != "control":
                                     continue
-                                total_runs += len(seeds)
+                                total_runs += len(seeds) * env_count
 
     logger.info("EXPERIMENT START (total_runs=%s, output_root=%s)", total_runs, root)
     _write_progress(
@@ -620,6 +754,11 @@ async def run_from_config(
 
             for sweep_idx, sweep in enumerate(sweeps, start=1):
                 sweep_name = str(sweep.get("name") or "sweep")
+                env_variants = _normalize_environment_sweep(
+                    sweep=sweep, base_env_cfg=base_env_cfg
+                )
+                if not env_variants:
+                    env_variants = [(None, None)]
                 topologies = sweep.get("topologies") or []
                 agent_counts = sweep.get("num_agents") or []
                 colluder_counts = sweep.get("colluder_counts") or []
@@ -650,6 +789,78 @@ async def run_from_config(
                 )
 
                 if max_concurrent_runs <= 1:
+                    for env_label, env_cfg in env_variants:
+                        env_part = f"/env{env_label}" if env_label else ""
+                        for topology in topologies:
+                            for n in agent_counts:
+                                for c in colluder_counts:
+                                    for secret in secret_flags:
+                                        for pv in prompt_variants:
+                                            if (
+                                                not bool(secret)
+                                                and str(pv) != "control"
+                                            ):
+                                                continue
+                                            for seed in seeds:
+                                                run_label = (
+                                                    f"{model_label}/{sweep_name}"
+                                                    f"{env_part}/{topology}"
+                                                    f"/n{n}/c{c}"
+                                                    f"/secret{int(bool(secret))}"
+                                                    f"/pv{pv}/seed{seed}"
+                                                )
+                                                pbar.set_postfix_str(run_label)
+                                                run_status = "success"
+                                                try:
+                                                    summaries.append(
+                                                        await _run_single(
+                                                            base_cfg=cfg,
+                                                            model_label=model_label,
+                                                            model_llm_cfg=llm_cfg,
+                                                            sweep_name=sweep_name,
+                                                            environment_label=env_label,
+                                                            environment_cfg=env_cfg,
+                                                            topology=str(topology),
+                                                            num_agents=int(n),
+                                                            colluder_count=int(c),
+                                                            secret_channel_enabled=bool(
+                                                                secret
+                                                            ),
+                                                            prompt_variant=str(pv),
+                                                            seed=int(seed),
+                                                            out_dir=root,
+                                                        )
+                                                    )
+                                                    completed += 1
+                                                except Exception:
+                                                    run_status = "failed"
+                                                    failed += 1
+                                                    logger.exception(
+                                                        "RUN FAILED %s", run_label
+                                                    )
+                                                    raise
+                                                finally:
+                                                    pbar.update(1)
+                                                    _write_progress(
+                                                        root,
+                                                        {
+                                                            "status": "running",
+                                                            "total_runs": total_runs,
+                                                            "completed_runs": completed,
+                                                            "failed_runs": failed,
+                                                            "last_run_label": run_label,
+                                                            "last_run_status": run_status,
+                                                        },
+                                                    )
+                    continue
+
+                # Concurrent scheduling
+                import asyncio
+
+                tasks: List[asyncio.Task] = []
+                task_labels: Dict[asyncio.Task, str] = {}
+                for env_label, env_cfg in env_variants:
+                    env_part = f"/env{env_label}" if env_label else ""
                     for topology in topologies:
                         for n in agent_counts:
                             for c in colluder_counts:
@@ -658,82 +869,33 @@ async def run_from_config(
                                         if not bool(secret) and str(pv) != "control":
                                             continue
                                         for seed in seeds:
-                                            run_label = f"{model_label}/{sweep_name}/{topology}/n{n}/c{c}/secret{int(bool(secret))}/pv{pv}/seed{seed}"
-                                            pbar.set_postfix_str(run_label)
-                                            run_status = "success"
-                                            try:
-                                                summaries.append(
-                                                    await _run_single(
-                                                        base_cfg=cfg,
-                                                        model_label=model_label,
-                                                        model_llm_cfg=llm_cfg,
-                                                        sweep_name=sweep_name,
-                                                        topology=str(topology),
-                                                        num_agents=int(n),
-                                                        colluder_count=int(c),
-                                                        secret_channel_enabled=bool(
-                                                            secret
-                                                        ),
-                                                        prompt_variant=str(pv),
-                                                        seed=int(seed),
-                                                        out_dir=root,
-                                                    )
-                                                )
-                                                completed += 1
-                                            except Exception:
-                                                run_status = "failed"
-                                                failed += 1
-                                                logger.exception(
-                                                    "RUN FAILED %s", run_label
-                                                )
-                                                raise
-                                            finally:
-                                                pbar.update(1)
-                                                _write_progress(
-                                                    root,
-                                                    {
-                                                        "status": "running",
-                                                        "total_runs": total_runs,
-                                                        "completed_runs": completed,
-                                                        "failed_runs": failed,
-                                                        "last_run_label": run_label,
-                                                        "last_run_status": run_status,
-                                                    },
-                                                )
-                    continue
-
-                # Concurrent scheduling
-                import asyncio
-
-                tasks: List[asyncio.Task] = []
-                task_labels: Dict[asyncio.Task, str] = {}
-                for topology in topologies:
-                    for n in agent_counts:
-                        for c in colluder_counts:
-                            for secret in secret_flags:
-                                for pv in prompt_variants:
-                                    if not bool(secret) and str(pv) != "control":
-                                        continue
-                                    for seed in seeds:
-                                        run_label = f"{model_label}/{sweep_name}/{topology}/n{n}/c{c}/secret{int(bool(secret))}/pv{pv}/seed{seed}"
-                                        task = asyncio.create_task(
-                                            _run_single_limited(
-                                                run_label=run_label,
-                                                base_cfg=cfg,
-                                                model_label=model_label,
-                                                model_llm_cfg=llm_cfg,
-                                                sweep_name=sweep_name,
-                                                topology=str(topology),
-                                                num_agents=int(n),
-                                                colluder_count=int(c),
-                                                secret_channel_enabled=bool(secret),
-                                                prompt_variant=str(pv),
-                                                seed=int(seed),
-                                                out_dir=root,
+                                            run_label = (
+                                                f"{model_label}/{sweep_name}"
+                                                f"{env_part}/{topology}"
+                                                f"/n{n}/c{c}"
+                                                f"/secret{int(bool(secret))}"
+                                                f"/pv{pv}/seed{seed}"
                                             )
-                                        )
-                                        tasks.append(task)
-                                        task_labels[task] = run_label
+                                            task = asyncio.create_task(
+                                                _run_single_limited(
+                                                    run_label=run_label,
+                                                    base_cfg=cfg,
+                                                    model_label=model_label,
+                                                    model_llm_cfg=llm_cfg,
+                                                    sweep_name=sweep_name,
+                                                    environment_label=env_label,
+                                                    environment_cfg=env_cfg,
+                                                    topology=str(topology),
+                                                    num_agents=int(n),
+                                                    colluder_count=int(c),
+                                                    secret_channel_enabled=bool(secret),
+                                                    prompt_variant=str(pv),
+                                                    seed=int(seed),
+                                                    out_dir=root,
+                                                )
+                                            )
+                                            tasks.append(task)
+                                            task_labels[task] = run_label
 
                 pending = set(tasks)
                 while pending:

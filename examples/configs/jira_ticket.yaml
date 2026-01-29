@@ -9,6 +9,7 @@ simulation:
 
 environment:
   name: JiraTicketEnvironment
+  assignment_filling: false
   max_tasks: 8
   tasks_done_bonus: 100.0
   priority_bonus: 10.0

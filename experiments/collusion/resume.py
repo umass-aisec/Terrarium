@@ -34,6 +34,8 @@ class RunSpec:
     model_label: str
     model_llm_cfg: Dict[str, Any]
     sweep_name: str
+    environment_label: Optional[str]
+    environment_cfg: Optional[Dict[str, Any]]
     topology: str
     num_agents: int
     colluder_count: int
@@ -49,8 +51,13 @@ class RunSpec:
 
     @property
     def run_id(self) -> str:
+        env_part = (
+            f"__env{self.environment_label}"
+            if str(self.environment_label or "").strip()
+            else ""
+        )
         return (
-            f"{self.model_label}__{self.sweep_name}__{self.topology}"
+            f"{self.model_label}__{self.sweep_name}{env_part}__{self.topology}"
             f"__n{self.num_agents}__c{self.colluder_count}"
             f"__secret{int(bool(self.secret_channel_enabled))}"
             f"__pv{self.effective_prompt_variant}"
@@ -59,8 +66,13 @@ class RunSpec:
 
     @property
     def run_label(self) -> str:
+        env_part = (
+            f"/env{self.environment_label}"
+            if str(self.environment_label or "").strip()
+            else ""
+        )
         return (
-            f"{self.model_label}/{self.sweep_name}/{self.topology}"
+            f"{self.model_label}/{self.sweep_name}{env_part}/{self.topology}"
             f"/n{self.num_agents}/c{self.colluder_count}"
             f"/secret{int(bool(self.secret_channel_enabled))}"
             f"/pv{self.effective_prompt_variant}"
@@ -81,6 +93,57 @@ def _is_run_complete(run_dir: Path) -> bool:
     if not run_dir.exists():
         return False
     return all((run_dir / fname).exists() for fname in REQUIRED_RUN_FILES)
+
+
+def _run_has_error_turns(run_dir: Path) -> bool:
+    path = run_dir / "agent_turns.json"
+    if not path.exists():
+        return False
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return False
+    return '"response": "[ERROR]' in raw or "'response': '[ERROR]" in raw
+
+
+def _run_status(run_dir: Path) -> Optional[str]:
+    """Return normalized run status (e.g., 'complete' / 'incomplete'), if available."""
+    for name in ("metrics.json", "final_summary.json"):
+        path = run_dir / name
+        if not path.exists():
+            continue
+        try:
+            obj = json.loads(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        status = obj.get("status")
+        if status is None:
+            continue
+        status_s = str(status).strip().lower()
+        if status_s:
+            return status_s
+    return None
+
+
+def _is_run_acceptable(
+    run_dir: Path, *, require_status_complete: bool, rerun_error_turns: bool
+) -> Tuple[bool, List[str]]:
+    reasons: List[str] = []
+    if not _is_run_complete(run_dir):
+        reasons.append("missing_files")
+        return False, reasons
+
+    if require_status_complete:
+        status = _run_status(run_dir)
+        if status != "complete":
+            reasons.append("status_not_complete")
+
+    if rerun_error_turns and _run_has_error_turns(run_dir):
+        reasons.append("error_turns")
+
+    return (not reasons), reasons
 
 
 def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
@@ -105,6 +168,11 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
         llm_cfg = model.get("llm") or {}
         for sweep in sweeps:
             sweep_name = str(sweep.get("name") or "sweep")
+            env_variants = run_mod._normalize_environment_sweep(
+                sweep=sweep, base_env_cfg=(cfg.get("environment") or {})
+            )
+            if not env_variants:
+                env_variants = [(None, None)]
             topologies = sweep.get("topologies") or []
             agent_counts = sweep.get("num_agents") or []
             colluder_counts = sweep.get("colluder_counts") or []
@@ -130,42 +198,59 @@ def _iter_expected_run_specs(cfg: Dict[str, Any]) -> Iterable[RunSpec]:
                     "No seeds specified. Set experiment.seeds or sweeps[].seeds."
                 )
 
-            for topology in topologies:
-                for n in agent_counts:
-                    for c in colluder_counts:
-                        for secret in secret_flags:
-                            for pv in prompt_variants:
-                                # Prompt variants are only active when the secret channel exists.
-                                if not bool(secret) and str(pv) != "control":
-                                    continue
-                                for seed in seeds:
-                                    yield RunSpec(
-                                        model_label=model_label,
-                                        model_llm_cfg=llm_cfg,
-                                        sweep_name=sweep_name,
-                                        topology=str(topology),
-                                        num_agents=int(n),
-                                        colluder_count=int(c),
-                                        secret_channel_enabled=bool(secret),
-                                        prompt_variant=str(pv),
-                                        seed=int(seed),
-                                    )
+            for env_label, env_cfg in env_variants:
+                for topology in topologies:
+                    for n in agent_counts:
+                        for c in colluder_counts:
+                            for secret in secret_flags:
+                                for pv in prompt_variants:
+                                    # Prompt variants are only active when the secret channel exists.
+                                    if not bool(secret) and str(pv) != "control":
+                                        continue
+                                    for seed in seeds:
+                                        yield RunSpec(
+                                            model_label=model_label,
+                                            model_llm_cfg=llm_cfg,
+                                            sweep_name=sweep_name,
+                                            environment_label=env_label,
+                                            environment_cfg=env_cfg,
+                                            topology=str(topology),
+                                            num_agents=int(n),
+                                            colluder_count=int(c),
+                                            secret_channel_enabled=bool(secret),
+                                            prompt_variant=str(pv),
+                                            seed=int(seed),
+                                        )
 
 
 def _select_incomplete_runs(
-    *, root: Path, cfg: Dict[str, Any]
-) -> Tuple[List[RunSpec], int, int]:
+    *,
+    root: Path,
+    cfg: Dict[str, Any],
+    require_status_complete: bool,
+    rerun_error_turns: bool,
+) -> Tuple[List[RunSpec], int, int, Dict[str, int], Dict[str, List[str]]]:
     expected = list(_iter_expected_run_specs(cfg))
     total_runs = len(expected)
     completed = 0
     incomplete: List[RunSpec] = []
+    reason_counts: Dict[str, int] = {}
+    reasons_by_run_id: Dict[str, List[str]] = {}
     for spec in expected:
         run_dir = root / "runs" / spec.model_label / spec.sweep_name / spec.run_id
-        if _is_run_complete(run_dir):
+        ok, reasons = _is_run_acceptable(
+            run_dir,
+            require_status_complete=require_status_complete,
+            rerun_error_turns=rerun_error_turns,
+        )
+        if ok:
             completed += 1
         else:
             incomplete.append(spec)
-    return incomplete, completed, total_runs
+            reasons_by_run_id[spec.run_id] = list(reasons)
+            for r in reasons:
+                reason_counts[r] = reason_counts.get(r, 0) + 1
+    return incomplete, completed, total_runs, reason_counts, reasons_by_run_id
 
 
 def _rebuild_summary_files(root: Path) -> None:
@@ -251,12 +336,25 @@ async def resume_runs(
     cfg: Dict[str, Any],
     max_concurrent_runs: int,
     stop_on_error: bool,
+    require_status_complete: bool,
+    rerun_error_turns: bool,
     dry_run: bool,
 ) -> None:
     run_mod._ensure_dir(root)
     run_mod._configure_experiment_logging(root)
 
-    to_run, completed, total_runs = _select_incomplete_runs(root=root, cfg=cfg)
+    (
+        to_run,
+        completed,
+        total_runs,
+        reason_counts,
+        reasons_by_run_id,
+    ) = _select_incomplete_runs(
+        root=root,
+        cfg=cfg,
+        require_status_complete=require_status_complete,
+        rerun_error_turns=rerun_error_turns,
+    )
     failed = 0
 
     run_mod.logger.info(
@@ -272,10 +370,18 @@ async def resume_runs(
         print(f"Total runs: {total_runs}")
         print(f"Already complete: {completed}")
         print(f"Remaining (incomplete): {len(to_run)}")
+        if reason_counts:
+            print("Incomplete reasons:")
+            for reason, count in sorted(
+                reason_counts.items(), key=lambda kv: (-int(kv[1]), str(kv[0]))
+            ):
+                print(f"  - {reason}: {count}")
         if to_run:
             print("Next 10 runs to execute:")
             for spec in to_run[:10]:
-                print(f"  - {spec.run_label}")
+                reasons = reasons_by_run_id.get(spec.run_id) or []
+                suffix = f" (reasons={', '.join(reasons)})" if reasons else ""
+                print(f"  - {spec.run_label}{suffix}")
         return
 
     run_mod._write_progress(
@@ -292,13 +398,25 @@ async def resume_runs(
     if not to_run:
         run_mod.logger.info("RESUME DONE (nothing to do; all runs appear complete)")
         _rebuild_summary_files(root)
+        remaining_specs, final_completed, _, _, _ = _select_incomplete_runs(
+            root=root,
+            cfg=cfg,
+            require_status_complete=require_status_complete,
+            rerun_error_turns=rerun_error_turns,
+        )
+        status = "completed"
+        if remaining_specs:
+            status = "completed_with_remaining"
+        if failed:
+            status = "completed_with_failures"
         run_mod._write_progress(
             root,
             {
-                "status": "completed",
+                "status": status,
                 "total_runs": total_runs,
-                "completed_runs": completed,
+                "completed_runs": final_completed,
                 "failed_runs": failed,
+                "remaining_runs": len(remaining_specs),
             },
         )
         return
@@ -324,6 +442,8 @@ async def resume_runs(
                         model_label=spec.model_label,
                         model_llm_cfg=spec.model_llm_cfg,
                         sweep_name=spec.sweep_name,
+                        environment_label=spec.environment_label,
+                        environment_cfg=spec.environment_cfg,
                         topology=spec.topology,
                         num_agents=spec.num_agents,
                         colluder_count=spec.colluder_count,
@@ -367,6 +487,8 @@ async def resume_runs(
                         model_label=spec.model_label,
                         model_llm_cfg=spec.model_llm_cfg,
                         sweep_name=spec.sweep_name,
+                        environment_label=spec.environment_label,
+                        environment_cfg=spec.environment_cfg,
                         topology=spec.topology,
                         num_agents=spec.num_agents,
                         colluder_count=spec.colluder_count,
@@ -421,10 +543,21 @@ async def resume_runs(
                         )
 
     _rebuild_summary_files(root)
-    status = "completed" if completed == total_runs else "completed_with_failures"
+    remaining_specs, final_completed, _, _, _ = _select_incomplete_runs(
+        root=root,
+        cfg=cfg,
+        require_status_complete=require_status_complete,
+        rerun_error_turns=rerun_error_turns,
+    )
+    status = "completed"
+    if remaining_specs:
+        status = "completed_with_remaining"
+    if failed:
+        status = "completed_with_failures"
     run_mod.logger.info(
-        "RESUME END (completed=%s, failed=%s, total_runs=%s, output_root=%s)",
-        completed,
+        "RESUME END (completed=%s, remaining=%s, failed=%s, total_runs=%s, output_root=%s)",
+        final_completed,
+        len(remaining_specs),
         failed,
         total_runs,
         root,
@@ -434,8 +567,9 @@ async def resume_runs(
         {
             "status": status,
             "total_runs": total_runs,
-            "completed_runs": completed,
+            "completed_runs": final_completed,
             "failed_runs": failed,
+            "remaining_runs": len(remaining_specs),
         },
     )
 
@@ -466,6 +600,24 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         help="Abort immediately on the first failed run (default: continue and record failures).",
     )
     parser.add_argument(
+        "--require-status-complete",
+        action="store_true",
+        help="Treat runs as incomplete unless metrics/final_summary status is 'complete'.",
+    )
+    parser.add_argument(
+        "--rerun-error-turns",
+        dest="rerun_error_turns",
+        action="store_true",
+        default=True,
+        help="Treat runs as incomplete if agent_turns.json contains an '[ERROR]' response (default: enabled).",
+    )
+    parser.add_argument(
+        "--no-rerun-error-turns",
+        dest="rerun_error_turns",
+        action="store_false",
+        help="Disable treating '[ERROR]' turns as incomplete.",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true", help="Print what would run and exit."
     )
     args = parser.parse_args(argv)
@@ -487,6 +639,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             cfg=cfg,
             max_concurrent_runs=max_concurrent_runs,
             stop_on_error=bool(args.stop_on_error),
+            require_status_complete=bool(args.require_status_complete),
+            rerun_error_turns=bool(args.rerun_error_turns),
             dry_run=bool(args.dry_run),
         )
     )

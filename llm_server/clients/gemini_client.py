@@ -1,12 +1,13 @@
 """
 Google Gemini client implementation.
 
-This module provides a client for using Google's Gemini models via their Generative AI API.
+This module provides a client for using Google's Gemini models via the `google-genai` SDK.
 Supports tool use, multi-turn conversations, and various Gemini models.
 """
 
 import os
 import json
+import logging
 from typing import Any, List, Dict, Optional
 from llm_server.clients.abstract_client import AbstractClient
 
@@ -21,24 +22,27 @@ class GeminiClient(AbstractClient):
 
     def __init__(self):
         """Initialize the Gemini client."""
+        # `google-genai` emits a noisy warning if both GOOGLE_API_KEY and GEMINI_API_KEY
+        # are present in the environment, even when an explicit api_key is provided.
+        logging.getLogger("google_genai._api_client").setLevel(logging.ERROR)
+
         try:
-            import google.generativeai as genai
+            from google import genai
             from dotenv import load_dotenv
         except ImportError as e:
             raise ImportError(
-                "Gemini client requires 'google-generativeai' package. "
-                "Install with: pip install google-generativeai"
+                "Gemini client requires 'google-genai' package. "
+                "Install with: uv add google-genai (or pip install google-genai)"
             ) from e
 
         load_dotenv(override=True)
-        self.api_key = os.getenv("GOOGLE_API_KEY")
-        if not self.api_key:
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        if not api_key:
             raise ValueError(
-                "Google API key not found. Set GOOGLE_API_KEY in .env file"
+                "Gemini API key not found. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY in .env file"
             )
 
-        genai.configure(api_key=self.api_key)
-        self.genai = genai
+        self.client = genai.Client(api_key=api_key)
         self._current_meta_context = {}  # For logging metadata
 
     def set_meta_context(
@@ -67,11 +71,19 @@ class GeminiClient(AbstractClient):
     @staticmethod
     def get_usage(response: Any, current_usage: dict[str, int]) -> Dict[str, int]:
         """Accumulate usage statistics from response."""
-        if hasattr(response, 'usage_metadata'):
-            usage = response.usage_metadata
-            current_usage["prompt_tokens"] += getattr(usage, 'prompt_token_count', 0)
-            current_usage["completion_tokens"] += getattr(usage, 'candidates_token_count', 0)
-            current_usage["total_tokens"] = getattr(usage, 'total_token_count', 0)
+        usage = getattr(response, "usage_metadata", None)
+        if usage:
+            current_usage["prompt_tokens"] += int(getattr(usage, "prompt_token_count", 0) or 0)
+            current_usage["completion_tokens"] += int(
+                getattr(usage, "candidates_token_count", 0) or 0
+            )
+            total = int(getattr(usage, "total_token_count", 0) or 0)
+            if total:
+                current_usage["total_tokens"] += total
+            else:
+                current_usage["total_tokens"] = (
+                    current_usage["prompt_tokens"] + current_usage["completion_tokens"]
+                )
         return current_usage
 
     @staticmethod
@@ -106,18 +118,111 @@ class GeminiClient(AbstractClient):
         """
         Extract text content from Gemini response.
 
-        Gemini responses have structure: response.candidates[0].content.parts[]
-        Each part can have either .text or .function_call attributes.
+        Gemini responses have structure: response.candidates[0].content.parts[].
+        Each part can have either text or a function call.
         """
         content = ""
-        if hasattr(response, 'candidates') and response.candidates:
+        if hasattr(response, "candidates") and response.candidates:
             candidate = response.candidates[0]
-            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+            if hasattr(candidate, "content") and getattr(candidate.content, "parts", None):
                 for part in candidate.content.parts:
                     # Only extract text parts, skip function_call parts
-                    if hasattr(part, 'text') and part.text:
+                    if getattr(part, "text", None):
                         content += part.text
         return content
+
+    @staticmethod
+    def _to_part(part: Any):
+        from google.genai import types
+
+        if isinstance(part, types.Part):
+            return part
+
+        if isinstance(part, dict):
+            if "text" in part:
+                return types.Part(text=str(part.get("text") or ""))
+
+            function_call = part.get("function_call")
+            if isinstance(function_call, dict):
+                return types.Part(
+                    function_call=types.FunctionCall(
+                        id=function_call.get("id"),
+                        name=function_call.get("name"),
+                        args=function_call.get("args") or {},
+                    )
+                )
+
+            function_response = part.get("function_response")
+            if isinstance(function_response, dict):
+                return types.Part(
+                    function_response=types.FunctionResponse(
+                        id=function_response.get("id"),
+                        name=function_response.get("name"),
+                        response=function_response.get("response") or {},
+                    )
+                )
+
+        return None
+
+    @classmethod
+    def _to_content(cls, msg: Any):
+        from google.genai import types
+
+        if isinstance(msg, types.Content):
+            return msg
+
+        if isinstance(msg, dict):
+            role = msg.get("role")
+            raw_parts = msg.get("parts") or []
+            parts = []
+            for raw_part in raw_parts:
+                part = cls._to_part(raw_part)
+                if part is not None:
+                    parts.append(part)
+            return types.Content(role=role, parts=parts)
+
+        return None
+
+    @staticmethod
+    def _build_tools(tools: List[Any]) -> tuple[list[Any], list[str]]:
+        from google.genai import types
+
+        function_declarations = []
+        allowed_function_names: List[str] = []
+
+        for tool in tools or []:
+            if not isinstance(tool, dict):
+                continue
+            if tool.get("type") != "function":
+                continue
+
+            func_def = tool.get("function") or {}
+            func_name = func_def.get("name")
+            if not isinstance(func_name, str) or not func_name.strip():
+                continue
+
+            allowed_function_names.append(func_name)
+
+            raw_parameters = func_def.get("parameters", {})
+            parameters = raw_parameters
+            if isinstance(raw_parameters, dict):
+                parameters = dict(raw_parameters)
+                # Gemini can hard-fail with MALFORMED_FUNCTION_CALL when required
+                # arguments are omitted. Validate ourselves instead of crashing.
+                parameters.pop("required", None)
+
+            function_declarations.append(
+                types.FunctionDeclaration(
+                    name=func_name,
+                    description=str(func_def.get("description") or ""),
+                    parameters_json_schema=parameters if isinstance(parameters, dict) else None,
+                )
+            )
+
+        if not function_declarations:
+            return [], []
+
+        return [types.Tool(function_declarations=function_declarations)], allowed_function_names
 
     def generate_response(
         self,
@@ -139,99 +244,74 @@ class GeminiClient(AbstractClient):
         Returns:
             Tuple of (response_object, response_text)
         """
-        # Extract parameters
+        from google.genai import types
+
         model_name = params.get("model", "gemini-2.0-flash-exp")
         max_tokens = params.get("max_tokens") or params.get("max_output_tokens", 1000)
         temperature = params.get("temperature", 0.7)
-        tools = params.get("tools", [])
 
-        # Extract system prompt - check params first, then first message metadata
         system_instruction = params.get("system", "")
         if not system_instruction and input and isinstance(input[0], dict):
             system_instruction = input[0].get("_system_prompt", "")
 
-        # Convert tools to Gemini format if provided
-        gemini_tools = []
-        if tools:
-            from google.generativeai.types import FunctionDeclaration, Tool
+        converted_tools, allowed_function_names = self._build_tools(params.get("tools", []))
 
-            function_declarations = []
-            for tool in tools:
-                if isinstance(tool, dict) and tool.get("type") == "function":
-                    func_def = tool.get("function", {})
-                    function_declarations.append(
-                        FunctionDeclaration(
-                            name=func_def.get("name"),
-                            description=func_def.get("description"),
-                            parameters=func_def.get("parameters", {})
-                        )
+        tool_config = None
+        if converted_tools and allowed_function_names:
+            has_non_blackboard_tool = any(
+                name != "post_message" for name in allowed_function_names
+            )
+            if has_non_blackboard_tool:
+                tool_config = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(
+                        mode=types.FunctionCallingConfigMode.ANY,
+                        allowed_function_names=allowed_function_names,
                     )
+                )
+            else:
+                tool_config = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(
+                        mode=types.FunctionCallingConfigMode.AUTO
+                    )
+                )
 
-            if function_declarations:
-                gemini_tools = [Tool(function_declarations=function_declarations)]
+        generation_config = types.GenerateContentConfig(
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+            system_instruction=system_instruction or None,
+            tools=converted_tools or None,
+            tool_config=tool_config,
+        )
 
-        # Create generation config
-        generation_config = {
-            "temperature": temperature,
-            "max_output_tokens": max_tokens,
-        }
-
-        # Initialize model
-        model_config = {
-            "model_name": model_name,
-            "generation_config": generation_config,
-        }
-
-        if system_instruction:
-            model_config["system_instruction"] = system_instruction
-
-        if gemini_tools:
-            model_config["tools"] = gemini_tools
-
-        model = self.genai.GenerativeModel(**model_config)
-
-        # Convert input to Gemini format, handling both dicts and Content objects
-        from google.ai.generativelanguage_v1beta.types.content import Content as GeminiContent
-
-        history = []
+        contents = []
         for msg in input:
-            # Handle Content objects (from process_tool_calls)
-            if isinstance(msg, GeminiContent):
-                history.append(msg)
-            # Handle dict messages (from init_context)
-            elif isinstance(msg, dict):
-                role = msg.get("role")
-                parts = msg.get("parts", [])
-                # Filter out metadata (keys starting with _)
-                clean_msg = {"role": role, "parts": parts}
-                history.append(clean_msg)
+            content = self._to_content(msg)
+            if content is not None:
+                contents.append(content)
 
-        # For multi-turn: use all history except the last message for chat initialization
-        # Then send the last message to get the response
-        if len(history) > 1:
-            chat = model.start_chat(history=history[:-1])
-            # Send the last message
-            last_msg = history[-1]
-            if isinstance(last_msg, GeminiContent):
-                response = chat.send_message(last_msg.parts)
-            else:
-                response = chat.send_message(last_msg["parts"])
-        elif history:
-            # First turn: no history yet, just send the message
-            chat = model.start_chat(history=[])
-            last_msg = history[0]
-            if isinstance(last_msg, GeminiContent):
-                response = chat.send_message(last_msg.parts)
-            else:
-                response = chat.send_message(last_msg["parts"])
-        else:
-            # Fallback: empty context
-            chat = model.start_chat(history=[])
-            response = chat.send_message("")
+        response = self.client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=generation_config,
+        )
 
-        # Extract text content
+        if (
+            getattr(response, "candidates", None)
+            and response.candidates[0].finish_reason == types.FinishReason.MALFORMED_FUNCTION_CALL
+        ):
+            # Retry once without tool calling so we can still get a text response.
+            generation_config.tool_config = types.ToolConfig(
+                function_calling_config=types.FunctionCallingConfig(
+                    mode=types.FunctionCallingConfigMode.NONE
+                )
+            )
+            response = self.client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=generation_config,
+            )
+
         response_text = self._extract_message_content(response)
-
         return response, response_text
 
     async def process_tool_calls(
@@ -254,54 +334,44 @@ class GeminiClient(AbstractClient):
         Returns:
             Tuple of (tools_executed_count, updated_context, tool_names_list)
         """
-        from google.ai.generativelanguage_v1beta.types import content
+        from google.genai import types
 
         tool_calls_executed = 0
         step_tools = []
 
-        # Check if response has candidates
-        if not hasattr(response, 'candidates') or not response.candidates:
+        if not getattr(response, "candidates", None):
             return tool_calls_executed, context, step_tools
 
         candidate = response.candidates[0]
-        if not hasattr(candidate, 'content') or not hasattr(candidate.content, 'parts'):
+        candidate_content = getattr(candidate, "content", None)
+        if not candidate_content or not getattr(candidate_content, "parts", None):
             return tool_calls_executed, context, step_tools
 
-        # First, append the model's response to context (includes both text and function calls)
-        context.append(candidate.content)
+        # Append the model response (includes both text and function calls).
+        context.append(candidate_content)
 
-        # Process each part looking for function calls
-        for part in candidate.content.parts:
-            if hasattr(part, 'function_call') and part.function_call:
-                function_call = part.function_call
-                tool_name = function_call.name
+        for part in candidate_content.parts:
+            function_call = getattr(part, "function_call", None)
+            if not function_call:
+                continue
 
-                # Extract arguments (already a dict in Gemini)
-                args = dict(function_call.args) if function_call.args else {}
+            tool_name = function_call.name
+            args = function_call.args or {}
 
-                # Track tool call for trajectory
-                step_tools.append(f"{tool_name} -- {json.dumps(args)}")
+            step_tools.append(f"{tool_name} -- {json.dumps(args)}")
 
-                # Execute the tool
-                result = await execute_tool_callback(tool_name, args)
+            result = await execute_tool_callback(tool_name, args)
 
-                # Create function response using Gemini's proto format
-                function_response = content.FunctionResponse(
-                    name=tool_name,
-                    response={"result": result}
-                )
+            function_response = types.FunctionResponse(
+                id=function_call.id,
+                name=tool_name,
+                response={"result": result},
+            )
 
-                # Create a Part with the function response
-                function_response_part = content.Part(
-                    function_response=function_response
-                )
+            function_response_part = types.Part(function_response=function_response)
 
-                # Append function result to context as a user Content
-                context.append(content.Content(
-                    role="user",
-                    parts=[function_response_part]
-                ))
+            context.append(types.Content(role="user", parts=[function_response_part]))
 
-                tool_calls_executed += 1
+            tool_calls_executed += 1
 
         return tool_calls_executed, context, step_tools
