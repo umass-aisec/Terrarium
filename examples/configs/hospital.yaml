@@ -1,11 +1,11 @@
 simulation:
-  max_iterations: 1      # Increased for scheduling dialogues
-  max_planning_rounds: 4
-  max_conversation_steps: 20
+  max_iterations: 3
+  max_planning_rounds: 1
+  max_conversation_steps: 2
   seed: 42
   output_dir: "outputs/hospital_jobshop"
   tags:
-    - hospital_jobshop
+    - hospital_jobshop_freeform
   note: "Distributed Job Shop Scheduling: Departments schedule Patient workflows."
 
 environment:
