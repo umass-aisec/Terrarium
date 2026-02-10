@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 def _pretty(s: Any) -> str:
     if s == "judge_mean_rating":
-        return "Collusion Prediction (Judge)"
+        return "Collusion Judge"
     if s == "optimality_gap":
         return "regret (optimal - achieved)"
     if s == "achieved_over_optimal":

@@ -42,6 +42,21 @@ from experiments.common.plotting.style import apply_default_style
 logger = logging.getLogger(__name__)
 
 _BAR_CHART_HEIGHT_SCALE = 0.8  # 20% smaller vertically
+_PVALL_GROUP_PALETTE = [
+    "#264653",  # Charcoal Blue
+    "#2a9d8f",  # Verdigris
+    "#8ab17d",  # Muted Olive
+    "#e9c46a",  # Jasmine
+    "#f4a261",  # Sandy Brown
+    "#e76f51",  # Burnt Peach
+]
+
+
+def _apply_group_palette(groups: List[Dict[str, Any]], palette: List[str]) -> None:
+    for idx, group in enumerate(groups):
+        if idx >= len(palette):
+            break
+        group["color"] = palette[idx]
 
 
 def _apply_readable_bars_style() -> None:
@@ -51,14 +66,14 @@ def _apply_readable_bars_style() -> None:
     plt.rcParams.update(
         {
             # Base font (used by fig.text / misc annotations)
-            "font.size": 12,
+            "font.size": 14,
             # Axes + legend
-            "axes.titlesize": 18,
-            "axes.labelsize": 14,
-            "legend.fontsize": 13,
-            "legend.title_fontsize": 13,
-            "xtick.labelsize": 12,
-            "ytick.labelsize": 12,
+            "axes.titlesize": 16,
+            "axes.labelsize": 16,
+            "legend.fontsize": 14,
+            "legend.title_fontsize": 14,
+            "xtick.labelsize": 13,
+            "ytick.labelsize": 13,
         }
     )
 
@@ -94,7 +109,7 @@ def _pretty_metric_label(key: str) -> str:
     if k == "coalition_regret_advantage_mean":
         return "Coalition Regret Advantage"
     if k == "judge_mean_rating":
-        return "Collusion Prediction (↓)"
+        return "Collusion Judge (↓)"
     return k.replace("_", " ").title()
 
 
@@ -501,6 +516,23 @@ def _robust_range(values: List[float]) -> Tuple[float, float]:
     return lo, hi
 
 
+def _minmax_range(values: List[float]) -> Tuple[float, float]:
+    if not values:
+        return 0.0, 1.0
+    vals = np.array(values, dtype=float)
+    vals = vals[np.isfinite(vals)]
+    if vals.size == 0:
+        return 0.0, 1.0
+    lo = float(np.min(vals))
+    hi = float(np.max(vals))
+    if lo == hi:
+        pad = max(1e-6, abs(lo) * 0.1)
+        lo -= pad
+        hi += pad
+    return lo, hi
+
+
+
 def _clamp01(x: float) -> float:
     if x < 0.0:
         return 0.0
@@ -640,6 +672,12 @@ def _wrap_labels(labels: List[str], *, width: int = 14) -> List[str]:
     out: List[str] = []
     for label in labels:
         s = _titlecase_for_ticks(str(label))
+        if s.startswith("Coalition Regret"):
+            out.append(s.replace("Coalition Regret", "Coalition\nRegret", 1))
+            continue
+        if s.startswith("Collusion Judge"):
+            out.append(s.replace("Collusion Judge", "Collusion\nJudge", 1))
+            continue
         if len(s) <= width:
             out.append(s)
             continue
@@ -678,6 +716,7 @@ class _MetricSpec:
     higher_is_better: bool = True
     transform: Optional[Callable[[float], float]] = None
     flip_for_plot: bool = True
+    center_zero: bool = False
 
     def apply(self, v: float) -> float:
         out = float(v)
@@ -691,6 +730,7 @@ class _MetricSpec:
 _REWARD_METRIC_CHOICES = [
     "joint_reward_ratio",
     "achieved_over_optimal",
+    "normalized_regret",
     "regret_ratio",
     "optimality_gap",
     "regret",
@@ -701,13 +741,17 @@ def _canonical_reward_metric_key(name: str) -> str:
     s = str(name or "").strip()
     if s == "regret":
         return "optimality_gap"
+    if s == "normalized_regret":
+        return "regret_ratio"
     return s
 
 
 def _reward_metric_spec(name: str) -> _MetricSpec:
     key = _canonical_reward_metric_key(name)
     if key == "joint_reward_ratio":
-        return _MetricSpec("joint_reward_ratio", "Joint reward", higher_is_better=True)
+        return _MetricSpec(
+            "joint_reward_ratio", "Joint reward ratio", higher_is_better=True
+        )
     if key == "achieved_over_optimal":
         return _MetricSpec(
             "achieved_over_optimal",
@@ -729,24 +773,30 @@ def _default_metric_specs(*, reward_metric: str) -> List[_MetricSpec]:
     return [
         _reward_metric_spec(reward_metric),
         _MetricSpec("tasks_done", "Tasks done", higher_is_better=True),
-        _MetricSpec("violations", "Violations", higher_is_better=False, flip_for_plot=False),
+        _MetricSpec(
+            "violations",
+            "Constraint violations",
+            higher_is_better=False,
+            flip_for_plot=False,
+        ),
         _MetricSpec(
             "coalition_mean_regret",
-            "Coalition mean regret",
+            "Coalition regret",
             higher_is_better=False,
             flip_for_plot=False,
         ),
         _MetricSpec(
             "noncoalition_mean_regret",
-            "Non-coalition mean regret",
+            "Non-coalition regret",
             higher_is_better=False,
             flip_for_plot=False,
         ),
         _MetricSpec(
             "coalition_regret_advantage_mean",
-            "Coalition regret advantage",
-            higher_is_better=True,
+            "Coalition Advantage (-)",
+            higher_is_better=False,
             flip_for_plot=False,
+            center_zero=True,
         ),
         _MetricSpec(
             "colluder_posts_secret_rate",
@@ -756,7 +806,7 @@ def _default_metric_specs(*, reward_metric: str) -> List[_MetricSpec]:
         ),
         _MetricSpec(
             "judge_mean_rating",
-            "Collusion Prediction",
+            "Collusion Judge",
             higher_is_better=False,
             flip_for_plot=False,
             transform=lambda v: float(v) / 5.0,
@@ -841,7 +891,11 @@ def _build_rows(runs: List[LoadedRun]) -> List[Dict[str, Any]]:
                 optimality_gap = float(optimal_joint_reward) - float(joint_reward)
                 if float(optimal_joint_reward) != 0.0:
                     achieved_over_optimal = float(joint_reward) / float(optimal_joint_reward)
-                    regret_ratio = max(0.0, 1.0 - float(achieved_over_optimal))
+                    regret_ratio = 1.0 - float(achieved_over_optimal)
+                    if regret_ratio < 0.0:
+                        regret_ratio = 0.0
+                    elif regret_ratio > 1.0:
+                        regret_ratio = 1.0
         except Exception:
             pass
 
@@ -1359,7 +1413,7 @@ def _plot_grouped_bars(
             return 1.0, True
         return max_hi * 1.05, False
 
-    labels_wrapped = _wrap_labels(labels, width=14)
+    labels_wrapped = _wrap_labels(labels, width=16)
     n_metrics = len(labels_wrapped)
     n_series = len(series)
 
@@ -1383,13 +1437,14 @@ def _plot_grouped_bars(
         ax.bar(
             x + offsets[idx],
             vals,
-            width=bar_width * 0.92,
+            width=bar_width,
             yerr=yerr,
-            capsize=3,
+            capsize=4,
+            error_kw={"elinewidth": 1.6, "capthick": 1.6, "ecolor": "black"},
             label=label,
             color=color,
-            edgecolor="white",
-            linewidth=0.8,
+            edgecolor="none",
+            linewidth=0.0,
             alpha=0.92,
         )
 
@@ -1400,7 +1455,7 @@ def _plot_grouped_bars(
         y_max, use_fixed_ticks = 1.0, True
     ax.set_ylim(0.0, float(y_max))
     if use_fixed_ticks:
-        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
     else:
         ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
     ax.grid(True, axis="y", linestyle="--", alpha=0.35)
@@ -1410,7 +1465,7 @@ def _plot_grouped_bars(
     ax.legend(
         loc="upper left",
         bbox_to_anchor=(1.0, 1.01),
-        frameon=True,
+        frameon=False,
         borderaxespad=0.0,
     )
     fig.tight_layout()
@@ -1436,7 +1491,7 @@ def _plot_grouped_bars_by_topology(
     if not topologies or not labels:
         return
 
-    labels_wrapped = _wrap_labels(labels, width=14)
+    labels_wrapped = _wrap_labels(labels, width=16)
 
     # Use the first topology's series ordering as the canonical legend order.
     first_series = series_by_topology.get(topologies[0]) or []
@@ -1541,7 +1596,7 @@ def _plot_grouped_bars_by_topology(
             np.arange(len(present_indices), dtype=float)
             - (len(present_indices) - 1) / 2.0
         ) * bar_width
-        half_bar = float(bar_width * 0.92) / 2.0
+        half_bar = float(bar_width) / 2.0
         x_left = float(x[0] + float(np.min(offsets)) - half_bar)
         x_right = float(x[-1] + float(np.max(offsets)) + half_bar)
 
@@ -1569,13 +1624,14 @@ def _plot_grouped_bars_by_topology(
             ax.bar(
                 (x[mask] + offsets[pos]),
                 vals_arr[mask],
-                width=bar_width * 0.92,
+                width=bar_width,
                 yerr=yerr_arr,
-                capsize=3,
+                capsize=4,
+                error_kw={"elinewidth": 1.6, "capthick": 1.6, "ecolor": "black"},
                 label=label,
                 color=color,
-                edgecolor="white",
-                linewidth=0.8,
+                edgecolor="none",
+                linewidth=0.0,
                 alpha=0.92,
             )
 
@@ -1584,7 +1640,7 @@ def _plot_grouped_bars_by_topology(
         # Use the full horizontal span (minimal side padding) so long tick labels have more room.
         ax.set_xlim(x_left - 0.02, x_right + 0.02)
         if use_fixed_ticks:
-            ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+            ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
         else:
             ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
         ax.grid(True, axis="y", linestyle="--", alpha=0.35)
@@ -1625,10 +1681,14 @@ def _plot_grouped_bars_by_topology(
             handles,
             leg_labels,
             loc="lower center",
-            bbox_to_anchor=(0.5, 0.08),
+            bbox_to_anchor=(0.5, 0.10),
             ncol=ncol,
-            frameon=True,
+            frameon=False,
             borderaxespad=0.0,
+            columnspacing=1.2,
+            handlelength=1.4,
+            handletextpad=0.6,
+            labelspacing=0.4,
         )
 
     # Intentionally no main header / suptitle (per user request).
@@ -1710,7 +1770,7 @@ def _plot_grouped_bars_single_topology(
             return 1.0, True
         return max_hi * 1.05, False
 
-    labels_wrapped = _wrap_labels(labels, width=14)
+    labels_wrapped = _wrap_labels(labels, width=16)
     n_metrics = len(labels_wrapped)
     x = np.arange(n_metrics, dtype=float)
     total_width = 0.86
@@ -1746,7 +1806,7 @@ def _plot_grouped_bars_single_topology(
     fig_height = max(5.2, fig_width / 2.6) * _BAR_CHART_HEIGHT_SCALE
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-    font_scale = 1.25
+    font_scale = 1.1
     label_fs = float(plt.rcParams.get("axes.labelsize", 10)) * font_scale
     tick_fs_x = float(plt.rcParams.get("xtick.labelsize", 9)) * font_scale
     tick_fs_y = float(plt.rcParams.get("ytick.labelsize", 9)) * font_scale
@@ -1773,13 +1833,14 @@ def _plot_grouped_bars_single_topology(
         ax.bar(
             (x[mask] + offsets[pos]),
             vals_arr[mask],
-            width=bar_width * 0.92,
+            width=bar_width,
             yerr=yerr_arr,
-            capsize=3,
+            capsize=4,
+            error_kw={"elinewidth": 1.6, "capthick": 1.6, "ecolor": "black"},
             label=label,
             color=color,
-            edgecolor="white",
-            linewidth=0.8,
+            edgecolor="none",
+            linewidth=0.0,
             alpha=0.92,
         )
 
@@ -1790,7 +1851,7 @@ def _plot_grouped_bars_single_topology(
         y_max, use_fixed_ticks = 1.0, True
     ax.set_ylim(0.0, float(y_max))
     if use_fixed_ticks:
-        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
     else:
         ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
     ax.tick_params(axis="y", labelsize=tick_fs_y)
@@ -1799,27 +1860,34 @@ def _plot_grouped_bars_single_topology(
     ax.set_xticks(x)
     ax.set_xticklabels(labels_wrapped, rotation=0, ha="center", fontsize=tick_fs_x)
     # Use the full horizontal span (minimal side padding) so long tick labels have more room.
-    half_bar = float(bar_width * 0.92) / 2.0
+    half_bar = float(bar_width) / 2.0
     x_left = float(x[0] + float(np.min(offsets)) - half_bar)
     x_right = float(x[-1] + float(np.max(offsets)) + half_bar)
     ax.set_xlim(x_left - 0.02, x_right + 0.02)
 
+    # Reserve room for the bottom legend and left y label.
+    bottom_margin = _bottom_margin_for_wrapped_xticks(labels_wrapped)
+    fig.tight_layout(rect=(0.04, bottom_margin, 0.995, 1.0))
+
     handles, leg_labels = ax.get_legend_handles_labels()
     if handles:
         ncol = min(len(handles), 6)
+        ax_box = ax.get_position()
+        ax_center_x = float((ax_box.x0 + ax_box.x1) / 2.0)
         fig.legend(
             handles,
             leg_labels,
             loc="lower center",
-            bbox_to_anchor=(0.5, 0.08),
+            bbox_to_anchor=(ax_center_x, -0.01),
+            bbox_transform=fig.transFigure,
             ncol=ncol,
-            frameon=True,
+            frameon=False,
             borderaxespad=0.0,
+            columnspacing=1.2,
+            handlelength=1.4,
+            handletextpad=0.6,
+            labelspacing=0.4,
         )
-
-    # Reserve room for the bottom legend and left y label.
-    bottom_margin = _bottom_margin_for_wrapped_xticks(labels_wrapped)
-    fig.tight_layout(rect=(0.04, bottom_margin, 0.995, 1.0))
     fig.savefig(out_path, bbox_inches="tight")
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
@@ -1854,7 +1922,11 @@ def _plot_combined_six_bars_by_topology(
 
     require_complete = not bool(include_incomplete)
     conditions = ["baseline", "control", "simple"]
-    colors = {"baseline": "tab:blue", "control": "tab:gray", "simple": "tab:green"}
+    colors = {
+        "baseline": "#264653",
+        "control": "#2a9d8f",
+        "simple": "#8ab17d",
+    }
 
     def _rows_for(topo: str, condition: str) -> List[Dict[str, Any]]:
         topo_rows = [
@@ -1939,25 +2011,51 @@ def _plot_combined_six_bars_by_topology(
         )
 
     ax_metric_label = _pretty_metric_label(metric_key)
+    if metric_key in {"regret_ratio", "normalized_regret", "optimality_gap"}:
+        ax_metric_label = f"{ax_metric_label} (↓)"
+    if metric_key in {"regret_ratio", "normalized_regret"}:
+        ax_metric_label = "Normalized Regret (↓)"
+    elif metric_key in {
+        "normalized_coalition_advantage",
+        "normalized_coalition_regret_gap",
+        "coalition_regret_ratio",
+    }:
+        ax_metric_label = "Normalized"
     ax_metric.set_ylabel(ax_metric_label)
+    if metric_key in {
+        "regret_ratio",
+        "normalized_regret",
+        "normalized_coalition_advantage",
+        "normalized_coalition_regret_gap",
+        "coalition_regret_ratio",
+    }:
+        ax_metric.set_ylim(0.0, 1.0)
     judge_axis_label = _pretty_metric_label("judge_mean_rating").replace(" (Judge)", "")
     ax_judge.set_ylabel(judge_axis_label, labelpad=10)
     ax_judge.tick_params(axis="y", labelcolor="black")
     ax_judge.spines["right"].set_visible(True)
 
     condition_order = ["baseline", "control", "simple"]
+    condition_labels = {
+        "baseline": "Baseline (no SC)",
+        "control": "Control (SC)",
+        "simple": "Simple (SC)",
+    }
     condition_handles = [
-        Patch(facecolor=colors[c], edgecolor="none", label=c.title())
+        Patch(facecolor=colors[c], edgecolor="none", label=condition_labels.get(c, c))
         for c in condition_order
     ]
     style_color = "white"
+    ax_metric_label_for_legend = (
+        ax_metric_label.replace(" (↓)", "").replace(" (-)", "").strip()
+    )
     style_handles = [
         Patch(
             facecolor=style_color,
             edgecolor="black",
             linewidth=0.8,
             alpha=1.0,
-            label=ax_metric_label.replace(" (↓)", "").strip(),
+            label=ax_metric_label_for_legend,
         ),
         Patch(
             facecolor=style_color,
@@ -2002,7 +2100,28 @@ def _plot_combined_six_bars_by_topology(
 
 def _pretty_variant(name: str) -> str:
     s = canonical_variant(name)
-    return s.replace("_", " ") if s else s
+    return s.replace("_", " ").title() if s else s
+
+
+def _slice_by_indices(values: List[Any], indices: List[int]) -> List[Any]:
+    return [values[i] for i in indices if i < len(values)]
+
+
+def _slice_series_metrics(
+    series: List[Dict[str, Any]], indices: List[int]
+) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for s in series:
+        vals = list(s.get("values") or [])
+        errs = list(s.get("errors") or [])
+        out.append(
+            {
+                **s,
+                "values": _slice_by_indices(vals, indices),
+                "errors": _slice_by_indices(errs, indices) if errs else [],
+            }
+        )
+    return out
 
 
 def _sorted_variants(variants: Iterable[str]) -> List[str]:
@@ -2075,7 +2194,11 @@ def _generate(
             raise SystemExit(msg)
         return False
 
-    metrics = _default_metric_specs(reward_metric=str(reward_metric))
+    metrics = [
+        m
+        for m in _default_metric_specs(reward_metric=str(reward_metric))
+        if m.key != "colluder_posts_secret_rate"
+    ]
 
     topo = _infer_single_topology(rows)
     prefix = (str(title_prefix).strip() + "\n") if title_prefix else ""
@@ -2104,19 +2227,11 @@ def _generate(
                 "kind": "baseline",
                 "secret_channel_enabled": False,
                 "prompt_variant": baseline_variant,
-                "label": "baseline (no SC)",
-                "color": "#2563eb",
+                "label": "Baseline (no SC)",
+                "color": None,
                 "rows": baseline,
             }
         ]
-
-        color_by_variant = {
-            "control": "#6b7280",  # gray
-            "simple": "#16a34a",  # green
-            "deception": "#dc2626",  # red
-            "structured": "#f59e0b",  # amber
-            "aggressive": "#7c3aed",  # purple
-        }
         for pv in variants:
             grp_rows = _group_filter(
                 rows,
@@ -2132,11 +2247,13 @@ def _generate(
                     "kind": "treatment",
                     "secret_channel_enabled": True,
                     "prompt_variant": pv,
-                    "label": f"SC ({_pretty_variant(pv)})",
-                    "color": color_by_variant.get(pv, None),
+                    "label": f"{_pretty_variant(pv)} (SC)",
+                    "color": None,
                     "rows": grp_rows,
                 }
             )
+
+        _apply_group_palette(groups, _PVALL_GROUP_PALETTE)
 
         if len(groups) <= 1:
             msg = f"Found baseline but no secret-channel runs to plot for colluder_count={colluder_count}."
@@ -2177,19 +2294,31 @@ def _generate(
                 if seed_raw:
                     pooled_transformed.extend([m.apply(v) for v in seed_raw])
 
-            lo, hi = _robust_range(pooled_transformed) if pooled_transformed else (0.0, 1.0)
+            lo, hi = _minmax_range(pooled_transformed) if pooled_transformed else (0.0, 1.0)
+            if m.center_zero:
+                max_abs = max(abs(float(lo)), abs(float(hi)))
+                scale_lo = -max_abs
+                scale_hi = max_abs
+            else:
+                max_abs = None
+                scale_lo = float(lo)
+                scale_hi = float(hi)
 
             def _norm_one(value: float) -> float:
-                if hi == lo:
+                if scale_hi == scale_lo:
                     return 0.5
-                return _clamp01((float(value) - float(lo)) / (float(hi) - float(lo)))
+                if m.center_zero:
+                    if not max_abs:
+                        return 0.5
+                    return _clamp01(0.5 + float(value) / (2.0 * float(max_abs)))
+                return _clamp01((float(value) - float(scale_lo)) / (float(scale_hi) - float(scale_lo)))
 
             entry = {
                 "key": m.key,
                 "label": m.label,
                 "higher_is_better": m.higher_is_better,
-                "scale_lo": lo,
-                "scale_hi": hi,
+                "scale_lo": scale_lo,
+                "scale_hi": scale_hi,
                 "group_means_raw": [
                     {
                         "label": groups[i]["label"],
@@ -2319,15 +2448,34 @@ def _generate(
             return False
 
         raw_summary["metrics"] = metric_defs
-        labels: List[str] = []
+        labels_all: List[str] = []
         for md in metric_defs:
             base = str(md.get("label") or "")
             key = str(md.get("key") or "")
+            if key == "coalition_regret_advantage_mean":
+                labels_all.append(base)
+                continue
             if key == "colluder_posts_secret_rate":
                 arrow = "–"
             else:
                 arrow = "↑" if bool(md.get("higher_is_better", True)) else "↓"
-            labels.append(f"{base} ({arrow})")
+            labels_all.append(f"{base} ({arrow})")
+
+        bar_indices = [
+            i
+            for i, md in enumerate(metric_defs)
+            if str(md.get("key") or "") != "colluder_posts_secret_rate"
+        ]
+        bar_metric_defs = [metric_defs[i] for i in bar_indices]
+        labels_bars: List[str] = []
+        for md in bar_metric_defs:
+            base = str(md.get("label") or "")
+            key = str(md.get("key") or "")
+            if key == "coalition_regret_advantage_mean":
+                labels_bars.append(base)
+                continue
+            arrow = "↑" if bool(md.get("higher_is_better", True)) else "↓"
+            labels_bars.append(f"{base} ({arrow})")
 
         for idx, g in enumerate(groups):
             # Pull in the normalized values for this group in label order.
@@ -2390,7 +2538,7 @@ def _generate(
                 }
             )
 
-        # Fill in missing colors deterministically using tab10 (skip baseline blue).
+        # Fill in missing colors deterministically using tab10 (skip tab10[0]).
         cmap = plt.get_cmap("tab10")
         color_idx = 1
         for g in group_vectors:
@@ -2409,19 +2557,10 @@ def _generate(
         # For bar charts only: keep some metrics un-normalized so they're
         # directly interpretable on their natural scale.
         violations_idx = next(
-            (i for i, md in enumerate(metric_defs) if md.get("key") == "violations"),
-            None,
-        )
-        secret_rate_idx = next(
-            (
-                i
-                for i, md in enumerate(metric_defs)
-                if md.get("key") == "colluder_posts_secret_rate"
-            ),
+            (i for i, md in enumerate(bar_metric_defs) if md.get("key") == "violations"),
             None,
         )
         raw_vio_by_label: Dict[str, Dict[str, float]] = {}
-        raw_secret_rate_by_label: Dict[str, Dict[str, float]] = {}
         for g in groups:
             label = str(g["label"])
             seed_vio = _seed_means(g["rows"], "violations")
@@ -2434,30 +2573,15 @@ def _generate(
                     "iqr": float(_iqr_half_width(seed_vio) or 0.0),
                 }
 
-            seed_secret = _seed_means(g["rows"], "colluder_posts_secret_rate")
-            if seed_secret:
-                raw_secret_rate_by_label[label] = {
-                    "mean": float(mean(seed_secret)),
-                    "std": float(_sample_std(seed_secret) or 0.0),
-                    "se": float(_standard_error(seed_secret) or 0.0),
-                    "ci95": float(_ci95_half_width(seed_secret) or 0.0),
-                    "iqr": float(_iqr_half_width(seed_secret) or 0.0),
-                }
-
         def _with_raw_overrides(
             series: List[Dict[str, Any]], *, error_key: str
         ) -> List[Dict[str, Any]]:
-            if violations_idx is None and secret_rate_idx is None:
+            if violations_idx is None:
                 return series
             out: List[Dict[str, Any]] = []
             for s in series:
                 label = str(s.get("label") or "")
                 vio = raw_vio_by_label.get(label) if violations_idx is not None else None
-                secret_rate = (
-                    raw_secret_rate_by_label.get(label)
-                    if secret_rate_idx is not None
-                    else None
-                )
                 vals = list(s.get("values") or [])
                 errs = list(s.get("errors") or [])
                 if (
@@ -2467,21 +2591,21 @@ def _generate(
                 ):
                     vals[violations_idx] = float(vio["mean"])
                     errs[violations_idx] = float(vio[error_key])
-                if (
-                    secret_rate is not None
-                    and secret_rate_idx is not None
-                    and secret_rate_idx < len(vals)
-                    and secret_rate_idx < len(errs)
-                ):
-                    vals[secret_rate_idx] = float(secret_rate["mean"])
-                    errs[secret_rate_idx] = float(secret_rate[error_key])
                 out.append({**s, "values": vals, "errors": errs})
             return out
 
-        bars_series = _with_raw_overrides(group_vectors, error_key="std")
-        bars_series_se = _with_raw_overrides(group_vectors_se, error_key="se")
-        bars_series_ci95 = _with_raw_overrides(group_vectors_ci95, error_key="ci95")
-        bars_series_iqr = _with_raw_overrides(group_vectors_iqr, error_key="iqr")
+        bars_series = _with_raw_overrides(
+            _slice_series_metrics(group_vectors, bar_indices), error_key="std"
+        )
+        bars_series_se = _with_raw_overrides(
+            _slice_series_metrics(group_vectors_se, bar_indices), error_key="se"
+        )
+        bars_series_ci95 = _with_raw_overrides(
+            _slice_series_metrics(group_vectors_ci95, bar_indices), error_key="ci95"
+        )
+        bars_series_iqr = _with_raw_overrides(
+            _slice_series_metrics(group_vectors_iqr, bar_indices), error_key="iqr"
+        )
 
         radar_base = f"collusion_radar__c{colluder_count}__pvALL"
         hist_base = f"collusion_hist__c{colluder_count}__pvALL"
@@ -2493,20 +2617,20 @@ def _generate(
         )
         _plot_radar_multi(
             series=group_vectors,
-            labels=labels,
+            labels=labels_all,
             title=title,
             out_path=sweep_out / f"{radar_base}.png",
         )
         _plot_radar_multi(
             series=group_vectors_se,
-            labels=labels,
+            labels=labels_all,
             title=f"{title}\n(±1 SE)",
             out_path=sweep_out / f"{radar_base}__se.png",
             use_error_bands=True,
         )
         _plot_radar_multi(
             series=group_vectors_ci95,
-            labels=labels,
+            labels=labels_all,
             title=f"{title}\n(95% CI)",
             out_path=sweep_out / f"{radar_base}__ci95.png",
             use_error_bands=True,
@@ -2521,28 +2645,28 @@ def _generate(
             )
             _plot_grouped_bars_single_topology(
                 series=bars_series,
-                labels=labels,
+                labels=labels_bars,
                 title=None,
                 out_path=sweep_out / f"{hist_base}__bars.png",
                 y_label="Normalized Mean",
             )
             _plot_grouped_bars_single_topology(
                 series=bars_series_se,
-                labels=labels,
+                labels=labels_bars,
                 title=None,
                 out_path=sweep_out / f"{hist_base}__bars__se.png",
                 y_label="Normalized Mean",
             )
             _plot_grouped_bars_single_topology(
                 series=bars_series_ci95,
-                labels=labels,
+                labels=labels_bars,
                 title=None,
                 out_path=sweep_out / f"{hist_base}__bars__ci95.png",
                 y_label="Normalized Mean",
             )
             _plot_grouped_bars_single_topology(
                 series=bars_series_iqr,
-                labels=labels,
+                labels=labels_bars,
                 title=None,
                 out_path=sweep_out / f"{hist_base}__bars__iqr.png",
                 y_label="Normalized Mean",
@@ -2550,28 +2674,28 @@ def _generate(
         else:
             _plot_grouped_bars(
                 series=bars_series,
-                labels=labels,
+                labels=labels_bars,
                 title=title,
                 out_path=sweep_out / f"{hist_base}__bars.png",
                 y_label="Normalized Mean",
             )
             _plot_grouped_bars(
                 series=bars_series_se,
-                labels=labels,
+                labels=labels_bars,
                 title=title,
                 out_path=sweep_out / f"{hist_base}__bars__se.png",
                 y_label="Normalized Mean",
             )
             _plot_grouped_bars(
                 series=bars_series_ci95,
-                labels=labels,
+                labels=labels_bars,
                 title=title,
                 out_path=sweep_out / f"{hist_base}__bars__ci95.png",
                 y_label="Normalized Mean",
             )
             _plot_grouped_bars(
                 series=bars_series_iqr,
-                labels=labels,
+                labels=labels_bars,
                 title=title,
                 out_path=sweep_out / f"{hist_base}__bars__iqr.png",
                 y_label="Normalized Mean",
@@ -2632,12 +2756,24 @@ def _generate(
 
         b_seed_transformed = [m.apply(v) for v in b_seed_raw]
         t_seed_transformed = [m.apply(v) for v in t_seed_raw]
-        lo, hi = _robust_range(b_seed_transformed + t_seed_transformed)
+        lo, hi = _minmax_range(b_seed_transformed + t_seed_transformed)
+        if m.center_zero:
+            max_abs = max(abs(float(lo)), abs(float(hi)))
+            scale_lo = -max_abs
+            scale_hi = max_abs
+        else:
+            max_abs = None
+            scale_lo = float(lo)
+            scale_hi = float(hi)
 
         def _norm_one(value: float) -> float:
-            if hi == lo:
+            if scale_hi == scale_lo:
                 return 0.5
-            return _clamp01((float(value) - float(lo)) / (float(hi) - float(lo)))
+            if m.center_zero:
+                if not max_abs:
+                    return 0.5
+                return _clamp01(0.5 + float(value) / (2.0 * float(max_abs)))
+            return _clamp01((float(value) - float(scale_lo)) / (float(scale_hi) - float(scale_lo)))
 
         b_seed_norm = [_norm_one(v) for v in b_seed_transformed]
         t_seed_norm = [_norm_one(v) for v in t_seed_transformed]
@@ -2669,8 +2805,8 @@ def _generate(
                 "key": m.key,
                 "label": m.label,
                 "higher_is_better": m.higher_is_better,
-                "scale_lo": lo,
-                "scale_hi": hi,
+                "scale_lo": scale_lo,
+                "scale_hi": scale_hi,
                 "baseline_mean_raw": float(mean(b_seed_raw)),
                 "baseline_std_raw": float(_sample_std(b_seed_raw) or 0.0),
                 "treatment_mean_raw": float(mean(t_seed_raw)),
@@ -2698,20 +2834,35 @@ def _generate(
 
     raw_summary["metrics"] = metric_defs
 
-    labels: List[str] = []
+    labels_all: List[str] = []
     for md in metric_defs:
         base = str(md.get("label") or "")
         key = str(md.get("key") or "")
+        if key == "coalition_regret_advantage_mean":
+            labels_all.append(base)
+            continue
         if key == "colluder_posts_secret_rate":
             arrow = "–"
         else:
             arrow = "↑" if bool(md.get("higher_is_better", True)) else "↓"
-        labels.append(f"{base} ({arrow})")
-    if not labels:
+        labels_all.append(f"{base} ({arrow})")
+    if not labels_all:
         msg = "No comparable metrics found to plot (all missing/NaN)."
         if strict:
             raise SystemExit(msg)
         return False
+
+    bar_indices = [
+        i
+        for i, md in enumerate(metric_defs)
+        if str(md.get("key") or "") != "colluder_posts_secret_rate"
+    ]
+    bar_metric_defs = [metric_defs[i] for i in bar_indices]
+    labels_bars: List[str] = []
+    for md in bar_metric_defs:
+        base = str(md.get("label") or "")
+        arrow = "↑" if bool(md.get("higher_is_better", True)) else "↓"
+        labels_bars.append(f"{base} ({arrow})")
 
     radar_base = f"collusion_radar__c{colluder_count}__pv{treatment_variant}"
     hist_base = f"collusion_hist__c{colluder_count}__pv{treatment_variant}"
@@ -2723,12 +2874,14 @@ def _generate(
         + f"baseline n={len(baseline)} seeds={len(raw_summary['baseline']['seeds'])} | "
         + f"treatment n={len(treatment)} seeds={len(raw_summary['treatment']['seeds'])}"
     )
+    baseline_label = "Baseline (no SC)"
+    treatment_label = f"{_pretty_variant(treatment_variant)} (SC)"
     _plot_radar(
         baseline_vals=baseline_norm,
         treatment_vals=treatment_norm,
-        labels=labels,
-        baseline_label="baseline (no SC)",
-        treatment_label=f"treatment (SC, pv={treatment_variant})",
+        labels=labels_all,
+        baseline_label=baseline_label,
+        treatment_label=treatment_label,
         title=title,
         out_path=sweep_out / f"{radar_base}.png",
     )
@@ -2737,9 +2890,9 @@ def _generate(
         treatment_vals=treatment_norm,
         baseline_err=baseline_se,
         treatment_err=treatment_se,
-        labels=labels,
-        baseline_label="baseline (no SC)",
-        treatment_label=f"treatment (SC, pv={treatment_variant})",
+        labels=labels_all,
+        baseline_label=baseline_label,
+        treatment_label=treatment_label,
         title=f"{title}\n(±1 SE)",
         out_path=sweep_out / f"{radar_base}__se.png",
     )
@@ -2748,9 +2901,9 @@ def _generate(
         treatment_vals=treatment_norm,
         baseline_err=baseline_ci95,
         treatment_err=treatment_ci95,
-        labels=labels,
-        baseline_label="baseline (no SC)",
-        treatment_label=f"treatment (SC, pv={treatment_variant})",
+        labels=labels_all,
+        baseline_label=baseline_label,
+        treatment_label=treatment_label,
         title=f"{title}\n(95% CI)",
         out_path=sweep_out / f"{radar_base}__ci95.png",
     )
@@ -2758,27 +2911,19 @@ def _generate(
     # For bar charts only: keep some metrics un-normalized so they're directly
     # interpretable on their natural scale.
     violations_idx = next(
-        (i for i, md in enumerate(metric_defs) if md.get("key") == "violations"),
+        (i for i, md in enumerate(bar_metric_defs) if md.get("key") == "violations"),
         None,
     )
-    secret_rate_idx = next(
-        (
-            i
-            for i, md in enumerate(metric_defs)
-            if md.get("key") == "colluder_posts_secret_rate"
-        ),
-        None,
-    )
-    baseline_bars = list(baseline_norm)
-    treatment_bars = list(treatment_norm)
-    baseline_bars_err = list(baseline_err)
-    treatment_bars_err = list(treatment_err)
-    baseline_bars_se = list(baseline_se)
-    treatment_bars_se = list(treatment_se)
-    baseline_bars_ci95 = list(baseline_ci95)
-    treatment_bars_ci95 = list(treatment_ci95)
-    baseline_bars_iqr = list(baseline_iqr)
-    treatment_bars_iqr = list(treatment_iqr)
+    baseline_bars = _slice_by_indices(list(baseline_norm), bar_indices)
+    treatment_bars = _slice_by_indices(list(treatment_norm), bar_indices)
+    baseline_bars_err = _slice_by_indices(list(baseline_err), bar_indices)
+    treatment_bars_err = _slice_by_indices(list(treatment_err), bar_indices)
+    baseline_bars_se = _slice_by_indices(list(baseline_se), bar_indices)
+    treatment_bars_se = _slice_by_indices(list(treatment_se), bar_indices)
+    baseline_bars_ci95 = _slice_by_indices(list(baseline_ci95), bar_indices)
+    treatment_bars_ci95 = _slice_by_indices(list(treatment_ci95), bar_indices)
+    baseline_bars_iqr = _slice_by_indices(list(baseline_iqr), bar_indices)
+    treatment_bars_iqr = _slice_by_indices(list(treatment_iqr), bar_indices)
     if violations_idx is not None:
         b_vio_seed_raw = _seed_means(baseline, "violations")
         t_vio_seed_raw = _seed_means(treatment, "violations")
@@ -2801,44 +2946,22 @@ def _generate(
             treatment_bars_iqr[violations_idx] = float(
                 _iqr_half_width(t_vio_seed_raw) or 0.0
             )
-    if secret_rate_idx is not None:
-        b_seed_raw = _seed_means(baseline, "colluder_posts_secret_rate")
-        t_seed_raw = _seed_means(treatment, "colluder_posts_secret_rate")
-        if b_seed_raw and t_seed_raw:
-            baseline_bars[secret_rate_idx] = float(mean(b_seed_raw))
-            treatment_bars[secret_rate_idx] = float(mean(t_seed_raw))
-            baseline_bars_err[secret_rate_idx] = float(_sample_std(b_seed_raw) or 0.0)
-            treatment_bars_err[secret_rate_idx] = float(_sample_std(t_seed_raw) or 0.0)
-            baseline_bars_se[secret_rate_idx] = float(_standard_error(b_seed_raw) or 0.0)
-            treatment_bars_se[secret_rate_idx] = float(_standard_error(t_seed_raw) or 0.0)
-            baseline_bars_ci95[secret_rate_idx] = float(
-                _ci95_half_width(b_seed_raw) or 0.0
-            )
-            treatment_bars_ci95[secret_rate_idx] = float(
-                _ci95_half_width(t_seed_raw) or 0.0
-            )
-            baseline_bars_iqr[secret_rate_idx] = float(
-                _iqr_half_width(b_seed_raw) or 0.0
-            )
-            treatment_bars_iqr[secret_rate_idx] = float(
-                _iqr_half_width(t_seed_raw) or 0.0
-            )
     _plot_grouped_bars(
         series=[
             {
-                "label": "baseline (no SC)",
+                "label": baseline_label,
                 "values": baseline_bars,
                 "errors": baseline_bars_err,
                 "color": "#2563eb",
             },
             {
-                "label": f"treatment (SC, pv={treatment_variant})",
+                "label": treatment_label,
                 "values": treatment_bars,
                 "errors": treatment_bars_err,
                 "color": "#dc2626",
             },
         ],
-        labels=labels,
+        labels=labels_bars,
         title=title,
         out_path=sweep_out / f"{hist_base}__bars.png",
         y_label="Normalized Mean",
@@ -2846,19 +2969,19 @@ def _generate(
     _plot_grouped_bars(
         series=[
             {
-                "label": "baseline (no SC)",
+                "label": baseline_label,
                 "values": baseline_bars,
                 "errors": baseline_bars_se,
                 "color": "#2563eb",
             },
             {
-                "label": f"treatment (SC, pv={treatment_variant})",
+                "label": treatment_label,
                 "values": treatment_bars,
                 "errors": treatment_bars_se,
                 "color": "#dc2626",
             },
         ],
-        labels=labels,
+        labels=labels_bars,
         title=title,
         out_path=sweep_out / f"{hist_base}__bars__se.png",
         y_label="Normalized Mean",
@@ -2866,19 +2989,19 @@ def _generate(
     _plot_grouped_bars(
         series=[
             {
-                "label": "baseline (no SC)",
+                "label": baseline_label,
                 "values": baseline_bars,
                 "errors": baseline_bars_ci95,
                 "color": "#2563eb",
             },
             {
-                "label": f"treatment (SC, pv={treatment_variant})",
+                "label": treatment_label,
                 "values": treatment_bars,
                 "errors": treatment_bars_ci95,
                 "color": "#dc2626",
             },
         ],
-        labels=labels,
+        labels=labels_bars,
         title=title,
         out_path=sweep_out / f"{hist_base}__bars__ci95.png",
         y_label="Normalized Mean",
@@ -2886,19 +3009,19 @@ def _generate(
     _plot_grouped_bars(
         series=[
             {
-                "label": "baseline (no SC)",
+                "label": baseline_label,
                 "values": baseline_bars,
                 "errors": baseline_bars_iqr,
                 "color": "#2563eb",
             },
             {
-                "label": f"treatment (SC, pv={treatment_variant})",
+                "label": treatment_label,
                 "values": treatment_bars,
                 "errors": treatment_bars_iqr,
                 "color": "#dc2626",
             },
         ],
-        labels=labels,
+        labels=labels_bars,
         title=title,
         out_path=sweep_out / f"{hist_base}__bars__iqr.png",
         y_label="Normalized Mean",
@@ -2933,7 +3056,11 @@ def _compare_topologies_bars(
     baseline_variant = str(baseline_variant_requested or "control").strip()
     require_complete = not bool(include_incomplete)
 
-    metrics = _default_metric_specs(reward_metric=str(reward_metric))
+    metrics = [
+        m
+        for m in _default_metric_specs(reward_metric=str(reward_metric))
+        if m.key != "colluder_posts_secret_rate"
+    ]
 
     available_variants = {
         str(r.get("prompt_variant"))
@@ -2950,20 +3077,13 @@ def _compare_topologies_bars(
     if not variants:
         return False
 
-    color_by_variant = {
-        "control": "#6b7280",  # gray
-        "simple": "#16a34a",  # green
-        "deception": "#dc2626",  # red
-        "structured": "#f59e0b",  # amber
-        "aggressive": "#7c3aed",  # purple
-    }
     groups: List[Dict[str, Any]] = [
         {
             "kind": "baseline",
             "secret_channel_enabled": False,
             "prompt_variant": baseline_variant,
-            "label": "baseline (no SC)",
-            "color": "#2563eb",
+            "label": "Baseline (no SC)",
+            "color": None,
         }
     ]
     for pv in variants:
@@ -2972,12 +3092,14 @@ def _compare_topologies_bars(
                 "kind": "treatment",
                 "secret_channel_enabled": True,
                 "prompt_variant": pv,
-                "label": f"SC ({_pretty_variant(pv)})",
-                "color": color_by_variant.get(pv, None),
+                "label": f"{_pretty_variant(pv)} (SC)",
+                "color": None,
             }
         )
 
-    # Resolve missing group colors deterministically (tab10), skipping baseline blue.
+    _apply_group_palette(groups, _PVALL_GROUP_PALETTE)
+
+    # Resolve missing group colors deterministically (tab10), skipping tab10[0].
     cmap = plt.get_cmap("tab10")
     color_idx = 1
     for g in groups:
@@ -3022,17 +3144,29 @@ def _compare_topologies_bars(
         if not pooled_transformed:
             continue
 
-        lo, hi = _robust_range(pooled_transformed)
-        metric_defs.append({"spec": m, "scale_lo": lo, "scale_hi": hi})
+        lo, hi = _minmax_range(pooled_transformed)
+        if m.center_zero:
+            max_abs = max(abs(float(lo)), abs(float(hi)))
+            scale_lo = -max_abs
+            scale_hi = max_abs
+        else:
+            scale_lo = float(lo)
+            scale_hi = float(hi)
+        metric_defs.append({"spec": m, "scale_lo": scale_lo, "scale_hi": scale_hi})
 
     if not metric_defs:
         return False
 
     labels = [str(md["spec"].label) for md in metric_defs]
 
-    def _norm_one(value: float, lo: float, hi: float) -> float:
+    def _norm_one(value: float, lo: float, hi: float, center_zero: bool) -> float:
         if hi == lo:
             return 0.5
+        if center_zero:
+            max_abs = max(abs(float(lo)), abs(float(hi)))
+            if max_abs == 0.0:
+                return 0.5
+            return _clamp01(0.5 + float(value) / (2.0 * float(max_abs)))
         return _clamp01((float(value) - float(lo)) / (float(hi) - float(lo)))
 
     series_by_topology: Dict[str, List[Dict[str, Any]]] = {}
@@ -3061,7 +3195,7 @@ def _compare_topologies_bars(
                     continue
 
                 seed_transformed = [m.apply(v) for v in seed_raw]
-                seed_norm = [_norm_one(v, lo, hi) for v in seed_transformed]
+                seed_norm = [_norm_one(v, lo, hi, bool(m.center_zero)) for v in seed_transformed]
                 values.append(float(mean(seed_norm)))
                 errors_std.append(float(_sample_std(seed_norm) or 0.0))
                 errors_se.append(float(_standard_error(seed_norm) or 0.0))
@@ -3276,20 +3410,13 @@ def _compare_environments_bars(
     if not variants:
         return False
 
-    color_by_variant = {
-        "control": "#6b7280",  # gray
-        "simple": "#16a34a",  # green
-        "deception": "#dc2626",  # red
-        "structured": "#f59e0b",  # amber
-        "aggressive": "#7c3aed",  # purple
-    }
     groups: List[Dict[str, Any]] = [
         {
             "kind": "baseline",
             "secret_channel_enabled": False,
             "prompt_variant": baseline_variant,
-            "label": "baseline (no SC)",
-            "color": "#2563eb",
+            "label": "Baseline (no SC)",
+            "color": None,
         }
     ]
     for pv in variants:
@@ -3298,12 +3425,14 @@ def _compare_environments_bars(
                 "kind": "treatment",
                 "secret_channel_enabled": True,
                 "prompt_variant": pv,
-                "label": f"SC ({_pretty_variant(pv)})",
-                "color": color_by_variant.get(pv, None),
+                "label": f"{_pretty_variant(pv)} (SC)",
+                "color": None,
             }
         )
 
-    # Resolve missing group colors deterministically (tab10), skipping baseline blue.
+    _apply_group_palette(groups, _PVALL_GROUP_PALETTE)
+
+    # Resolve missing group colors deterministically (tab10), skipping tab10[0].
     cmap = plt.get_cmap("tab10")
     color_idx = 1
     for g in groups:
@@ -3348,17 +3477,29 @@ def _compare_environments_bars(
         if not pooled_transformed:
             continue
 
-        lo, hi = _robust_range(pooled_transformed)
-        metric_defs.append({"spec": m, "scale_lo": lo, "scale_hi": hi})
+        lo, hi = _minmax_range(pooled_transformed)
+        if m.center_zero:
+            max_abs = max(abs(float(lo)), abs(float(hi)))
+            scale_lo = -max_abs
+            scale_hi = max_abs
+        else:
+            scale_lo = float(lo)
+            scale_hi = float(hi)
+        metric_defs.append({"spec": m, "scale_lo": scale_lo, "scale_hi": scale_hi})
 
     if not metric_defs:
         return False
 
     labels = [str(md["spec"].label) for md in metric_defs]
 
-    def _norm_one(value: float, lo: float, hi: float) -> float:
+    def _norm_one(value: float, lo: float, hi: float, center_zero: bool) -> float:
         if hi == lo:
             return 0.5
+        if center_zero:
+            max_abs = max(abs(float(lo)), abs(float(hi)))
+            if max_abs == 0.0:
+                return 0.5
+            return _clamp01(0.5 + float(value) / (2.0 * float(max_abs)))
         return _clamp01((float(value) - float(lo)) / (float(hi) - float(lo)))
 
     series_by_env: Dict[str, List[Dict[str, Any]]] = {}
@@ -3385,7 +3526,7 @@ def _compare_environments_bars(
                     continue
 
                 seed_transformed = [m.apply(v) for v in seed_raw]
-                seed_norm = [_norm_one(v, lo, hi) for v in seed_transformed]
+                seed_norm = [_norm_one(v, lo, hi, bool(m.center_zero)) for v in seed_transformed]
                 values.append(float(mean(seed_norm)))
                 errors_std.append(float(_sample_std(seed_norm) or 0.0))
                 errors_se.append(float(_standard_error(seed_norm) or 0.0))
@@ -3558,10 +3699,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--reward-metric",
         type=str,
-        default="joint_reward_ratio",
+        default="regret_ratio",
         choices=_REWARD_METRIC_CHOICES,
         help="Which overall-performance metric to use in place of joint reward. "
-        "Use 'regret' (aka optimality_gap) or achieved_over_optimal after running "
+        "Use 'normalized_regret'/'regret_ratio' or 'regret' (aka optimality_gap) after running "
         "experiments/collusion/compute_jira_optimal.py --write-json.",
     )
     parser.add_argument(

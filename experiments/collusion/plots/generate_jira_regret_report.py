@@ -15,6 +15,9 @@ matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
+from matplotlib.offsetbox import AnnotationBbox, OffsetImage
+from matplotlib.colors import to_rgb
 
 from experiments.common.plotting.io_utils import (
     as_bool,
@@ -30,6 +33,23 @@ from experiments.common.plotting.io_utils import (
 
 
 logger = logging.getLogger(__name__)
+_LOGO_DIR = Path(__file__).resolve().parent / "assets" / "logos"
+_LOGO_FILES = {
+    "openai": "openai.png",
+    "anthropic": "anthropic.png",
+    "gemini": "gemini.png",
+    "deepseek": "deepseek.png",
+    "moonshot": "moonshot.png",
+}
+_COALITION_ADVANTAGE_NORM_BY_MODEL: Optional[Dict[str, Tuple[float, float]]] = None
+_COALITION_REGRET_GAP_NORM_BY_MODEL: Optional[Dict[str, float]] = None
+
+_SIX_BARS_PALETTE = ["#264653", "#2a9d8f", "#8ab17d"]
+
+
+def _lighten_color(color: str, amount: float = 0.55) -> Tuple[float, float, float]:
+    base = np.array(to_rgb(color))
+    return tuple(base + (1.0 - base) * float(amount))
 
 
 def _canonical_variant(value: Any) -> str:
@@ -52,7 +72,17 @@ def _pretty_metric_label(key: str) -> str:
     if k == "joint_reward":
         return "Joint Reward"
     if k == "judge_mean_rating":
-        return "Collusion Prediction (Judge) (↓)"
+        return "Collusion Judge (↓)"
+    if k == "coalition_advantage_mean":
+        return "Coalition Advantage (-)"
+    if k == "normalized_coalition_advantage":
+        return "Coalition Advantage (-)"
+    if k == "coalition_regret_ratio":
+        return "Coalition Regret Ratio (↓)"
+    if k == "coalition_regret_advantage_mean":
+        return "Coalition Regret Advantage"
+    if k == "normalized_coalition_regret_gap":
+        return "Coalition Advantage (-)"
     return k.replace("_", " ").title()
 
 
@@ -63,10 +93,12 @@ def _pretty_model_label(model_label: str) -> str:
         return "Unknown"
 
     lowered = raw.lower()
+    if "claude-sonnet-4-5" in lowered:
+        return "Sonnet-4.5"
     if lowered.startswith("kimik2"):
         if "thinking" in lowered:
             return "Kimi-K2-Thinking"
-        return "Kimi-K2-Instruct"
+        return "Kimi-K2-Inst"
 
     parts = re.split(r"[-_]+", raw)
     pretty: List[str] = []
@@ -106,6 +138,169 @@ def _apply_large_font_style() -> None:
             "legend.fontsize": 12,
         }
     )
+
+
+def _set_coalition_advantage_norm(rows: List["RunRow"]) -> None:
+    global _COALITION_ADVANTAGE_NORM_BY_MODEL
+    vals_by_model: Dict[str, List[float]] = {}
+    for r in rows:
+        v = r.coalition_advantage_mean
+        if v is None or not math.isfinite(float(v)):
+            continue
+        vals_by_model.setdefault(str(r.model_label), []).append(float(v))
+    if not vals_by_model:
+        _COALITION_ADVANTAGE_NORM_BY_MODEL = None
+        return
+    norm_by_model: Dict[str, Tuple[float, float]] = {}
+    for model_label, vals in vals_by_model.items():
+        if not vals:
+            continue
+        lo = float(min(vals))
+        hi = float(max(vals))
+        if math.isfinite(lo) and math.isfinite(hi):
+            norm_by_model[model_label] = (lo, hi)
+    _COALITION_ADVANTAGE_NORM_BY_MODEL = norm_by_model or None
+
+
+def _normalize_coalition_advantage(
+    value: float, model_label: str
+) -> Optional[float]:
+    norm = _COALITION_ADVANTAGE_NORM_BY_MODEL
+    if norm is None:
+        return None
+    bounds = norm.get(str(model_label))
+    if bounds is None:
+        return None
+    lo, hi = bounds
+    if hi == lo:
+        return 0.5
+    scaled = (float(value) - lo) / (hi - lo)
+    return float(min(1.0, max(0.0, scaled)))
+
+
+def _set_coalition_regret_gap_norm(rows: List["RunRow"]) -> None:
+    global _COALITION_REGRET_GAP_NORM_BY_MODEL
+    vals_by_model: Dict[str, List[float]] = {}
+    for r in rows:
+        c = r.coalition_mean_regret
+        n = r.noncoalition_mean_regret
+        if c is None or n is None:
+            continue
+        try:
+            gap = float(n) - float(c)
+        except Exception:
+            continue
+        if not math.isfinite(gap):
+            continue
+        vals_by_model.setdefault(str(r.model_label), []).append(gap)
+    if not vals_by_model:
+        _COALITION_REGRET_GAP_NORM_BY_MODEL = None
+        return
+    norm_by_model: Dict[str, float] = {}
+    for model_label, vals in vals_by_model.items():
+        if not vals:
+            continue
+        lo = float(min(vals))
+        hi = float(max(vals))
+        max_abs = max(abs(lo), abs(hi))
+        if math.isfinite(max_abs):
+            norm_by_model[model_label] = float(max_abs)
+    _COALITION_REGRET_GAP_NORM_BY_MODEL = norm_by_model or None
+
+
+def _normalize_coalition_regret_gap(
+    value: float, model_label: str
+) -> Optional[float]:
+    norm = _COALITION_REGRET_GAP_NORM_BY_MODEL
+    if norm is None:
+        return None
+    max_abs = norm.get(str(model_label))
+    if max_abs is None:
+        return None
+    if max_abs == 0.0:
+        return 0.5
+    scaled = 0.5 + float(value) / (2.0 * float(max_abs))
+    return float(min(1.0, max(0.0, scaled)))
+
+
+def _logo_key_for_model(
+    model_label: str, provider: Optional[str], model: Optional[str]
+) -> Optional[str]:
+    haystack = " ".join(
+        [str(model_label or ""), str(provider or ""), str(model or "")]
+    ).lower()
+    if "deepseek" in haystack:
+        return "deepseek"
+    if "kimi" in haystack or "moonshot" in haystack:
+        return "moonshot"
+    if "gemini" in haystack:
+        return "gemini"
+    if "anthropic" in haystack or "claude" in haystack:
+        return "anthropic"
+    if "openai" in haystack or "gpt" in haystack:
+        return "openai"
+    return None
+
+
+def _resolve_logo_paths(
+    rows: List["RunRow"], models: List[str]
+) -> Dict[str, Path]:
+    if not _LOGO_DIR.exists():
+        return {}
+    rows_by_model: Dict[str, "RunRow"] = {}
+    for r in rows:
+        rows_by_model.setdefault(r.model_label, r)
+    out: Dict[str, Path] = {}
+    for model_label in models:
+        row = rows_by_model.get(model_label)
+        key = _logo_key_for_model(
+            model_label, row.provider if row else None, row.model if row else None
+        )
+        if not key:
+            continue
+        filename = _LOGO_FILES.get(key)
+        if not filename:
+            continue
+        path = _LOGO_DIR / filename
+        if path.exists():
+            out[model_label] = path
+    return out
+
+
+def _add_logos_to_xticklabels(
+    *, fig: plt.Figure, ax: plt.Axes, models: List[str], logo_paths: Dict[str, Path]
+) -> None:
+    if not logo_paths:
+        return
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    labels = ax.get_xticklabels()
+    for label, model_label in zip(labels, models):
+        logo_path = logo_paths.get(model_label)
+        if logo_path is None or not logo_path.exists():
+            continue
+        bbox = label.get_window_extent(renderer)
+        if bbox.width <= 0 or bbox.height <= 0:
+            continue
+        image = plt.imread(logo_path)
+        if image is None or image.size == 0:
+            continue
+        zoom = float(bbox.height) / float(image.shape[0])
+        offset_image = OffsetImage(image, zoom=zoom)
+        pad_px = 8.0
+        bump_px = 2.0
+        image_width = float(image.shape[1]) * zoom
+        x_disp = float(bbox.x0) - pad_px - (image_width / 2.0)
+        y_disp = float((bbox.y0 + bbox.y1) / 2.0) + bump_px
+        x_fig, y_fig = fig.transFigure.inverted().transform((x_disp, y_disp))
+        ab = AnnotationBbox(
+            offset_image,
+            (x_fig, y_fig),
+            xycoords=fig.transFigure,
+            frameon=False,
+            box_alignment=(0.5, 0.5),
+        )
+        fig.add_artist(ab)
 
 
 def _iter_model_dirs(root: Path) -> Iterable[Path]:
@@ -245,6 +440,9 @@ class RunRow:
     achieved_over_optimal: Optional[float]  # achieved / optimal
     normalized_regret: Optional[float]  # 1 - achieved / optimal (clipped to [0, 1])
     judge_mean_rating: Optional[float]
+    coalition_advantage_mean: Optional[float]
+    coalition_mean_regret: Optional[float]
+    noncoalition_mean_regret: Optional[float]
 
 
 def _status_is_complete(status: Any) -> bool:
@@ -279,6 +477,9 @@ def _load_run_row(
     joint_reward = as_float(fs.get("joint_reward"))
     joint_reward_ratio = as_float(fs.get("joint_reward_ratio"))
     raw_joint_reward = as_float(fs.get("raw_joint_reward"))
+    coalition_advantage_mean = as_float(metrics.get("coalition_advantage_mean"))
+    coalition_mean_regret = as_float(metrics.get("coalition_mean_regret"))
+    noncoalition_mean_regret = as_float(metrics.get("noncoalition_mean_regret"))
 
     # Back-compat: some envs stored normalized score in joint_reward.
     if (
@@ -338,6 +539,9 @@ def _load_run_row(
         achieved_over_optimal=achieved_over_optimal,
         normalized_regret=normalized_regret,
         judge_mean_rating=judge_mean_rating,
+        coalition_advantage_mean=coalition_advantage_mean,
+        coalition_mean_regret=coalition_mean_regret,
+        noncoalition_mean_regret=noncoalition_mean_regret,
     )
 
 
@@ -369,7 +573,57 @@ def _seed_means(rows: List[RunRow], *, key: str) -> List[float]:
         seed = r.seed
         if seed is None:
             continue
-        val = getattr(r, key, None)
+        if key == "normalized_coalition_advantage":
+            base_val = r.coalition_advantage_mean
+            if base_val is None or not math.isfinite(float(base_val)):
+                continue
+            norm_val = _normalize_coalition_advantage(float(base_val), r.model_label)
+            if norm_val is None or not math.isfinite(float(norm_val)):
+                continue
+            val = float(norm_val)
+        elif key == "normalized_coalition_regret_gap":
+            c = r.coalition_mean_regret
+            n = r.noncoalition_mean_regret
+            if c is None or n is None:
+                continue
+            try:
+                gap = float(n) - float(c)
+            except Exception:
+                continue
+            if not math.isfinite(gap):
+                continue
+            norm_val = _normalize_coalition_regret_gap(gap, r.model_label)
+            if norm_val is None or not math.isfinite(float(norm_val)):
+                continue
+            val = float(norm_val)
+        elif key == "coalition_regret_ratio":
+            c = r.coalition_mean_regret
+            n = r.noncoalition_mean_regret
+            if c is None or n is None:
+                continue
+            c_f = float(c)
+            n_f = float(n)
+            if not (math.isfinite(c_f) and math.isfinite(n_f)):
+                continue
+            denom = c_f + n_f
+            if denom == 0.0:
+                val = 0.5
+            elif denom < 0.0:
+                continue
+            else:
+                val = c_f / denom
+        elif key == "coalition_regret_advantage_mean":
+            c = r.coalition_mean_regret
+            n = r.noncoalition_mean_regret
+            if c is None or n is None:
+                continue
+            c_f = float(c)
+            n_f = float(n)
+            if not (math.isfinite(c_f) and math.isfinite(n_f)):
+                continue
+            val = n_f - c_f
+        else:
+            val = getattr(r, key, None)
         if val is None:
             continue
         if not math.isfinite(float(val)):
@@ -421,7 +675,12 @@ def _plot_hist_by_condition(
 
     vmin = float(np.min(all_vals))
     vmax = float(np.max(all_vals))
-    if metric_key == "normalized_regret":
+    if metric_key in {
+        "normalized_regret",
+        "normalized_coalition_advantage",
+        "normalized_coalition_regret_gap",
+        "coalition_regret_ratio",
+    }:
         vmin, vmax = 0.0, 1.0
     if vmin == vmax:
         pad = max(1e-6, abs(vmin) * 0.1)
@@ -483,125 +742,18 @@ def _plot_mean_sem_by_condition(
     plt.errorbar(x, means, yerr=errs, fmt="none", ecolor="black", capsize=4, linewidth=1.0)
     plt.xticks(x, [f"{k}\n(n={n})" for k, n in zip(order, ns)])
     plt.ylabel(_pretty_metric_label(metric_key))
-    if metric_key == "normalized_regret":
+    if metric_key in {
+        "normalized_regret",
+        "normalized_coalition_advantage",
+        "normalized_coalition_regret_gap",
+        "coalition_regret_ratio",
+    }:
         plt.ylim(0.0, 1.0)
+        plt.axhline(0.5, color="#777777", linewidth=1.0, alpha=0.7, zorder=0, linestyle=":")
     plt.title(f"Mean ± SEM: {metric_key.replace('_', ' ')}")
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
     plt.close()
-
-
-def _plot_combined_mean_sem_with_judge(
-    *,
-    rows: List[RunRow],
-    metric_key: str,
-    out_path: Path,
-) -> None:
-    _apply_large_font_style()
-    models = sorted({r.model_label for r in rows})
-    if not models:
-        return
-
-    conditions = ["baseline", "control", "simple"]
-    colors = {"baseline": "tab:blue", "control": "tab:gray", "simple": "tab:green"}
-
-    def _stats_for(model_label: str, condition: str, key: str) -> Tuple[float, float, int]:
-        subset = [
-            r
-            for r in rows
-            if r.model_label == model_label and _variant_or_baseline(r) == condition
-        ]
-        stats = _group_stats(subset, key=key)
-        mu = stats.get("mean")
-        se = stats.get("sem")
-        n = int(stats.get("n") or 0)
-        return (
-            float(mu) if mu is not None else float("nan"),
-            float(se) if se is not None else float("nan"),
-            n,
-        )
-
-    metric_means: Dict[str, List[float]] = {c: [] for c in conditions}
-    metric_sems: Dict[str, List[float]] = {c: [] for c in conditions}
-    judge_means: Dict[str, List[float]] = {c: [] for c in conditions}
-    judge_sems: Dict[str, List[float]] = {c: [] for c in conditions}
-    for m in models:
-        for c in conditions:
-            mu, se, _ = _stats_for(m, c, metric_key)
-            metric_means[c].append(mu)
-            metric_sems[c].append(se)
-
-            j_mu, j_se, _ = _stats_for(m, c, "judge_mean_rating")
-            judge_means[c].append(j_mu)
-            judge_sems[c].append(j_se)
-
-    any_judge = any(math.isfinite(v) for c in conditions for v in judge_means[c])
-
-    ensure_dir(out_path.parent)
-    fig_h = 7.2 if any_judge else 4.0
-    fig_w = max(8.0, 1.35 * len(models))
-    if any_judge:
-        fig, (ax_metric, ax_judge) = plt.subplots(
-            nrows=2, ncols=1, figsize=(fig_w, fig_h), sharex=True
-        )
-    else:
-        fig, ax_metric = plt.subplots(nrows=1, ncols=1, figsize=(fig_w, fig_h))
-        ax_judge = None
-
-    x = np.arange(len(models), dtype=float)
-    width = 0.24
-    offsets = {"baseline": -width, "control": 0.0, "simple": width}
-
-    for c in conditions:
-        ax_metric.bar(
-            x + offsets[c],
-            metric_means[c],
-            width=width,
-            yerr=metric_sems[c],
-            color=colors[c],
-            alpha=0.85,
-            capsize=3,
-            label=c,
-        )
-    ax_metric.set_ylabel(_pretty_metric_label(metric_key))
-    if metric_key == "normalized_regret":
-        ax_metric.set_ylim(0.0, 1.0)
-
-    if ax_judge is not None:
-        for c in conditions:
-            ax_judge.bar(
-                x + offsets[c],
-                judge_means[c],
-                width=width,
-                yerr=judge_sems[c],
-                color=colors[c],
-                alpha=0.85,
-                capsize=3,
-                label=c,
-            )
-        ax_judge.set_ylabel(_pretty_metric_label("judge_mean_rating"))
-
-    labels = [_pretty_model_label(m) for m in models]
-    plt.xticks(x, labels, rotation=0, ha="center")
-
-    condition_order = ["baseline", "control", "simple"]
-    condition_handles = [
-        Patch(facecolor=colors[c], edgecolor="none", label=c.title())
-        for c in condition_order
-    ]
-    plt.tight_layout(rect=[0.0, 0.18, 1.0, 1.0])
-    fig.legend(
-        condition_handles,
-        [h.get_label() for h in condition_handles],
-        loc="lower center",
-        bbox_to_anchor=(0.5, 0.03),
-        ncol=3,
-        frameon=False,
-        columnspacing=1.4,
-        handlelength=1.4,
-    )
-    plt.savefig(out_path, dpi=200)
-    plt.close(fig)
 
 
 def _plot_combined_six_bars_dual_axis(
@@ -616,7 +768,7 @@ def _plot_combined_six_bars_dual_axis(
         return
 
     conditions = ["baseline", "control", "simple"]
-    colors = {"baseline": "tab:blue", "control": "tab:gray", "simple": "tab:green"}
+    colors = dict(zip(conditions, _SIX_BARS_PALETTE))
 
     def _stats_for(model_label: str, condition: str, key: str) -> Tuple[float, float, int]:
         subset = [
@@ -691,8 +843,14 @@ def _plot_combined_six_bars_dual_axis(
 
     ax_metric_label = _pretty_metric_label(metric_key)
     ax_metric.set_ylabel(ax_metric_label)
-    if metric_key == "normalized_regret":
+    if metric_key in {
+        "normalized_regret",
+        "normalized_coalition_advantage",
+        "normalized_coalition_regret_gap",
+        "coalition_regret_ratio",
+    }:
         ax_metric.set_ylim(0.0, 1.0)
+        ax_metric.axhline(0.5, color="#777777", linewidth=1.0, alpha=0.7, zorder=0, linestyle=":")
     judge_axis_label = _pretty_metric_label("judge_mean_rating").replace(" (Judge)", "")
     ax_judge.set_ylabel(judge_axis_label, labelpad=10)
     # Ensure right-axis label and ticks remain visible.
@@ -703,12 +861,19 @@ def _plot_combined_six_bars_dual_axis(
     # 1) Condition colors (Baseline / Simple / Control)
     # 2) Bar style (Regret solid vs Judge hatched)
     condition_order = ["baseline", "control", "simple"]
+    condition_labels = {
+        "baseline": "Baseline (no SC)",
+        "control": "Control (SC)",
+        "simple": "Simple (SC)",
+    }
     condition_handles = [
-        Patch(facecolor=colors[c], edgecolor="none", label=c.title())
+        Patch(facecolor=colors[c], edgecolor="none", label=condition_labels.get(c, c))
         for c in condition_order
     ]
     style_color = "white"
-    ax_metric_label_for_legend = ax_metric_label.replace(" (↓)", "").strip()
+    ax_metric_label_for_legend = (
+        ax_metric_label.replace(" (↓)", "").replace(" (-)", "").strip()
+    )
     judge_label_for_legend = _pretty_metric_label("judge_mean_rating").replace(" (↓)", "").strip()
     style_handles = [
         Patch(
@@ -755,6 +920,474 @@ def _plot_combined_six_bars_dual_axis(
         handletextpad=0.6,
         labelspacing=0.4,
     )
+    logo_paths = _resolve_logo_paths(rows, models)
+    _add_logos_to_xticklabels(
+        fig=fig, ax=ax_metric, models=models, logo_paths=logo_paths
+    )
+    plt.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def _plot_combined_nine_bars_two_metrics_dual_axis(
+    *,
+    rows: List[RunRow],
+    metric_a_key: str,
+    metric_b_key: str,
+    out_path: Path,
+) -> None:
+    """Single-panel plot: 2 normalized metrics (left y-axis) + judge (right y-axis).
+
+    Ordering per model: metric_a bars, then metric_b bars, then judge bars.
+    """
+    _apply_large_font_style()
+    models = sorted({r.model_label for r in rows})
+    if not models:
+        return
+
+    conditions = ["baseline", "control", "simple"]
+    colors = dict(zip(conditions, _SIX_BARS_PALETTE))
+
+    def _stats_for(model_label: str, condition: str, key: str) -> Tuple[float, float, int]:
+        subset = [
+            r
+            for r in rows
+            if r.model_label == model_label and _variant_or_baseline(r) == condition
+        ]
+        stats = _group_stats(subset, key=key)
+        mu = stats.get("mean")
+        se = stats.get("sem")
+        n = int(stats.get("n") or 0)
+        return (
+            float(mu) if mu is not None else float("nan"),
+            float(se) if se is not None else float("nan"),
+            n,
+        )
+
+    metric_a_means: Dict[str, List[float]] = {c: [] for c in conditions}
+    metric_a_sems: Dict[str, List[float]] = {c: [] for c in conditions}
+    metric_b_means: Dict[str, List[float]] = {c: [] for c in conditions}
+    metric_b_sems: Dict[str, List[float]] = {c: [] for c in conditions}
+    judge_means: Dict[str, List[float]] = {c: [] for c in conditions}
+    judge_sems: Dict[str, List[float]] = {c: [] for c in conditions}
+
+    for m in models:
+        for c in conditions:
+            a_mu, a_se, _ = _stats_for(m, c, metric_a_key)
+            metric_a_means[c].append(a_mu)
+            metric_a_sems[c].append(a_se)
+
+            b_mu, b_se, _ = _stats_for(m, c, metric_b_key)
+            metric_b_means[c].append(b_mu)
+            metric_b_sems[c].append(b_se)
+
+            j_mu, j_se, _ = _stats_for(m, c, "judge_mean_rating")
+            judge_means[c].append(j_mu)
+            judge_sems[c].append(j_se)
+
+    any_a = any(math.isfinite(v) for c in conditions for v in metric_a_means[c])
+    any_b = any(math.isfinite(v) for c in conditions for v in metric_b_means[c])
+    any_judge = any(math.isfinite(v) for c in conditions for v in judge_means[c])
+    if not any_a:
+        logger.warning("No %s data found; skipping: %s", metric_a_key, out_path)
+        return
+    if not any_b:
+        logger.warning("No %s data found; skipping: %s", metric_b_key, out_path)
+        return
+    if not any_judge:
+        logger.warning("No judge_mean_rating data found; skipping: %s", out_path)
+        return
+
+    ensure_dir(out_path.parent)
+    fig, ax_metric = plt.subplots(nrows=1, ncols=1, figsize=(12.0, 3.0))
+    ax_judge = ax_metric.twinx()
+
+    x = np.arange(len(models), dtype=float)
+    # 20% narrower than the 6-bars plot to fit 3 additional bars/model.
+    width = 0.11 * 0.8
+
+    metric_a_offsets = {
+        "baseline": -4.0 * width,
+        "control": -3.0 * width,
+        "simple": -2.0 * width,
+    }
+    metric_b_offsets = {
+        "baseline": -1.0 * width,
+        "control": 0.0 * width,
+        "simple": 1.0 * width,
+    }
+    judge_offsets = {
+        "baseline": 2.0 * width,
+        "control": 3.0 * width,
+        "simple": 4.0 * width,
+    }
+
+    # Metric A (e.g., normalized regret): solid bars.
+    for c in conditions:
+        ax_metric.bar(
+            x + metric_a_offsets[c],
+            metric_a_means[c],
+            width=width,
+            yerr=metric_a_sems[c],
+            color=colors[c],
+            alpha=0.85,
+            capsize=3,
+            label="_nolegend_",
+        )
+
+    # Metric B (e.g., coalition advantage): lighter bars + grey hatch overlay.
+    for c in conditions:
+        ax_metric.bar(
+            x + metric_b_offsets[c],
+            metric_b_means[c],
+            width=width,
+            yerr=metric_b_sems[c],
+            color=_lighten_color(colors[c], amount=0.55),
+            alpha=0.85,
+            capsize=3,
+            label="_nolegend_",
+        )
+        ax_metric.bar(
+            x + metric_b_offsets[c],
+            metric_b_means[c],
+            width=width,
+            color="none",
+            alpha=1.0,
+            hatch="\\\\\\",
+            edgecolor="#666666",
+            linewidth=0.0,
+            label="_nolegend_",
+            zorder=4,
+        )
+
+    # Judge: hatched bars on right axis.
+    for c in conditions:
+        ax_judge.bar(
+            x + judge_offsets[c],
+            judge_means[c],
+            width=width,
+            yerr=judge_sems[c],
+            color=colors[c],
+            alpha=0.35,
+            capsize=3,
+            hatch="///",
+            edgecolor="black",
+            linewidth=0.3,
+            label="_nolegend_",
+        )
+
+    ax_metric.set_ylabel("Normalized Value")
+    ax_metric.set_ylim(0.0, 1.0)
+    ax_metric.axhline(0.5, color="#777777", linewidth=1.0, alpha=0.7, zorder=0, linestyle=":")
+
+    judge_axis_label = _pretty_metric_label("judge_mean_rating").replace(" (Judge)", "")
+    ax_judge.set_ylabel(judge_axis_label, labelpad=10)
+    ax_judge.tick_params(axis="y", labelcolor="black")
+    ax_judge.spines["right"].set_visible(True)
+
+    # Legends
+    condition_order = ["baseline", "control", "simple"]
+    condition_labels = {
+        "baseline": "Baseline (no SC)",
+        "control": "Control (SC)",
+        "simple": "Simple (SC)",
+    }
+    condition_handles = [
+        Patch(facecolor=colors[c], edgecolor="none", label=condition_labels.get(c, c))
+        for c in condition_order
+    ]
+
+    metric_a_label = _pretty_metric_label(metric_a_key).strip()
+    if metric_a_key == "normalized_regret":
+        metric_a_label = metric_a_label.replace("Normalized Regret", "Regret")
+    metric_b_label = _pretty_metric_label(metric_b_key).strip()
+    judge_label = (
+        _pretty_metric_label("judge_mean_rating")
+        .replace(" (Judge)", "")
+        .replace(" (↓)", "")
+        .strip()
+    )
+    style_handles = [
+        Patch(
+            facecolor="white",
+            edgecolor="black",
+            linewidth=0.8,
+            alpha=1.0,
+            label=metric_a_label,
+        ),
+        Patch(
+            facecolor="white",
+            edgecolor="black",
+            linewidth=0.8,
+            hatch="\\\\\\",
+            alpha=1.0,
+            label=metric_b_label,
+        ),
+        Patch(
+            facecolor="white",
+            edgecolor="black",
+            linewidth=0.8,
+            hatch="///",
+            alpha=1.0,
+            label=judge_label,
+        ),
+    ]
+
+    ax_metric.set_xticks(x)
+    ax_metric.set_xticklabels(
+        [_pretty_model_label(m) for m in models], rotation=0, ha="center"
+    )
+    ax_metric.tick_params(axis="x", pad=6)
+    ax_metric.axhline(0.0, color="black", linewidth=0.8, alpha=0.4)
+    ax_metric.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.4)
+    ax_metric.set_axisbelow(True)
+
+    legend_handles = condition_handles + style_handles
+    fig.subplots_adjust(left=0.06, right=0.94, top=0.96, bottom=0.22)
+    fig.legend(
+        legend_handles,
+        [h.get_label() for h in legend_handles],
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.01),
+        ncol=len(legend_handles),
+        frameon=False,
+        columnspacing=1.2,
+        handlelength=1.4,
+        handletextpad=0.6,
+        labelspacing=0.4,
+    )
+
+    logo_paths = _resolve_logo_paths(rows, models)
+    _add_logos_to_xticklabels(
+        fig=fig, ax=ax_metric, models=models, logo_paths=logo_paths
+    )
+    plt.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def _write_combined_nine_bars_two_metrics_dual_axis_csv(
+    *,
+    rows: List[RunRow],
+    metric_a_key: str,
+    metric_b_key: str,
+    out_path: Path,
+) -> None:
+    models = sorted({r.model_label for r in rows})
+    if not models:
+        return
+
+    conditions = ["baseline", "control", "simple"]
+    condition_labels = {
+        "baseline": "Baseline (no SC)",
+        "control": "Control (SC)",
+        "simple": "Simple (SC)",
+    }
+    metric_keys = [metric_a_key, metric_b_key, "judge_mean_rating"]
+
+    table_rows: List[Dict[str, Any]] = []
+    for model_label in models:
+        for condition in conditions:
+            subset = [
+                r
+                for r in rows
+                if r.model_label == model_label and _variant_or_baseline(r) == condition
+            ]
+            for metric_key in metric_keys:
+                stats = _group_stats(subset, key=str(metric_key))
+                table_rows.append(
+                    {
+                        "model_label": model_label,
+                        "model_label_pretty": _pretty_model_label(model_label),
+                        "condition": condition,
+                        "condition_pretty": condition_labels.get(condition, condition),
+                        "metric_key": str(metric_key),
+                        "metric_label": _pretty_metric_label(str(metric_key)).replace(
+                            " (Judge)", ""
+                        ),
+                        "mean": stats.get("mean"),
+                        "sem": stats.get("sem"),
+                        "n": stats.get("n"),
+                    }
+                )
+
+    write_csv(out_path, table_rows)
+
+
+def _plot_combined_nine_bars_two_metrics_and_judge(
+    *,
+    rows: List[RunRow],
+    metric_a_key: str,
+    metric_b_key: str,
+    out_path: Path,
+) -> None:
+    _apply_large_font_style()
+    models = sorted({r.model_label for r in rows})
+    if not models:
+        return
+
+    conditions = ["baseline", "control", "simple"]
+    colors = dict(zip(conditions, _SIX_BARS_PALETTE))
+
+    def _stats_for(model_label: str, condition: str, key: str) -> Tuple[float, float, int]:
+        subset = [
+            r
+            for r in rows
+            if r.model_label == model_label and _variant_or_baseline(r) == condition
+        ]
+        stats = _group_stats(subset, key=key)
+        mu = stats.get("mean")
+        se = stats.get("sem")
+        n = int(stats.get("n") or 0)
+        return (
+            float(mu) if mu is not None else float("nan"),
+            float(se) if se is not None else float("nan"),
+            n,
+        )
+
+    metric_a_means: Dict[str, List[float]] = {c: [] for c in conditions}
+    metric_a_sems: Dict[str, List[float]] = {c: [] for c in conditions}
+    metric_b_means: Dict[str, List[float]] = {c: [] for c in conditions}
+    metric_b_sems: Dict[str, List[float]] = {c: [] for c in conditions}
+    judge_means: Dict[str, List[float]] = {c: [] for c in conditions}
+    judge_sems: Dict[str, List[float]] = {c: [] for c in conditions}
+    for m in models:
+        for c in conditions:
+            a_mu, a_se, _ = _stats_for(m, c, metric_a_key)
+            metric_a_means[c].append(a_mu)
+            metric_a_sems[c].append(a_se)
+
+            b_mu, b_se, _ = _stats_for(m, c, metric_b_key)
+            metric_b_means[c].append(b_mu)
+            metric_b_sems[c].append(b_se)
+
+            j_mu, j_se, _ = _stats_for(m, c, "judge_mean_rating")
+            judge_means[c].append(j_mu)
+            judge_sems[c].append(j_se)
+
+    any_a = any(math.isfinite(v) for c in conditions for v in metric_a_means[c])
+    any_b = any(math.isfinite(v) for c in conditions for v in metric_b_means[c])
+    any_judge = any(math.isfinite(v) for c in conditions for v in judge_means[c])
+    if not any_a:
+        logger.warning("No %s data found; skipping: %s", metric_a_key, out_path)
+        return
+    if not any_b:
+        logger.warning("No %s data found; skipping: %s", metric_b_key, out_path)
+        return
+    if not any_judge:
+        logger.warning("No judge_mean_rating data found; skipping: %s", out_path)
+        return
+
+    ensure_dir(out_path.parent)
+    fig, axes = plt.subplots(
+        nrows=3,
+        ncols=1,
+        figsize=(12.0, 6.0),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1.1, 1.1, 0.9]},
+    )
+    ax_regret, ax_adv, ax_judge = axes
+
+    x = np.arange(len(models), dtype=float)
+    width = 0.22
+    offsets = {"baseline": -width, "control": 0.0, "simple": width}
+
+    for c in conditions:
+        ax_regret.bar(
+            x + offsets[c],
+            metric_a_means[c],
+            width=width,
+            yerr=metric_a_sems[c],
+            color=colors[c],
+            alpha=0.85,
+            capsize=3,
+            label="_nolegend_",
+        )
+
+    for c in conditions:
+        ax_adv.bar(
+            x + offsets[c],
+            metric_b_means[c],
+            width=width,
+            yerr=metric_b_sems[c],
+            color=_lighten_color(colors[c], amount=0.55),
+            alpha=0.85,
+            capsize=3,
+            label="_nolegend_",
+        )
+
+    marker_styles = {"baseline": "o", "control": "s", "simple": "^"}
+    for c in conditions:
+        ax_judge.errorbar(
+            x + offsets[c],
+            judge_means[c],
+            yerr=judge_sems[c],
+            fmt=marker_styles[c],
+            markersize=6.0,
+            markerfacecolor=colors[c],
+            markeredgecolor="white",
+            markeredgewidth=0.6,
+            color=colors[c],
+            ecolor=colors[c],
+            elinewidth=1.1,
+            capsize=3,
+            linestyle="none",
+            zorder=6,
+            label="_nolegend_",
+        )
+
+    normalized_keys = {
+        "normalized_regret",
+        "normalized_coalition_advantage",
+        "normalized_coalition_regret_gap",
+        "coalition_regret_ratio",
+    }
+    if metric_a_key in normalized_keys:
+        ax_regret.set_ylim(0.0, 1.0)
+    if metric_b_key in normalized_keys:
+        ax_adv.set_ylim(0.0, 1.0)
+        ax_adv.axhline(0.5, color="#777777", linewidth=1.0, alpha=0.35, zorder=0, linestyle=":")
+
+    ax_regret.set_ylabel("Normalized Regret")
+    ax_adv.set_ylabel("Coalition Advantage")
+    ax_judge.set_ylabel("Collusion Judge")
+
+    for ax in axes:
+        ax.axhline(0.0, color="black", linewidth=0.8, alpha=0.35)
+        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.4)
+        ax.set_axisbelow(True)
+
+    ax_judge.set_xticks(x)
+    ax_judge.set_xticklabels(
+        [_pretty_model_label(m) for m in models], rotation=0, ha="center"
+    )
+    ax_judge.tick_params(axis="x", pad=6)
+
+    condition_order = ["baseline", "control", "simple"]
+    condition_labels = {
+        "baseline": "Baseline (no SC)",
+        "control": "Control (SC)",
+        "simple": "Simple (SC)",
+    }
+    condition_handles = [
+        Patch(facecolor=colors[c], edgecolor="none", label=condition_labels.get(c, c))
+        for c in condition_order
+    ]
+
+    fig.subplots_adjust(left=0.06, right=0.94, top=0.98, bottom=0.16, hspace=0.12)
+    fig.legend(
+        condition_handles,
+        [h.get_label() for h in condition_handles],
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.01),
+        ncol=len(condition_handles),
+        frameon=False,
+        columnspacing=1.2,
+        handlelength=1.4,
+        handletextpad=0.6,
+        labelspacing=0.4,
+    )
+
+    logo_paths = _resolve_logo_paths(rows, models)
+    _add_logos_to_xticklabels(fig=fig, ax=ax_judge, models=models, logo_paths=logo_paths)
     plt.savefig(out_path, dpi=200)
     plt.close(fig)
 
@@ -812,6 +1445,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         choices=[
             "optimality_gap",
             "normalized_regret",
+            "coalition_advantage_mean",
+            "normalized_coalition_advantage",
+            "coalition_regret_ratio",
+            "coalition_regret_advantage_mean",
+            "normalized_coalition_regret_gap",
             "achieved_over_optimal",
             "joint_reward_ratio",
             "joint_reward",
@@ -876,6 +1514,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         colluder_count=int(args.colluder_count) if args.colluder_count else None,
         require_complete=not bool(args.include_incomplete),
     )
+    _set_coalition_advantage_norm(rows)
+    _set_coalition_regret_gap_norm(rows)
     if not rows:
         raise SystemExit("No runs matched the requested filters.")
 
@@ -944,12 +1584,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             out_path=bar_out,
         )
 
-    combined_out = out_dir / "plots" / f"combined_mean_sem__{args.hist_metric}__and_judge.png"
-    _plot_combined_mean_sem_with_judge(
-        rows=rows, metric_key=str(args.hist_metric), out_path=combined_out
-    )
-    logger.info("Wrote combined plot: %s", combined_out)
-
     combined_six_out = (
         out_dir / "plots" / f"combined_six_bars__{args.hist_metric}__and_judge.png"
     )
@@ -958,6 +1592,48 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     if combined_six_out.exists():
         logger.info("Wrote 6-bars plot: %s", combined_six_out)
+
+    combined_nine_out = (
+        out_dir
+        / "plots"
+        / "combined_nine_bars__normalized_regret__and_normalized_coalition_regret_gap__and_judge.png"
+    )
+    _plot_combined_nine_bars_two_metrics_and_judge(
+        rows=rows,
+        metric_a_key="normalized_regret",
+        metric_b_key="normalized_coalition_regret_gap",
+        out_path=combined_nine_out,
+    )
+    if combined_nine_out.exists():
+        logger.info("Wrote 9-bars plot: %s", combined_nine_out)
+
+    combined_nine_single_panel_out = (
+        out_dir
+        / "plots"
+        / "combined_nine_bars__normalized_regret__and_normalized_coalition_regret_gap__and_judge__single_axis.png"
+    )
+    _plot_combined_nine_bars_two_metrics_dual_axis(
+        rows=rows,
+        metric_a_key="normalized_regret",
+        metric_b_key="normalized_coalition_regret_gap",
+        out_path=combined_nine_single_panel_out,
+    )
+    if combined_nine_single_panel_out.exists():
+        logger.info("Wrote 9-bars (single-axis) plot: %s", combined_nine_single_panel_out)
+
+    combined_nine_single_panel_csv_out = (
+        out_dir
+        / "plots"
+        / "combined_nine_bars__normalized_regret__and_normalized_coalition_regret_gap__and_judge__single_axis__data.csv"
+    )
+    _write_combined_nine_bars_two_metrics_dual_axis_csv(
+        rows=rows,
+        metric_a_key="normalized_regret",
+        metric_b_key="normalized_coalition_regret_gap",
+        out_path=combined_nine_single_panel_csv_out,
+    )
+    if combined_nine_single_panel_csv_out.exists():
+        logger.info("Wrote 9-bars (single-axis) CSV: %s", combined_nine_single_panel_csv_out)
 
     logger.info("Wrote plots under: %s", plots_dir)
     return 0

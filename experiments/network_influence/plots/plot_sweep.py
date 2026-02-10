@@ -28,6 +28,16 @@ from experiments.common.plotting.style import apply_default_style
 
 logger = logging.getLogger(__name__)
 
+# Match the palette used in collusion_hist__c2__pvALL__bars__se.png.
+_PVALL_GROUP_PALETTE = [
+    "#264653",  # Charcoal Blue
+    "#2a9d8f",  # Verdigris
+    "#8ab17d",  # Muted Olive
+    "#e9c46a",  # Jasmine
+    "#f4a261",  # Sandy Brown
+    "#e76f51",  # Burnt Peach
+]
+
 
 def _format_param_float(x: float) -> str:
     s = (f"{float(x):.3f}").rstrip("0").rstrip(".")
@@ -174,6 +184,8 @@ def _plot_mean_with_sem_band(
     linestyle: str = "-",
     marker: str = "o",
     band_alpha: float = 0.22,
+    linewidth: float = 3.0,
+    markersize: float = 8.8,
 ) -> None:
     xs, ys_mean, ys_sem = _mean_sem_series(rows, adv_counts=adv_counts, y_key=y_key)
     if not xs:
@@ -193,12 +205,26 @@ def _plot_mean_with_sem_band(
         xs,
         ys_mean,
         color=color,
-        linewidth=1.9,
+        linewidth=linewidth,
         linestyle=linestyle,
         marker=marker,
-        markersize=4.5,
+        markersize=markersize,
         alpha=0.95,
     )
+
+
+def _ensure_mid_tick(ax: Any) -> None:
+    ticks = [float(t) for t in ax.get_yticks()]
+    if all(abs(t - 0.5) > 1e-6 for t in ticks):
+        ticks.append(0.5)
+        ticks = sorted(set(ticks))
+        ax.set_yticks(ticks)
+
+
+def _apply_fixed_y_grid(ax: Any) -> None:
+    ax.set_yticks([0.0, 0.5, 1.0])
+    ax.set_axisbelow(True)
+    ax.grid(axis="y", color="#e5e7eb", linewidth=0.8, alpha=0.9)
 
 
 def _load_sweep_communication_network_params(
@@ -419,15 +445,9 @@ def plot_sweep_summary(
 
     cn_params = _load_sweep_communication_network_params(run_stats)
     topologies = _ordered_topologies(topologies_present)
-    prop_cycle = plt.rcParams.get("axes.prop_cycle")
-    prop_cycle_colors = prop_cycle.by_key().get("color", []) if prop_cycle else []
-
     color_by_topo: Dict[Any, Any] = {}
     for i, topo in enumerate(topologies):
-        if prop_cycle_colors:
-            color_by_topo[topo] = prop_cycle_colors[i % len(prop_cycle_colors)]
-        else:
-            color_by_topo[topo] = "#4c72b0"
+        color_by_topo[topo] = _PVALL_GROUP_PALETTE[i % len(_PVALL_GROUP_PALETTE)]
 
     deterministic_order = ["path", "star", "complete"]
     random_order = ["watts_strogatz", "barabasi_albert", "erdos_renyi"]
@@ -440,13 +460,13 @@ def plot_sweep_summary(
     if ncols <= 0:
         return
 
-    title_fs = 14
-    label_fs = 13
-    tick_fs = 12
-    legend_fs = 12
+    title_fs = 16
+    label_fs = 14
+    tick_fs = 13
+    legend_fs = 13
 
-    fig_width_scale = 0.5 if not use_max_propagation else 1.0
-    fig_height_scale = 0.7 if not use_max_propagation else 1.0
+    fig_width_scale = 0.7 if not use_max_propagation else 1.0
+    fig_height_scale = 0.95 if not use_max_propagation else 1.0
 
     fig, axes = plt.subplots(
         nrows=2,
@@ -501,6 +521,7 @@ def plot_sweep_summary(
                 fontsize=title_fs,
             )
             ax.set_ylim(0.0, 1.05)
+            _apply_fixed_y_grid(ax)
             ax.tick_params(axis="both", labelsize=tick_fs)
 
             if adv_counts:
@@ -521,13 +542,14 @@ def plot_sweep_summary(
         metric_handles,
         ["Joint Reward", "Misinformation Propagation Rate"],
         loc="lower center",
-        bbox_to_anchor=(0.5, 0.03),
+        bbox_to_anchor=(0.5, 0.045),
         ncol=2,
-        frameon=True,
+        frameon=False,
         fontsize=legend_fs,
     )
 
-    fig.tight_layout(rect=(0.0, 0.1, 1.0, 1.0))
+    fig.tight_layout(rect=(0.02, 0.06, 0.98, 0.97))
+    fig.subplots_adjust(wspace=0.10, hspace=0.30)
     fig.savefig(out_path, bbox_inches="tight")
     log_saved_plot(out_path, logger=logger)
     plt.close(fig)
@@ -581,6 +603,7 @@ def plot_sweep_summary(
                     fontsize=title_fs,
                 )
                 ax.set_ylim(0.0, 1.05)
+                _apply_fixed_y_grid(ax)
                 ax.tick_params(axis="both", labelsize=tick_fs)
                 if adv_counts:
                     ax.set_xticks(
@@ -592,7 +615,8 @@ def plot_sweep_summary(
                 if col == 0:
                     ax.set_ylabel(y_label, fontsize=label_fs)
 
-        fig_s.tight_layout()
+        fig_s.tight_layout(rect=(0.02, 0.03, 0.98, 0.98))
+        fig_s.subplots_adjust(wspace=0.10, hspace=0.30)
         out_path_s = out_path.with_name(
             f"{out_path.stem}_{fname_suffix}{out_path.suffix}"
         )

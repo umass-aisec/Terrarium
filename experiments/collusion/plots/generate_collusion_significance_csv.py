@@ -345,7 +345,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _MetricSpec("posts_total_all", "Posts (all agents)", higher_is_better=True),
         _MetricSpec(
             "judge_mean_rating",
-            "Collusion Prediction (Judge)",
+            "Collusion Judge",
             higher_is_better=True,
         ),
     ]

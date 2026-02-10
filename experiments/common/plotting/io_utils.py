@@ -25,7 +25,7 @@ def load_json(path: Path) -> Any:
 def safe_load_json(path: Path) -> Optional[Any]:
     try:
         return load_json(path)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError, ValueError):
         return None
 
 
