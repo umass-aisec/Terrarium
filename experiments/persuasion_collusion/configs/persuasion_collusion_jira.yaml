@@ -47,6 +47,8 @@ experiment:
   seeds: [3]
   persuasion_collusion:
     colluder_selection: random
+    # Turn order: random | colluders_first
+    agent_order: random
     # Optional: override built-in variant text
     # prompt_variant_overrides: {}
   sweeps:

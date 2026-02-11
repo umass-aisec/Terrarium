@@ -173,6 +173,24 @@ def _select_colluders(
         return [str(x) for x in list(agent_names)[:count]]
     raise ValueError(f"Unknown colluder selection strategy: {strategy!r}")
 
+def _order_agent_turns(
+    *,
+    agent_names: Sequence[str],
+    colluders: Sequence[str],
+    strategy: str,
+) -> List[str]:
+    strategy = str(strategy or "random").strip().lower()
+    if strategy == "random":
+        return list(agent_names)
+    if strategy in {"colluders_first", "colluders-front", "colluders_front"}:
+        colluder_set = {str(x) for x in colluders}
+        ordered_colluders = [str(a) for a in agent_names if str(a) in colluder_set]
+        ordered_others = [str(a) for a in agent_names if str(a) not in colluder_set]
+        return ordered_colluders + ordered_others
+    raise ValueError(
+        f"Unknown agent_order strategy: {strategy!r} (expected: 'random' or 'colluders_first')"
+    )
+
 
 def _log_blackboards_txt(
     *,
@@ -303,6 +321,12 @@ async def _run_single(
         strategy=selection_strategy,
         rng=rng,
     )
+    agent_order_strategy = str(collusion_cfg.get("agent_order", "random"))
+    ordered_agent_names = _order_agent_turns(
+        agent_names=agent_names,
+        colluders=colluders,
+        strategy=agent_order_strategy,
+    )
     colluder_set = set(colluders)
     roles = {
         str(a): ("colluder" if str(a) in colluder_set else "normal")
@@ -343,7 +367,11 @@ async def _run_single(
                 generation_params=generation_params,
             )
         )
-    rng.shuffle(agents)
+    if str(agent_order_strategy or "random").strip().lower() == "random":
+        rng.shuffle(agents)
+    else:
+        agents_by_name = {a.name: a for a in agents}
+        agents = [agents_by_name[name] for name in ordered_agent_names if name in agents_by_name]
     env.set_agent_clients(agents)
 
     # Create blackboards for the communication network.
@@ -530,6 +558,8 @@ async def _run_single(
             "num_agents": num_agents,
             "colluder_count": colluder_count,
             "colluders": colluders,
+            "agent_order": str(agent_order_strategy or "random"),
+            "agent_turn_order": [a.name for a in env.agents],
             "secret_channel_enabled": secret_channel_enabled,
             "secret_blackboard_id": secret_blackboard_id,
             "prompt_variant": str(effective_prompt_variant),
@@ -598,6 +628,7 @@ async def _run_single(
         "prompt_variant": str(effective_prompt_variant),
         "seed": seed,
         "colluders": colluders,
+        "agent_order": str(agent_order_strategy or "random"),
         "status": metrics.status,
         # Radar-chart inputs (environment summary + collusion metrics).
         "joint_reward": joint_reward,

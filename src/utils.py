@@ -325,6 +325,8 @@ def extract_model_info(full_config: Dict[str, Any]) -> str:
 
     llm_config = full_config.get("llm", {})
     provider = llm_config.get("provider", "unknown").lower()
+    if provider == "firework":
+        provider = "fireworks"
 
     # Handle each provider using the new config format
     if provider == "openai":
@@ -335,6 +337,8 @@ def extract_model_info(full_config: Dict[str, Any]) -> str:
         model_name = llm_config.get("gemini", {}).get("model", "unknown")
     elif provider == "together":
         model_name = llm_config.get("together", {}).get("model", "unknown")
+    elif provider == "fireworks":
+        model_name = llm_config.get("fireworks", {}).get("model", "unknown")
     elif provider == "vllm":
         model_name = _get_vllm_model_name(llm_config)
     else:
@@ -480,6 +484,8 @@ def get_client_instance(
         NotImplementedError: If vllm provider is selected (currently not implemented)
     """
     provider = llm_config.get("provider", "vllm").lower()
+    if provider == "firework":
+        provider = "fireworks"
 
     if provider == "openai":
         from llm_server.clients.openai_client import OpenAIClient
@@ -503,6 +509,18 @@ def get_client_instance(
         return TogetherClient(
             base_url=base_url, api_key=api_key, request_timeout=request_timeout
         )
+    elif provider == "fireworks":
+        from llm_server.clients.fireworks_client import FireworksClient
+
+        fireworks_cfg = llm_config.get("fireworks") or {}
+        base_url = str(
+            fireworks_cfg.get("base_url") or "https://api.fireworks.ai/inference/v1"
+        )
+        request_timeout = int(fireworks_cfg.get("request_timeout", 60))
+        api_key = fireworks_cfg.get("api_key")
+        return FireworksClient(
+            base_url=base_url, api_key=api_key, request_timeout=request_timeout
+        )
     elif provider == "vllm":
         if not vllm_runtime:
             raise ValueError("vLLM runtime is required to initialize vLLM clients")
@@ -512,7 +530,7 @@ def get_client_instance(
         return client
     else:
         raise ValueError(
-            f"Unknown provider: {provider}. Must be one of: openai, anthropic, gemini, together, vllm"
+            f"Unknown provider: {provider}. Must be one of: openai, anthropic, gemini, together, fireworks, vllm"
         )
 
 
@@ -572,7 +590,7 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
     Extract model name based on provider from LLM configuration.
 
     Args:
-        provider: LLM provider name (openai, anthropic, gemini, together, vllm)
+        provider: LLM provider name (openai, anthropic, gemini, together, fireworks, vllm)
         llm_config: LLM configuration dictionary
 
     Returns:
@@ -583,6 +601,9 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
         NotImplementedError: If vllm provider is selected (currently not implemented)
     """
     # Extract model name based on provider
+    if provider == "firework":
+        provider = "fireworks"
+
     if provider == "openai":
         model_name = llm_config.get("openai", {}).get("model", "gpt-4o")
     elif provider == "anthropic":
@@ -592,6 +613,10 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
     elif provider == "together":
         model_name = llm_config.get("together", {}).get(
             "model", "unknown-together-model"
+        )
+    elif provider == "fireworks":
+        model_name = llm_config.get("fireworks", {}).get(
+            "model", "unknown-fireworks-model"
         )
     elif provider == "vllm":
         model_name = _get_vllm_model_name(llm_config)
@@ -603,6 +628,8 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
 
 def get_generation_params(llm_config: Dict[str, Any]) -> Dict[str, Any]:
     provider = llm_config.get("provider", "").lower()
+    if provider == "firework":
+        provider = "fireworks"
     provider_block = llm_config.get(provider, {}) if provider else {}
     if not isinstance(provider_block, dict):
         return {}
