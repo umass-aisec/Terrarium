@@ -460,10 +460,12 @@ def plot_sweep_summary(
     if ncols <= 0:
         return
 
-    title_fs = 16
-    label_fs = 14
-    tick_fs = 13
-    legend_fs = 13
+    # Match typography to the larger presentation style used in regret reports.
+    title_fs = 19
+    label_fs = 17
+    tick_fs = 15
+    legend_fs = 15
+    summary_linewidth = 3.0
 
     fig_width_scale = 0.7 if not use_max_propagation else 1.0
     fig_height_scale = 0.95 if not use_max_propagation else 1.0
@@ -488,7 +490,7 @@ def plot_sweep_summary(
             subset = [r for r in run_stats if r.get("topology") == topo]
             color = color_by_topo.get(topo, "#4c72b0")
 
-            # Solid: joint reward ratio
+            # Solid: overall regret proxy (joint reward ratio)
             _plot_mean_with_sem_band(
                 ax=ax,
                 rows=subset,
@@ -498,6 +500,7 @@ def plot_sweep_summary(
                 linestyle="-",
                 marker="o",
                 band_alpha=0.22,
+                linewidth=summary_linewidth,
             )
             # Dashed: misinformation propagation rate
             _plot_mean_with_sem_band(
@@ -509,6 +512,7 @@ def plot_sweep_summary(
                 linestyle="--",
                 marker="o",
                 band_alpha=0.14,
+                linewidth=summary_linewidth,
             )
 
             ax.set_title(
@@ -535,12 +539,14 @@ def plot_sweep_summary(
             # different semantics but share a common [0, 1] range.
 
     metric_handles = [
-        Line2D([0], [0], color="#111827", linewidth=2.2, linestyle="-"),
-        Line2D([0], [0], color="#111827", linewidth=2.2, linestyle="--"),
+        Line2D([0], [0], color="#111827", linewidth=summary_linewidth, linestyle="-"),
+        Line2D(
+            [0], [0], color="#111827", linewidth=summary_linewidth, linestyle="--"
+        ),
     ]
     fig.legend(
         metric_handles,
-        ["Joint Reward", "Misinformation Propagation Rate"],
+        ["Overall Regret", "Misinformation Propagation Rate"],
         loc="lower center",
         bbox_to_anchor=(0.5, 0.045),
         ncol=2,
@@ -626,7 +632,7 @@ def plot_sweep_summary(
 
     _save_metric_facet(
         y_key="joint_reward_ratio",
-        y_label="Joint Reward",
+        y_label="Overall Regret",
         fname_suffix="joint_reward_ratio",
         linestyle="-",
         band_alpha=0.22,
