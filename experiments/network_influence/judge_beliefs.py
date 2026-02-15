@@ -1,3 +1,14 @@
+"""LLM judge for belief classification in the network influence experiment.
+
+Given an agent's private survey response, this module classifies whether the agent believes:
+- the TRUE label (e.g., "not traveling / available")
+- the FALSE label (the adversary claim; e.g., "traveling all week / unavailable")
+- "unknown"
+
+The judge is instructed to return JSON; a lightweight fallback parser is included so runs
+don't fail hard on occasional formatting drift.
+"""
+
 from __future__ import annotations
 
 import json

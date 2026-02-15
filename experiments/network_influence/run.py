@@ -1,6 +1,26 @@
-from __future__ import annotations
-
 # ruff: noqa: E402
+
+"""Network influence / misinformation propagation experiment runner.
+
+This module is intentionally runnable both as:
+- a module: `python -m experiments.network_influence.run --config ...`
+- a script: `python experiments/network_influence/run.py --config ...`
+
+High-level flow for each run:
+1) Build a communication graph (`src.networks.build_communication_network`).
+2) Select adversaries and (optionally) victims based on the config.
+3) Run planning + execution phases through `LocalCommunicationProtocol`.
+4) Run a private survey phase per victim.
+5) Judge each agent's belief about the victim via `experiments/network_influence/judge_beliefs.py`.
+6) Compute metrics + write per-run artifacts to disk.
+
+Customization pointers:
+- Scenario text and "what to lie about": `_build_claims()`
+- How to choose a victim "item id" in a new environment: `_choose_target_item_id()`
+- What counts as a misinformation message: `experiments/network_influence/metrics.py` (`_is_misinfo`)
+"""
+
+from __future__ import annotations
 
 import sys
 import argparse
@@ -17,8 +37,16 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from tqdm import tqdm
 
+if sys.version_info < (3, 11):
+    raise RuntimeError(
+        "Terrarium requires Python >= 3.11. "
+        "Create/activate a `.venv` (see repo README) and re-run with `.venv/bin/python`."
+    )
+
 project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
+# Allow running without installing the repo as a package.
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from experiments.common.run_utils import (
     configure_experiment_logging as _configure_experiment_logging_impl,
@@ -45,6 +73,64 @@ from src.utils import get_client_instance, get_generation_params, get_model_name
 
 LOGGER_NAME = "experiments.network_influence"
 logger = logging.getLogger(LOGGER_NAME)
+
+
+def _validate_config(cfg: Dict[str, Any]) -> None:
+    """Fail fast with a helpful message when a config is missing required sections."""
+    if not isinstance(cfg, dict) or not cfg:
+        raise ValueError("Config must be a non-empty mapping (YAML dict).")
+
+    exp = cfg.get("experiment")
+    if not isinstance(exp, dict):
+        raise ValueError("Missing required top-level `experiment:` block in config.")
+
+    env = cfg.get("environment")
+    if not isinstance(env, dict):
+        raise ValueError("Missing required top-level `environment:` block in config.")
+    if not (str(env.get("name") or "").strip() or str(env.get("import_path") or "").strip()):
+        raise ValueError(
+            "environment.name is required (or set environment.import_path as 'some.module:ClassName')."
+        )
+
+    models = cfg.get("llm_models")
+    if not isinstance(models, list) or not models:
+        raise ValueError(
+            "Missing required top-level `llm_models:` list. "
+            "See experiments/network_influence/configs/quickstart.yaml for an example."
+        )
+    for i, model in enumerate(models, start=1):
+        if not isinstance(model, dict):
+            raise ValueError(
+                f"llm_models[{i}] must be a mapping (got {type(model).__name__})."
+            )
+        llm = model.get("llm")
+        if not isinstance(llm, dict):
+            raise ValueError(f"llm_models[{i}].llm must be a mapping.")
+        provider = str(llm.get("provider") or "").strip()
+        if not provider:
+            raise ValueError(
+                f"llm_models[{i}].llm.provider is required (e.g., 'openai' or 'together')."
+            )
+
+    sweeps = exp.get("sweeps")
+    if not isinstance(sweeps, list) or not sweeps:
+        raise ValueError(
+            "experiment.sweeps must be a non-empty list. "
+            "See experiments/network_influence/configs/quickstart.yaml for an example."
+        )
+    for i, sweep in enumerate(sweeps, start=1):
+        if not isinstance(sweep, dict):
+            raise ValueError(
+                f"experiment.sweeps[{i}] must be a mapping (got {type(sweep).__name__})."
+            )
+        if not str(sweep.get("name") or "").strip():
+            raise ValueError(f"experiment.sweeps[{i}].name is required.")
+        for field in ("topologies", "num_agents", "adversary_counts"):
+            values = sweep.get(field)
+            if not isinstance(values, list) or not values:
+                raise ValueError(
+                    f"experiment.sweeps[{i}].{field} must be a non-empty list."
+                )
 
 
 def _configure_experiment_logging(root: Path, *, verbose: bool = True) -> None:
@@ -1002,6 +1088,7 @@ async def run_from_config(
     max_concurrent_runs: Optional[int] = None,
 ) -> Path:
     cfg = _load_yaml(config_path)
+    _validate_config(cfg)
     exp = cfg.get("experiment") or {}
     if max_concurrent_runs is None:
         max_concurrent_runs = exp.get("max_concurrent_runs", 1)
@@ -1255,7 +1342,7 @@ def main() -> None:
     parser.add_argument(
         "--config",
         required=True,
-        help="Path to experiment YAML config (e.g., experiments/network_influence/configs/network_influence.yaml).",
+        help="Path to experiment YAML config (e.g., experiments/network_influence/configs/quickstart.yaml).",
     )
     parser.add_argument(
         "--out-dir", default=None, help="Override output root directory."

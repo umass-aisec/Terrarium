@@ -1,35 +1,39 @@
 experiment:
-  tag: misinformattion_prop_targeted
-  output_dir: experiments/network_influence/outputs/misinformattion_prop_targeted
+  # "Mass" misinformation propagation: each adversary targets a different victim when possible.
+  #
+  # Note: the runner appends a timestamp subfolder automatically, so `output_dir` should be a stable root.
+  tag: misinformation_prop_mass
+  output_dir: experiments/network_influence/outputs/misinformation_prop_mass
   planning_rounds: 3
   max_conversation_steps: 3
   # Run-level parallelism. Higher values increase API concurrency (watch rate limits/cost).
-  max_concurrent_runs: 20
+  max_concurrent_runs: 10
+  # Limit repetitions per sweep setting by slicing the seed list (useful for cost control).
+  runs_per_setting: 2
   seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   adversary:
     strategy: highest_degree  # random | highest_degree | center
     force_seed: true
-    victim_assignment: shared  # distinct | shared
+    victim_assignment: distinct  # distinct | shared
     misinfo_frequency: once  # once | always
   info:
     code_prefix: PREF_CODE
     true_preference: no_trip
     false_preference: on_trip
   judge:
+    # The judge is currently implemented via the OpenAI client, so OPENAI_API_KEY is required.
     model: gpt-4.1-2025-04-14
     params:
       max_tokens: 256
       temperature: 0.0
-      
   sweeps:
     - name: adv_count_sweep
       topologies: [path, star, complete, watts_strogatz, barabasi_albert, erdos_renyi]
-      # topologies: [path, star, complete, erdos_renyi]
-      # topologies: [path, complete]
       num_agents: [6]
       adversary_counts: [0, 1, 2, 3, 4]
 
 simulation:
+  # These defaults are overridden per-run by the sweep seeds + experiment.* settings.
   seed: 1
   max_iterations: 1
   max_planning_rounds: 3
@@ -57,19 +61,19 @@ communication_network:
   m: 3
 
 llm_models:
-  # - label: together-kimik2-Instruct
+  # - label: together-llama3.3-70b
   #   llm:
   #     provider: together
   #     together:
-  #       model: moonshotai/Kimi-K2-Instruct-0905
+  #       model: meta-llama/Llama-3.3-70B-Instruct-Turbo
   #       params:
-  #         max_tokens: 2000
+  #         max_tokens: 1500
   #         temperature: 0.7
-  - label: openai-gpt-4.1-mini
+  - label: openai-gpt-4o-mini
     llm:
       provider: openai
       openai:
-        model: gpt-4.1-mini-2025-04-14
+        model: gpt-4o-mini
         params:
           max_tokens: 1000
           temperature: 0.7
