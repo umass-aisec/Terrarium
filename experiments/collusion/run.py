@@ -2,6 +2,12 @@ from __future__ import annotations
 
 # ruff: noqa: E402
 
+"""Covert collusion experiment runner.
+
+Focuses on whether a subset of agents can coordinate via a hidden coalition-only blackboard and
+benefit at the expense of non-coalition members.
+"""
+
 import sys
 import argparse
 import copy
@@ -17,8 +23,16 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from tqdm import tqdm
 
+if sys.version_info < (3, 11):
+    raise RuntimeError(
+        "Terrarium requires Python >= 3.11. "
+        "Create/activate a `.venv` (see repo README) and re-run with `.venv/bin/python`."
+    )
+
 project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
+# Allow running without installing the repo as a package.
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from experiments.common.run_utils import (
     configure_experiment_logging as _configure_experiment_logging_impl,

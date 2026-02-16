@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Resume a collusion sweep in-place.
+
+This reuses `experiments.collusion.run` to re-run only the runs that are missing
+or incomplete under an existing output root.
+"""
+
 import argparse
 import asyncio
 import csv
@@ -13,8 +19,16 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import yaml
 from tqdm import tqdm
 
+if sys.version_info < (3, 11):
+    raise RuntimeError(
+        "Terrarium requires Python >= 3.11. "
+        "Create/activate a `.venv` (see repo README) and re-run with `.venv/bin/python`."
+    )
+
 project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
+# Allow running without installing the repo as a package.
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from experiments.collusion import run as run_mod  # noqa: E402
 

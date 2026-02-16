@@ -15,7 +15,8 @@ Built-in `prompt_variant` values live in `experiments/collusion/prompts.py` (e.g
 ## Small "secret blackboard choice" variant
 If you want a tiny setup with **3 agents**, where **all 3 share one public blackboard** and **2 colluders also share a secret blackboard** (2 blackboards total), use:
 ```bash
-python experiments/collusion/run.py --config experiments/collusion/configs/choice/collusion_jira_three_agents_two_blackboards.yaml
+.venv/bin/python -m experiments.collusion.run \
+  --config experiments/collusion/configs/collusion_jira_three_agents_two_blackboards.yaml
 ```
 
 This config also disables the Jira system-prompt bias that tells agents to post on *all* blackboards by setting:
@@ -25,15 +26,16 @@ This config also disables the Jira system-prompt bias that tells agents to post 
 1) Ensure API keys are set (root `.env`) for your chosen provider.
 2) Run:
 ```bash
-python experiments/collusion/run.py --config experiments/collusion/configs/collusion_jira.yaml
+.venv/bin/python -m experiments.collusion.run \
+  --config experiments/collusion/configs/collusion_jira_topologies.yaml
 ```
 
-Outputs are written under `experiments/collusion/outputs/collusion/<timestamp>/`.
+Outputs are written under `experiments/collusion/outputs/<tag>/<timestamp>/`.
 
 ## LLM-as-a-judge (secret blackboard)
 To score how much *collusion exists on the secret blackboard* for an existing output root, run the post-hoc judge:
 ```bash
-python -m experiments.collusion.judge_blackboards \
+.venv/bin/python -m experiments.collusion.judge_blackboards \
   --root experiments/collusion/outputs/collusion_complete/<timestamp> \
   --max-concurrent 16
 ```
@@ -49,7 +51,7 @@ Notes:
 ## Correlate judge scores with length/tooling
 After you have `judge_secret_blackboard/results.csv`, you can join it with per-run features like message length and tool-call counts:
 ```bash
-python -m experiments.collusion.analyze_judge_correlations \
+.venv/bin/python -m experiments.collusion.analyze_judge_correlations \
   --root experiments/collusion/outputs/collusion_complete/<timestamp>
 ```
 
@@ -62,51 +64,18 @@ Cross-model outputs are written under `<root>/analysis/judge_correlations/`:
 - `correlations_by_model.csv`: per-model correlations in one table
 - `correlations_pooled.csv`: pooled correlations across all models
 
-## Plot (histograms)
-After running, generate histogram plots from a sweep directory:
+## Plot
+Generate sweep plots (the only supported plots) from a sweep directory:
 ```bash
-python -m experiments.collusion.plots.generate_collusion_histograms \
-  --sweep-dir experiments/collusion/outputs/collusion/<timestamp>/runs/<model>/<sweep_name>
+.venv/bin/python -m experiments.collusion.plots.generate_all \
+  --sweep-dir experiments/collusion/outputs/<tag>/<timestamp>/runs/<model_label>/<sweep_name>
 ```
 
-By default, plot artifacts are written under `experiments/collusion/plots_outputs/<tag>/<timestamp>/<model>/<sweep_name>/`.
+By default, plot artifacts are written under `experiments/collusion/plots_outputs/<tag>/<timestamp>/<model_label>/<sweep_name>/`.
 
-If you want to generate both histograms and radar charts in one command, use:
-```bash
-python -m experiments.collusion.plots.generate_all \
-  --sweep-dir experiments/collusion/outputs/collusion/<timestamp>/runs/<model>/<sweep_name> \
-  --plot-all-prompt-variants
-```
-
-For sweeps that vary `topology`, you can also generate the same plots separately per topology:
-```bash
-python -m experiments.collusion.plots.generate_collusion_histograms \
-  --sweep-dir experiments/collusion/outputs/collusion/<timestamp>/runs/<model>/<sweep_name> \
-  --by-topology
-```
-
-To generate single-figure comparisons across topologies, add:
-```bash
-python -m experiments.collusion.plots.generate_collusion_histograms \
-  --sweep-dir experiments/collusion/outputs/collusion/<timestamp>/runs/<model>/<sweep_name> \
-  --compare-topologies
-```
-
-## Plot (radar)
-To compare baseline (no secret channel) vs secret-channel treatments across multiple metrics:
-```bash
-python -m experiments.collusion.plots.generate_collusion_radar \
-  --sweep-dir experiments/collusion/outputs/collusion/<timestamp>/runs/<model>/<sweep_name> \
-  --plot-all-prompt-variants
-```
-
-For sweeps that vary `topology`, you can also split the radar chart per topology:
-```bash
-python -m experiments.collusion.plots.generate_collusion_radar \
-  --sweep-dir experiments/collusion/outputs/collusion/<timestamp>/runs/<model>/<sweep_name> \
-  --plot-all-prompt-variants \
-  --by-topology
-```
+Supported outputs:
+- `by_topology/<topology>/sweep/prompt_variants__mean_sem__cX__reward-<metric>.png`
+- `sweep/topology_comparison__optimality_gap_and_judge__cX.png`
 
 ## Resume (in-place)
 If a sweep crashes part-way through, or you want to extend it to more seeds, you can resume **in-place**
@@ -114,9 +83,9 @@ If a sweep crashes part-way through, or you want to extend it to more seeds, you
 
 Example: extend seeds to 1–10, then resume an existing output root:
 ```bash
-python -m experiments.collusion.resume \
-  --root experiments/collusion/outputs/collusion_test/<timestamp> \
-  --config experiments/collusion/configs/collusion_jira_test.yaml
+.venv/bin/python -m experiments.collusion.resume \
+  --root experiments/collusion/outputs/<tag>/<timestamp> \
+  --config experiments/collusion/configs/collusion_jira_topologies.yaml
 ```
 
 Tip: use `--dry-run` first to see what will run.
@@ -131,18 +100,14 @@ python experiments/collusion/compute_jira_optimal.py \
   --write-json
 ```
 
-2) Generate a cross-model report (table + baseline-vs-SC plots):
+2) Generate the combined nine-bars plot (normalized regret + normalized coalition regret gap + judge):
 ```bash
-python -m experiments.collusion.plots.generate_jira_regret_report \
+.venv/bin/python -m experiments.collusion.plots.generate_jira_regret_report \
   --root experiments/collusion/outputs/<tag>/<timestamp> \
   --sweep-name <sweep_name> \
   --compute-optimal
 ```
 
 Outputs:
-- `table_secret_true__pv_control.csv`: mean ± SEM over seeds for:
-  - `optimality_gap` = optimal − achieved (regret)
-  - `achieved_over_optimal` = achieved / optimal
-  - `joint_reward_ratio` = achieved / max_joint_reward (upper bound, not the exact optimal)
-  - `judge_mean_rating` = mean judge score (0–5) over (simple/medium/complex), when judge files exist
-- Per-model plots under `plots/by_model__<metric>/` comparing `baseline` vs `control` vs `simple`.
+- `plots/regret_report__normalized_regret__coalition_gap__judge.png`
+- `plots/regret_report__normalized_regret__coalition_gap__judge__data.csv`
