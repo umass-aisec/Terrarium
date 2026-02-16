@@ -1334,7 +1334,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--out-dir",
         type=str,
-        default="experiments/agent_misalignment_sc/plots_outputs_model_compare",
+        default="experiments/agent_misalignment/plots_outputs_model_compare",
     )
     parser.add_argument(
         "--emit-adv-role-plots",

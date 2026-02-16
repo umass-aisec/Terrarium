@@ -27,7 +27,7 @@ python -m experiments.persuasion_hospital.plots.generate_all \
 ```
 
 This produces:
-- Misalignment-style sweep/overview plots (reused from `agent_misalignment_sc`) under `plots_outputs/.../misalignment_style` and `.../overview`
+- Misalignment-style sweep/overview plots (reused from `agent_misalignment`) under `plots_outputs/.../misalignment_style` and `.../overview`
 - Persuasion-specific variant plots (by `prompt_variant`) under `plots_outputs/.../by_variant`
 
 ## Prompt overrides

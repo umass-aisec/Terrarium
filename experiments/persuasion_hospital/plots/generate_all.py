@@ -8,8 +8,8 @@ from experiments.common.plotting.io_utils import ensure_dir, infer_labels_from_s
 from experiments.common.plotting.load_runs import load_runs
 from experiments.common.plotting.logging_utils import configure_basic_logging
 
-from experiments.agent_misalignment_sc.plots.plot_overview import plot_overview
-from experiments.agent_misalignment_sc.plots.plot_sweep import plot_sweep_metrics
+from experiments.agent_misalignment.plots.plot_overview import plot_overview
+from experiments.agent_misalignment.plots.plot_sweep import plot_sweep_metrics
 
 from .build_tables import build_tables
 from .plot_persuasion_variants import plot_persuasion_variant_effects
@@ -103,7 +103,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     write_csv(out_dir / "run_rows.csv", tables.run_rows)
     write_csv(out_dir / "agent_rows.csv", tables.agent_rows)
 
-    # Reuse the agent_misalignment_sc suite (metrics now line up).
+    # Reuse the agent_misalignment suite (metrics now line up).
     plot_sweep_metrics(
         run_rows=tables.run_rows,
         agent_rows=tables.agent_rows,

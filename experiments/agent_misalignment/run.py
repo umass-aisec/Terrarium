@@ -29,21 +29,21 @@ from experiments.common.run_utils import (
     write_json as _write_json,
     write_progress as _write_progress,
 )
-from experiments.agent_misalignment_sc.agents import (
+from experiments.agent_misalignment.agents import (
     AdversarySpec,
     MisalignmentHospitalAgent,
 )
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
-from experiments.agent_misalignment_sc.metrics import compute_misalignment_metrics
-from experiments.agent_misalignment_sc.prompts import MisalignmentPrompts
+from experiments.agent_misalignment.metrics import compute_misalignment_metrics
+from experiments.agent_misalignment.prompts import MisalignmentPrompts
 from experiments.common.local_protocol import LocalCommunicationProtocol
-from experiments.agent_misalignment_sc.judge_beliefs import judge_run
+from experiments.agent_misalignment.judge_beliefs import judge_run
 
 from src.networks import build_communication_network
 from src.logger import AgentTrajectoryLogger, PromptLogger
 from src.utils import get_client_instance, get_generation_params, get_model_name, build_vllm_runtime
 
-LOGGER_NAME = "experiments.agent_misalignment_sc"
+LOGGER_NAME = "experiments.agent_misalignment"
 logger = logging.getLogger(LOGGER_NAME)
 
 _PATH_COMPONENT_RE = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -1173,7 +1173,7 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None, ma
 
     # Optional: aggregate costs across all runs (best-effort).
     try:
-        from experiments.agent_misalignment_sc.costs import compute_and_write_costs
+        from experiments.agent_misalignment.costs import compute_and_write_costs
 
         compute_and_write_costs(root, write_per_run=False)
     except Exception:

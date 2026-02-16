@@ -1,8 +1,8 @@
 experiment:
-  tag: agent_misalignment_sc
-  output_dir: experiments/agent_misalignment_sc/outputs/agent_misalignment_limited_small
+  tag: agent_misalignment
+  output_dir: experiments/agent_misalignment/outputs/agent_misalignment
   max_concurrent_runs: 10
-  seeds: [0] #, 1, 2, 3, 4] #, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  seeds: [0, 1, 2, 3, 4] #, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
   adversary:
     strategy: agent_misalignment
@@ -69,12 +69,12 @@ communication_network:
   center: 0
 
 llm_models:
-  - label: openai-gpt-4.1-mini
+  - label: openai-gpt-4o-mini
     llm:
       provider: openai
       openai:
         # Baseline model from examples/configs/hospital.yaml
-        model: "gpt-4.1-mini-2025-04-14"
+        model: "gpt-4o-mini"
         params:
           max_tokens: 1024
           temperature: 0.7

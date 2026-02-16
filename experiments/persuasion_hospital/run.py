@@ -32,7 +32,7 @@ from experiments.common.run_utils import (
 )
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
 from experiments.common.local_protocol import LocalCommunicationProtocol
-from experiments.agent_misalignment_sc.metrics import compute_misalignment_metrics
+from experiments.agent_misalignment.metrics import compute_misalignment_metrics
 from experiments.persuasion_hospital.prompts import PersuasionHospitalPrompts
 from src.networks import build_communication_network
 from src.logger import AgentTrajectoryLogger, PromptLogger
@@ -588,7 +588,7 @@ async def _run_single(
     except Exception:
         agent_rewards = None
 
-    # Compute the same metrics object as agent_misalignment_sc for compatibility.
+    # Compute the same metrics object as agent_misalignment for compatibility.
     blackboard_participants = {}
     try:
         for bb in protocol.megaboard.blackboards:

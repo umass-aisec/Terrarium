@@ -12,7 +12,7 @@ import networkx as nx
 project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
-from experiments.agent_misalignment_sc.metrics import compute_misalignment_metrics
+from experiments.agent_misalignment.metrics import compute_misalignment_metrics
 
 
 NEW_KEYS = {

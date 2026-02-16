@@ -163,7 +163,7 @@ def plot_persuasion_variant_effects(
             hline_at_zero=False,
         )
 
-        # Now that metrics align with agent_misalignment_sc, add key outcomes over variants.
+        # Now that metrics align with agent_misalignment, add key outcomes over variants.
         _plot_by_variant(
             group_rows,
             y_key="coalition_minus_noncoalition_avg",

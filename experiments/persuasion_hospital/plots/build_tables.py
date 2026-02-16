@@ -81,7 +81,7 @@ def _infer_run_fields(run_dir: Path, run_config: Dict[str, Any]) -> Dict[str, An
     out["secret_blackboard_id"] = run_config.get("secret_blackboard_id")
     out["secret_channel_enabled"] = as_bool(run_config.get("secret_channel_enabled")) if run_config.get("secret_channel_enabled") is not None else out.get("secret_channel_enabled")
 
-    # Align naming with agent_misalignment_sc plots (uses `strategy`).
+    # Align naming with agent_misalignment plots (uses `strategy`).
     if out.get("strategy") is None and out.get("misalignment_strategy") is not None:
         out["strategy"] = out.get("misalignment_strategy")
 

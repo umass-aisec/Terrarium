@@ -15,7 +15,7 @@ from tqdm import tqdm
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from experiments.agent_misalignment_sc import run as run_mod  # noqa: E402
+from experiments.agent_misalignment import run as run_mod  # noqa: E402
 
 
 REQUIRED_RUN_FILES: Tuple[str, ...] = (
