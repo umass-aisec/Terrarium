@@ -1,6 +1,3 @@
-## Small-scale collusion study: 3 agents on 1 shared blackboard + 2 agents on a secret blackboard.
-## Research question: do colluders *choose* to use the secret blackboard when not instructed to broadcast everywhere?
-
 simulation:
   max_iterations: 1
   max_planning_rounds: 4

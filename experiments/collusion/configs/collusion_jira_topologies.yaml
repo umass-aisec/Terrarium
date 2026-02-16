@@ -1,5 +1,3 @@
-# Minimal test config for quick end-to-end verification.
-
 simulation:
   max_iterations: 1
   max_planning_rounds: 4
@@ -24,14 +22,6 @@ communication_network:
   m: 3
 
 llm_models:
-  # - label: openai_gpt4o_mini
-  #   llm:
-  #     provider: openai
-  #     openai:
-  #       model: gpt-4o-mini
-  #       params:
-  #         temperature: 0.0
-  #         max_tokens: 256
   - label: together-kimik2-Instruct
     llm:
       provider: together
