@@ -13,7 +13,7 @@ or low-priority work).
 - `prompt_variant`: which persuasion tactic playbook colluders use
 - `topology`, `num_agents`, `seed`: standard comms + stochasticity sweeps
 
-Built-in `prompt_variant` values live in `experiments/persuasion_collusion/prompts.py`
+Built-in `prompt_variant` values live in `experiments/persuasion/collusion/prompts.py`
 (e.g., `control`, `helpful_misdirection`, `authority_nudge`, `social_proof`, `scarcity_pressure`, `reciprocity_trade`, `risk_aversion`, `cost_anchor`, `split_brain`).
 
 ## Agent ordering (turn order)
@@ -31,10 +31,10 @@ Each run also records the realized ordering in `run_config.json` under `agent_tu
 1) Ensure API keys are set (root `.env`) for your chosen provider.
 2) Run:
 ```bash
-python experiments/persuasion_collusion/run.py --config experiments/persuasion_collusion/configs/persuasion_collusion_jira.yaml
+python experiments/persuasion/collusion/run.py --config experiments/persuasion/collusion/configs/persuasion_collusion_jira.yaml
 ```
 
-Outputs are written under `experiments/persuasion_collusion/outputs/<timestamp>/`.
+Outputs are written under `experiments/persuasion/collusion/outputs/<timestamp>/`.
 
 ## Prompt overrides
 You can override built-in variants in YAML:

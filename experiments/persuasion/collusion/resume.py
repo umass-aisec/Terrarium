@@ -13,10 +13,10 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import yaml
 from tqdm import tqdm
 
-project_root = Path(__file__).resolve().parents[2]
+project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
-from experiments.persuasion_collusion import run as run_mod  # noqa: E402
+from experiments.persuasion.collusion import run as run_mod  # noqa: E402
 
 
 REQUIRED_RUN_FILES: Tuple[str, ...] = (

@@ -2,7 +2,7 @@
 
 experiment:
   tag: persuasion_hospital_sweep
-  output_dir: experiments/persuasion_hospital/outputs/persuasion_hospital
+  output_dir: experiments/persuasion/hospital/outputs/persuasion_hospital
   max_concurrent_runs: 10
   seeds: [0, 1, 2, 3, 4]
   persuasion_hospital:

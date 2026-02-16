@@ -46,8 +46,8 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_ROOTS: Tuple[str, ...] = (
-    "experiments/persuasion_collusion/outputs/persuasion_collusion/run_1",
-    "experiments/persuasion_collusion/outputs/persuasion_collusion/run_2",
+    "experiments/persuasion/collusion/outputs/persuasion_collusion/run_1",
+    "experiments/persuasion/collusion/outputs/persuasion_collusion/run_2",
 )
 
 DEFAULT_TOPOLOGIES: Tuple[str, ...] = (
@@ -351,7 +351,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--out-dir",
-        default="experiments/persuasion_collusion/outputs/persuasion_collusion/topology_technique_plots",
+        default="experiments/persuasion/collusion/outputs/persuasion_collusion/topology_technique_plots",
         help="Directory to write PNGs into (one per topology).",
     )
     parser.add_argument(

@@ -42,7 +42,7 @@ llm_models:
 
 experiment:
   tag: persuasion_collusion_sweep
-  output_dir: experiments/persuasion_collusion/outputs/persuasion_collusion/run_2
+  output_dir: experiments/persuasion/collusion/outputs/persuasion_collusion/run_2
   max_concurrent_runs: 2
   seeds: [3]
   persuasion_collusion:

@@ -351,7 +351,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--out-dir",
         type=str,
-        default="experiments/persuasion_hospital/plots_outputs_model_compare",
+        default="experiments/persuasion/hospital/plots_outputs_model_compare",
     )
     parser.add_argument(
         "--out-name",

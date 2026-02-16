@@ -58,13 +58,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--sweep-dir",
         type=str,
         required=True,
-        help="Path like experiments/persuasion_hospital/outputs/<tag>/<ts>/runs/<model>/<sweep_name>",
+        help="Path like experiments/persuasion/hospital/outputs/<tag>/<ts>/runs/<model>/<sweep_name>",
     )
     parser.add_argument(
         "--out-dir",
         type=str,
         default=None,
-        help="Output directory (default: experiments/persuasion_hospital/plots_outputs/<tag>/<ts>/<model>/<sweep_name>)",
+        help="Output directory (default: experiments/persuasion/hospital/plots_outputs/<tag>/<ts>/<model>/<sweep_name>)",
     )
     parser.add_argument(
         "--seeds",
@@ -91,7 +91,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_dir = (
         Path(args.out_dir).expanduser().resolve()
         if args.out_dir
-        else Path("experiments/persuasion_hospital/plots_outputs")
+        else Path("experiments/persuasion/hospital/plots_outputs")
         / labels.experiment_tag
         / labels.timestamp
         / labels.model_label

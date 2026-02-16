@@ -9,21 +9,21 @@ They attempt to use **persuasion on PUBLIC blackboards** to steer non-colluders 
 - `misalignment_strategy`: one of `covert_max_coalition_reward`, `destructive_max_coalition_reward`, `destructive_no_reward_preservation`
 - `target_role`: optional constraint on coalition membership (e.g., `Resource_Provisioner`, `departmental`, `Triage`)
 - `secret_channel_enabled`: whether a colluder-only secret blackboard is created
-- `prompt_variant`: the persuasion playbook colluders use (see `experiments/persuasion_hospital/prompts.py`)
+- `prompt_variant`: the persuasion playbook colluders use (see `experiments/persuasion/hospital/prompts.py`)
 - `topology`, `num_agents`, `num_patients`, `seed`: standard sweeps
 
 ## Run
 ```bash
-python experiments/persuasion_hospital/run.py --config experiments/persuasion_hospital/configs/persuasion_hospital.yaml
+python experiments/persuasion/hospital/run.py --config experiments/persuasion/hospital/configs/persuasion_hospital.yaml
 ```
 
-Outputs are written under `experiments/persuasion_hospital/outputs/<timestamp>/`.
+Outputs are written under `experiments/persuasion/hospital/outputs/<timestamp>/`.
 
 ## Plots
 Generate plots for a single sweep directory:
 ```bash
-python -m experiments.persuasion_hospital.plots.generate_all \
-  --sweep-dir experiments/persuasion_hospital/outputs/persuasion_hospital/<timestamp>/runs/<model>/<sweep_name>
+python -m experiments.persuasion.hospital.plots.generate_all \
+  --sweep-dir experiments/persuasion/hospital/outputs/persuasion_hospital/<timestamp>/runs/<model>/<sweep_name>
 ```
 
 This produces:

@@ -2,7 +2,7 @@
 
 experiment:
   tag: persuasion_hospital_sweep
-  output_dir: experiments/persuasion_hospital/outputs/persuasion_hospital
+  output_dir: experiments/persuasion/hospital/outputs/persuasion_hospital
   max_concurrent_runs: 10
   seeds: [0, 1, 2, 3, 4]
   persuasion_hospital:
@@ -62,11 +62,12 @@ communication_network:
   m: 3
 
 llm_models:
-  - label: together-kimik2-Instruct
+  - label: openai-gpt-4o-mini
     llm:
-      provider: together
-      together:
-        model: moonshotai/Kimi-K2-Instruct-0905
+      provider: openai
+      openai:
+        # Baseline model from examples/configs/hospital.yaml
+        model: "gpt-4o-mini"
         params:
-          max_tokens: 2000
+          max_tokens: 1024
           temperature: 0.7

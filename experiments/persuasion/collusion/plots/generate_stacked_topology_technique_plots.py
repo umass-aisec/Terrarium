@@ -60,8 +60,8 @@ _STYLE = {
 
 
 DEFAULT_ROOTS: Tuple[str, ...] = (
-    "experiments/persuasion_collusion/outputs/persuasion_collusion/run_1",
-    "experiments/persuasion_collusion/outputs/persuasion_collusion/run_2",
+    "experiments/persuasion/collusion/outputs/persuasion_collusion/run_1",
+    "experiments/persuasion/collusion/outputs/persuasion_collusion/run_2",
 )
 
 
@@ -369,7 +369,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--out-path",
-        default="experiments/persuasion_collusion/outputs/persuasion_collusion/topology_technique_plots/stacked_topologies.pdf",
+        default="experiments/persuasion/collusion/outputs/persuasion_collusion/topology_technique_plots/stacked_topologies.pdf",
         help="PNG path to write (single combined figure).",
     )
     parser.add_argument(

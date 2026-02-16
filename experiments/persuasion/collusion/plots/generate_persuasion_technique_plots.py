@@ -41,21 +41,14 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_ROOTS: Tuple[str, ...] = (
-    "experiments/persuasion_collusion/outputs/persuasion_collusion/20260123-142821",
-    "experiments/persuasion_collusion/outputs/persuasion_collusion/20260123-170703",
-    "experiments/persuasion_collusion/outputs/persuasion_collusion/20260123-220456",
+    "experiments/persuasion/collusion/outputs/persuasion_collusion/20260123-142821",
+    "experiments/persuasion/collusion/outputs/persuasion_collusion/20260123-170703",
+    "experiments/persuasion/collusion/outputs/persuasion_collusion/20260123-220456",
 )
 
 
-MODEL_LABELS: Dict[str, str] = {
-    "openai_gpt4o_mini": "GPT-4o-Mini",
-    "openai_gpt4.1_mini": "GPT-4.1-Mini",
-    "together-kimik2-Instruct": "Kimi-K2-Instruct",
-}
-
-
 TECHNIQUE_LABELS: Dict[str, str] = {
-    "no_secret": "Baseline (No Secret)",
+    "no_secret": "No Secret",
     "control": "Control",
     "authority_nudge": "Authority Nudge",
     "helpful_misdirection": "Helpful Misdirection",
@@ -63,6 +56,7 @@ TECHNIQUE_LABELS: Dict[str, str] = {
     "social_proof": "Social Proof",
     "reciprocity_trade": "Reciprocity Trade",
 }
+
 
 TECHNIQUE_ORDER: Tuple[str, ...] = (
     "no_secret",
@@ -80,7 +74,12 @@ def _load_summary_rows(root: Path) -> List[Dict[str, Any]]:
     payload = load_json(summary_path)
     if not isinstance(payload, list):
         raise ValueError(f"Expected a JSON list in {summary_path}")
-    return [r for r in payload if isinstance(r, dict)]
+    rows: List[Dict[str, Any]] = []
+    for r in payload:
+        if not isinstance(r, dict):
+            continue
+        rows.append(r)
+    return rows
 
 
 def _normalize_rows(
@@ -100,7 +99,6 @@ def _normalize_rows(
             {
                 **r,
                 "secret_channel_enabled": bool(secret),
-                "prompt_variant": prompt_variant,
                 "technique": technique,
             }
         )
@@ -108,10 +106,15 @@ def _normalize_rows(
 
 
 def _sorted_models(rows: List[Dict[str, Any]]) -> List[str]:
-    present = {str(r.get("model_label")) for r in rows if r.get("model_label")}
-    preferred = [m for m in MODEL_LABELS.keys() if m in present]
-    rest = sorted(present - set(preferred))
-    return preferred + rest
+    seen: List[str] = []
+    for r in rows:
+        ml = r.get("model_label")
+        if not ml:
+            continue
+        s = str(ml)
+        if s not in seen:
+            seen.append(s)
+    return seen
 
 
 def _collect_techniques(rows: List[Dict[str, Any]]) -> List[str]:
@@ -134,21 +137,18 @@ def _compute_group_stats(
         vals = [v for v in (as_float(r.get(metric)) for r in group_rows) if v is not None]
         if not vals:
             continue
+        m = float(sum(vals) / len(vals))
         out.append(
             {
                 "topology": str(topology),
                 "model_label": str(model_label),
                 "technique": str(technique),
-                "mean": float(sum(vals) / len(vals)),
+                "mean": m,
                 "sem": float(sem(vals)),
-                "n": int(len(vals)),
+                "n": len(vals),
             }
         )
     return out
-
-
-def _pretty_model_label(model_label: str) -> str:
-    return MODEL_LABELS.get(model_label, model_label)
 
 
 def _plot_topology(
@@ -157,25 +157,21 @@ def _plot_topology(
     stats: List[Dict[str, Any]],
     models: List[str],
     techniques: List[str],
-    out_path: Path,
     metric_label: str,
+    out_path: Path,
 ) -> None:
     key_rows = [r for r in stats if str(r.get("topology")) == topology]
     by_key: Dict[Tuple[str, str], Dict[str, Any]] = {
         (str(r["model_label"]), str(r["technique"])): r for r in key_rows
     }
 
-    fig_w = max(10.0, 2.4 * len(models))
+    fig_w = max(12.0, 2.6 * len(models))
     fig, ax = plt.subplots(figsize=(fig_w, 3.2))
+
     palette = list(plt.cm.tab10.colors)  # type: ignore[attr-defined]
     colors: Dict[str, Any] = {}
     for i, tech in enumerate(techniques):
-        if tech == "no_secret":
-            colors[tech] = "#1f77b4"  # tab:blue
-        elif tech == "control":
-            colors[tech] = "#7f7f7f"  # tab:gray
-        else:
-            colors[tech] = palette[i % len(palette)]
+        colors[tech] = palette[i % len(palette)]
 
     group_width = 0.84
     bar_w = group_width / max(1, len(techniques))
@@ -191,24 +187,26 @@ def _plot_topology(
             if row is None:
                 means.append(float("nan"))
                 errs.append(0.0)
-            else:
-                means.append(float(row["mean"]))
-                errs.append(float(row["sem"]))
+                continue
+            means.append(float(row["mean"]))
+            errs.append(float(row["sem"]))
+
         ax.bar(
             xs,
             means,
             width=bar_w * 0.95,
-            color=colors.get(tech, "#333333"),
+            color=colors[tech],
+            label=TECHNIQUE_LABELS.get(tech, tech.replace("_", " ")),
             yerr=errs,
             capsize=3,
             linewidth=0.6,
             edgecolor="black",
             alpha=0.9,
-            label=TECHNIQUE_LABELS.get(tech, tech.replace("_", " ")),
         )
 
+    ax.axhline(0.0, color="black", linewidth=0.8, alpha=0.8)
     ax.set_xticks(x0)
-    ax.set_xticklabels([_pretty_model_label(m) for m in models])
+    ax.set_xticklabels(models)
     ax.set_ylabel(metric_label)
     ax.set_title(f"Persuasion-collusion — {topology}")
 
@@ -223,9 +221,6 @@ def _plot_topology(
         frameon=False,
     )
 
-    ax.grid(True, axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
-    ax.grid(False, axis="x")
-    ax.axhline(0.0, color="black", linewidth=0.8, alpha=0.8)
     fig.tight_layout()
     ensure_dir(out_path.parent)
     fig.savefig(out_path)
@@ -235,9 +230,7 @@ def _plot_topology(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=(
-            "Generate per-topology bar charts (example-plot style) from persuasion_collusion summaries."
-        )
+        description="Generate persuasion-technique plots from persuasion_collusion output summaries."
     )
     parser.add_argument(
         "--roots",
@@ -247,16 +240,14 @@ def main() -> None:
     )
     parser.add_argument(
         "--out-dir",
-        default="experiments/persuasion_collusion/outputs/persuasion_collusion/20260123-example-style-plots",
+        default="experiments/persuasion/collusion/outputs/persuasion_collusion/20260123-persuation-technique-plots",
     )
-    parser.add_argument("--include-incomplete", action="store_true")
     parser.add_argument(
         "--metric",
-        "--regret-metric",
-        dest="metric",
-        default="mean_regret",
-        help="Metric column in summary.json to plot.",
+        default="coalition_advantage_mean",
+        help="Metric column in summary.json (e.g., coalition_advantage_mean, coalition_mean_reward).",
     )
+    parser.add_argument("--include-incomplete", action="store_true")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -277,25 +268,27 @@ def main() -> None:
     stats = _compute_group_stats(rows, metric=metric)
 
     topologies = sorted({str(r.get("topology")) for r in rows if r.get("topology")})
-    out_dir = Path(str(args.out_dir))
+    out_dir = Path(args.out_dir)
 
     metric_label = metric.replace("_", " ")
-    if metric == "mean_regret":
-        metric_label = "Regret (↓)"
-    elif metric == "coalition_mean_regret":
-        metric_label = "Coalition Mean Regret (↓)"
+    if metric == "coalition_advantage_mean":
+        metric_label = "Coalition Advantage (↑)"
+    elif metric == "coalition_mean_reward":
+        metric_label = "Coalition Mean Reward (↑)"
+    elif metric == "noncoalition_mean_reward":
+        metric_label = "Non-coalition Mean Reward (↑)"
     elif metric == "noncoalition_mean_regret":
-        metric_label = "Non-coalition Mean Regret (↓)"
+        metric_label = "Non-coalition Mean Regret (↑)"
 
     for topology in topologies:
-        out_path = out_dir / f"example_style__{sanitize_filename(topology)}.png"
+        out_path = out_dir / f"persuasion_techniques__{sanitize_filename(topology)}.png"
         _plot_topology(
             topology=topology,
             stats=stats,
             models=models,
             techniques=techniques,
-            out_path=out_path,
             metric_label=metric_label,
+            out_path=out_path,
         )
 
 

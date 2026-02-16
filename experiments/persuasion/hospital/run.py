@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from tqdm import tqdm
 
-project_root = Path(__file__).resolve().parents[2]
+project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
 from experiments.common.run_utils import (
@@ -33,14 +33,14 @@ from experiments.common.run_utils import (
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
 from experiments.common.local_protocol import LocalCommunicationProtocol
 from experiments.agent_misalignment.metrics import compute_misalignment_metrics
-from experiments.persuasion_hospital.prompts import PersuasionHospitalPrompts
+from experiments.persuasion.hospital.prompts import PersuasionHospitalPrompts
 from src.networks import build_communication_network
 from src.logger import AgentTrajectoryLogger, PromptLogger
 from src.utils import get_client_instance, get_generation_params, get_model_name, build_vllm_runtime
 from src.agents.base import BaseAgent
 
 
-LOGGER_NAME = "experiments.persuasion_hospital"
+LOGGER_NAME = "experiments.persuasion.hospital"
 logger = logging.getLogger(LOGGER_NAME)
 
 _PATH_COMPONENT_RE = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -729,7 +729,7 @@ async def run_from_config(
         Path(
             out_dir
             or exp.get("output_dir")
-            or "experiments/persuasion_hospital/outputs/persuasion_hospital"
+            or "experiments/persuasion/hospital/outputs/persuasion_hospital"
         )
         / timestamp
     )
@@ -887,7 +887,7 @@ def main() -> None:
         "--config",
         type=str,
         required=True,
-        help="Path to experiment YAML config (e.g., experiments/persuasion_hospital/configs/persuasion_hospital.yaml).",
+        help="Path to experiment YAML config (e.g., experiments/persuasion/hospital/configs/persuasion_hospital.yaml).",
     )
     parser.add_argument(
         "--out-dir",

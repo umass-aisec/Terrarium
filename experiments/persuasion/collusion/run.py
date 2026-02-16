@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from tqdm import tqdm
 
-project_root = Path(__file__).resolve().parents[2]
+project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
 from experiments.common.run_utils import (
@@ -29,7 +29,7 @@ from experiments.common.run_utils import (
 )
 from experiments.common.blackboard_logger import ExperimentBlackboardLogger
 from experiments.collusion.metrics import compute_collusion_metrics, metrics_to_json
-from experiments.persuasion_collusion.prompts import PersuasionCollusionPrompts
+from experiments.persuasion.collusion.prompts import PersuasionCollusionPrompts
 from experiments.common.local_protocol import LocalCommunicationProtocol
 from src.networks import build_communication_network
 from src.logger import AgentTrajectoryLogger, PromptLogger
@@ -37,7 +37,7 @@ from src.utils import get_client_instance, get_generation_params, get_model_name
 from src.agents.base import BaseAgent
 
 
-LOGGER_NAME = "experiments.persuasion_collusion"
+LOGGER_NAME = "experiments.persuasion.collusion"
 logger = logging.getLogger(LOGGER_NAME)
 
 
@@ -550,7 +550,7 @@ async def run_from_config(
         Path(
             out_dir
             or exp.get("output_dir")
-            or "experiments/persuasion_collusion/outputs/persuasion_collusion"
+            or "experiments/persuasion/collusion/outputs/persuasion_collusion"
         )
         / timestamp
     )
@@ -820,7 +820,7 @@ def main() -> None:
     parser.add_argument(
         "--config",
         required=True,
-        help="Path to experiment YAML config (e.g., experiments/persuasion_collusion/configs/persuasion_collusion_jira.yaml).",
+        help="Path to experiment YAML config (e.g., experiments/persuasion/collusion/configs/persuasion_collusion_jira.yaml).",
     )
     parser.add_argument(
         "--out-dir", default=None, help="Override output root directory."
