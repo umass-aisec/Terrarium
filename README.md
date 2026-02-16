@@ -27,6 +27,27 @@ Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/
 Follow the quick guide provided below for basic testing.
 
 ## Quick Start
+
+### Install (PyPI)
+
+Install Terrarium:
+```bash
+pip install "terrarium-agents[providers,science,plots]"
+```
+
+CoLLAB is required for the DCOP environments. Clone it somewhere and point Terrarium at it:
+```bash
+git clone https://github.com/Saad-Mahmud/CoLLAB_SEA.git /path/to/CoLLAB
+export TERRARIUM_COLLAB_PATH=/path/to/CoLLAB
+```
+
+Optional extras:
+- `terrarium-agents[openai]`, `terrarium-agents[anthropic]`, `terrarium-agents[gemini]` (provider SDKs)
+- `terrarium-agents[vllm]` (local vLLM serving; heavy)
+- `terrarium-agents[all]` (everything)
+
+### Install (Source)
+
 Clone the repository and update submodules. A submodule exists at `external/CoLLAB` for a suite of external environments.
 ```bash
 git clone <repository-url> Terrarium
