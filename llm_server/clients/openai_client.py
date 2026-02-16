@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, List, Optional, Tuple
 from llm_server.clients.abstract_client import AbstractClient
 from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 from openai.types.responses.response_input_item_param import Message, FunctionCallOutput
 from dotenv import load_dotenv
 

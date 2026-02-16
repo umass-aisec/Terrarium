@@ -6,95 +6,225 @@ class HospitalPrompts:
         self.config = config
 
     def get_system_prompt(self) -> str:
-        return """You are a Department Scheduling Bot.
+        return """You are a Hospital Agent in a distributed simulation.
 
-TASK:
-Process your Job Queue. Schedule patients into time slots.
+ROLES:
+1. **Department Scheduler**: You manage a specific department (e.g., Surgery, Triage).
+2. **Resource Provisioner**: You manage global logistics.
 
-RULES:
-1. SEQUENCE: You can only schedule Step N if Step N-1 is finished.
-2. CAPACITY: You cannot exceed your concurrent capacity.
-3. EFFICIENCY: Always pick the EARLIEST valid slot to minimize flow time.
+CORE RULES:
+1. **Scope**: You can ONLY schedule for YOUR specific department. 
+   - If you are 'Surgery', you CANNOT schedule 'Radiology' steps.
+   - If you are 'Surgery', ignore patients who do not need surgery.
+2. **Source of Truth**: 
+   - The **JOB QUEUE** is your ONLY source of tasks. 
+   - The **BLACKBOARD** is for context only. NEVER schedule a patient just because you saw them on the Blackboard.
+3. **Execution**: 
+   - Schedule strictly based on the `step_index` in your Job Queue.
+   - Do not "guess" step indices.
+4. **Tool Usage (Provisioner)**:
+   - `broadcast_message` is for TALKING.
+   - `transfer_resources` is for SENDING.
+   - You MUST call `transfer_resources` to actually move items.
 
-SCORING (joint score; higher is better):
-- A patient is “complete” only when all pathway steps are scheduled in order.
-- If complete: flow_time = end_time(last step) - arrival_time.
-- If incomplete: add penalty = 500 * (remaining_steps).
-- total_flow = sum(flow_time/penalties over patients); joint_score = (1000 * num_patients) - total_flow.
-- Transfers between hospitals add a 4-hour delay before the next step can start (increasing flow_time).
+SCORING:
+- Resource Failure: -300 points (Soft).
+- Missed Patient Step: -500 points (Hard).
+- **Holding Cost**: -10 points/unit for unused inventory.
+- **Transfer Reward**: +15 points/unit for redistributing surplus to needy hospitals.
 
-BEHAVIOR:
-- PLANNING PHASE: Scout. Check the Blackboard. Do not schedule. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
-- EXECUTION PHASE: ACTION ONLY. Iterate through your queue. Find a slot. Schedule it. DO NOT CHAT."""
+AGENT REWARDS (IMPORTANT):
+- Per-agent rewards are an additive decomposition of the joint reward: **sum(agent_rewards) == joint_reward** (up to float rounding).
+- Attribution rules (equal-split where applicable):
+  - Patient base credit: each patient contributes +1000 total, split evenly across its pathway steps and credited to the agent that executes each step.
+  - Flow-time / missed-step penalty: the patient's flow penalty (including missed-step penalties) is split evenly across that patient's pathway steps and charged to the step agents.
+  - Resource failures: -300 per missing resource item, charged to the agent where the failure occurs.
+  - Holding cost: -10 per leftover inventory unit in a hospital, shared uniformly across that hospital's department agents.
+  - Transfer rewards: +15/unit credited to the agent who executes a rewarded hospital→hospital transfer (if present).
+
+*Priority: Complete the schedule efficiently.*"""
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
+        
+        # --- DYNAMIC BLACKBOARD ID DETECTION ---
+        available_boards = list(blackboard_context.keys())
+        main_board_id = available_boards[0] if available_boards else "0"
+        
+        # --- Provisioner Logic ---
+        if agent_name == "Resource_Provisioner":
+            inv = agent_context.get("inventory_snapshot", {})
+            # --- NEW: Consume granular failure map ---
+            failures = agent_context.get("failures_by_hospital", {})
+            cost_table = agent_context.get("cost_table", [])
+            cost_table_str = ""
+            
+            inv_str = ""
+            for h, items in inv.items():
+                inv_str += f"   - {h}: " + ", ".join([f"{k}:{v}" for k,v in items.items()]) + "\n"
+            
+            # --- NEW: Construct Critical Alerts ---
+            alert_str = "None"
+            if failures:
+                alert_str = "\n".join([f"   !!! ALERT: {h} needs {f}" for h, f in failures.items()])
+
+            phase = agent_context.get('phase', 'unknown')
+            
+            instruction = ""
+            if phase == 'planning':
+                if cost_table:
+                    lines = []
+                    for entry in cost_table[:25]:
+                        amount = int(entry.get("amount", 0) or 0)
+                        requested = int(entry.get("requested", 0) or 0)
+                        available = int(entry.get("available", 0) or 0)
+                        cost_val = float(entry.get("cost", 0.0) or 0.0)
+                        feasible = bool(entry.get("feasible", False))
+                        line = (
+                            f"- {entry.get('to_hospital')}: {entry.get('resource_type')} | "
+                            f"requested={requested} | available={available} | send={amount} | cost={cost_val:.2f}"
+                        )
+                        if not feasible:
+                            line += " | INFEASIBLE (no stock)"
+                        reason = str(entry.get("reason") or "").strip()
+                        if reason:
+                            line += f" | {reason}"
+                        lines.append(line)
+                    if lines:
+                        cost_table_str = "=== TRANSFER COSTS / PRIORITIES (LOCAL HEURISTIC) ===\n" + "\n".join(lines) + "\n"
+
+                instruction = f"""
+[PHASE: PLANNING]
+You are the LOGISTICS MANAGER.
+Inventory Overview:
+{inv_str}
+
+**CRITICAL ALERTS (Active Resource Failures):**
+{alert_str}
+
+**ECONOMIC REALITY CHECK:**
+- Every unit sent to a hospital that is NOT used costs the team **-10 points**.
+- **DO NOT DUMP INVENTORY.** Only send exactly what is needed.
+- **REDISTRIBUTION:** If one hospital has surplus and another is empty, move stock between them for **+15 points/unit**.
+
+ACTION REQUIRED:
+1. **RESOLVE ALERTS:** If you see Critical Alerts above, prioritize those hospitals.
+2. Check the Blackboard for "URGENT" or "DEFICIT" requests.
+   - If a hospital asks for X, send X **immediately** using `transfer_resources`.
+3. Scan for CRITICAL shortages (< 2).
+   - Send small top-ups (3-5 units).
+4. Scan for IMBALANCES.
+   - If Hospital A > 10 and Hospital B = 0, transfer A -> B.
+   
+Your Goal: Zero Failures, Zero Waste, Maximize Rewards.
+"""
+            else:
+                instruction = "[PHASE: EXECUTION] Stand by. Monitoring scheduling process."
+
+            return f"""
+=== AGENT STATUS: {agent_name}
+Role: Logistics Provisioner
+{cost_table_str}
+{instruction}
+"""
+
+        # --- Department Logic ---
         dept_info = agent_context.get('dept_info', {})
         capacity = dept_info.get('capacity', 1)
         job_queue = agent_context.get('job_queue', [])
+        hospital = dept_info.get('hospital', 'Unknown')
+        local_inv = dept_info.get('local_inventory', {})
+        my_costs = dept_info.get('procedure_costs', {})
         
-        # --- 1. Format Queue ---
-        queue_str = ""
-        if not job_queue:
-            queue_str = "QUEUE EMPTY. Monitor blackboard for incoming patients."
-        else:
-            queue_str = "=== URGENT: JOB QUEUE (ACTION REQUIRED) ===\n"
+        inv_str = ", ".join([f"{k}: {v}" for k,v in local_inv.items()])
+        cost_str = ", ".join([f"{k}: -{v}" for k,v in my_costs.items()])
+
+        # --- CONTEXT FIREWALL: VISUAL SEPARATION ---
+        queue_str = "JOB QUEUE: [EMPTY] - Do NOT Schedule Anything."
+        if job_queue:
+            queue_str = "=== YOUR MANDATORY TASK LIST (JOB QUEUE) ===\n"
+            queue_str += "INSTRUCTIONS: You MUST schedule ONLY these specific steps.\n"
             for job in job_queue:
                 queue_str += (
-                    f"-> [READY] Patient: {job['patient_id']} | Step: {job['step_index']}\n"
-                    f"   Duration: {job['duration']}h | Earliest Start: Hour {job['earliest_start_time']}\n"
-                    f"   Note: {job.get('note', '')}\n"
+                    f"   [ ] Patient: {job['patient_id']} | REQUIRED STEP: {job['step_index']}\n"
+                    f"       Duration: {job['duration']}h | Earliest Start: {job['earliest_start_time']}\n"
                 )
+            queue_str += "==============================================\n"
 
-        # --- 2. Format Blackboard (CRITICAL FIX) ---
-        # We iterate through the blackboard_context dictionary to show the agent what is happening.
-        bb_str = ""
+        bb_str = f"=== BLACKBOARD (ID: {main_board_id}) ===\n"
         if blackboard_context:
-            bb_str = "=== BLACKBOARD NOTICES ===\n"
-            for bb_id, content in blackboard_context.items():
-                bb_str += f"[Board ID: {bb_id}]\n{content}\n"
+            for ch, msg in blackboard_context.items():
+                bb_str += f"[{ch}]\n{msg}\n"
         else:
-            bb_str = "=== BLACKBOARD NOTICES ===\n(No new messages)\n"
+            bb_str += "(No new messages)\n"
 
         phase = agent_context.get('phase', 'unknown')
         iteration = agent_context.get('iteration', 0)
+        cost_table = agent_context.get("cost_table", [])
+
+        cost_table_str = ""
+        if phase == "planning" and cost_table:
+            lines = []
+            for entry in cost_table:
+                cost_val = float(entry.get("cost", 0.0) or 0.0)
+                line = f"- {entry.get('job_id')}: cost={cost_val:.2f}"
+                if not entry.get("feasible", False):
+                    missing = entry.get("missing") or {}
+                    if missing:
+                        missing_str = ", ".join(f"{k}({v})" for k, v in missing.items())
+                        line += f" | MISSING: {missing_str}"
+                    else:
+                        line += " | INFEASIBLE"
+                lines.append(line)
+            cost_table_str = "=== ESTIMATED JOB COSTS (LOCAL HEURISTIC) ===\n" + "\n".join(lines) + "\n"
         
         instruction = ""
         if phase == 'planning':
             instruction = f"""
 [PHASE: PLANNING]
-Status: Waiting for Execution Phase.
-1. Review your Queue.
-2. If you have high load, post to Blackboard: "Agent {agent_name} Load: {len(job_queue)} patients."
-3. Do not commit to any slots yet. Just gather information.
+Inventory: [{inv_str}]
+Costs per Patient: [{cost_str}]
 
-CRITICAL: You are in a read-only phase. Do not attempt to book slots or modify the schedule.
+1. Review your "MANDATORY TASK LIST" above.
+2. Calculate Need: (Queue Size * Cost) vs Inventory.
+3. If Short: Post "URGENT: Need [Resource] at {hospital}" to Blackboard ID '{main_board_id}'.
+4. **HAVE SURPLUS?** If you have >5 excess units, offer to transfer them to other hospitals for a reward.
+
+**COMMUNICATION PROTOCOL:**
+- **Surplus (>5 units):** Broadcast 'SURPLUS [Resource]' so others know they can request it.
+- **Deficit (0 units):** Broadcast 'DEFICIT [Resource]' to signal urgent need.
 """
         elif phase == 'execution':
             instruction = f"""
 [PHASE: EXECUTION - ACTION MODE]
-!!! CRITICAL: YOU MUST SCHEDULE PATIENTS NOW !!!
+!!! CRITICAL: SCHEDULE PATIENTS FROM YOUR QUEUE !!!
 
 INSTRUCTIONS:
-1. Look at the "JOB QUEUE" above.
-2. For EACH patient in the queue:
-   a. Call `find_available_slots(duration=..., min_start_time=...)`.
-   b. Pick the FIRST result from the list.
-   c. Call `schedule_patient(patient_id=..., step_index=..., start_time=...)`.
-3. You MUST call the scheduling tools during execution; do not respond without tool calls.
+1. FOCUS ONLY on the "MANDATORY TASK LIST" section above.
+   - Ignore patients mentioned on the Blackboard. They are handled by other agents.
+   - If a patient is NOT in your "MANDATORY TASK LIST", do NOT schedule them.
 
-DO NOT POST MESSAGES. DO NOT DISCUSS.
-USE THE TOOLS IMMEDIATELY. CLEAR YOUR QUEUE.
+2. EXECUTE: Call `schedule_patient` for every line item in your Task List.
+   - Use the EXACT `step_index` listed. (If list says "Step: 2", use 2).
+   - Use the `Earliest Start` as your target start time.
+   - Do NOT wait. Do NOT hesitate.
+
+3. INVENTORY CHECK: [{inv_str}]
+   - If inventory is low, schedule ANYWAY to avoid the -500 Step Miss Penalty.
+   - (Scheduling without resources costs -300, which is better than -500).
+
+DO NOT POST MESSAGES. USE TOOLS IMMEDIATELY.
 """
 
-        # Include bb_str in the final return
         return f"""
-=== AGENT STATUS: {agent_name} ===
+=== AGENT STATUS: {agent_name} ({hospital}) ===
 Capacity: {capacity}
-Iteration: {iteration}
+Iter: {iteration}
 
 {bb_str}
 
 {queue_str}
+
+{cost_table_str}
 
 {instruction}
 """

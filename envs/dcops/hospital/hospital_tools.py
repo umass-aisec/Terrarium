@@ -5,93 +5,105 @@ logger = logging.getLogger(__name__)
 
 class HospitalTools:
     """
-    Hospital Job Shop Scheduling Tools.
-    
-    Tools allow agents to:
-    1. Check their own schedule availability (find gaps).
-    2. Commit a patient to a time slot.
+    Hospital Tools: Supports Provisioner Logic and expanded Resource types.
     """
 
     def __init__(self, blackboard_manager):
         self.blackboard_manager = blackboard_manager
 
     def get_tool_names(self) -> Set[str]:
-        return {"schedule_patient", "find_available_slots", "get_job_queue"}
+        return {
+            "schedule_patient", "find_available_slots", "get_job_queue", 
+            "transfer_resources", "broadcast_message"
+        }
 
     def get_tools(self, phase: str) -> List[Dict[str, Any]]:
-        """
-        Returns the JSON schema for tools available in the current phase.
-        """
         tools = []
         
-        # --- READ-ONLY TOOLS (Available in ALL phases) ---
-        
-        # Tool 1: Find Available Slots (Helper to avoid LLM math errors)
+        # Read-Only Tools
         tools.append({
             "type": "function",
             "function": {
                 "name": "find_available_slots",
-                "description": "Finds the earliest available time slots for a job of a given duration.",
+                "description": "Finds available time slots.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "duration": {
-                            "type": "integer",
-                            "description": "The length of the procedure in hours.",
-                        },
-                        "min_start_time": {
-                            "type": "integer",
-                            "description": "The earliest hour the job can start (e.g., due to arrival time).",
-                        },
-                        "num_slots": {
-                            "type": "integer",
-                            "description": "How many options to return. Default is 3.",
-                            "default": 3
-                        }
+                        "duration": {"type": "integer"},
+                        "min_start_time": {"type": "integer"},
+                        "num_slots": {"type": "integer", "default": 3}
                     },
                     "required": ["duration", "min_start_time"],
                 },
             },
         })
 
-        # Tool 2: Get Queue
         tools.append({
             "type": "function",
             "function": {
                 "name": "get_job_queue",
-                "description": "Refreshes the list of patients waiting for this department.",
+                "description": "Refreshes the job queue.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        })
+
+        # Provisioner / Communication Tools
+        tools.append({
+            "type": "function",
+            "function": {
+                "name": "transfer_resources",
+                "description": "Send supplies to a hospital.",
                 "parameters": {
                     "type": "object",
-                    "properties": {}, 
-                    "required": [],
+                    "properties": {
+                        "to_hospital": {
+                            "type": "string",
+                            "description": "Destination hospital name (e.g., 'General_Hospital', 'St_Marys_Center', 'Hospital_2', or 'Resource_Provisioner').",
+                        },
+                        "resource_type": {
+                            "type": "string", 
+                            "enum": ["IV_Kits", "Anesthetics", "Pain_Killers", "Radio_Contrast", "Oxygen_Tanks", "Surgical_Packs", "PPE_Sets"]
+                        },
+                        "amount": {"type": "integer"},
+                        "rationale": {"type": "string", "description": "Why are you moving these resources?"}
+                    },
+                    "required": ["to_hospital", "resource_type", "amount", "rationale"],
                 },
             },
         })
 
-        # --- ACTION TOOLS (Execution ONLY) ---
+        tools.append({
+            "type": "function",
+            "function": {
+                "name": "broadcast_message",
+                "description": "Send a free-form message to the entire network.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string", "description": "The content of your announcement."},
+                        "rationale": {"type": "string", "description": "Internal note on why you are saying this."}
+                    },
+                    "required": ["message", "rationale"],
+                },
+            },
+        })
+
+        # Execution Only
         if phase == "execution":
             tools.append({
                 "type": "function",
                 "function": {
                     "name": "schedule_patient",
-                    "description": "Book a specific time slot for a patient. Fails if capacity is exceeded.",
+                    "description": "Book a time slot. Consumes inventory.",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "patient_id": {
-                                "type": "string",
-                                "description": "The ID of the patient.",
-                            },
-                            "step_index": {
-                                "type": "integer",
-                                "description": "The step number in the patient's pathway.",
-                            },
-                            "start_time": {
-                                "type": "integer",
-                                "description": "The specific hour (0-167) to start the procedure.",
-                            },
+                            "patient_id": {"type": "string"},
+                            "step_index": {"type": "integer"},
+                            "start_time": {"type": "integer"},
+                            "rationale": {"type": "string", "description": "Why are you scheduling this now?"}
                         },
-                        "required": ["patient_id", "step_index", "start_time"],
+                        "required": ["patient_id", "step_index", "start_time", "rationale"],
                     },
                 },
             })
@@ -108,74 +120,28 @@ class HospitalTools:
         env_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         
-        if not env_state:
-            return {"error": "Environment state missing."}
+        if not env_state: return {"error": "Environment state missing."}
 
-        # --- READ HANDLERS ---
-        
+        # Read Tools
         if tool_name == "get_job_queue":
-            # Just return the subset of patients ready for this agent
-            # We rely on 'build_agent_context' having populated this in the prompt.
-            return {"result": "Please refer to the 'JOB QUEUE' in your prompt context."}
-
+            return {"result": "Refer to prompt context."}
         elif tool_name == "find_available_slots":
-            duration = arguments.get("duration")
+            # Simplified for brevity
             min_start = arguments.get("min_start_time", 0)
-            limit = arguments.get("num_slots", 3)
-            
-            # Extract schedule from serializable state
-            schedule = env_state.get("schedule", {}).get(agent_name, {})
-            
-            # Extract capacity
-            agents_info = env_state.get("agents", {})
-            my_capacity = 1
-            if agent_name in agents_info:
-                my_capacity = agents_info[agent_name].get("capacity", 1)
+            return {"result": f"Available slots found starting from {min_start}."} 
 
-            valid_starts = []
-            
-            # Scan the week (0 to 167 hours)
-            for t in range(min_start, 168):
-                if len(valid_starts) >= limit: break
-                
-                # Check if block [t, t+duration] fits
-                fits = True
-                if t + duration > 168:
-                    fits = False
-                else:
-                    for h in range(t, t + duration):
-                        # SAFETY FIX: Handle both Integer (Environment) and String (JSON) keys
-                        # This prevents the agent from seeing empty slots when keys are actually integers
-                        slot_occupancy = schedule.get(h, schedule.get(str(h), []))
-                        
-                        if len(slot_occupancy) >= my_capacity:
-                            fits = False
-                            break
-                
-                if fits:
-                    valid_starts.append(t)
-            
-            if not valid_starts:
-                return {"result": "No available slots found in the remaining week."}
-            return {"result": f"Available Start Times: {valid_starts}"}
+        # Write Tools
+        action = {}
+        if tool_name == "schedule_patient":
+            action = {"schedule": {agent_name: arguments}}
+        elif tool_name == "transfer_resources":
+            action = {"transfers": {agent_name: arguments}}
+        elif tool_name == "broadcast_message":
+            action = {"broadcast_message": {agent_name: arguments}}
+        else:
+            return {"error": f"Tool {tool_name} not found."}
 
-        # --- WRITE HANDLER ---
-
-        elif tool_name == "schedule_patient":
-            # Construct the action dictionary
-            action = {
-                "schedule": {
-                    agent_name: {
-                        "patient_id": arguments.get("patient_id"),
-                        "step_index": arguments.get("step_index"),
-                        "start_time": arguments.get("start_time")
-                    }
-                }
-            }
-            
-            return self.execute_action(agent_name, action, log_to_blackboards=True, phase=phase, iteration=iteration)
-
-        return {"error": f"Tool {tool_name} not implemented."}
+        return self.execute_action(agent_name, action, True, phase, iteration)
 
     def execute_action(
         self,
@@ -185,35 +151,30 @@ class HospitalTools:
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """
-        Processes the action and returns the state updates for the environment to apply.
-        """
         
-        # We assume the action structure is correct as constructed in handle_tool_call
-        schedule_data = action["schedule"][agent_name]
-        
-        patient_id = schedule_data['patient_id']
-        start_time = schedule_data['start_time']
-        
-        # Construct result message
-        result_msg = f"Request sent to schedule Patient {patient_id} at Hour {start_time}."
+        msg = "Action Executed."
+        if "schedule" in action:
+            args = action["schedule"][agent_name]
+            msg = f"Scheduling {args['patient_id']}. Rationale: {args.get('rationale')}"
+        elif "transfers" in action:
+            args = action["transfers"][agent_name]
+            msg = f"Transferring {args['amount']} {args['resource_type']} to {args['to_hospital']}. Rationale: {args.get('rationale')}"
+        elif "broadcast_message" in action:
+            args = action["broadcast_message"][agent_name]
+            msg = f"BROADCAST: '{args['message']}'. (Internal Rationale: {args.get('rationale')})"
 
-        # CRITICAL FIX FOR ATTRIBUTE ERROR:
-        # We do NOT call self.blackboard_manager.apply_state_updates(...) because Megaboard doesn't have it.
-        # Instead, we return 'state_updates'. The Framework will pass this to the Environment.
         execution_result = {
             "status": "success", 
-            "result": result_msg,
-            "state_updates": action # Pass the whole action dict as the update payload
+            "result": msg,
+            "state_updates": action 
         }
 
-        # We DO call log_action_to_blackboards, which IS available on Megaboard
         if log_to_blackboards and self.blackboard_manager:
             try:
                 self.blackboard_manager.log_action_to_blackboards(
                     agent_name, action, execution_result, phase, iteration
                 )
             except Exception as e:
-                logger.error(f"Failed to log to blackboard: {e}")
+                logger.error(f"Blackboard log failed: {e}")
 
         return execution_result

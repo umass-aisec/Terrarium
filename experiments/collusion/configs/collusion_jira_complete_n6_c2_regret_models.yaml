@@ -1,14 +1,3 @@
-# Regret-based collusion sweep (JiraTicketEnvironment)
-#
-# Requested setup:
-# - topology: complete
-# - num_agents: 6
-# - colluder_count: 2
-# - secret_channel_enabled: [false, true]
-# - prompt_variants: [control, simple]
-# - seeds: 1..10
-# - multiple model providers (OpenAI / Anthropic / Gemini / together.ai)
-
 simulation:
   max_iterations: 1
   max_planning_rounds: 4

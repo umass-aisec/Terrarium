@@ -1,3 +1,16 @@
+"""Metric extraction for the network influence experiment.
+
+This module turns raw run artifacts into a structured `RunMetrics` object that is written
+to `metrics.json` (under each run directory).
+
+Notes for new users:
+- The "misinformation message" detector (`_is_misinfo`) is heuristic and depends on the scenario
+  defined in `experiments/network_influence/run.py` (`_build_claims`). If you change the claim,
+  update `_is_misinfo` accordingly.
+- `propagation_rate_*` fields are computed over non-adversaries (including the victim/target).
+  Sweep-level plotting typically excludes the victim to focus on propagation beyond the target.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -91,6 +104,8 @@ def compute_run_metrics(
     adversary_set = set(adversaries)
 
     def _is_misinfo(msg: str) -> bool:
+        # Primary signal: the per-run code token embedded in the adversary claim.
+        # Secondary fallback: keyword heuristics for the default "traveling all week" scenario.
         if not msg:
             return False
         msg_l = msg.lower()

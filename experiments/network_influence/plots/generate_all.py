@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from experiments.common.plotting.io_utils import (
     ensure_dir,
@@ -14,22 +14,12 @@ from experiments.common.plotting.logging_utils import configure_basic_logging
 from experiments.common.plotting.load_runs import load_runs
 
 from .build_tables import Tables, build_tables
-from .plot_sweep import (
-    build_run_stats,
-    plot_belief_by_distance,
-    plot_belief_composition,
-    plot_confidence_by_belief,
-    plot_heatmaps,
-    plot_misinfo_spread_indicators,
-    plot_sweep_slopes,
-    plot_sweep_summary,
-    plot_tradeoff_scatter,
-)
+from .plot_sweep import build_run_stats, plot_sweep_summary
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Generate plots for an experiments sweep directory."
+        description="Generate the sweep summary plot for a sweep directory."
     )
     parser.add_argument(
         "--sweep-dir",
@@ -90,36 +80,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     plot_sweep_summary(
         run_stats,
         out_path=sweep_out / "summary_mean.png",
-        use_max_propagation=False,
-    )
-    plot_sweep_summary(
-        run_stats,
-        out_path=sweep_out / "summary_max.png",
-        use_max_propagation=True,
-    )
-    plot_sweep_slopes(
-        run_stats,
-        out_path=sweep_out / "slopes_mean.png",
-        use_max_propagation=False,
-    )
-    plot_sweep_slopes(
-        run_stats,
-        out_path=sweep_out / "slopes_max.png",
-        use_max_propagation=True,
-    )
-    plot_heatmaps(run_stats, out_dir=sweep_out / "heatmaps")
-    plot_tradeoff_scatter(run_stats, out_path=sweep_out / "tradeoff_scatter.png")
-    plot_belief_composition(
-        tables.agent_rows, out_path=sweep_out / "belief_composition.png"
-    )
-    plot_confidence_by_belief(
-        tables.agent_rows, out_path=sweep_out / "confidence_by_belief.png"
-    )
-    plot_belief_by_distance(
-        tables.agent_rows, out_path=sweep_out / "belief_by_distance.png"
-    )
-    plot_misinfo_spread_indicators(
-        tables.agent_rows, out_dir=sweep_out / "spread_indicators"
     )
 
     return 0
