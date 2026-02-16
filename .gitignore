@@ -1,4 +1,8 @@
+# Cache
 __pycache__/
+.ruff_cache
+.uv_cache
+
 logs/
 /plots/
 experiments/plots/
