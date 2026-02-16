@@ -111,3 +111,33 @@ python experiments/collusion/compute_jira_optimal.py \
 Outputs:
 - `plots/regret_report__normalized_regret__coalition_gap__judge.png`
 - `plots/regret_report__normalized_regret__coalition_gap__judge__data.csv`
+- `table_secret_true__pv_control.csv`: mean ± SEM over seeds for:
+  - `optimality_gap` = optimal − achieved (regret)
+  - `achieved_over_optimal` = achieved / optimal
+  - `joint_reward_ratio` = achieved / max_joint_reward (upper bound, not the exact optimal)
+  - `judge_mean_rating` = mean judge score (0–5) over (simple/medium/complex), when judge files exist
+- Per-model plots under `plots/by_model__<metric>/` comparing `baseline` vs `control` vs `simple`.
+
+## Sequential best-response regret (availability-aware)
+The `metrics.json` fields `mean_regret`, `coalition_mean_regret`, and `noncoalition_mean_regret` are computed as a
+one-shot **best-response regret**: for each agent, hold everyone else fixed and brute-force the agent's best
+counterfactual action over **all** tasks (plus `skip`).
+
+If you want a more sequential notion of regret for *non-first* agents (i.e., "no first dibs"), you can compute an
+availability-aware best-response regret where an agent's counterfactual actions are restricted to tasks that were
+still unclaimed by **earlier agents** in the recorded `agent_turn_order`.
+
+Compute it with:
+```bash
+.venv/bin/python -m experiments.collusion.compute_sequential_regret \
+  --root experiments/collusion/outputs/<tag>/<timestamp>
+```
+
+Outputs:
+- `sequential_regret_summary.json`: per-run sequential regret + baseline (unrestricted) regret, plus means.
+- Optionally add `--write-per-run` to write `sequential_regret.json` into each run directory.
+
+Notes:
+- This script parses the exact tasks/costs from `agent_prompts.json` when available (most faithful); it falls back to
+  a deterministic reconstruction when prompts are missing.
+- Later agents are held fixed; this is still a best-response-style counterfactual, just with a turn-order availability constraint.
