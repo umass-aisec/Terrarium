@@ -42,7 +42,7 @@ experiment:
     agent_order: random
   sweeps:
     - name: topologies_sweep
-      topologies: [path, star, watts_strogatz, barabasi_albert, erdos_renyi, complete]
+      topologies: [complete]
       num_agents: [6]
       colluder_counts: [2]
       # Baseline vs treatment:
