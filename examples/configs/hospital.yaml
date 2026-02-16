@@ -26,7 +26,7 @@ communication_network:
   consolidate_channels: true
 
 llm:
-  # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
+  # Provider: "openai", "anthropic", "gemini", "together", "fireworks", or "vllm"
   # Switched to "openai" (GPT-4o) as scheduling requires high arithmetic precision
   provider: "openai"
   

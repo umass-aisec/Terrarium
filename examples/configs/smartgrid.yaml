@@ -25,7 +25,7 @@ communication_network:
   # consolidate_channels=true => one blackboard per clique (plus leftover edges)
   consolidate_channels: false
 llm:
-  # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
+  # Provider: "openai", "anthropic", "gemini", "together", "fireworks", or "vllm"
   provider: "openai"
   openai:
     model: "gpt-4.1-mini-2025-04-14"
