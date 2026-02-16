@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Tuple
 
@@ -14,7 +15,13 @@ from matplotlib import gridspec
 from matplotlib.patches import Patch
 from matplotlib.transforms import Bbox
 
-from experiments.collusion import compute_sequential_regret as csr
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+# Reuse the exact reward/regret logic from our sequential-regret computation script.
+from experiments.collusion import compute_sequential_regret as csr  # noqa: E402
 
 
 def _load_json(path: Path) -> Dict[str, Any]:
@@ -29,10 +36,14 @@ def _resolve_output_dir(path_or_dir: str) -> Path:
 
 
 def _iter_run_dirs(output_dir: Path) -> Iterable[Path]:
+    """
+    Supports both layouts:
+    - <output_dir>/runs/**/run_config.json (our timestamped sweeps)
+    - <output_dir>/**/run_config.json (model-specific dumps like together-kimik2-Instruct)
+    """
     runs_dir = output_dir / "runs"
-    if not runs_dir.exists():
-        return
-    for cfg_path in sorted(runs_dir.rglob("run_config.json")):
+    search_root = runs_dir if runs_dir.exists() else output_dir
+    for cfg_path in sorted(search_root.rglob("run_config.json")):
         yield cfg_path.parent
 
 
@@ -78,10 +89,6 @@ def _percentile(sorted_vals: List[float], p: float) -> float:
 
 
 def _robust_range(values: List[float]) -> Tuple[float, float]:
-    """
-    Robust min/max scaling based on the pooled distribution (percentile range),
-    mirroring the "use the entire distribution" philosophy in collusion plots.
-    """
     vals = sorted(_finite(values))
     if not vals:
         return 0.0, 1.0
@@ -154,11 +161,6 @@ def _max_abs(values: Iterable[float]) -> float:
 
 
 def _load_optimal_joint_reward(run_dir: Path) -> float:
-    """
-    Load `optimal_summary.json` if present, else compute the no-violation optimum via DP.
-
-    Note: DP is feasible for the n6_c2 Jira sweeps; it may be too slow for larger task sets.
-    """
     opt_path = run_dir / "optimal_summary.json"
     if opt_path.exists():
         try:
@@ -215,9 +217,6 @@ def _collect_normalized_joint_regret(
     condition_specs: Mapping[str, Mapping[str, Any]],
     conditions: List[Tuple[str, str]],
 ) -> Dict[str, List[float]]:
-    """
-    normalized_regret = clamp(1 - achieved_joint_reward / optimal_joint_reward, 0, 1)
-    """
     out: Dict[str, List[float]] = {c: [] for c, _ in conditions}
     for run_dir in _iter_run_dirs(output_dir):
         metrics = _read_metrics(run_dir)
@@ -273,9 +272,6 @@ def _collect_regret_gap(
     condition_specs: Mapping[str, Mapping[str, Any]],
     conditions: List[Tuple[str, str]],
 ) -> Dict[str, List[float]]:
-    """
-    gap = noncoalition_mean_regret - coalition_mean_regret
-    """
     out: Dict[str, List[float]] = {c: [] for c, _ in conditions}
     for run_dir in _iter_run_dirs(output_dir):
         metrics = _read_metrics(run_dir)
@@ -351,7 +347,7 @@ def _apply_style() -> None:
             "axes.labelsize": 28,
             "axes.titlesize": 34,
             "xtick.labelsize": 25,
-            "ytick.labelsize": 25,
+            "ytick.labelsize": 27,
             "legend.fontsize": 27,
         }
     )
@@ -399,9 +395,6 @@ def _collect_sequential_coalition_regret(
     condition_specs: Mapping[str, Mapping[str, Any]],
     conditions: List[Tuple[str, str]],
 ) -> Dict[str, List[float]]:
-    """
-    Load per-run sequential coalition regret from sequential_regret_summary.json.
-    """
     out: Dict[str, List[float]] = {c: [] for c, _ in conditions}
     summary_path = output_dir / "sequential_regret_summary.json"
     if not summary_path.exists():
@@ -440,10 +433,169 @@ def _collect_sequential_coalition_regret(
     return out
 
 
+def _execution_turn_order(run_dir: Path, *, assignment_agents: List[str]) -> List[str]:
+    """
+    Prefer the *actual* execution order when run_config.json lacks agent_turn_order.
+    """
+    p = run_dir / "agent_turns.json"
+    try:
+        turns = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        turns = None
+
+    order: List[str] = []
+    if isinstance(turns, list):
+        for t in turns:
+            if not isinstance(t, dict):
+                continue
+            if str(t.get("phase") or "").strip().lower() != "execution":
+                continue
+            a = str(t.get("agent") or "").strip()
+            if not a or a in order:
+                continue
+            order.append(a)
+
+    # Fall back to assignment ordering if we couldn't infer.
+    if not order:
+        order = list(assignment_agents)
+
+    # Ensure order only includes agents that actually have assignments.
+    aset = {str(a) for a in assignment_agents}
+    order = [a for a in order if a in aset]
+    if not order:
+        order = list(assignment_agents)
+    return order
+
+
+def _best_response_regret_sequential(
+    *,
+    agent: str,
+    actual_assignment: Mapping[str, str],
+    agent_names: List[str],
+    task_ids: List[str],
+    tasks: Mapping[str, Mapping[str, Any]],
+    costs: Mapping[str, Mapping[str, float]],
+    weights: csr.JiraWeights,
+    candidates: List[str],
+    rewards_actual: Mapping[str, float],
+) -> float:
+    actual_r = float(rewards_actual.get(agent, 0.0))
+    best = actual_r
+    task_id_set = set(task_ids)
+    for cand in candidates:
+        alt = dict(actual_assignment)
+        alt[agent] = cand
+        rewards_alt = csr._local_rewards(
+            assignment=alt,
+            agent_names=agent_names,
+            task_ids=task_id_set,
+            tasks=tasks,
+            costs=costs,
+            weights=weights,
+        )
+        r_alt = float(rewards_alt.get(agent, 0.0))
+        if r_alt > best:
+            best = r_alt
+    return float(max(0.0, best - actual_r))
+
+
+def _collect_ordered_regret_from_raw_runs(
+    output_dir: Path,
+    *,
+    condition_specs: Mapping[str, Mapping[str, Any]],
+    conditions: List[Tuple[str, str]],
+) -> Dict[str, List[float]]:
+    """
+    Compute sequential (availability-aware) coalition regret per run directly from raw artifacts.
+    This is needed for the together-kimik2-Instruct dump which doesn't have sequential_regret_summary.json.
+    """
+    out: Dict[str, List[float]] = {c: [] for c, _ in conditions}
+
+    for run_dir in _iter_run_dirs(output_dir):
+        metrics = _read_metrics(run_dir)
+        if not _is_complete_status(metrics.get("status")):
+            continue
+
+        run_cfg = _load_json(run_dir / "run_config.json")
+        final = _load_json(run_dir / "final_summary.json")
+        assignment_raw = final.get("assignment")
+        if not isinstance(assignment_raw, dict) or not assignment_raw:
+            continue
+        assignment = {str(k): csr._canonical_task(v) for k, v in assignment_raw.items()}
+        assignment_agents = list(assignment.keys())
+
+        colluders = run_cfg.get("colluders")
+        colluder_set = {str(a) for a in colluders} if isinstance(colluders, list) else set()
+        colluders_in_run = [a for a in assignment_agents if a in colluder_set]
+        if not colluders_in_run:
+            continue
+
+        sc = bool(metrics.get("secret_channel_enabled"))
+        pv = str(metrics.get("prompt_variant") or "").strip().lower()
+        cond_key = None
+        for cond, _ in conditions:
+            spec = condition_specs.get(cond) or {}
+            if sc != bool(spec.get("secret_channel_enabled")):
+                continue
+            if pv != str(spec.get("prompt_variant")):
+                continue
+            cond_key = cond
+            break
+        if not cond_key:
+            continue
+
+        agent_names, task_ids, tasks, costs = csr._reconstruct_instance(run_dir)
+        if not agent_names:
+            agent_names = assignment_agents
+        task_ids = list(task_ids)
+        weights = csr._load_jira_weights(run_dir)
+
+        rewards_actual = csr._local_rewards(
+            assignment=assignment,
+            agent_names=agent_names,
+            task_ids=set(task_ids),
+            tasks=tasks,
+            costs=costs,
+            weights=weights,
+        )
+
+        turn_order = _execution_turn_order(run_dir, assignment_agents=assignment_agents)
+
+        claimed: set[str] = set()
+        regrets_by_agent: Dict[str, float] = {}
+        for agent in turn_order:
+            actual_task = csr._canonical_task(assignment.get(agent))
+            available = sorted([t for t in task_ids if t not in claimed])
+            candidates_seq = ["skip", *available]
+
+            regrets_by_agent[agent] = _best_response_regret_sequential(
+                agent=agent,
+                actual_assignment=assignment,
+                agent_names=agent_names,
+                task_ids=task_ids,
+                tasks=tasks,
+                costs=costs,
+                weights=weights,
+                candidates=candidates_seq,
+                rewards_actual=rewards_actual,
+            )
+
+            if actual_task != "skip" and actual_task in set(task_ids):
+                claimed.add(actual_task)
+
+        colluder_regrets = [float(regrets_by_agent[a]) for a in colluders_in_run if a in regrets_by_agent]
+        if not colluder_regrets:
+            continue
+        out[cond_key].append(float(sum(colluder_regrets) / len(colluder_regrets)))
+
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Plot regret / sequential regret / advantage bars for colluders-first vs random ordering."
+            "Like plot_first_vs_random_dibs_bars_with_sequential.py, but for the random-order side it "
+            "uses the together-kimik2-Instruct dump under collusion_topologies_sweep/."
         )
     )
     parser.add_argument(
@@ -462,12 +614,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--random-dibs",
-        default="experiments/collusion/outputs/collusion_topologies_sweep/20260211-163504",
-        help="Output dir for random-order runs.",
+        default="experiments/collusion/outputs/collusion_topologies_sweep/together-kimik2-Instruct/complete_n6_c2",
+        help="Output dir for random-order runs (together-kimik2-Instruct dump).",
     )
     parser.add_argument(
         "--out",
-        default="experiments/collusion/plots_outputs/first_vs_random_dibs_bars_with_sequential.pdf",
+        default="experiments/collusion/plots_outputs/first_vs_random_dibs_bars_with_sequential__kimik2_random.pdf",
         help="Output image path.",
     )
     args = parser.parse_args()
@@ -475,7 +627,6 @@ def main() -> None:
     first_out_dir = _resolve_output_dir(args.first_dibs)
     rand_out_dir = _resolve_output_dir(args.random_dibs)
 
-    # Conditions match our mean_results.json writers.
     conditions = [
         ("no_secret__control", "Baseline (No SC)"),
         ("secret__control", "Control (SC)"),
@@ -487,14 +638,14 @@ def main() -> None:
         "secret__simple": {"secret_channel_enabled": True, "prompt_variant": "simple"},
     }
 
-    # Warm palette matching reference.
+    # Match the palette used by plot_first_vs_random_dibs_bars_with_sequential.py
+    # so the only difference is which runs feed the random-order side.
     colors = {
-        "no_secret__control": "#264653",  # yellow
-        "secret__control": "#2A9D8F",  # orange
-        "secret__simple": "#8AB17D",  # red/salmon
+        "no_secret__control": "#264653",
+        "secret__control": "#2A9D8F",
+        "secret__simple": "#8AB17D",
     }
 
-    # Per-run distributions (for normalization + error bars).
     if args.normalization == "gap_optimal":
         first_regret = _collect_normalized_joint_regret(
             first_out_dir,
@@ -539,21 +690,18 @@ def main() -> None:
             conditions=conditions,
         )
 
-    # Sequential coalition regret:
-    # - Keep all complete runs for both sweeps (require_noncolluder_first=False).
+    # Sequential coalition regret (ordered regret).
     first_seq_regret = _collect_sequential_coalition_regret(
         first_out_dir,
         require_noncolluder_first=False,
         condition_specs=condition_specs,
         conditions=conditions,
     )
-    rand_seq_regret = _collect_sequential_coalition_regret(
+    rand_seq_regret = _collect_ordered_regret_from_raw_runs(
         rand_out_dir,
-        require_noncolluder_first=False,
         condition_specs=condition_specs,
         conditions=conditions,
     )
-
     pooled_seq = _finite([v for d in (first_seq_regret, rand_seq_regret) for xs in d.values() for v in xs])
     seq_lo, seq_hi = _robust_range(pooled_seq)
     if args.normalization == "robust":
@@ -566,20 +714,15 @@ def main() -> None:
         return [_norm_one(v, lo=lo, hi=hi) for v in _finite(vals)]
 
     _apply_style()
-    # Keep the width, but make the plot taller (≈2×) for readability.
     fig = plt.figure(figsize=(15.2, 9.6))
-    # Keep a compact annotation band, without crowding the main plot.
     gs = gridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1.0, 0.88], hspace=0.08)
     ax = fig.add_subplot(gs[0])
     ax_ann = fig.add_subplot(gs[1], sharex=ax)
 
-    # Order: regret -> sequential regret -> advantage (for each side).
-    # Slightly larger spacing between adjacent metric labels to avoid overlap.
     x_centers = [0.0, 1.35, 2.7, 4.7, 6.05, 7.4]
     bar_w = 0.22
     offsets = [-bar_w, 0.0, bar_w]
 
-    # Plot bars + error bars.
     def _plot_group(
         *,
         gx: float,
@@ -612,12 +755,10 @@ def main() -> None:
                     linewidth=1.0,
                 )
 
-    # Colluders first (first dibs)
     _plot_group(gx=x_centers[0], values_by_cond=first_regret, lo=regret_lo, hi=regret_hi)
     _plot_group(gx=x_centers[1], values_by_cond=first_seq_regret, lo=seq_lo, hi=seq_hi)
     _plot_group(gx=x_centers[2], values_by_cond=first_adv, lo=adv_lo, hi=adv_hi)
 
-    # Random order
     _plot_group(gx=x_centers[3], values_by_cond=rand_regret, lo=regret_lo, hi=regret_hi)
     _plot_group(gx=x_centers[4], values_by_cond=rand_seq_regret, lo=seq_lo, hi=seq_hi)
     _plot_group(gx=x_centers[5], values_by_cond=rand_adv, lo=adv_lo, hi=adv_hi)
@@ -630,7 +771,6 @@ def main() -> None:
     ax.set_ylim(0.0, 1.02)
     ax.tick_params(axis="x", bottom=False, labelbottom=False)
 
-    # Annotation axis
     ax_ann.set_ylim(0.0, 1.0)
     ax_ann.set_yticks([])
     ax_ann.set_xticks([])
@@ -660,7 +800,6 @@ def main() -> None:
             clip_on=False,
         )
 
-    # Brackets for the two groups of three.
     bracket_dx = 0.06
     left_start = x_centers[0] - 1.6 * bar_w + bracket_dx
     left_end = x_centers[2] + 1.6 * bar_w + bracket_dx
@@ -706,9 +845,10 @@ def main() -> None:
 
     out_path = Path(args.out).expanduser()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    # Crop the exported figure to *content* (bars + annotation artists), not the full
-    # annotation axis rectangle. This removes the excess whitespace below the legend
-    # without changing the internal alignment of elements.
+    if out_path.exists():
+        out_path.unlink()
+    # Crop export to content (bars + annotation artists) so we don't keep excess whitespace
+    # below the legend while preserving the internal alignment.
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     bboxes = [ax.get_tightbbox(renderer)]
