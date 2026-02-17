@@ -65,13 +65,15 @@ uv sync
 ---
 Terrarium enables two types of servicing: (1) API-based providers and (2) [vLLM](https://github.com/vllm-project/vllm) integration for open-source models.
 
-For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Set your API keys in a newly created .env file.
+For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Copy `.env.example` to `.env` and set your API keys (never put real keys in `.env.example`).
 ```bash
-# In the new .env file at the root directory
-OPENAI_API_KEY=<your_key>
-GOOGLE_API_KEY=<your_key>
-ANTHROPIC_API_KEY=<your_key>
-TOGETHER_API_KEY=<your_key>
+cp -n .env.example .env
+# Edit `.env` and set (as needed):
+# OPENAI_API_KEY=...
+# GOOGLE_API_KEY=...
+# ANTHROPIC_API_KEY=...
+# TOGETHER_API_KEY=...
+# FIREWORKS_API_KEY=...
 ```
 Next, set the model and provider you want to use at `llm.provider` and `llm.<provider>.model` in `examples/configs/<config>.yaml`.
 

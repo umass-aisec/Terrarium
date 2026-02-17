@@ -12,7 +12,8 @@ experiments/plots/
 *.swp
 *.swo
 .DS_Store
-.env
+.env*
+!.env.example
 .vscode/
 .idea/
 dist/
