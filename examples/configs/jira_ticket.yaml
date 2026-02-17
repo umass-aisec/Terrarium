@@ -9,16 +9,14 @@ simulation:
 
 environment:
   name: JiraTicketEnvironment
+  assignment_filling: false
   max_tasks: 8
+  tasks_done_bonus: 100.0
   priority_bonus: 10.0
-  clearence_cost: 10.0
   availability_range: [4, 10]
-  max_clearence_threshold: 2
   # Cost model weights
   cost_weights:
     load: 1.0
-  # Optional overrides
-  # big_m: 1000
   violation_penalty: 10.0
   norm_temperature: 10.0
 
@@ -38,7 +36,7 @@ llm:
       reasoning_effort: "low"
       verbosity: "low"
   anthropic:
-    model: "claude-3-5-sonnet-20241022"
+    model: "claude-sonnet-4-5"
     params:
       max_tokens: 4000
       temperature: 0.4

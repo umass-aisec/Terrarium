@@ -8,6 +8,7 @@ simulation:
   note: "im a note"
 environment:
   name: MeetingSchedulingEnvironment
+  assignment_filling: false
   # CoLLAB v2 MeetingScheduling (attendance intervals)
   num_meetings: 3
   timeline_length: 12
@@ -25,8 +26,8 @@ communication_network:
   # consolidate_channels=true => one blackboard per clique (plus leftover edges)
   consolidate_channels: true
 llm:
-  # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
-  provider: "vllm"
+  # Provider: "openai", "anthropic", "gemini", "together", "fireworks", or "vllm"
+  provider: "anthropic"
   openai:
     model: "gpt-4.1-mini-2025-04-14"
     params:
@@ -35,7 +36,7 @@ llm:
       reasoning_effort: "low"
       verbosity: "low"
   anthropic:
-    model: "claude-3-5-sonnet-20241022"
+    model: "claude-sonnet-4-5"
     params:
       max_tokens: 4000
       temperature: 0.7

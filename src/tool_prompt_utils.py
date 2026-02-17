@@ -8,7 +8,6 @@ import warnings
 from src.utils import extract_model_info
 
 DEFAULT_PLANNING_TOOL_LINES = [
-    "- get_blackboard_events(blackboard_id: int): Inspect recent coordination notes.",
     "- post_message(message: str, blackboard_id?: int): Broadcast updates to collaborators.",
 ]
 
@@ -23,25 +22,25 @@ def _build_format_hint(full_config: Dict[str, any]) -> str:
     if "qwen3" in model_label or "qwen 3" in model_label:
         # Reference: https://qwen.readthedocs.io/en/latest/getting_started/concepts.html
         return (
-            "Follow the Qwen3 Hermes-style template: list tool schemas inside <tools></tools>, emit each call as <tool_call>{\"name\":...,\"arguments\":{...}}</tool_call>, "
+            'Follow the Qwen3 Hermes-style template: list tool schemas inside <tools></tools>, emit each call as <tool_call>{"name":...,"arguments":{...}}</tool_call>, '
             "and echo tool outputs under <tool_response>. Do not mix prose outside those tags until tool calls finish."
         )
     if "qwen" in model_label:
         return (
-            "Wrap every tool invocation inside <tool_call>{\"name\":...,\"arguments\":{...}}</tool_call> blocks and avoid plain text outside those tags. "
-            "Example: <tool_call>{\"name\":\"post_message\",\"arguments\":{\"message\":\"Checking slot 4?\",\"blackboard_id\":2}}</tool_call>."
+            'Wrap every tool invocation inside <tool_call>{"name":...,"arguments":{...}}</tool_call> blocks and avoid plain text outside those tags. '
+            'Example: <tool_call>{"name":"post_message","arguments":{"message":"Checking slot 4?","blackboard_id":2}}</tool_call>.'
         )
     if "mistral" in model_label:
         # Reference: https://docs.mistral.ai/capabilities/function_calling/
         return (
-            "Return only JSON tool_calls using the standard `{\"type\":\"function\",\"function\":{\"name\":...,\"arguments\":{...}}}` schema so vLLM can parse them. "
+            'Return only JSON tool_calls using the standard `{"type":"function","function":{"name":...,"arguments":{...}}}` schema so vLLM can parse them. '
             "Never add narration outside that JSON blob and keep every argument valid per the provided JSON schema."
         )
     if "gpt-oss" in model_label or "gptoss" in model_label:
         # Reference: https://github.com/openai/harmony
         return (
             "Use the Harmony prompt format: emit tool calls inside `<|start|>assistant<|message|><|channel|>commentary ... <|end|>` and include only JSON such as "
-            "{\"tool_calls\":[{\"type\":\"function\",\"function\":{\"name\":...,\"arguments\":{...}}}]}. No free-form prose outside Harmony tags."
+            '{"tool_calls":[{"type":"function","function":{"name":...,"arguments":{...}}}]}. No free-form prose outside Harmony tags.'
         )
     if "glm" in model_label:
         # Reference: https://hwcoder.top/Tool-Call-Format
@@ -58,7 +57,7 @@ def _build_format_hint(full_config: Dict[str, any]) -> str:
     if "kimi" in model_label or "moonshot" in model_label or "k2" in model_label:
         # Reference: https://github.com/MoonshotAI/Kimi-K2
         return (
-            "Invoke tools exactly the way Kimi K2 expects: supply the `tools=[{\"type\":\"function\",...}]` metadata and reply only with tool_calls JSON "
+            'Invoke tools exactly the way Kimi K2 expects: supply the `tools=[{"type":"function",...}]` metadata and reply only with tool_calls JSON '
             "(each entry has `function.name`, `function.arguments`, and `tool_call_id`) before waiting for tool outputs."
         )
 
@@ -67,9 +66,7 @@ def _build_format_hint(full_config: Dict[str, any]) -> str:
         stacklevel=3,
     )
     # Reference: https://gorilla.cs.berkeley.edu/blogs/17_bfcl_v4_prompt_variation.html
-    return (
-        "Respond with a Python list containing only function calls, e.g. [post_message(message=\"Checking slot 4?\", blackboard_id=2)]."
-    )
+    return 'Respond with a Python list containing only function calls, e.g. [post_message(message="Checking slot 4?", blackboard_id=2)].'
 
 
 def build_vllm_tool_instructions(
@@ -87,7 +84,10 @@ def build_vllm_tool_instructions(
         return {}
 
     planning_lines = list(planning_tool_lines or DEFAULT_PLANNING_TOOL_LINES)
-    format_hint = _build_format_hint(full_config) + " Always ensure argument names exactly match the tool schema."
+    format_hint = (
+        _build_format_hint(full_config)
+        + " Always ensure argument names exactly match the tool schema."
+    )
 
     def _render_block(header: str, lines: List[str]) -> str:
         body = "\n".join(lines)
@@ -110,7 +110,9 @@ def build_vllm_tool_instructions(
     }
 
 
-def get_phase_tool_instructions(instruction_map: Optional[Dict[str, str]], phase: Optional[str]) -> str:
+def get_phase_tool_instructions(
+    instruction_map: Optional[Dict[str, str]], phase: Optional[str]
+) -> str:
     if not instruction_map:
         return ""
     return instruction_map.get((phase or "").lower(), "")

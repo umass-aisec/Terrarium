@@ -1,13 +1,19 @@
+# Cache
 __pycache__/
+.ruff_cache
+.uv_cache
+
 logs/
-plots/
+/plots/
+experiments/plots/
 *.pyc
 *.pyo
 *.pyd
 *.swp
 *.swo
 .DS_Store
-.env
+.env*
+!.env.example
 .vscode/
 .idea/
 dist/
@@ -28,6 +34,9 @@ coverage/
 *.iml
 dashboards/public/dashboard_data.json
 */outputs/
+experiments/*/outputs/
+*/plots_outputs/
+experiments/*/plots_outputs/
 
 envs/dcops/outputs
 .venv

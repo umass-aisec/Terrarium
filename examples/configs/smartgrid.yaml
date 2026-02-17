@@ -8,6 +8,7 @@ simulation:
   note: ""
 environment:
   name: SmartGridEnvironment
+  assignment_filling: false
   # CoLLAB v2 SmartGrid (renewable source allocation)
   timeline_length: 24
   min_machines_per_agent: 2
@@ -24,7 +25,7 @@ communication_network:
   # consolidate_channels=true => one blackboard per clique (plus leftover edges)
   consolidate_channels: false
 llm:
-  # Provider: "openai", "anthropic", "gemini", "together", or "vllm"
+  # Provider: "openai", "anthropic", "gemini", "together", "fireworks", or "vllm"
   provider: "openai"
   openai:
     model: "gpt-4.1-mini-2025-04-14"
@@ -34,7 +35,7 @@ llm:
       reasoning_effort: "low"
       verbosity: "low"
   anthropic:
-    model: "claude-3-5-sonnet-20241022"
+    model: "claude-sonnet-4-5"
     params:
       max_tokens: 4000
       temperature: 0.7

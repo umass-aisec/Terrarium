@@ -33,14 +33,19 @@ class PersonalAssistantPrompts:
         base_prompt = """You are participating in an outfit coordination task.
 
 PHASES:
-- Planning Phase: Use blackboards to discuss preferences and coordinate with other agents.
-- Execution Phase: Choose your final outfit using the choose_outfit action.
+- Planning Phase: Use blackboards to discuss preferences and coordinate with other agents. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
+- Execution Phase: Choose your final outfit using the choose_outfit action. You MUST call choose_outfit during execution.
 
 RULES:
 - Choose exactly ONE outfit from your numbered wardrobe options.
 - Follow your personal color preferences and avoid colors.
 - Respect coordination constraints (match/contrast on color or article) with teammates.
 - Use blackboards during planning to share tentative choices.
+
+SCORING (joint reward; higher is better):
+- For each agent: +1 if their chosen outfit color is in their preferred colors, and +1 if it is NOT in their avoid colors.
+- For each coordination edge (pair of agents): +1 for each satisfied preference on the chosen attribute (color or article), so 0–2 per edge.
+- Pairwise points only apply once both agents have chosen.
 
 Your goal is to maximise joint satisfaction and coordination."""
         system_text = (self.tool_instruction_data or {}).get("system")
@@ -123,7 +128,7 @@ Your goal is to maximise joint satisfaction and coordination."""
             context_parts.extend(
                 [
                     "=== EXECUTION PHASE INSTRUCTIONS ===",
-                    "Make your FINAL outfit choice using choose_outfit(outfit_number).",
+                    "Make your FINAL outfit choice using choose_outfit(outfit_number). You MUST call choose_outfit during execution.",
                     "Only choose from your numbered wardrobe options in YOUR INSTRUCTIONS above.",
                     "",
                 ]

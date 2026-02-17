@@ -35,8 +35,8 @@ class MeetingSchedulingPrompts:
         base_prompt = """You are participating in a meeting attendance coordination task.
 
 PHASES:
-- Planning Phase: Use blackboards to discuss which meetings to attend and for how long.
-- Execution Phase: Commit your attendance intervals using the attend_meeting tool.
+- Planning Phase: Use blackboards to discuss which meetings to attend and for how long. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
+- Execution Phase: Commit your attendance intervals using the attend_meeting tool. You MUST call attend_meeting during execution.
 
 RULES:
 - You may only decide attendance for meetings you participate in.
@@ -45,6 +45,12 @@ RULES:
 - For SOFT meetings, overlapping with others yields higher reward.
 - For STRICT meetings, attending the full window yields the best reward.
 - Avoid overlapping attendance across two meetings that conflict in time.
+
+SCORING (joint reward; higher is better):
+- STRICT meeting: for each participant, +1 iff they attend exactly the full meeting window (otherwise 0).
+- SOFT meeting: for each other participant, +1 iff your chosen interval overlaps theirs by ≥1 time slot (overlap length is not directly scored).
+- OVERLAP PENALTY (same agent, different meetings): -1 per overlapping time slot between two meetings you attend.
+- Coordination rewards only materialize once the relevant other agents also commit their intervals.
 
 Your goal is to maximise the overall reward by coordinating with other agents."""
 
@@ -155,7 +161,7 @@ Your goal is to maximise the overall reward by coordinating with other agents.""
             context_parts.extend(
                 [
                     "=== CURRENT PHASE: EXECUTION ===",
-                    "Commit your final attendance intervals using attend_meeting.",
+                    "Commit your final attendance intervals using attend_meeting. You MUST call attend_meeting during execution.",
                     "Only call attend_meeting for meetings listed in YOUR MEETINGS above.",
                     "",
                 ]

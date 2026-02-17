@@ -33,4 +33,3 @@ class ErdosRenyiNetwork(CommunicationNetwork):
                     g.add_edge(u, v)
 
         super().__init__(graph=g, consolidate_channels_enabled=consolidate_channels)
-

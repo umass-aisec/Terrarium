@@ -32,9 +32,13 @@ class WattsStrogatzNetwork(CommunicationNetwork):
         if k_int < 0:
             raise ValueError("communication_network.k must be >= 0")
         if k_int >= n:
-            raise ValueError(f"communication_network.k must be < num_agents (k={k_int}, n={n})")
+            raise ValueError(
+                f"communication_network.k must be < num_agents (k={k_int}, n={n})"
+            )
         if k_int % 2 != 0:
-            raise ValueError(f"communication_network.k must be even for Watts-Strogatz (k={k_int})")
+            raise ValueError(
+                f"communication_network.k must be even for Watts-Strogatz (k={k_int})"
+            )
         if not 0.0 <= p <= 1.0:
             raise ValueError("communication_network.rewire_prob must be in [0.0, 1.0]")
 
@@ -43,4 +47,3 @@ class WattsStrogatzNetwork(CommunicationNetwork):
         g = nx.relabel_nodes(g_idx, mapping)
 
         super().__init__(graph=g, consolidate_channels_enabled=consolidate_channels)
-

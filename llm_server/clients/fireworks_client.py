@@ -36,31 +36,22 @@ def _convert_tools(tools: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
     return normalized
 
 
-def _normalize_reasoning(reasoning: Any) -> Optional[Dict[str, Any]]:
-    """Normalize Together `reasoning` param into the expected dict form."""
-    if reasoning is None:
-        return None
-    if isinstance(reasoning, dict):
-        return reasoning
-    if isinstance(reasoning, bool):
-        return {"enabled": reasoning}
-    return None
-
-
-class TogetherClient(AbstractClient):
-    """Client that talks to Together.ai's OpenAI-compatible chat endpoint."""
+class FireworksClient(AbstractClient):
+    """Client that talks to Fireworks.ai's OpenAI-compatible chat endpoint."""
 
     def __init__(
         self,
         *,
-        base_url: str = "https://api.together.xyz/v1",
+        base_url: str = "https://api.fireworks.ai/inference/v1",
         api_key: Optional[str] = None,
         request_timeout: int = 60,
     ):
         load_dotenv(override=True)
-        resolved_key = api_key or os.getenv("TOGETHER_API_KEY")
+        resolved_key = api_key or os.getenv("FIREWORKS_API_KEY")
         if not resolved_key:
-            raise ValueError("Together API key not found. Set TOGETHER_API_KEY in .env file")
+            raise ValueError(
+                "Fireworks API key not found. Set FIREWORKS_API_KEY in .env file"
+            )
 
         self.base_url = str(base_url).rstrip("/")
         self.api_key = resolved_key
@@ -69,9 +60,9 @@ class TogetherClient(AbstractClient):
 
     @staticmethod
     def _get_retry_config() -> tuple[int, float, float]:
-        max_retries = int(os.getenv("TOGETHER_MAX_RETRIES", "6"))
-        base_sleep_s = float(os.getenv("TOGETHER_RETRY_BASE_SLEEP_S", "1.0"))
-        max_sleep_s = float(os.getenv("TOGETHER_RETRY_MAX_SLEEP_S", "30.0"))
+        max_retries = int(os.getenv("FIREWORKS_MAX_RETRIES", "6"))
+        base_sleep_s = float(os.getenv("FIREWORKS_RETRY_BASE_SLEEP_S", "1.0"))
+        max_sleep_s = float(os.getenv("FIREWORKS_RETRY_MAX_SLEEP_S", "30.0"))
         return max_retries, base_sleep_s, max_sleep_s
 
     @staticmethod
@@ -86,7 +77,7 @@ class TogetherClient(AbstractClient):
 
     @staticmethod
     def init_context(system_prompt: str, user_prompt: str) -> List[Dict[str, Any]]:
-        """Initialize chat-style context for Together."""
+        """Initialize chat-style context for Fireworks."""
         return [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -109,7 +100,9 @@ class TogetherClient(AbstractClient):
         return ""
 
     @staticmethod
-    def get_usage(response: Dict[str, Any], current_usage: Dict[str, int]) -> Dict[str, int]:
+    def get_usage(
+        response: Dict[str, Any], current_usage: Dict[str, int]
+    ) -> Dict[str, int]:
         usage = response.get("usage") or {}
         current_usage["prompt_tokens"] += usage.get("prompt_tokens", 0)
         current_usage["completion_tokens"] += usage.get("completion_tokens", 0)
@@ -143,16 +136,9 @@ class TogetherClient(AbstractClient):
         if params.get("temperature") is not None:
             payload["temperature"] = params["temperature"]
 
-        reasoning = _normalize_reasoning(params.get("reasoning"))
-        if reasoning is not None:
-            payload["reasoning"] = reasoning
-
         converted_tools = _convert_tools(params.get("tools"))
         if converted_tools:
             payload["tools"] = converted_tools
-            # DeepSeek reasoning mode breaks tool calling; force-disable whenever tools are present.
-            if "reasoning" in payload:
-                payload["reasoning"] = {"enabled": False}
 
         max_retries, base_sleep_s, max_sleep_s = self._get_retry_config()
         retryable_statuses = {429, 500, 502, 503, 504}
@@ -181,7 +167,9 @@ class TogetherClient(AbstractClient):
             if attempt >= max_retries or not can_retry:
                 break
 
-            retry_after_s = self._get_retry_after_seconds(response) if response is not None else None
+            retry_after_s = (
+                self._get_retry_after_seconds(response) if response is not None else None
+            )
             if retry_after_s is not None and retry_after_s > 0:
                 sleep_s = min(retry_after_s, max_sleep_s)
             else:
@@ -191,7 +179,9 @@ class TogetherClient(AbstractClient):
             time.sleep(sleep_s)
 
         if last_error is not None:
-            raise RuntimeError(f"Together chat request failed after {max_retries + 1} attempts: {last_error}")
+            raise RuntimeError(
+                f"Fireworks chat request failed after {max_retries + 1} attempts: {last_error}"
+            )
 
         data = response.json()  # type: ignore[union-attr]
         choices = data.get("choices") or []
@@ -236,3 +226,4 @@ class TogetherClient(AbstractClient):
             tool_calls_executed += 1
 
         return tool_calls_executed, context, step_tools
+

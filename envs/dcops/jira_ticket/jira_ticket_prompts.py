@@ -20,7 +20,7 @@ class JiraTicketPrompts:
             planning_header="Planning phase tools (coordination only):",
             execution_header="Execution phase tools (blackboards + task selection):",
             system_note=(
-                "Planning: only blackboard tools are permitted.\n"
+                "Planning: Use post_message() to communicate with other agents.\n"
                 "Execution: assign_task becomes available in addition to blackboard tools."
             ),
         )
@@ -29,14 +29,21 @@ class JiraTicketPrompts:
         base_prompt = (
             "You are coordinating sprint task assignments (JIRA-like tickets).\n\n"
             "PHASES:\n"
-            "- Planning Phase: coordinate via blackboards; do not commit assignments.\n"
-            "- Execution Phase: commit your final task choice using assign_task.\n\n"
+            "- Planning Phase: use post_message() to communicate with other agents; do not commit assignments yet. "
+            "Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.\n"
+            "- Execution Phase: commit your final task choice using assign_task. You MUST call assign_task during execution.\n\n"
             "RULES:\n"
             "- Each agent chooses at most one task (or 'skip').\n"
             "- No two agents should pick the same task.\n"
-            "- Prefer tasks within your clearance (clearance >= clearence_threshold); tasks above clearance incur extra cost.\n"
             "- Higher-priority tasks are worth more reward when completed.\n"
-            "- Objective: maximize tasks completed, then prefer higher-priority tasks, then minimize total cost."
+            "- Objective: maximize tasks completed, then prefer higher-priority tasks, then minimize total cost.\n\n"
+            "SCORING (joint score; higher is better):\n"
+            "- joint_score = tasks_done_bonus * tasks_done + priority_bonus * priority_sum - total_cost - violation_penalty * violations.\n"
+            "- tasks_done_bonus / priority_bonus / violation_penalty are fixed weights.\n"
+            "- tasks_done: number of agents who claim a feasible task (not 'skip').\n"
+            "- priority_sum: sum of priority weights for claimed tasks (low=0.25, medium=0.5, high=0.75, critical=1.0).\n"
+            "- total_cost: sum of each agent's private cost for their claimed task; costs increase with task effort and overload beyond your availability, and decrease with better skill match on the task's tags.\n"
+            "- violations: duplicate task claims and infeasible claims."
         )
 
         system_text = (self.tool_instruction_data or {}).get("system")
@@ -85,10 +92,7 @@ class JiraTicketPrompts:
         private_state = agent_context.get("private_state", {})
         if private_state:
             context_parts.append("=== YOUR PRIVATE STATE ===")
-            context_parts.append(
-                f"Availability (hours): {private_state.get('availability')} | "
-                f"Clearance: {private_state.get('clearance')}"
-            )
+            context_parts.append(f"Availability (hours): {private_state.get('availability')}")
             top_skills = private_state.get("top_skills", [])
             if top_skills:
                 formatted = ", ".join(f"{tag}:{score:.2f}" for tag, score in top_skills)
@@ -102,7 +106,7 @@ class JiraTicketPrompts:
             context_parts.append(
                 f"- {task.get('id')}: {task.get('title')} | type={task.get('work_type')} | "
                 f"effort={task.get('effort')} | priority={task.get('priority')} | "
-                f"clearence_threshold={task.get('clearence_threshold')} | tags=[{tags}]"
+                f"tags=[{tags}]"
             )
         context_parts.append("")
 
@@ -144,7 +148,7 @@ class JiraTicketPrompts:
             context_parts.extend(
                 [
                     "=== CURRENT PHASE: EXECUTION ===",
-                    "Commit your task using assign_task(task_id).",
+                    "Commit your task using assign_task(task_id). You MUST call assign_task during execution.",
                     "Use task_id='skip' if you cannot take any task.",
                     "",
                 ]

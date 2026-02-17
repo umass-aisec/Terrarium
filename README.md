@@ -19,7 +19,6 @@ This repo is under active development :gear:, so please raise an issue for new f
   - SmartGrid - A home agent's objecitve is to schedule appliance usage throughout the day without overworking the powergrid (Uses real-world home-meter data)
   - MeetingScheduling - A calendar agent is tasked with assigning meetings with other agents, trying to satisfy preferences and constraints with respect to other agents schedules (Uses real-world locations)
   - PersonalAssistant - An assistant agent chooses outfits for a human while meeting social norm preferences, the preferences of the human, and constrained outfit selection (Uses fully synthetic data)
-<!-- - **One Stochastic Game Environment (Trading)**: A simple trading environment where agents trade and buy items to maximize their personal cumulative inventory utility. Agents trade items (e.g., TV, phone, banana) and negotiate with each other given limited resources. This environment allows multi-step simulation with multiple evaluation steps. -->
 
 ## Documentation 
 
@@ -28,6 +27,27 @@ Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/
 Follow the quick guide provided below for basic testing.
 
 ## Quick Start
+
+### Install (PyPI)
+
+Install Terrarium:
+```bash
+pip install "terrarium-agents[providers,science,plots]"
+```
+
+CoLLAB is required for the DCOP environments. Clone it somewhere and point Terrarium at it:
+```bash
+git clone https://github.com/Saad-Mahmud/CoLLAB_SEA.git /path/to/CoLLAB
+export TERRARIUM_COLLAB_PATH=/path/to/CoLLAB
+```
+
+Optional extras:
+- `terrarium-agents[openai]`, `terrarium-agents[anthropic]`, `terrarium-agents[gemini]` (provider SDKs)
+- `terrarium-agents[vllm]` (local vLLM serving; heavy)
+- `terrarium-agents[all]` (everything)
+
+### Install (Source)
+
 Clone the repository and update submodules. A submodule exists at `external/CoLLAB` for a suite of external environments.
 ```bash
 git clone <repository-url> Terrarium
@@ -45,13 +65,15 @@ uv sync
 ---
 Terrarium enables two types of servicing: (1) API-based providers and (2) [vLLM](https://github.com/vllm-project/vllm) integration for open-source models.
 
-For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Set your API keys in a newly created .env file.
+For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Copy `.env.example` to `.env` and set your API keys (never put real keys in `.env.example`).
 ```bash
-# In the new .env file at the root directory
-OPENAI_API_KEY=<your_key>
-GOOGLE_API_KEY=<your_key>
-ANTHROPIC_API_KEY=<your_key>
-TOGETHER_API_KEY=<your_key>
+cp -n .env.example .env
+# Edit `.env` and set (as needed):
+# OPENAI_API_KEY=...
+# GOOGLE_API_KEY=...
+# ANTHROPIC_API_KEY=...
+# TOGETHER_API_KEY=...
+# FIREWORKS_API_KEY=...
 ```
 Next, set the model and provider you want to use at `llm.provider` and `llm.<provider>.model` in `examples/configs/<config>.yaml`.
 
@@ -184,7 +206,7 @@ All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed
 
 ## License
 
-MIT
+MIT. AA
 
 ## Contributing
 

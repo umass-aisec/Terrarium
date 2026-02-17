@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from envs.abstract_environment import AbstractEnvironment
 
+
 def load_config(config_file) -> Dict[str, Any]:
     """
     Load and validate configuration from YAML file.
@@ -40,13 +41,14 @@ def load_config(config_file) -> Dict[str, Any]:
         else:
             # Try relative to script's parent directory
             import __main__
+
             config_path = Path(__main__.__file__).parent / config_file
 
     if not config_path.exists():
         raise FileNotFoundError(f"Config file {config_path} not found")
 
     # Load YAML config
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
     try:
@@ -75,13 +77,14 @@ def load_config(config_file) -> Dict[str, Any]:
 
     return config
 
+
 def load_seeds(seeds_file: str = "seeds.txt") -> List[int]:
     """Load simulation seeds from text file for reproducibility."""
     seeds_path = Path(seeds_file)
     if not seeds_path.exists():
         raise FileNotFoundError(f"Seeds file {seeds_path} not found")
 
-    with open(seeds_path, 'r') as f:
+    with open(seeds_path, "r") as f:
         seeds = [int(line.strip()) for line in f if line.strip()]
 
     return seeds
@@ -102,6 +105,7 @@ def prepare_simulation_config(base_config: Dict[str, Any], seed: int) -> Dict[st
         New config dictionary with seed injected into simulation.seed
     """
     import copy
+
     # Deep copy to avoid modifying the original config (important for parallel runs)
     sim_config = copy.deepcopy(base_config)
     sim_config["simulation"]["seed"] = seed
@@ -120,21 +124,31 @@ def validate_config(config: Dict[str, Any]) -> None:
     """
     # Validate required top-level sections
     required_sections = ["simulation", "environment", "communication_network", "llm"]
-    missing_sections = [section for section in required_sections if section not in config]
+    missing_sections = [
+        section for section in required_sections if section not in config
+    ]
     if missing_sections:
         raise ValueError(f"Config missing required sections: {missing_sections}")
 
     # Validate simulation section
     required_sim_keys = ["max_iterations", "max_planning_rounds", "seed"]
-    missing_sim_keys = [key for key in required_sim_keys if key not in config["simulation"]]
+    missing_sim_keys = [
+        key for key in required_sim_keys if key not in config["simulation"]
+    ]
     if missing_sim_keys:
-        raise ValueError(f"Simulation section missing required keys: {missing_sim_keys}")
+        raise ValueError(
+            f"Simulation section missing required keys: {missing_sim_keys}"
+        )
 
     # Validate communication_network section
     required_comm_keys = ["topology", "num_agents"]
-    missing_comm_keys = [key for key in required_comm_keys if key not in config["communication_network"]]
+    missing_comm_keys = [
+        key for key in required_comm_keys if key not in config["communication_network"]
+    ]
     if missing_comm_keys:
-        raise ValueError(f"Communication network section missing required keys: {missing_comm_keys}")
+        raise ValueError(
+            f"Communication network section missing required keys: {missing_comm_keys}"
+        )
 
     # Validate LLM section
     if "provider" not in config["llm"]:
@@ -154,11 +168,11 @@ def validate_config(config: Dict[str, Any]) -> None:
         )
 
     # Validate environments have exactly 1 iteration
-    max_iterations = config["simulation"]["max_iterations"]
-    # if max_iterations != 1:
+    # if config["simulation"]["max_iterations"] != 1:
     #     raise ValueError(
     #         f"Environment '{env_name}' requires "
-    #         f"max_iterations=1 in simulation config, but got {max_iterations}"
+    #         "max_iterations=1 in simulation config, but got "
+    #         f"{config['simulation']['max_iterations']}"
     #     )
 
 
@@ -311,6 +325,8 @@ def extract_model_info(full_config: Dict[str, Any]) -> str:
 
     llm_config = full_config.get("llm", {})
     provider = llm_config.get("provider", "unknown").lower()
+    if provider == "firework":
+        provider = "fireworks"
 
     # Handle each provider using the new config format
     if provider == "openai":
@@ -321,6 +337,8 @@ def extract_model_info(full_config: Dict[str, Any]) -> str:
         model_name = llm_config.get("gemini", {}).get("model", "unknown")
     elif provider == "together":
         model_name = llm_config.get("together", {}).get("model", "unknown")
+    elif provider == "fireworks":
+        model_name = llm_config.get("fireworks", {}).get("model", "unknown")
     elif provider == "vllm":
         model_name = _get_vllm_model_name(llm_config)
     else:
@@ -359,14 +377,46 @@ def get_tag_model_subdir(full_config: Dict[str, Any]) -> str:
     return f"{primary_tag}_{model_name}"
 
 
-def get_run_timestamp(full_config: Dict[str, Any], default: Optional[str] = None) -> Optional[str]:
+def get_run_timestamp(
+    full_config: Dict[str, Any], default: Optional[str] = None
+) -> Optional[str]:
     """Return the run timestamp stored in the simulation config, if any."""
 
     return full_config.get("simulation", {}).get("run_timestamp", default)
 
 
-def _build_run_directory(root: str, environment_name: str, tag_model: str,
-                         seed: Union[int, str], run_timestamp: Optional[str]) -> Path:
+def get_log_root_dir(
+    full_config: Optional[Dict[str, Any]] = None, default: Union[str, Path] = "logs"
+) -> Path:
+    """
+    Resolve the base directory used for writing run log artifacts.
+
+    By default, logs are written under the repo-root `logs/` folder. Experiment runners can
+    override this to keep artifacts self-contained by setting:
+
+        logging:
+          root_dir: experiments/<project>/outputs/<tag>/<timestamp>/runs/<...>/logs
+    """
+    cfg = full_config or {}
+    logging_cfg = cfg.get("logging") or {}
+    root = (
+        logging_cfg.get("root_dir")
+        or logging_cfg.get("log_root")
+        or logging_cfg.get("log_dir")
+        or default
+    )
+    if not root:
+        root = default
+    return Path(root)
+
+
+def _build_run_directory(
+    root: Union[str, Path],
+    environment_name: str,
+    tag_model: str,
+    seed: Union[int, str],
+    run_timestamp: Optional[str],
+) -> Path:
     parts = [Path(root), environment_name]
     if tag_model:
         parts.append(tag_model)
@@ -376,18 +426,29 @@ def _build_run_directory(root: str, environment_name: str, tag_model: str,
     return Path(*parts)
 
 
-def build_log_dir(environment_name: str, tag_model: str,
-                  seed: Union[int, str], run_timestamp: Optional[str] = None) -> Path:
+def build_log_dir(
+    environment_name: str,
+    tag_model: str,
+    seed: Union[int, str],
+    run_timestamp: Optional[str] = None,
+    *,
+    log_root: Union[str, Path] = "logs",
+) -> Path:
     """Build the filesystem path for log artifacts."""
 
-    return _build_run_directory("logs", environment_name, tag_model, seed, run_timestamp)
+    return _build_run_directory(
+        log_root, environment_name, tag_model, seed, run_timestamp
+    )
 
-def clear_seed_directories(environment_name: str, seed: Union[int, str], full_config: Dict[str, Any]) -> None:
+
+def clear_seed_directories(
+    environment_name: str, seed: Union[int, str], full_config: Dict[str, Any]
+) -> None:
     """
     Clear existing seed directories for both logs and plots to ensure clean state.
 
     Args:
-        environment_name: Name of the environment (e.g., "Trading", "PersonalAssistant")
+        environment_name: Name of the environment (e.g., "Hospital", "PersonalAssistant")
         seed: Seed value for the current run
         full_config: Full configuration dictionary containing all simulation settings
     """
@@ -395,13 +456,20 @@ def clear_seed_directories(environment_name: str, seed: Union[int, str], full_co
     tag_model = get_tag_model_subdir(full_config)
 
     # Clear logs directory for this seed
-    logs_seed_dir = Path(f"logs/{environment_name}/{tag_model}/seed_{seed}")
+    logs_seed_dir = (
+        get_log_root_dir(full_config) / environment_name / tag_model / f"seed_{seed}"
+    )
     if logs_seed_dir.exists():
         shutil.rmtree(logs_seed_dir)
         logger.warning(f"Cleared logs directory: {logs_seed_dir}")
 
 
-def get_client_instance(llm_config: Dict[str, Any], *, agent_name: Optional[str] = None, vllm_runtime: Any = None):
+def get_client_instance(
+    llm_config: Dict[str, Any],
+    *,
+    agent_name: Optional[str] = None,
+    vllm_runtime: Any = None,
+):
     """
     Create and return the appropriate LLM client based on provider configuration.
 
@@ -416,15 +484,20 @@ def get_client_instance(llm_config: Dict[str, Any], *, agent_name: Optional[str]
         NotImplementedError: If vllm provider is selected (currently not implemented)
     """
     provider = llm_config.get("provider", "vllm").lower()
+    if provider == "firework":
+        provider = "fireworks"
 
     if provider == "openai":
         from llm_server.clients.openai_client import OpenAIClient
+
         return OpenAIClient()
     elif provider == "anthropic":
         from llm_server.clients.anthropic_client import AnthropicClient
+
         return AnthropicClient()
     elif provider == "gemini":
         from llm_server.clients.gemini_client import GeminiClient
+
         return GeminiClient()
     elif provider == "together":
         from llm_server.clients.together_client import TogetherClient
@@ -433,7 +506,21 @@ def get_client_instance(llm_config: Dict[str, Any], *, agent_name: Optional[str]
         base_url = str(together_cfg.get("base_url") or "https://api.together.xyz/v1")
         request_timeout = int(together_cfg.get("request_timeout", 60))
         api_key = together_cfg.get("api_key")
-        return TogetherClient(base_url=base_url, api_key=api_key, request_timeout=request_timeout)
+        return TogetherClient(
+            base_url=base_url, api_key=api_key, request_timeout=request_timeout
+        )
+    elif provider == "fireworks":
+        from llm_server.clients.fireworks_client import FireworksClient
+
+        fireworks_cfg = llm_config.get("fireworks") or {}
+        base_url = str(
+            fireworks_cfg.get("base_url") or "https://api.fireworks.ai/inference/v1"
+        )
+        request_timeout = int(fireworks_cfg.get("request_timeout", 60))
+        api_key = fireworks_cfg.get("api_key")
+        return FireworksClient(
+            base_url=base_url, api_key=api_key, request_timeout=request_timeout
+        )
     elif provider == "vllm":
         if not vllm_runtime:
             raise ValueError("vLLM runtime is required to initialize vLLM clients")
@@ -442,7 +529,9 @@ def get_client_instance(llm_config: Dict[str, Any], *, agent_name: Optional[str]
         client, _ = vllm_runtime.create_client(agent_name)
         return client
     else:
-        raise ValueError(f"Unknown provider: {provider}. Must be one of: openai, anthropic, gemini, together, vllm")
+        raise ValueError(
+            f"Unknown provider: {provider}. Must be one of: openai, anthropic, gemini, together, fireworks, vllm"
+        )
 
 
 def _get_environment_registry():
@@ -468,7 +557,9 @@ def get_implemented_environment_names() -> List[str]:
     return sorted(_get_environment_registry().keys())
 
 
-def create_environment(protocol, environment_name: str, config, tool_logger) -> "AbstractEnvironment":
+def create_environment(
+    protocol, environment_name: str, config, tool_logger
+) -> "AbstractEnvironment":
     """
     Create environment instance based on name.
 
@@ -499,7 +590,7 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
     Extract model name based on provider from LLM configuration.
 
     Args:
-        provider: LLM provider name (openai, anthropic, gemini, together, vllm)
+        provider: LLM provider name (openai, anthropic, gemini, together, fireworks, vllm)
         llm_config: LLM configuration dictionary
 
     Returns:
@@ -510,14 +601,23 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
         NotImplementedError: If vllm provider is selected (currently not implemented)
     """
     # Extract model name based on provider
+    if provider == "firework":
+        provider = "fireworks"
+
     if provider == "openai":
         model_name = llm_config.get("openai", {}).get("model", "gpt-4o")
     elif provider == "anthropic":
-        model_name = llm_config.get("anthropic", {}).get("model", "claude-3-5-sonnet-20241022")
+        model_name = llm_config.get("anthropic", {}).get("model", "claude-sonnet-4-5")
     elif provider == "gemini":
         model_name = llm_config.get("gemini", {}).get("model", "gemini-2.0-flash-exp")
     elif provider == "together":
-        model_name = llm_config.get("together", {}).get("model", "unknown-together-model")
+        model_name = llm_config.get("together", {}).get(
+            "model", "unknown-together-model"
+        )
+    elif provider == "fireworks":
+        model_name = llm_config.get("fireworks", {}).get(
+            "model", "unknown-fireworks-model"
+        )
     elif provider == "vllm":
         model_name = _get_vllm_model_name(llm_config)
     else:
@@ -528,6 +628,8 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
 
 def get_generation_params(llm_config: Dict[str, Any]) -> Dict[str, Any]:
     provider = llm_config.get("provider", "").lower()
+    if provider == "firework":
+        provider = "fireworks"
     provider_block = llm_config.get(provider, {}) if provider else {}
     if not isinstance(provider_block, dict):
         return {}
@@ -540,9 +642,14 @@ def get_generation_params(llm_config: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in raw_params.items() if k != "model"}
 
 
-def handle_mcp_connection_error(exc: Exception, url: str = "http://localhost:8000/mcp") -> bool:
+def handle_mcp_connection_error(
+    exc: Exception, url: str = "http://localhost:8000/mcp"
+) -> bool:
     message = str(exc)
-    connection_error = "Client failed to connect" in message or "All connection attempts failed" in message
+    connection_error = (
+        "Client failed to connect" in message
+        or "All connection attempts failed" in message
+    )
     if connection_error:
         logger.error(
             f"Simulation aborted: could not connect to the MCP server at {url}. Start it in another terminal with `python src/server.py` and retry."
@@ -557,7 +664,9 @@ def configure_logging(level: Optional[int] = None) -> None:
     import sys
 
     if level is None:
-        level = getattr(logging, os.getenv("TERRARIUM_LOG_LEVEL", "INFO").upper(), logging.INFO)
+        level = getattr(
+            logging, os.getenv("TERRARIUM_LOG_LEVEL", "INFO").upper(), logging.INFO
+        )
 
     if sys.stderr.isatty():
         colors = {
@@ -577,11 +686,15 @@ def configure_logging(level: Optional[int] = None) -> None:
 
         handler = logging.StreamHandler()
         handler.setFormatter(
-            _ColorFormatter("%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s")
+            _ColorFormatter(
+                "%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s"
+            )
         )
         logging.basicConfig(level=level, handlers=[handler], force=True)
     else:
-        logging.basicConfig(level=level, format="[%(levelname)s]: %(message)s", force=True)
+        logging.basicConfig(
+            level=level, format="[%(levelname)s]: %(message)s", force=True
+        )
 
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
