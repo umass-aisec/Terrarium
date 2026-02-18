@@ -15,13 +15,13 @@ import random
 import logging
 
 if TYPE_CHECKING:
-    from src.agents.base import BaseAgent
+    from terrarium.agents.base import BaseAgent
 
 from problem_layer.smart_grid import SmartGridConfig, generate_instance
 from problem_layer.base import ProblemDefinition
 
 from envs.abstract_environment import AbstractEnvironment
-from src.utils import (
+from terrarium.utils import (
     clear_seed_directories,
     extract_model_info,
     get_tag_model_subdir,

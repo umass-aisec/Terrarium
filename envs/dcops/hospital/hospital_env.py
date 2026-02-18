@@ -3,7 +3,7 @@ import math
 import json
 import random
 from typing import Dict, List, Any, Tuple
-from src.utils import get_run_timestamp, build_log_dir, get_tag_model_subdir
+from terrarium.utils import get_run_timestamp, build_log_dir, get_tag_model_subdir
 from envs.abstract_environment import AbstractEnvironment
 from .hospital_prompts import HospitalPrompts
 

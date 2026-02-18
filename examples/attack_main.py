@@ -18,12 +18,12 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from datetime import datetime
 import traceback
 
-from src.agents.base import BaseAgent
-from src.agents.agent_factory import build_agents
-from src.communication_protocols.sequential import SequentialCommunicationProtocol
-from src.logger import ToolCallLogger, AgentTrajectoryLogger
-from src.networks import build_communication_network
-from src.utils import (
+from terrarium.agents.base import BaseAgent
+from terrarium.agents.agent_factory import build_agents
+from terrarium.communication_protocols.sequential import SequentialCommunicationProtocol
+from terrarium.logger import ToolCallLogger, AgentTrajectoryLogger
+from terrarium.networks import build_communication_network
+from terrarium.utils import (
     configure_logging,
     load_config,
     create_environment,
@@ -43,7 +43,7 @@ try:
     mcp_client = Client("http://localhost:8000/mcp")
 except ConnectionError as exc:
     raise RuntimeError(
-        "MCP server is not running. Start it with `python src/server.py` before retrying."
+        "MCP server is not running. Start it with `python -m terrarium.server` before retrying."
     ) from exc
 
 

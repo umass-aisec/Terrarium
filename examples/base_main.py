@@ -18,10 +18,10 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from datetime import datetime
 import traceback
 
-from src.communication_protocols.sequential import SequentialCommunicationProtocol
-from src.agents.agent_factory import build_agents
-from src.networks import build_communication_network
-from src.utils import (
+from terrarium.communication_protocols.sequential import SequentialCommunicationProtocol
+from terrarium.agents.agent_factory import build_agents
+from terrarium.networks import build_communication_network
+from terrarium.utils import (
     configure_logging,
     load_config,
     create_environment,
@@ -33,15 +33,15 @@ from src.utils import (
 import asyncio
 from fastmcp import Client
 from requests.exceptions import ConnectionError
-from src.logger import ToolCallLogger, AgentTrajectoryLogger
+from terrarium.logger import ToolCallLogger, AgentTrajectoryLogger
 from dotenv import load_dotenv
 
-# Run src.server.py to initialzie MCP server before running main.py
+# Run `python -m terrarium.server` before running this script
 try:
     mcp_client = Client("http://localhost:8000/mcp")
 except ConnectionError as exc:
     raise RuntimeError(
-        "MCP server is not running. Start it with `python src/server.py` before retrying."
+        "MCP server is not running. Start it with `python -m terrarium.server` before retrying."
     ) from exc
 
 async def run_simulation(config: Dict[str, Any]) -> bool:

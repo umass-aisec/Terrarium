@@ -9,9 +9,9 @@ the generic communication and phase management.
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Sequence
-from src.logger import BlackboardLogger, PromptLogger
+from terrarium.logger import BlackboardLogger, PromptLogger
 from collections.abc import Mapping
-from src.networks.base import CommunicationNetwork
+from terrarium.networks.base import CommunicationNetwork
 
 import logging
 logger = logging.getLogger(__name__)

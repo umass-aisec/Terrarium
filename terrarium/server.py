@@ -9,9 +9,9 @@ from fastapi import Request
 # Add project root to sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Now import with src. prefix
-from src.blackboard import Megaboard, Blackboard
-from src.logger import BlackboardLogger
+# Now import with terrarium. prefix
+from terrarium.blackboard import Megaboard, Blackboard
+from terrarium.logger import BlackboardLogger
 # Constructing a MCP server to interact with the Megaboard
 
 mcp = FastMCP("blackboard_mcp")
@@ -33,7 +33,7 @@ def set_environment_tools(environment_name: str):
         environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__).
     """
     global environment_tools
-    from src.environment_tools import (
+    from terrarium.environment_tools import (
         EnvironmentToolsNotFoundError,
         instantiate_environment_tools,
     )

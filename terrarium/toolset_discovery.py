@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Set
 
-from src.environment_tools import (
+from terrarium.environment_tools import (
     EnvironmentToolsNotFoundError,
     instantiate_environment_tools,
 )

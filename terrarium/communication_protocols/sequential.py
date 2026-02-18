@@ -5,12 +5,12 @@ Communication protocol for managing multi-agent interactions and phases.
 import random
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
-from src.communication_protocols.base import BaseCommunicationProtocol
-from src.blackboard import format_blackboard_events_for_prompt
-from src.logger import BlackboardLogger
+from terrarium.communication_protocols.base import BaseCommunicationProtocol
+from terrarium.blackboard import format_blackboard_events_for_prompt
+from terrarium.logger import BlackboardLogger
 
 if TYPE_CHECKING:
-    from src.agents.base import BaseAgent
+    from terrarium.agents.base import BaseAgent
 
 
 class SequentialCommunicationProtocol(BaseCommunicationProtocol):

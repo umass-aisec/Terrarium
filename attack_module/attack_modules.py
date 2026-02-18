@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from src.agents.base import BaseAgent
+from terrarium.agents.base import BaseAgent
 
 DEFAULT_POISON_FILE = Path("attack_module/configs/poisoning_string.yaml")
 DEFAULT_POISON_FALLBACK = (

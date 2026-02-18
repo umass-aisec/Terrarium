@@ -652,7 +652,7 @@ def handle_mcp_connection_error(
     )
     if connection_error:
         logger.error(
-            f"Simulation aborted: could not connect to the MCP server at {url}. Start it in another terminal with `python src/server.py` and retry."
+            f"Simulation aborted: could not connect to the MCP server at {url}. Start it in another terminal with `python -m terrarium.server` and retry."
         )
         return True
     return False

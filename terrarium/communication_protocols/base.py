@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 if TYPE_CHECKING:
-    from src.agents.base import BaseAgent
+    from terrarium.agents.base import BaseAgent
 
 
 class BaseCommunicationProtocol(ABC):

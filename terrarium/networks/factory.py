@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, Sequence
 
-from src.networks.base import CommunicationNetwork
-from src.networks.barabasi_albert import BarabasiAlbertNetwork
-from src.networks.complete import CompleteNetwork
-from src.networks.erdos_renyi import ErdosRenyiNetwork
-from src.networks.path import PathNetwork
-from src.networks.star import StarNetwork
-from src.networks.watts_strogatz import WattsStrogatzNetwork
+from terrarium.networks.base import CommunicationNetwork
+from terrarium.networks.barabasi_albert import BarabasiAlbertNetwork
+from terrarium.networks.complete import CompleteNetwork
+from terrarium.networks.erdos_renyi import ErdosRenyiNetwork
+from terrarium.networks.path import PathNetwork
+from terrarium.networks.star import StarNetwork
+from terrarium.networks.watts_strogatz import WattsStrogatzNetwork
 
 
 def build_communication_network(

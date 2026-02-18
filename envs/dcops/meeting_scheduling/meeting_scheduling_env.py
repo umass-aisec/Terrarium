@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 # Use TYPE_CHECKING to avoid circular import (BaseAgent → ToolsetDiscovery → MeetingSchedulingEnvironmentTools → MeetingSchedulingEnvironment → BaseAgent)
 if TYPE_CHECKING:
-    from src.agents.base import BaseAgent
+    from terrarium.agents.base import BaseAgent
 # Import abstract environment interface and loggers
 from envs.abstract_environment import AbstractEnvironment
-from src.utils import (
+from terrarium.utils import (
     clear_seed_directories,
     extract_model_info,
     get_tag_model_subdir,

@@ -4,7 +4,7 @@ import random
 from typing import Dict, List, Any, Optional, Mapping, Tuple
 
 from envs.abstract_environment import AbstractEnvironment
-from src.utils import (
+from terrarium.utils import (
     clear_seed_directories,
     extract_model_info,
     get_tag_model_subdir,

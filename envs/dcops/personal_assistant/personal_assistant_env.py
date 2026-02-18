@@ -21,7 +21,7 @@ import logging
 
 # Import abstract environment interface and logger
 from envs.abstract_environment import AbstractEnvironment
-from src.utils import (
+from terrarium.utils import (
     clear_seed_directories,
     extract_model_info,
     get_tag_model_subdir,
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 # Use TYPE_CHECKING to avoid circular import (BaseAgent → ToolsetDiscovery → EnvironmentTools → Environment → BaseAgent)
 if TYPE_CHECKING:
-    from src.agents.base import BaseAgent
+    from terrarium.agents.base import BaseAgent
 
 
 class PersonalAssistantEnvironment(AbstractEnvironment):

@@ -1,8 +1,8 @@
 from typing import Dict, Any, List, Optional
 
 from envs.abstract_environment import AbstractEnvironment
-from src.logger import PromptLogger
-from src.tool_prompt_utils import build_vllm_tool_instructions, get_phase_tool_instructions
+from terrarium.logger import PromptLogger
+from terrarium.tool_prompt_utils import build_vllm_tool_instructions, get_phase_tool_instructions
 
 
 class MeetingSchedulingPrompts:

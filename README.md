@@ -82,7 +82,7 @@ For vLLM servicing, simply set `llm.provider:"vllm"` and `llm.vllm.auto_start_se
 ### Running a Multi-Agent Trajectory
 1. Start up the persistent MCP server once for tool calls and the blackboard server:
 ```bash
-python src/server.py & export MCP_PID=$!
+python -m terrarium.server & export MCP_PID=$!
 ```
 2. Run a simulation using an execution script along with a config file:
 ```bash
@@ -186,7 +186,7 @@ To standardize tool usage among different model providers, we employ an MCP serv
 
 ## Logging
 
-Terrarium incorporates a set of loggers for prompts, tool usage, agent trajectories, and blackboards. All loggers are defined in `src/logger.py`, conisting of
+Terrarium incorporates a set of loggers for prompts, tool usage, agent trajectories, and blackboards. All loggers are defined in `terrarium/logger.py`, conisting of
 - BlackboardLogger -- Logs events for all existing blackboards in human-readable format (Useful for tracking conversations between agents and tool calls)
 - ToolCallLogger -- Tracks the tool called, success, and duration for each agent (Useful for debugging tool implementations)
 - PromptLogger -- Shows exact system and user prompts used (Useful for debugging F-string formatted prompts)

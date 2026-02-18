@@ -10,7 +10,7 @@ import logging
 import random
 from typing import Any, Dict, List, Optional, Sequence, Type
 
-from src.agents.base import BaseAgent
+from terrarium.agents.base import BaseAgent
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def build_agents(
                 raise ValueError("vllm_runtime is required when provider == 'vllm'")
             client, agent_model_name = vllm_runtime.create_client(name)
         else:
-            from src.utils import get_client_instance
+            from terrarium.utils import get_client_instance
 
             client = get_client_instance(llm_config)
             agent_model_name = model_name

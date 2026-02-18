@@ -4,7 +4,7 @@ from typing import Optional, Sequence
 
 import networkx as nx
 
-from src.networks.base import CommunicationNetwork
+from terrarium.networks.base import CommunicationNetwork
 
 
 class WattsStrogatzNetwork(CommunicationNetwork):

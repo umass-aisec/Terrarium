@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, Iterable, List, Optional
 import warnings
 
-from src.utils import extract_model_info
+from terrarium.utils import extract_model_info
 
 DEFAULT_PLANNING_TOOL_LINES = [
     "- post_message(message: str, blackboard_id?: int): Broadcast updates to collaborators.",

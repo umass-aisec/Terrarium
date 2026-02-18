@@ -16,7 +16,7 @@ _TOOL_CLASS_BY_NAME: Dict[str, Type[Any]] = {}
 
 
 def _project_root() -> Path:
-    # src/environment_tools.py -> src -> project root
+    # terrarium/environment_tools.py -> terrarium -> project root
     return Path(__file__).resolve().parents[1]
 
 

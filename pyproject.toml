@@ -74,5 +74,5 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["attack_module*", "envs*", "llm_server*", "src*"]
+include = ["attack_module*", "envs*", "llm_server*", "terrarium*"]
 exclude = ["experiments*"]
