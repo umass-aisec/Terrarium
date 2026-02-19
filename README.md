@@ -194,7 +194,8 @@ Terrarium incorporates a set of loggers for prompts, tool usage, agent trajector
 
 All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed>/`, including a snapshot of the config used for that run.
 
-## Paper Citation
+## :page_facing_up: Paper Citation
+If you use this repository in your research, please cite:
 ```bibtex
 @article{nakamura2025terrarium,
   title={Terrarium: Revisiting the Blackboard for Multi-Agent Safety, Privacy, and Security Studies},
@@ -204,10 +205,42 @@ All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed
 }
 ```
 
+## :raised_hands: Contributing
+
+We love contributions of all sizes, from typo fixes to new features :sparkles:
+
+### Ways to contribute :seedling:
+- :bug: Report bugs or unexpected behavior
+- :bulb: Propose new features or environment ideas
+- :memo: Improve docs, examples, and tutorials
+- :toolbox: Add tools, attacks, or evaluation workflows
+
+### Contribution workflow :rocket:
+1. Fork the repository and clone your fork.
+2. Create a branch:
+   ```bash
+   git checkout -b feature/short-description
+   ```
+3. Make your changes and update tests/docs where relevant.
+4. Run local checks relevant to your change.
+5. Commit with a clear message:
+   ```bash
+   git commit -m "feat: short summary"
+   ```
+6. Push your branch and open a Pull Request:
+   ```bash
+   git push origin feature/short-description
+   ```
+
+### PR checklist :white_check_mark:
+- [ ] :dart: Change is focused and scoped
+- [ ] :book: Docs/examples updated if behavior changed
+- [ ] :test_tube: Relevant tests pass (or rationale included if not applicable)
+- [ ] :speech_balloon: PR description explains what changed and why
+
+For larger changes, open an issue or discussion first so we can align on scope and avoid overlap. **New contributors** are absolutely welcome here, so if you are unsure where to start, open an issue and we can help point you in the right direction :blush:
+
+
 ## License
 
-MIT. AA
-
-## Contributing
-
-We welcome pull requests and issues that improve Terrarium’s tooling, environments, docs, or general ecosystem. Before opening a PR, start a brief issue or discussion outlining the change so we can coordinate scope and avoid overlap. If you are unsure whether an idea fits, just ask.
+MIT. See `LICENSE`.
