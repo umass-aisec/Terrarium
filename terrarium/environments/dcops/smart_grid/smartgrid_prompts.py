@@ -7,8 +7,8 @@ Agents coordinate to assign their machines to shared renewable sources.
 from typing import Dict, Any, List, Optional
 
 from terrarium.environments.abstract_environment import AbstractEnvironment
-from terrarium.logger import PromptLogger
-from terrarium.tool_prompt_utils import build_vllm_tool_instructions, get_phase_tool_instructions
+from terrarium.core.logger import PromptLogger
+from terrarium.tools.prompts import build_vllm_tool_instructions, get_phase_tool_instructions
 
 
 class SmartGridPrompts:

@@ -208,7 +208,7 @@ External tools are auto-discovered and exposed to each client as regular functio
 
 ## Logging
 
-Terrarium incorporates a set of loggers for prompts, tool usage, agent trajectories, and blackboards. All loggers are defined in `terrarium/logger.py`, conisting of
+Terrarium incorporates a set of loggers for prompts, tool usage, agent trajectories, and blackboards. All loggers are defined in `terrarium/core/logger.py`, conisting of
 - BlackboardLogger -- Logs events for all existing blackboards in human-readable format (Useful for tracking conversations between agents and tool calls)
 - ToolCallLogger -- Tracks the tool called, success, and duration for each agent (Useful for debugging tool implementations)
 - PromptLogger -- Shows exact system and user prompts used (Useful for debugging F-string formatted prompts)

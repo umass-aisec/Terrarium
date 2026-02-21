@@ -4,13 +4,13 @@ Communication protocol for managing multi-agent interactions and phases.
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from terrarium.blackboard import Megaboard, format_blackboard_events_for_prompt
+from terrarium.core.blackboard import Megaboard, format_blackboard_events_for_prompt
 from terrarium.communication_protocols.base import BaseCommunicationProtocol
-from terrarium.environment_tools import (
+from terrarium.tools.environment import (
     EnvironmentToolsNotFoundError,
     instantiate_environment_tools,
 )
-from terrarium.logger import BlackboardLogger
+from terrarium.core.logger import BlackboardLogger
 
 if TYPE_CHECKING:
     from terrarium.agents.base import BaseAgent

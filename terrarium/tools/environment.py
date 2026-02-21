@@ -16,8 +16,8 @@ _TOOL_CLASS_BY_NAME: Dict[str, Type[Any]] = {}
 
 
 def _project_root() -> Path:
-    # terrarium/environment_tools.py -> terrarium -> project root
-    return Path(__file__).resolve().parents[1]
+    # terrarium/tools/environment.py -> terrarium/tools -> terrarium -> project root
+    return Path(__file__).resolve().parents[2]
 
 
 def _iter_tools_modules(*, root: Path) -> list[str]:

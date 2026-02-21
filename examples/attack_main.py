@@ -21,7 +21,7 @@ import traceback
 from terrarium.agents.base import BaseAgent
 from terrarium.agents.agent_factory import build_agents
 from terrarium.communication_protocols.sequential import SequentialCommunicationProtocol
-from terrarium.logger import ToolCallLogger, AgentTrajectoryLogger
+from terrarium.core.logger import ToolCallLogger, AgentTrajectoryLogger
 from terrarium.networks import build_communication_network
 from terrarium.utils import (
     configure_logging,

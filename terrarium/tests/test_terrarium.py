@@ -1,6 +1,6 @@
 import unittest
 
-from terrarium.environment_tools import (
+from terrarium.tools.environment import (
     get_environment_tools_class,
     instantiate_environment_tools,
 )

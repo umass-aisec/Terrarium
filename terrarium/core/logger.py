@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .blackboard import Blackboard
-from .utils import get_tag_model_subdir, get_run_timestamp, build_log_dir
+from terrarium.utils import get_tag_model_subdir, get_run_timestamp, build_log_dir
 
 
 def _resolve_run_timestamp(

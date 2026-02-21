@@ -6,8 +6,8 @@ import re
 import time
 from typing import Any, Callable, Dict, Optional
 from terrarium.llm.clients.abstract_client import AbstractClient
-from ..toolset_discovery import ToolsetDiscovery
-from ..async_utils import run_blocking
+from terrarium.tools.discovery import ToolsetDiscovery
+from terrarium.core.async_utils import run_blocking
 
 logger = logging.getLogger(__name__)
 

@@ -30,7 +30,7 @@ from terrarium.utils import (
     get_generation_params,
 )
 import asyncio
-from terrarium.logger import ToolCallLogger, AgentTrajectoryLogger
+from terrarium.core.logger import ToolCallLogger, AgentTrajectoryLogger
 from dotenv import load_dotenv
 
 async def run_simulation(config: Dict[str, Any]) -> bool:
