@@ -1,4 +1,7 @@
-"""JiraTicket environment module."""
+"""Public JiraTicket environment namespace for Terrarium."""
+
+from __future__ import annotations
+
 import importlib
 from typing import Any
 

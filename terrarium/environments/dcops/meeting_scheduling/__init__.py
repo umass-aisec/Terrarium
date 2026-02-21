@@ -1,13 +1,20 @@
-"""PersonalAssistant environment module."""
+"""Public MeetingScheduling environment namespace for Terrarium."""
+
+from __future__ import annotations
+
 import importlib
 from typing import Any
 
-__all__ = ["PersonalAssistantEnvironment", "PersonalAssistantTools", "PersonalAssistantPrompts"]
+__all__ = [
+    "MeetingSchedulingEnvironment",
+    "MeetingSchedulingTools",
+    "MeetingSchedulingPrompts",
+]
 
 _LAZY_ATTRS = {
-    "PersonalAssistantEnvironment": ".personal_assistant_env:PersonalAssistantEnvironment",
-    "PersonalAssistantTools": ".personal_assistant_tools:PersonalAssistantTools",
-    "PersonalAssistantPrompts": ".personal_assistant_prompts:PersonalAssistantPrompts",
+    "MeetingSchedulingEnvironment": ".meeting_scheduling_env:MeetingSchedulingEnvironment",
+    "MeetingSchedulingTools": ".meeting_scheduling_tools:MeetingSchedulingTools",
+    "MeetingSchedulingPrompts": ".meeting_scheduling_prompts:MeetingSchedulingPrompts",
 }
 
 

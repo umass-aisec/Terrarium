@@ -1,18 +1,19 @@
-"""DCOP environments module - contains MeetingScheduling, PersonalAssistant, SmartGrid, JiraTicket, and Hospital.
+"""DCOP environments module - MeetingScheduling, PersonalAssistant, SmartGrid, JiraTicket, and Hospital.
 
-This package depends on the external CoLLAB submodule for instance generation
-and scoring. CoLLAB is not a Python package at its root, so we add
-CoLLAB's repo root to `sys.path` to make `problem_layer.*` imports available.
+This package depends on an external CoLLAB checkout for instance generation
+and scoring. CoLLAB is not a Python package at its root, so we add CoLLAB's
+repo root to `sys.path` to make `problem_layer.*` imports available.
 
 When running from a source checkout, the default location is `external/CoLLAB`.
-When installed from PyPI, you can point Terrarium at a CoLLAB checkout via
-`TERRARIUM_COLLAB_PATH=/path/to/CoLLAB`.
+When installed from PyPI, set `TERRARIUM_COLLAB_PATH=/path/to/CoLLAB`.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
-import sys
 import importlib
 import os
+import sys
 from typing import Any
 
 _COLLAB_ENV_VARS = ("TERRARIUM_COLLAB_PATH", "TERRARIUM_COLLAB_ROOT")
@@ -26,7 +27,7 @@ def _candidate_collab_roots() -> list[Path]:
 
     return [
         # Source checkout default: repo-root/external/CoLLAB
-        Path(__file__).resolve().parents[2] / "external" / "CoLLAB",
+        Path(__file__).resolve().parents[3] / "external" / "CoLLAB",
         # Common invocation pattern: run from a repo root with submodule
         Path.cwd() / "external" / "CoLLAB",
     ]

@@ -3,7 +3,7 @@ import math
 import random
 from typing import Dict, List, Any, Optional, Mapping, Tuple
 
-from envs.abstract_environment import AbstractEnvironment
+from terrarium.environments.abstract_environment import AbstractEnvironment
 from terrarium.utils import (
     clear_seed_directories,
     extract_model_info,
@@ -548,37 +548,3 @@ class JiraTicketEnvironment(AbstractEnvironment):
             "random_fallback_fills": random_fallback_fills,
             "notes": notes,
         }
-
-    #### MCP-specific methods ####
-
-    def get_serializable_state(self) -> Dict[str, Any]:
-        """Expose minimal serializable state for MCP tool calls."""
-        tasks_serializable = {
-            task_id: {
-                "id": task.get("id", task_id),
-                "title": task.get("title"),
-                "tags": task.get("tags", []),
-                "priority": task.get("priority"),
-                "effort": task.get("effort"),
-                "work_type": task.get("work_type"),
-            }
-            for task_id, task in self.tasks.items()
-        }
-
-        return {
-            "tasks": tasks_serializable,
-            "assignment": self.assignment.copy(),
-            "agent_names": self.agent_names.copy(),
-        }
-
-    def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        """Apply assignment updates coming back from MCP tool calls."""
-        if "assignment" in state_updates:
-            self.assignment.update(state_updates["assignment"])
-
-    def post_tool_execution_callback(self, state_updates: Dict[str, Any], response: Dict[str, Any]) -> None:
-        """Attach immediate joint reward feedback after a tool call."""
-        if "assignment" in state_updates:
-            joint_reward = self.joint_reward(self.assignment)
-            if "result" in response:
-                response["result"]["joint_reward"] = joint_reward

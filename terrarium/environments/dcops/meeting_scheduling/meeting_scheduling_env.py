@@ -1,26 +1,27 @@
 """
-SmartGrid Environment Adaptor (CoLLAB v2)
+MeetingScheduling Environment Adaptor of MeetingScheduling Environment in CoLLAB
 
-Adaptor to integrate the SmartGrid domain (shared renewable source allocation)
-with the black_boards_v5 communication protocol framework.
+Adaptor to integrate the MeetingScheduling domain.
 
-Agents coordinate to assign their machines to shared renewable sources over a
-timeline, minimising overflow to the main grid.
+The MeetingScheduling environment involves agents coordinating to decide
+attendance intervals for a set of meetings on a shared timeline, following
+the updated CoLLAB benchmark.
 """
-
 from pathlib import Path
-from typing import Dict, List, Any, Optional, TYPE_CHECKING, Tuple, Mapping
 import random
-
-import logging
-
-if TYPE_CHECKING:
-    from terrarium.agents.base import BaseAgent
-
-from problem_layer.smart_grid import SmartGridConfig, generate_instance
+from typing import Dict, List, Any, Optional, TYPE_CHECKING, Tuple, Mapping
+# CoLLAB v2 problem-layer imports (made available via terrarium.environments.dcops)
+from problem_layer.meeting_scheduling import MeetingSchedulingConfig, generate_instance
 from problem_layer.base import ProblemDefinition
 
-from envs.abstract_environment import AbstractEnvironment
+import logging
+logger = logging.getLogger(__name__)
+
+# Use TYPE_CHECKING to avoid circular import (BaseAgent → ToolsetDiscovery → MeetingSchedulingEnvironmentTools → MeetingSchedulingEnvironment → BaseAgent)
+if TYPE_CHECKING:
+    from terrarium.agents.base import BaseAgent
+# Import abstract environment interface and loggers
+from terrarium.environments.abstract_environment import AbstractEnvironment
 from terrarium.utils import (
     clear_seed_directories,
     extract_model_info,
@@ -28,61 +29,59 @@ from terrarium.utils import (
     get_run_timestamp,
     build_log_dir,
 )
+from .meeting_scheduling_prompts import MeetingSchedulingPrompts
 
-from .smartgrid_prompts import SmartGridPrompts
-
-logger = logging.getLogger(__name__)
-
-
-class SmartGridEnvironment(AbstractEnvironment):
+class MeetingSchedulingEnvironment(AbstractEnvironment):
     """
-    SmartGrid environment adaptor for CoLLAB v2 renewable source allocation.
+    MeetingScheduling environment adaptor for attendance‑interval coordination tasks.
+
+    Agents decide how long to attend each meeting they are assigned to, aiming
+    to maximize joint reward while avoiding overlaps.
     """
 
     def __init__(self, communication_protocol, config, tool_logger):
+        """Initialize the MeetingScheduling environment."""
         self.full_config = config
         self.env_config: Dict[str, Any] = config["environment"]
         self.simulation_config: Dict[str, Any] = config["simulation"]
+        # Get the correct seed from simulation config (matches what's used for instance generation)
+        self.current_seed = int(self.simulation_config["seed"])
 
-        self.communication_protocol = communication_protocol
-        self.communication_protocol.environment = self
+        # Instance management
+        # Partial joint assignment: variable_name -> chosen interval (e.g., "3-5" or "skip")
+        self.assignment: Dict[str, Any] = {}
         self.tool_logger = tool_logger
-
+        self.agent_names: List[str] = []
+        self.communication_protocol = communication_protocol
+        self.communication_protocol.environment = self # Add bidirectional reference
         self.run_timestamp = get_run_timestamp(self.full_config)
         self.current_iteration = 0
         self.max_iterations = self.simulation_config.get("max_iterations", None)
-        self.max_planning_rounds = self.simulation_config.get("max_planning_rounds", None)
-
-        self.current_seed = int(self.simulation_config["seed"])
-
-        # Partial joint assignment: machine_id -> source_id
-        self.assignment: Dict[str, Any] = {}
-        self.action_logging_config = ["assign_source"]
-
+        self.max_planning_rounds = self.simulation_config.get("max_planning_rounds", None)        
         # Clear seed directories FIRST to ensure clean state for this run
         clear_seed_directories(self.__class__.__name__, self.current_seed, self.full_config)
 
-        # ---- Build CoLLAB v2 instance ---------------------------------------------
+        # ---- Build CoLLAB v2 instance -------------------------------------------------
         network_cfg = config.get("communication_network") or {}
         assert network_cfg is not None and network_cfg != {}, "communication_network config must be specified"
         num_agents = network_cfg.get("num_agents")
         assert num_agents is not None and type(num_agents) == int, "communication_network.num_agents in config must be specified as an integer"
 
-        timeline_length = self.env_config.get("timeline_length", self.env_config.get("T", 24))
+        num_meetings = self.env_config.get("num_meetings", self.env_config.get("n_meetings", 6))
+        timeline_length = self.env_config.get("timeline_length", 12)
+        min_participants = self.env_config.get("min_participants", 2)
+        max_participants = self.env_config.get(
+            "max_participants", self.env_config.get("max_attendees_per_meeting", 4)
+        )
+        soft_ratio = self.env_config.get("soft_meeting_ratio", 0.6)
 
-        tasks_per_home = self.env_config.get("tasks_per_home", (3, 6))
-        try:
-            min_tasks, max_tasks = tasks_per_home
-        except Exception:
-            min_tasks, max_tasks = 3, 6
-
-        collab_cfg = SmartGridConfig(
+        collab_cfg = MeetingSchedulingConfig(
             num_agents=int(num_agents),
+            num_meetings=int(num_meetings),
             timeline_length=int(timeline_length),
-            min_machines_per_agent=int(self.env_config.get("min_machines_per_agent", min_tasks)),
-            max_machines_per_agent=int(self.env_config.get("max_machines_per_agent", max_tasks)),
-            min_sources_per_agent=int(self.env_config.get("min_sources_per_agent", 2)),
-            max_sources_per_agent=int(self.env_config.get("max_sources_per_agent", 3)),
+            min_participants=int(min_participants),
+            max_participants=int(max_participants),
+            soft_meeting_ratio=float(soft_ratio),
             rng_seed=int(self.current_seed),
         )
 
@@ -91,36 +90,44 @@ class SmartGridEnvironment(AbstractEnvironment):
             dcops_root
             / "outputs"
             / "collab_instances"
-            / "smart_grid"
+            / "meeting_scheduling"
             / f"seed_{self.current_seed}"
         )
         self.instance = generate_instance(collab_cfg, instance_dir)
         self.problem: ProblemDefinition = self.instance.problem
 
-        self.agent_names: List[str] = list(self.problem.agents.keys())
-        self.max_joint_reward = self.compute_max_joint_reward()
-        self.min_possible_score = float(getattr(self.instance, "min_utility", 0.0))
-
         # Score tracking
         self.joint_reward_history: List[float] = []
-        self.agent_rewards_history: Dict[str, List[float]] = {a: [] for a in self.agent_names}
+        self.agent_names = list(self.problem.agents.keys())
+        self.max_joint_reward = self.compute_max_joint_reward()
+        self.agents: List["BaseAgent"] = []
 
-        # Prompts (tools are handled by MCP server)
-        self.prompts = SmartGridPrompts(self, self.full_config)
+        # Initialize prompts (Put this after all other instance variables)
+        self.prompts = MeetingSchedulingPrompts(self, self.full_config)
+
+        # Initialize score tracking
+        self.agent_rewards_history: Dict[str, List[float]] = {agent: [] for agent in self.agent_names}
 
         logger.info("%s initialized with %s agents", self.__class__.__name__, len(self.agent_names))
         logger.info("Agent Names: %s", ", ".join(self.agent_names))
-        logger.info("Total machines: %s", len(self.problem.variables))
-        logger.info("Timeline length: %s slots", self.instance.timeline_length)
+        logger.info("Total meetings to schedule: %s", len(self.instance.meetings))
 
     async def async_init(self):
         await super().async_init()
 
     def build_agent_context(self, agent_name: str, phase: str, iteration: int, **kwargs) -> Dict[str, Any]:
-        if phase == "planning" and iteration > 1 and self.assignment:
-            logger.info("%s: Clearing assignments for iteration %s", self.__class__.__name__, iteration)
-            self.assignment = {}
+        """
+        Build environment-specific context for an agent's turn.
 
+        Args:
+            agent_name: Name of the agent
+            phase: Current phase ("planning" or "execution")
+            iteration: Current iteration number
+            **kwargs: Additional context
+
+        Returns:
+            Dictionary with agent context
+        """
         agent_vars = [var.name for var in self.problem.agent_variables(agent_name)]
         agent_choices = {v: self.assignment[v] for v in agent_vars if v in self.assignment}
 
@@ -134,15 +141,44 @@ class SmartGridEnvironment(AbstractEnvironment):
             "timeline_length": self.instance.timeline_length,
             "total_variables": len(self.problem.variables),
             "variables_assigned": len(self.assignment),
+            "variables_remaining": len(self.problem.variables) - len(self.assignment),
         }
 
+        # Add configuration info
         context["max_iterations"] = self.env_config.get("max_iterations", 1)
+
+        # Add additional context from kwargs (like planning_round)
         for key, value in kwargs.items():
             context[key] = value
+
         return context
 
+    def done(self, iteration: int) -> bool:
+        """Return True when the environment is finished."""
+        # Check max iterations first
+        assert self.env_config is not None, "Config not available"
+        max_iterations = self.env_config.get("max_iterations", 1)
+        if iteration > max_iterations:
+            logger.info("Reached max iterations (%s) - stopping simulation", max_iterations)
+            return True
+
+        # Stop early if all variables have been assigned
+        total_vars = len(self.problem.variables)
+        if len(self.assignment) == total_vars:
+            joint_reward = self.joint_reward(self.assignment)
+            logger.info(
+                "All attendance decisions made with joint reward: %.2f - simulation complete",
+                joint_reward,
+            )
+            return True
+        return False
+    
+    def compute_max_joint_reward(self) -> float:
+        """Return the optimal joint reward for the environment."""
+        return float(getattr(self.instance, "max_utility", 0.0))
+
     def joint_reward(self, actions: Mapping[str, Any]) -> float:
-        """Return the (partial) joint reward for a joint assignment."""
+        """Return the joint reward for a joint assignment."""
         total_reward, _ = self._rewards(actions)
         return total_reward
 
@@ -155,18 +191,24 @@ class SmartGridEnvironment(AbstractEnvironment):
         return local_reward
 
     def _rewards(self, actions: Mapping[str, Any]) -> Tuple[float, Dict[str, float]]:
-        """Compute joint reward and per-agent rewards for a given joint assignment."""
+        """
+        Compute joint reward and per-agent rewards for a given joint assignment.
+
+        We sum factor rewards whose full scope has been assigned.
+        Per-agent rewards are attributed evenly to owners of variables in a factor's scope.
+        """
         total_reward = 0.0
-        local_rewards: Dict[str, float] = {a: 0.0 for a in self.agent_names}
+        local_rewards: Dict[str, float] = {agent: 0.0 for agent in self.agent_names}
 
         for factor in self.problem.factors:
-            if not all(v in actions for v in factor.scope):
+            if not all(var in actions for var in factor.scope):
                 continue
             try:
                 reward = factor.evaluate(actions)
             except Exception:
                 continue
             total_reward += reward
+
             owners = {self.problem.variables[v].owner for v in factor.scope if v in self.problem.variables}
             if owners:
                 share = reward / len(owners)
@@ -175,56 +217,48 @@ class SmartGridEnvironment(AbstractEnvironment):
 
         return total_reward, local_rewards
 
-    def done(self, iteration: int) -> bool:
-        """Return True when the environment is finished."""
-        assert self.env_config is not None, "Config not available"
-        max_iterations = self.env_config.get("max_iterations", 1)
-        if iteration > max_iterations:
-            logger.info("Reached max iterations (%s) - stopping simulation", max_iterations)
-            return True
-
-        total_vars = len(self.problem.variables)
-        if len(self.assignment) == total_vars:
-            joint_reward = self.joint_reward(self.assignment)
-            logger.info(
-                "All machines assigned with joint reward: %.2f - simulation complete",
-                joint_reward,
-            )
-            return True
-        return False
-
-    def compute_max_joint_reward(self) -> float:
-        """Return the optimal joint reward for the environment."""
-        return float(getattr(self.instance, "max_utility", 0.0))
 
     def log_iteration(self, iteration: int) -> None:
+        """
+        Log the current state of the environment.
+
+        Args:
+            iteration: Current iteration number
+        """
         logger.info("=== %s State - Iteration %s ===", self.__class__.__name__, iteration)
         total_vars = len(self.problem.variables)
-        logger.info("Machines: %s total, %s assigned", total_vars, len(self.assignment))
+        logger.info("Variables: %s total, %s assigned", total_vars, len(self.assignment))
 
         if self.assignment:
-            logger.info("Current Assignments:")
-            for machine_id, source_id in sorted(self.assignment.items()):
-                logger.info("  %s -> %s", machine_id, source_id)
+            logger.info("Current Attendance Decisions:")
+            for var_name, value in sorted(self.assignment.items()):
+                logger.info("  %s: %s", var_name, value)
 
         joint_reward, agent_rewards = self._rewards(self.assignment)
         ratio = joint_reward / self.max_joint_reward if self.max_joint_reward else 0.0
         logger.info("Current Joint Reward: %.2f (ratio %.2f%%)", joint_reward, ratio * 100.0)
 
+        # Track scores for every iteration
         self._track_scores(iteration, joint_reward, agent_rewards)
 
     def _track_scores(self, iteration: int, joint_reward: float, agent_rewards: Dict[str, float]) -> None:
+        """Track scores and write logs."""
         import json
         from datetime import datetime
 
+        # Update score histories
         self.joint_reward_history.append(joint_reward)
         for agent, reward in agent_rewards.items():
-            self.agent_rewards_history.setdefault(agent, []).append(reward)
+            if agent in self.agent_rewards_history:
+                self.agent_rewards_history[agent].append(reward)
 
+        # Create logs directory with seed subdirectory
+        # Get tag_model subdirectory
         tag_model = get_tag_model_subdir(self.full_config)
         log_dir = build_log_dir(self.__class__.__name__, tag_model, self.current_seed, self.run_timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)
 
+        # Log scores to JSON
         score_entry = {
             "environment": self.__class__.__name__,
             "iteration": iteration,
@@ -269,6 +303,7 @@ class SmartGridEnvironment(AbstractEnvironment):
         return filled
 
     def get_final_summary(self) -> Dict[str, Any]:
+        """Get a final summary of the entire simulation."""
         total_vars = len(self.problem.variables)
         assignment_filling = self.assignment_filling_enabled()
         random_fallback_fills = (
@@ -278,14 +313,14 @@ class SmartGridEnvironment(AbstractEnvironment):
         )
         notes = [self.UNASSIGNED_VARIABLE_FALLBACK_NOTE] if assignment_filling else []
 
-        final_assignments = f"{len(self.assignment)}/{total_vars} machines"
+        final_attendance_decisions = f"{len(self.assignment)}/{total_vars} variables"
         if not self.instance or len(self.assignment) != total_vars:
             return {
                 "status": "incomplete",
                 "variables_assigned": len(self.assignment),
                 "total_variables": total_vars,
                 "total_agents": len(self.agent_names),
-                "final_assignments": final_assignments,
+                "final_attendance_decisions": final_attendance_decisions,
                 "random_fallback_fills": random_fallback_fills,
                 "notes": notes,
             }
@@ -297,53 +332,11 @@ class SmartGridEnvironment(AbstractEnvironment):
             "joint_reward_ratio": joint_reward / self.max_joint_reward if self.max_joint_reward else 0.0,
             "average_agent_reward": sum(agent_rewards.values()) / len(agent_rewards) if agent_rewards else 0.0,
             "agent_rewards": agent_rewards,
-            "assignment": self.assignment.copy(),
+            "attendance": self.assignment.copy(),
             "total_variables": total_vars,
             "variables_assigned": len(self.assignment),
             "total_agents": len(self.agent_names),
-            "final_assignments": final_assignments,
+            "final_attendance_decisions": final_attendance_decisions,
             "random_fallback_fills": random_fallback_fills,
             "notes": notes,
         }
-
-    #### MCP-specific methods ####
-
-    def get_serializable_state(self) -> Dict[str, Any]:
-        machines: Dict[str, Any] = {}
-        for machine_id, machine in self.instance.machines.items():
-            var_spec = self.problem.variables.get(machine_id)
-            machines[machine_id] = {
-                "owner": machine.owner,
-                "label": machine.label,
-                "start": machine.start,
-                "end": machine.end,
-                "power": float(self.instance.machine_powers.get(machine_id, 0.0)),
-                "allowed_sources": list(var_spec.domain) if var_spec else [],
-            }
-
-        sources: Dict[str, Any] = {}
-        for source_id, source in self.instance.sources.items():
-            sources[source_id] = {
-                "kind": source.kind,
-                "capacity": list(source.capacity),
-                "clients": list(source.clients),
-            }
-
-        return {
-            "machines": machines,
-            "sources": sources,
-            "assignment": self.assignment.copy(),
-            "agent_names": self.agent_names.copy(),
-            "timeline_length": self.instance.timeline_length,
-            "max_joint_reward": self.max_joint_reward,
-        }
-
-    def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        if "assignment" in state_updates:
-            self.assignment.update(state_updates["assignment"])
-
-    def post_tool_execution_callback(self, state_updates: Dict[str, Any], response: Dict[str, Any]) -> None:
-        if "assignment" in state_updates:
-            joint_reward = self.joint_reward(self.assignment)
-            if "result" in response:
-                response["result"]["joint_reward"] = joint_reward

@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Optional
 
-from envs.abstract_environment import AbstractEnvironment
+from terrarium.environments.abstract_environment import AbstractEnvironment
 from terrarium.logger import PromptLogger
 from terrarium.tool_prompt_utils import build_vllm_tool_instructions, get_phase_tool_instructions
 

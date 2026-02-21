@@ -13,14 +13,14 @@ from pathlib import Path
 import random
 from typing import Dict, List, Any, TYPE_CHECKING, Tuple, Mapping
 
-# CoLLAB v2 problem-layer imports (made available via envs.dcops.__init__)
+# CoLLAB v2 problem-layer imports (made available via terrarium.environments.dcops)
 from problem_layer.personal_assistant import PersonalAssistantConfig, generate_instance
 from problem_layer.personal_assistant.problem import Outfit
 from problem_layer.base import ProblemDefinition
 import logging
 
 # Import abstract environment interface and logger
-from envs.abstract_environment import AbstractEnvironment
+from terrarium.environments.abstract_environment import AbstractEnvironment
 from terrarium.utils import (
     clear_seed_directories,
     extract_model_info,
@@ -122,8 +122,7 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
         self.agents: List["BaseAgent"] = []  # Set this later in main.py in case agents get different clients or settings
         self.max_joint_reward = self.compute_max_joint_reward()
 
-        # Initialize prompts (Put this after all other instance variables)
-        # Note: tools are now in MCP server, not in environment
+        # Initialize prompts (put this after all other instance variables)
         self.prompts = PersonalAssistantPrompts(self, self.full_config)
 
         # Initialize score tracking
@@ -452,96 +451,3 @@ class PersonalAssistantEnvironment(AbstractEnvironment):
             "random_fallback_fills": random_fallback_fills,
             "notes": notes,
         }
-
-    #### MCP-specific methods ####
-
-    def get_serializable_state(self) -> Dict[str, Any]:
-        """
-        Extract serializable state for MCP transmission.
-
-        Returns:
-            Dictionary with serializable environment state
-        """
-        # Extract wardrobe options in serializable format
-        wardrobe_options: Dict[str, List[Dict[str, str]]] = {}
-        if self.instance and getattr(self.instance, "wardrobe", None):
-            for agent_name, outfits in self.instance.wardrobe.items():
-                wardrobe_options[agent_name] = [
-                    {"article": outfit.article, "color": outfit.color}
-                    for outfit in outfits
-                ]
-
-        # Extract factors in serializable format
-        factors: List[Dict[str, Any]] = []
-        for factor in self.problem.factors:
-            owners = sorted(
-                {
-                    self.problem.variables[v].owner
-                    for v in factor.scope
-                    if v in self.problem.variables
-                }
-            )
-            factors.append(
-                {"name": factor.name, "type": factor.factor_type, "owners": owners}
-            )
-
-        return {
-            "outfit_selections": {
-                agent: {"article": outfit.article, "color": outfit.color}
-                for agent, outfit in self.outfit_selections.items()
-            },
-            "agent_names": self.agent_names.copy(),
-            "wardrobe_options": wardrobe_options,
-            "factors": factors,
-            "max_joint_reward": self.max_joint_reward,
-            "assignment": self.assignment.copy(),
-        }
-
-    def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        """
-        Apply state updates from tool execution.
-
-        Args:
-            state_updates: Dictionary with state updates to apply
-        """
-        if "outfit_selections" in state_updates:
-            for agent, outfit_dict in state_updates["outfit_selections"].items():
-                outfit = Outfit(
-                    article=outfit_dict["article"],
-                    color=outfit_dict["color"],
-                    image=None,
-                )
-                self.outfit_selections[agent] = outfit
-
-                # Update assignment using wardrobe index (1-based)
-                options = self.instance.wardrobe.get(agent, []) if self.instance else []
-                choice_num = None
-                for idx, opt in enumerate(options, start=1):
-                    if opt.article == outfit.article and opt.color == outfit.color:
-                        choice_num = idx
-                        break
-                if choice_num is not None:
-                    try:
-                        var_name = self.problem.agent_variables(agent)[0].name
-                        self.assignment[var_name] = choice_num
-                    except Exception:
-                        pass
-
-    def post_tool_execution_callback(
-        self, state_updates: Dict[str, Any], response: Dict[str, Any]
-    ) -> None:
-        """
-        Post-tool execution callback for PersonalAssistant-specific processing.
-
-        This is called after state updates are applied to perform environment-specific
-        operations like score calculation.
-
-        Args:
-            state_updates: Dictionary with state updates that were applied
-            response: The response dictionary to potentially modify
-        """
-        if "outfit_selections" in state_updates:
-            joint_reward = self.joint_reward(self.assignment)
-            if "result" in response:
-                response["result"]["joint_reward"] = joint_reward
-                response["result"]["max_joint_reward"] = self.max_joint_reward

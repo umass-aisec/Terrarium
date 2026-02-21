@@ -1,13 +1,20 @@
-"""Hospital environment module."""
+"""Public PersonalAssistant environment namespace for Terrarium."""
+
+from __future__ import annotations
+
 import importlib
 from typing import Any
 
-__all__ = ["HospitalEnvironment", "HospitalTools", "HospitalPrompts"]
+__all__ = [
+    "PersonalAssistantEnvironment",
+    "PersonalAssistantTools",
+    "PersonalAssistantPrompts",
+]
 
 _LAZY_ATTRS = {
-    "HospitalEnvironment": ".hospital_env:HospitalEnvironment",
-    "HospitalTools": ".hospital_tools:HospitalTools",
-    "HospitalPrompts": ".hospital_prompts:HospitalPrompts",
+    "PersonalAssistantEnvironment": ".personal_assistant_env:PersonalAssistantEnvironment",
+    "PersonalAssistantTools": ".personal_assistant_tools:PersonalAssistantTools",
+    "PersonalAssistantPrompts": ".personal_assistant_prompts:PersonalAssistantPrompts",
 }
 
 

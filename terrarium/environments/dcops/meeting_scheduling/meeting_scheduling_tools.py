@@ -9,8 +9,9 @@ class MeetingSchedulingTools:
     interval for a specific meeting they participate in.
     """
 
-    def __init__(self, blackboard_manager):
+    def __init__(self, blackboard_manager, environment=None):
         self.blackboard_manager = blackboard_manager
+        self.environment = environment
 
     def get_tool_names(self) -> Set[str]:
         return {"attend_meeting"}
@@ -59,14 +60,22 @@ class MeetingSchedulingTools:
         log_to_blackboards: bool = True,
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
-        env_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        if not env_state:
-            return {"status": "failed", "reason": "Environment state not provided"}
+        if self.environment is None:
+            return {"status": "failed", "reason": "Environment not initialized for tools"}
 
-        meetings = env_state.get("meetings", {})
-        attendance = env_state.get("attendance", {})
-        agent_names = env_state.get("agent_names", [])
+        meetings: Dict[str, Any] = {}
+        for meeting in self.environment.instance.meetings:
+            meetings[meeting.meeting_id] = {
+                "title": meeting.title,
+                "meeting_type": meeting.meeting_type,
+                "start": meeting.start,
+                "end": meeting.end,
+                "participants": list(meeting.participants),
+            }
+
+        attendance = self.environment.assignment
+        agent_names = self.environment.agent_names
 
         if agent_name not in agent_names:
             return {"status": "failed", "reason": f"Agent {agent_name} not found"}
@@ -112,15 +121,12 @@ class MeetingSchedulingTools:
                 "suggestions": [f"Choose from allowed intervals like: {sample}"],
             }
 
-        updated_attendance = dict(attendance)
-        updated_attendance[var_name] = interval
+        self.environment.assignment[var_name] = interval
 
-        total_vars = env_state.get("total_variables")
-        if total_vars is None:
-            try:
-                total_vars = sum(len(m.get("participants", [])) for m in meetings.values())
-            except Exception:
-                total_vars = len(updated_attendance)
+        total_vars = len(getattr(self.environment.problem, "variables", {}))
+        if not total_vars:
+            total_vars = sum(len(m.get("participants", [])) for m in meetings.values())
+        total_assigned = len(self.environment.assignment)
 
         result_dict = {
             "agent": agent_name,
@@ -132,9 +138,9 @@ class MeetingSchedulingTools:
                 "participants": participants,
             },
             "interval": interval,
-            "total_assigned": len(updated_attendance),
-            "remaining_variables": int(total_vars) - len(updated_attendance),
-            "state_updates": {"attendance": updated_attendance},
+            "total_assigned": total_assigned,
+            "remaining_variables": int(total_vars) - total_assigned,
+            "joint_reward": self.environment.joint_reward(self.environment.assignment),
         }
 
         execution_result = {"status": "success", "result": result_dict}
@@ -153,7 +159,6 @@ class MeetingSchedulingTools:
         arguments: Dict[str, Any],
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
-        env_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         if tool_name != "attend_meeting":
             return {"error": f"MeetingScheduling environment does not support tool: {tool_name}"}
@@ -172,6 +177,4 @@ class MeetingSchedulingTools:
             log_to_blackboards=True,
             phase=phase,
             iteration=iteration,
-            env_state=env_state,
         )
-

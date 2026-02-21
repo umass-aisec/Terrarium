@@ -142,7 +142,7 @@ class AbstractEnvironment(ABC):
             except Exception as exc:
                 logger.warning("Failed to save communication_network plot: %s", exc)
 
-        # Generate the communication network on the MCP server using Blackboard APIs
+        # Generate the communication network on the in-process blackboard runtime.
         self.network_blackboards = {}
         base_context = self.get_network_context()
         participants_groups = self.communication_network.channel_groups()

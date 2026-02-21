@@ -8,8 +8,9 @@ class HospitalTools:
     Hospital Tools: Supports Provisioner Logic and expanded Resource types.
     """
 
-    def __init__(self, blackboard_manager):
+    def __init__(self, blackboard_manager, environment=None):
         self.blackboard_manager = blackboard_manager
+        self.environment = environment
 
     def get_tool_names(self) -> Set[str]:
         return {
@@ -117,10 +118,9 @@ class HospitalTools:
         arguments: Dict[str, Any],
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
-        env_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        
-        if not env_state: return {"error": "Environment state missing."}
+        if self.environment is None:
+            return {"error": "Environment not initialized for tools."}
 
         # Read Tools
         if tool_name == "get_job_queue":
@@ -156,9 +156,17 @@ class HospitalTools:
         if "schedule" in action:
             args = action["schedule"][agent_name]
             msg = f"Scheduling {args['patient_id']}. Rationale: {args.get('rationale')}"
+            try:
+                self.environment._process_schedule_request(agent_name, args)
+            except Exception as e:
+                return {"status": "failed", "reason": f"Failed to schedule patient: {e}"}
         elif "transfers" in action:
             args = action["transfers"][agent_name]
             msg = f"Transferring {args['amount']} {args['resource_type']} to {args['to_hospital']}. Rationale: {args.get('rationale')}"
+            try:
+                self.environment._process_transfer(agent_name, args)
+            except Exception as e:
+                return {"status": "failed", "reason": f"Failed to transfer resources: {e}"}
         elif "broadcast_message" in action:
             args = action["broadcast_message"][agent_name]
             msg = f"BROADCAST: '{args['message']}'. (Internal Rationale: {args.get('rationale')})"
@@ -166,7 +174,6 @@ class HospitalTools:
         execution_result = {
             "status": "success", 
             "result": msg,
-            "state_updates": action 
         }
 
         if log_to_blackboards and self.blackboard_manager:

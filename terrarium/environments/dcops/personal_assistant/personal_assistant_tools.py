@@ -1,8 +1,9 @@
 from typing import Dict, List, Any, Optional, Set
 
 class PersonalAssistantTools:
-    def __init__(self, blackboard_manager):
+    def __init__(self, blackboard_manager, environment=None):
         self.blackboard_manager = blackboard_manager
+        self.environment = environment
 
     def get_tool_names(self) -> Set[str]:
         """Return set of tool names this environment supports."""
@@ -41,8 +42,14 @@ class PersonalAssistantTools:
         # Agents use blackboard tools for communication
         return []
 
-    def execute_action(self, agent_name: str, action: Dict[str, Any], log_to_blackboards: bool = True,
-                      phase: Optional[str] = None, iteration: Optional[int] = None, env_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def execute_action(
+        self,
+        agent_name: str,
+        action: Dict[str, Any],
+        log_to_blackboards: bool = True,
+        phase: Optional[str] = None,
+        iteration: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """
         Execute an agent action (only choose_outfit supported).
 
@@ -52,19 +59,20 @@ class PersonalAssistantTools:
             log_to_blackboards: Whether to log the action to blackboards (default: True)
             phase: Current simulation phase (planning/execution)
             iteration: Current iteration number
-            env_state: Serializable environment state dictionary
+            Uses bound environment state directly.
 
         Returns:
             Dictionary with execution result, status, and state updates
         """
-        if not env_state:
-            return {"status": "failed", "reason": "Environment state not provided"}
+        if self.environment is None:
+            return {"status": "failed", "reason": "Environment not initialized for tools"}
 
-        # Extract state from serializable dict
-        outfit_selections = env_state.get("outfit_selections", {})
-        agent_names = env_state.get("agent_names", [])
-        wardrobe_options = env_state.get("wardrobe_options", {})
-        max_joint_reward = env_state.get("max_joint_reward", 0)
+        outfit_selections = self.environment.outfit_selections
+        agent_names = self.environment.agent_names
+        wardrobe_options = (
+            self.environment.instance.wardrobe if getattr(self.environment, "instance", None) else {}
+        )
+        max_joint_reward = self.environment.max_joint_reward
 
         if agent_name not in agent_names:
             return {"status": "failed", "reason": f"Agent {agent_name} not found"}
@@ -98,14 +106,14 @@ class PersonalAssistantTools:
                 "suggestions": ["Use a valid integer for outfit_number"]
             }
 
-        # Get agent's wardrobe options from serialized state
+        # Get agent's wardrobe options
         if agent_name not in wardrobe_options:
             return {"status": "failed", "reason": f"No wardrobe found for agent {agent_name}"}
 
         agent_wardrobe = wardrobe_options[agent_name]
         if outfit_idx < 0 or outfit_idx >= len(agent_wardrobe):
             valid_options = ", ".join(
-                f"{idx + 1}: {opt['article']} ({opt['color']})"
+                f"{idx + 1}: {opt.article} ({opt.color})"
                 for idx, opt in enumerate(agent_wardrobe)
             )
             return {
@@ -117,26 +125,27 @@ class PersonalAssistantTools:
                 "suggestions": [f"Choose a number between 1 and {len(agent_wardrobe)}"]
             }
 
-        # Make the selection (create updated copy for serialization)
+        # Commit selection directly to environment state
         selected_outfit = agent_wardrobe[outfit_idx]
-        updated_selections = outfit_selections.copy()
-        updated_selections[agent_name] = selected_outfit
+        self.environment.outfit_selections[agent_name] = selected_outfit
+        try:
+            var_name = self.environment.problem.agent_variables(agent_name)[0].name
+            self.environment.assignment[var_name] = int(outfit_number)
+        except Exception:
+            pass
 
-        # Note: Score calculation will be done by environment after applying state updates
-        # We just track the selection count here
+        total_selections = len(self.environment.outfit_selections)
         result_dict = {
             "agent": agent_name,
             "outfit": {
                 "number": outfit_number,
-                "article": selected_outfit["article"],
-                "color": selected_outfit["color"]
+                "article": selected_outfit.article,
+                "color": selected_outfit.color,
             },
-            "total_selections": len(updated_selections),
-            "remaining_agents": len(agent_names) - len(updated_selections),
-            # State updates to be applied by environment
-            "state_updates": {
-                "outfit_selections": updated_selections
-            }
+            "total_selections": total_selections,
+            "remaining_agents": len(agent_names) - total_selections,
+            "joint_reward": self.environment.joint_reward(self.environment.assignment),
+            "max_joint_reward": max_joint_reward,
         }
 
         execution_result = {
@@ -153,8 +162,14 @@ class PersonalAssistantTools:
 
         return execution_result
 
-    def handle_tool_call(self, tool_name: str, agent_name: str, arguments: Dict[str, Any],
-                        phase: Optional[str] = None, iteration: Optional[int] = None, env_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def handle_tool_call(
+        self,
+        tool_name: str,
+        agent_name: str,
+        arguments: Dict[str, Any],
+        phase: Optional[str] = None,
+        iteration: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """
         Handle tool calls by routing to execute_action.
 
@@ -164,10 +179,10 @@ class PersonalAssistantTools:
             arguments: Parameters for the tool call
             phase: Current simulation phase (planning/execution)
             iteration: Current iteration number
-            env_state: Serializable environment state dictionary
+            Uses bound environment state directly.
 
         Returns:
-            Dictionary with tool execution result and state updates
+            Dictionary with tool execution result.
         """
         # PersonalAssistant only has one tool that's actually an action
         if tool_name == "choose_outfit":
@@ -177,10 +192,13 @@ class PersonalAssistantTools:
                 return {"error": "outfit_number is required for choose_outfit"}
 
             action = {"action": "choose_outfit", "outfit_number": outfit_number}
-            env_result = self.execute_action(agent_name, action, log_to_blackboards=True,
-                                           phase=phase, iteration=iteration, env_state=env_state)
-
-            # Return the full result including status and state_updates
+            env_result = self.execute_action(
+                agent_name,
+                action,
+                log_to_blackboards=True,
+                phase=phase,
+                iteration=iteration,
+            )
             return env_result
 
         # All other tools are not supported by this environment

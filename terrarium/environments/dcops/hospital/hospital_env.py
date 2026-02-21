@@ -4,7 +4,7 @@ import json
 import random
 from typing import Dict, List, Any, Tuple
 from terrarium.utils import get_run_timestamp, build_log_dir, get_tag_model_subdir
-from envs.abstract_environment import AbstractEnvironment
+from terrarium.environments.abstract_environment import AbstractEnvironment
 from .hospital_prompts import HospitalPrompts
 
 logger = logging.getLogger(__name__)
@@ -160,17 +160,6 @@ class HospitalEnvironment(AbstractEnvironment):
             inventory["Resource_Provisioner"][rt] = prov_stock
 
         return inventory
-
-    def apply_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        if "transfers" in state_updates:
-            for agent_id, transfer_act in state_updates["transfers"].items():
-                self._process_transfer(agent_id, transfer_act)
-
-        if "schedule" in state_updates:
-            for agent_id, acts in state_updates["schedule"].items():
-                if not isinstance(acts, list): acts = [acts]
-                for act in acts:
-                    self._process_schedule_request(agent_id, act)
 
     def _process_transfer(self, sender_id: str, action: Dict[str, Any]):
         dst = action.get("to_hospital")
@@ -652,5 +641,3 @@ class HospitalEnvironment(AbstractEnvironment):
             if status == "OK": converged_patients += 1
             else: failed_list.append(f"{pid}: {status}")
         return {"status": "complete" if not failed_list else "partial_convergence", "joint_reward": s, "convergence_report": {"total_patients": total_patients, "converged_count": converged_patients, "resource_failures": self.resource_failures, "final_inventory": self.inventory, "failed_patients": failed_list}, "schedule": self.schedule}
-    def get_serializable_state(self):
-        return {"schedule": self.schedule, "patient_states": self.patient_states, "agents": self.agents_map}

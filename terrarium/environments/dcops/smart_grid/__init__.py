@@ -1,13 +1,16 @@
-"""MeetingScheduling environment module."""
+"""Public SmartGrid environment namespace for Terrarium."""
+
+from __future__ import annotations
+
 import importlib
 from typing import Any
 
-__all__ = ["MeetingSchedulingEnvironment", "MeetingSchedulingTools", "MeetingSchedulingPrompts"]
+__all__ = ["SmartGridEnvironment", "SmartGridTools", "SmartGridPrompts"]
 
 _LAZY_ATTRS = {
-    "MeetingSchedulingEnvironment": ".meeting_scheduling_env:MeetingSchedulingEnvironment",
-    "MeetingSchedulingTools": ".meeting_scheduling_tools:MeetingSchedulingTools",
-    "MeetingSchedulingPrompts": ".meeting_scheduling_prompts:MeetingSchedulingPrompts",
+    "SmartGridEnvironment": ".smart_grid_env:SmartGridEnvironment",
+    "SmartGridTools": ".smartgrid_tools:SmartGridTools",
+    "SmartGridPrompts": ".smartgrid_prompts:SmartGridPrompts",
 }
 
 

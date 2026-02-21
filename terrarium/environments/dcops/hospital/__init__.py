@@ -1,13 +1,16 @@
-"""SmartGrid environment module."""
+"""Public Hospital environment namespace for Terrarium."""
+
+from __future__ import annotations
+
 import importlib
 from typing import Any
 
-__all__ = ["SmartGridEnvironment", "SmartGridTools", "SmartGridPrompts"]
+__all__ = ["HospitalEnvironment", "HospitalTools", "HospitalPrompts"]
 
 _LAZY_ATTRS = {
-    "SmartGridEnvironment": ".smart_grid_env:SmartGridEnvironment",
-    "SmartGridTools": ".smartgrid_tools:SmartGridTools",
-    "SmartGridPrompts": ".smartgrid_prompts:SmartGridPrompts",
+    "HospitalEnvironment": ".hospital_env:HospitalEnvironment",
+    "HospitalTools": ".hospital_tools:HospitalTools",
+    "HospitalPrompts": ".hospital_prompts:HospitalPrompts",
 }
 
 

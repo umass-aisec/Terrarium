@@ -1,9 +1,9 @@
 # JiraTicketEnvironment (DCOP benchmark)
 
 Implementation:
-- Environment: `envs/dcops/jira_ticket/jira_ticket_env.py`
-- Prompts: `envs/dcops/jira_ticket/jira_ticket_prompts.py`
-- Tools: `envs/dcops/jira_ticket/jira_ticket_tools.py`
+- Environment: `terrarium/environments/dcops/jira_ticket/jira_ticket_env.py`
+- Prompts: `terrarium/environments/dcops/jira_ticket/jira_ticket_prompts.py`
+- Tools: `terrarium/environments/dcops/jira_ticket/jira_ticket_tools.py`
 - Example config: `examples/configs/jira_ticket.yaml`
 
 ## 1) What problem does this environment model?
@@ -151,7 +151,7 @@ Accepted `task_id` values:
 - `"skip"` to choose no task (stored as `None`).
 
 The tool:
-- records the agent’s choice into the environment assignment via `state_updates`,
+- records the agent’s choice directly into the live environment assignment,
 - does **not** enforce “no duplicates” or “feasibility”; violations are handled by scoring.
 
 ## 7) Joint scoring (reward)

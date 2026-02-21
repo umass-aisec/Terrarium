@@ -9,8 +9,9 @@ from typing import Dict, List, Any, Optional, Set
 
 
 class SmartGridTools:
-    def __init__(self, blackboard_manager):
+    def __init__(self, blackboard_manager, environment=None):
         self.blackboard_manager = blackboard_manager
+        self.environment = environment
 
     def get_tool_names(self) -> Set[str]:
         return {"assign_source"}
@@ -49,14 +50,24 @@ class SmartGridTools:
         log_to_blackboards: bool = True,
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
-        env_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        if not env_state:
-            return {"status": "failed", "reason": "Environment state not provided"}
+        if self.environment is None:
+            return {"status": "failed", "reason": "Environment not initialized for tools"}
 
-        machines = env_state.get("machines", {})
-        assignment = env_state.get("assignment", {})
-        agent_names = env_state.get("agent_names", [])
+        machines: Dict[str, Any] = {}
+        for machine_id, machine in self.environment.instance.machines.items():
+            var_spec = self.environment.problem.variables.get(machine_id)
+            machines[machine_id] = {
+                "owner": machine.owner,
+                "label": machine.label,
+                "start": machine.start,
+                "end": machine.end,
+                "power": float(self.environment.instance.machine_powers.get(machine_id, 0.0)),
+                "allowed_sources": list(var_spec.domain) if var_spec else [],
+            }
+
+        assignment = self.environment.assignment
+        agent_names = self.environment.agent_names
 
         if agent_name not in agent_names:
             return {"status": "failed", "reason": f"Agent {agent_name} not found"}
@@ -93,10 +104,10 @@ class SmartGridTools:
                 "suggestions": [f"Choose from: {allowed_sources}"],
             }
 
-        updated_assignment = dict(assignment)
-        updated_assignment[machine_id] = source_id
+        self.environment.assignment[machine_id] = source_id
 
-        total_vars = len(machines)
+        total_vars = len(self.environment.problem.variables)
+        total_assigned = len(self.environment.assignment)
         result_dict = {
             "agent": agent_name,
             "machine": {
@@ -106,9 +117,9 @@ class SmartGridTools:
                 "power": machine.get("power"),
             },
             "source_id": source_id,
-            "total_assigned": len(updated_assignment),
-            "remaining_machines": total_vars - len(updated_assignment),
-            "state_updates": {"assignment": updated_assignment},
+            "total_assigned": total_assigned,
+            "remaining_machines": total_vars - total_assigned,
+            "joint_reward": self.environment.joint_reward(self.environment.assignment),
         }
 
         execution_result = {"status": "success", "result": result_dict}
@@ -127,7 +138,6 @@ class SmartGridTools:
         arguments: Dict[str, Any],
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
-        env_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         if tool_name != "assign_source":
             return {"error": f"SmartGrid environment does not support tool: {tool_name}"}
@@ -146,6 +156,4 @@ class SmartGridTools:
             log_to_blackboards=True,
             phase=phase,
             iteration=iteration,
-            env_state=env_state,
         )
-

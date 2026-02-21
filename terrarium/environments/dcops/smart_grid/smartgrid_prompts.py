@@ -1,53 +1,57 @@
+"""
+SmartGrid Prompts Module (CoLLAB v2)
+
+Agents coordinate to assign their machines to shared renewable sources.
+"""
+
 from typing import Dict, Any, List, Optional
 
-from envs.abstract_environment import AbstractEnvironment
+from terrarium.environments.abstract_environment import AbstractEnvironment
 from terrarium.logger import PromptLogger
 from terrarium.tool_prompt_utils import build_vllm_tool_instructions, get_phase_tool_instructions
 
 
-class PersonalAssistantPrompts:
-    """
-    Prompt builder for CoLLAB v2 PersonalAssistant environment.
-
-    Agents each choose one numbered outfit from their wardrobe.
-    """
-
+class SmartGridPrompts:
     def __init__(self, env: AbstractEnvironment, full_config: Dict[str, Any]):
+        self.env = env
+        self.full_config = full_config
         self.prompt_logger = PromptLogger(env.__class__.__name__, env.current_seed, full_config)
         self.prompt_logger.reset_log()
-        self.env = env
+
         self.tool_instruction_data = build_vllm_tool_instructions(
             full_config,
             execution_tool_lines=[
-                "- choose_outfit(outfit_number: int): Lock in your final wardrobe choice (1-based index)."
+                "- assign_source(machine_id: str, source_id: str): "
+                "Assign one of your machines to a shared renewable source you can use."
             ],
             planning_header="Planning phase tools (blackboard coordination only):",
-            execution_header="Execution phase tools (final outfit selection):",
+            execution_header="Execution phase tools (blackboard + assignments):",
             system_note=(
                 "Planning: only blackboard tools are available for coordination.\n"
-                "Execution: choose_outfit becomes available in addition to blackboard tools."
+                "Execution: assign_source becomes available in addition to blackboard tools."
             ),
         )
 
     def get_system_prompt(self) -> str:
-        base_prompt = """You are participating in an outfit coordination task.
+        base_prompt = """You are a site energy manager participating in a Smart Grid coordination task.
 
 PHASES:
-- Planning Phase: Use blackboards to discuss preferences and coordinate with other agents. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
-- Execution Phase: Choose your final outfit using the choose_outfit action. You MUST call choose_outfit during execution.
+- Planning Phase: Use blackboards to coordinate source assignments with other sites. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.
+- Execution Phase: Assign each of your machines to a renewable source using assign_source. You MUST call assign_source during execution.
 
 RULES:
-- Choose exactly ONE outfit from your numbered wardrobe options.
-- Follow your personal color preferences and avoid colors.
-- Respect coordination constraints (match/contrast on color or article) with teammates.
-- Use blackboards during planning to share tentative choices.
+- You may only assign machines that you own.
+- Each machine must be assigned to ONE of the shared sources you are connected to.
+- Sources have hourly capacity limits shared among multiple sites.
+- Overflow beyond capacity draws from the main grid and is penalised.
 
 SCORING (joint reward; higher is better):
-- For each agent: +1 if their chosen outfit color is in their preferred colors, and +1 if it is NOT in their avoid colors.
-- For each coordination edge (pair of agents): +1 for each satisfied preference on the chosen attribute (color or article), so 0–2 per edge.
-- Pairwise points only apply once both agents have chosen.
+- Each machine has a fixed time window [start, end) and draws its fixed power each hour it runs.
+- For each source and hour: overflow(source,hour) = max(0, total_demand_assigned_to_source_that_hour - capacity(source,hour)).
+- Joint reward = - sum of overflow(source,hour) over all sources and hours (best possible is 0 overflow).
+- Overflow depends on everyone’s assignments and is fully determined only after all machines are assigned.
 
-Your goal is to maximise joint satisfaction and coordination."""
+Your goal is to minimise total overflow while keeping assignments coordinated."""
         system_text = (self.tool_instruction_data or {}).get("system")
         if system_text:
             base_prompt += "\n\nTOOL CALLING REQUIREMENTS:\n" + system_text
@@ -83,7 +87,7 @@ Your goal is to maximise joint satisfaction and coordination."""
         phase = agent_context.get("phase", "unknown")
         iteration = agent_context.get("iteration", 0)
 
-        context_parts: List[str] = [
+        parts: List[str] = [
             "=== TURN INFORMATION ===",
             f"Phase: {phase.upper()}",
             f"Iteration: {iteration}",
@@ -98,45 +102,45 @@ Your goal is to maximise joint satisfaction and coordination."""
             except Exception:
                 instruction = None
         if instruction:
-            context_parts.append("=== YOUR INSTRUCTIONS ===")
-            context_parts.append(instruction)
-            context_parts.append("")
+            parts.append("=== YOUR INSTRUCTIONS ===")
+            parts.append(instruction)
+            parts.append("")
 
-        if self.env.outfit_selections:
-            context_parts.append("=== CURRENT OUTFIT SELECTIONS ===")
-            for agent, outfit in self.env.outfit_selections.items():
-                context_parts.append(f"{agent}: {outfit.article}, {outfit.color}")
-            context_parts.append("")
+        if self.env.assignment:
+            parts.append("=== CURRENT ASSIGNMENTS (for coordination) ===")
+            for machine_id, source_id in sorted(self.env.assignment.items()):
+                parts.append(f"{machine_id} -> {source_id}")
+            parts.append("")
 
         if blackboard_context:
-            context_parts.append("=== BLACKBOARD COMMUNICATIONS ===")
+            parts.append("=== BLACKBOARD COMMUNICATIONS ===")
             for bb_id, content in blackboard_context.items():
                 if content and content.strip():
-                    context_parts.append(f"Blackboard {bb_id}:")
-                    context_parts.append(content)
-                    context_parts.append("")
+                    parts.append(f"Blackboard {bb_id}:")
+                    parts.append(content)
+                    parts.append("")
 
         if phase == "planning":
-            context_parts.extend(
+            parts.extend(
                 [
                     "=== PLANNING PHASE INSTRUCTIONS ===",
-                    "Discuss preferences and tentative outfit numbers on blackboards.",
+                    "Discuss tentative machine->source choices on blackboards.",
                     "",
                 ]
             )
         elif phase == "execution":
-            context_parts.extend(
+            parts.extend(
                 [
                     "=== EXECUTION PHASE INSTRUCTIONS ===",
-                    "Make your FINAL outfit choice using choose_outfit(outfit_number). You MUST call choose_outfit during execution.",
-                    "Only choose from your numbered wardrobe options in YOUR INSTRUCTIONS above.",
+                    "Assign each of your machines using assign_source(machine_id, source_id). You MUST call assign_source during execution.",
+                    "Only assign machines listed in YOUR INSTRUCTIONS above.",
                     "",
                 ]
             )
 
         phase_instructions = get_phase_tool_instructions(self.tool_instruction_data, phase)
         if phase_instructions:
-            context_parts.extend(
+            parts.extend(
                 [
                     "=== TOOL CALLING FORMAT ===",
                     phase_instructions,
@@ -144,4 +148,4 @@ Your goal is to maximise joint satisfaction and coordination."""
                 ]
             )
 
-        return "\n".join(context_parts)
+        return "\n".join(parts)
