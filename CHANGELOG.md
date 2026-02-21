@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## Next Changes
+- Optimize environment decomposition to be more intuitive
+- Add more sophisicated examples
+- Update README.md
+
 ## [v0.2.0] - 2026-02-21
 
 ### Changed
