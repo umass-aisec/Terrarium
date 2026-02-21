@@ -49,7 +49,7 @@ Any checkpoint whose name does not match the substrings above is treated as "unk
 To add support for a new model:
 
 1. Confirm vLLM exposes a parser for it (see https://docs.vllm.ai/en/latest/features/tool_calling/).
-2. Add the new rule in `llm_server/vllm/runtime.py`’s `TOOL_CALLING_RULES` list (with substrings, parser, template, etc.).
+2. Add the new rule in `terrarium/llm/vllm/runtime.py`’s `TOOL_CALLING_RULES` list (with substrings, parser, template, etc.).
 3. Re-run Terrarium; the auto-config flow will pick up the new preset.
 
 ## Tips

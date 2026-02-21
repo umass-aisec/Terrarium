@@ -8,7 +8,7 @@ Supports tool use, extended thinking, and multi-turn conversations.
 import os
 import json
 from typing import Any, List, Dict, Optional
-from llm_server.clients.abstract_client import AbstractClient
+from terrarium.llm.clients.abstract_client import AbstractClient
 
 
 class AnthropicClient(AbstractClient):

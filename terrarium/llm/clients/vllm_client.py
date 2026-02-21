@@ -1,22 +1,18 @@
 from __future__ import annotations
 
 import json
-import os
-import random
-import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import requests
-from dotenv import load_dotenv
 
-from llm_server.clients.abstract_client import AbstractClient
+from terrarium.llm.clients.abstract_client import AbstractClient
 
 
 def _convert_tools(tools: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
     """Convert Terrarium tool schema into OpenAI-compatible tool definitions."""
     if not tools:
         return []
-    normalized: List[Dict[str, Any]] = []
+    normalized = []
     for tool in tools:
         if not isinstance(tool, dict):
             continue
@@ -36,57 +32,25 @@ def _convert_tools(tools: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
     return normalized
 
 
-def _normalize_reasoning(reasoning: Any) -> Optional[Dict[str, Any]]:
-    """Normalize Together `reasoning` param into the expected dict form."""
-    if reasoning is None:
-        return None
-    if isinstance(reasoning, dict):
-        return reasoning
-    if isinstance(reasoning, bool):
-        return {"enabled": reasoning}
-    return None
-
-
-class TogetherClient(AbstractClient):
-    """Client that talks to Together.ai's OpenAI-compatible chat endpoint."""
+class VLLMClient(AbstractClient):
+    """Client that talks to a vLLM OpenAI-compatible server."""
 
     def __init__(
         self,
-        *,
-        base_url: str = "https://api.together.xyz/v1",
-        api_key: Optional[str] = None,
+        base_url: str,
+        model_name: str,
+        api_key: str = "EMPTY",
         request_timeout: int = 60,
     ):
-        load_dotenv(override=True)
-        resolved_key = api_key or os.getenv("TOGETHER_API_KEY")
-        if not resolved_key:
-            raise ValueError("Together API key not found. Set TOGETHER_API_KEY in .env file")
-
-        self.base_url = str(base_url).rstrip("/")
-        self.api_key = resolved_key
-        self.request_timeout = int(request_timeout)
+        self.base_url = base_url.rstrip("/")
+        self.model_name = model_name
+        self.api_key = api_key or "EMPTY"
+        self.request_timeout = request_timeout
         self.session = requests.Session()
 
     @staticmethod
-    def _get_retry_config() -> tuple[int, float, float]:
-        max_retries = int(os.getenv("TOGETHER_MAX_RETRIES", "6"))
-        base_sleep_s = float(os.getenv("TOGETHER_RETRY_BASE_SLEEP_S", "1.0"))
-        max_sleep_s = float(os.getenv("TOGETHER_RETRY_MAX_SLEEP_S", "30.0"))
-        return max_retries, base_sleep_s, max_sleep_s
-
-    @staticmethod
-    def _get_retry_after_seconds(response: requests.Response) -> Optional[float]:
-        retry_after = response.headers.get("Retry-After")
-        if not retry_after:
-            return None
-        try:
-            return float(retry_after)
-        except ValueError:
-            return None
-
-    @staticmethod
     def init_context(system_prompt: str, user_prompt: str) -> List[Dict[str, Any]]:
-        """Initialize chat-style context for Together."""
+        """Initialize chat-style context for vLLM."""
         return [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -133,67 +97,28 @@ class TogetherClient(AbstractClient):
         params: Dict[str, Any],
     ) -> Tuple[Dict[str, Any], str]:
         payload: Dict[str, Any] = {
-            "model": params.get("model"),
+            "model": params.get("model", self.model_name),
             "messages": input,
         }
-
         max_tokens = params.get("max_completion_tokens") or params.get("max_output_tokens")
         if max_tokens:
             payload["max_tokens"] = max_tokens
         if params.get("temperature") is not None:
             payload["temperature"] = params["temperature"]
-
-        reasoning = _normalize_reasoning(params.get("reasoning"))
-        if reasoning is not None:
-            payload["reasoning"] = reasoning
-
         converted_tools = _convert_tools(params.get("tools"))
         if converted_tools:
             payload["tools"] = converted_tools
-            # DeepSeek reasoning mode breaks tool calling; force-disable whenever tools are present.
-            if "reasoning" in payload:
-                payload["reasoning"] = {"enabled": False}
-
-        max_retries, base_sleep_s, max_sleep_s = self._get_retry_config()
-        retryable_statuses = {429, 500, 502, 503, 504}
-        last_error: Optional[str] = None
-        response: Optional[requests.Response] = None
-
-        for attempt in range(max_retries + 1):
-            try:
-                response = self.session.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=self._build_headers(),
-                    data=json.dumps(payload),
-                    timeout=self.request_timeout,
-                )
-            except requests.exceptions.RequestException as exc:
-                last_error = f"{type(exc).__name__}: {exc}"
-                response = None
-            else:
-                if response.ok:
-                    last_error = None
-                    break
-                last_error = f"HTTP {response.status_code}: {response.text}"
-
-            status_code = response.status_code if response is not None else None
-            can_retry = (status_code in retryable_statuses) or (response is None)
-            if attempt >= max_retries or not can_retry:
-                break
-
-            retry_after_s = self._get_retry_after_seconds(response) if response is not None else None
-            if retry_after_s is not None and retry_after_s > 0:
-                sleep_s = min(retry_after_s, max_sleep_s)
-            else:
-                exp_sleep = base_sleep_s * (2**attempt)
-                jitter = random.uniform(0.0, min(1.0, exp_sleep * 0.25))
-                sleep_s = min(max_sleep_s, exp_sleep + jitter)
-            time.sleep(sleep_s)
-
-        if last_error is not None:
-            raise RuntimeError(f"Together chat request failed after {max_retries + 1} attempts: {last_error}")
-
-        data = response.json()  # type: ignore[union-attr]
+        response = self.session.post(
+            f"{self.base_url}/chat/completions",
+            headers=self._build_headers(),
+            data=json.dumps(payload),
+            timeout=self.request_timeout,
+        )
+        if not response.ok:
+            raise RuntimeError(
+                f"vLLM chat request failed ({response.status_code}): {response.text}"
+            )
+        data = response.json()
         choices = data.get("choices") or []
         first_message = choices[0]["message"] if choices else {"content": ""}
         response_str = self._extract_message_content(first_message)

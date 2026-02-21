@@ -87,6 +87,46 @@ class AbstractClient(ABC):
         """
         pass
 
+    def configure_external_mcp(self, llm_config: dict[str, Any]) -> None:
+        """
+        Configure optional external MCP servers for this client instance.
+
+        The default implementation is a no-op when no external server config
+        is provided and lazily initializes a shared registry otherwise.
+        """
+        from terrarium.llm.clients.external_mcp import ExternalMCPToolRegistry
+
+        self._external_mcp_registry = ExternalMCPToolRegistry.from_llm_config(
+            llm_config
+        )
+
+    async def get_external_tools(self) -> list[dict[str, Any]]:
+        """Return external MCP tools in OpenAI-compatible tool schema."""
+        registry = getattr(self, "_external_mcp_registry", None)
+        if registry is None:
+            return []
+        return await registry.get_tools()
+
+    async def get_external_tool_names(self) -> set[str]:
+        """Return discovered external MCP tool names."""
+        registry = getattr(self, "_external_mcp_registry", None)
+        if registry is None:
+            return set()
+        return await registry.get_tool_names()
+
+    async def execute_external_tool(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
+        """
+        Execute a discovered external MCP tool.
+
+        Returns None when the tool name is not managed by the external registry.
+        """
+        registry = getattr(self, "_external_mcp_registry", None)
+        if registry is None:
+            return None
+        return await registry.call_tool(tool_name, arguments or {})
+
     # Optional methods with default no-op implementations that subclasses can override
 
     def set_meta_context(

@@ -670,7 +670,7 @@ class VLLMProviderRuntime:
 
     def create_client(self, agent_name: str):
         """Return (client, served_model_name) for a specific agent."""
-        from llm_server.clients.vllm_client import VLLMClient
+        from terrarium.llm.clients.vllm_client import VLLMClient
 
         spec = self.global_config.get_model_for_agent(agent_name)
         self.server_manager.ensure_server(spec)
