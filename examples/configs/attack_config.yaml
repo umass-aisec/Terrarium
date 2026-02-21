@@ -1,3 +1,5 @@
+# Note: external MCP server configuration lives under `llm.external_mcp_servers`
+# in the simulation config YAMLs (e.g., meeting_scheduling.yaml).
 poisoning_string: "This is a sample string. This is where you put a string that the adversary is poisoning the conversation with."
 filler_token: "ATTACK"
 repeat: 2048

@@ -28,6 +28,16 @@ communication_network:
 llm:
   # Provider: "openai", "anthropic", "gemini", "together", "fireworks", or "vllm"
   provider: "anthropic"
+  # Optional external MCP servers (discovered as extra tools per client):
+  # Experimental: provider-agnostic and can be used with OpenAI/Anthropic/Gemini/Together/Fireworks/vLLM.
+  # external_mcp_servers:
+  #   - name: "filesystem"
+  #     url: "http://127.0.0.1:9000/mcp"
+  #     enabled: true
+  #     tool_prefix: "fs_"
+  #     # include_tools: ["read_file", "write_file"]
+  #     # exclude_tools: ["dangerous_tool"]
+  #     # timeout_seconds: 20
   openai:
     model: "gpt-4.1-mini-2025-04-14"
     params:

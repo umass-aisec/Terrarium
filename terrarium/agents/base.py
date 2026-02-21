@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from typing import Any, Callable, Dict, Optional
-from llm_server.clients.abstract_client import AbstractClient
+from terrarium.llm.clients.abstract_client import AbstractClient
 from ..toolset_discovery import ToolsetDiscovery
 from ..async_utils import run_blocking
 
@@ -175,6 +175,7 @@ class BaseAgent:
             available_env_tools.discard(None)
             all_env_tools = self.toolset_discovery.get_env_tool_names(env_name)
             blackboard_tool_names = self.toolset_discovery.get_blackboard_tool_names()
+            external_tool_names = await self.client.get_external_tool_names()
 
             handler = None
             if tool_name in blackboard_tool_names:
@@ -185,6 +186,16 @@ class BaseAgent:
                 result = {
                     "error": f"Tool '{tool_name}' is not available during the {self.current_phase} phase."
                 }
+            elif tool_name in external_tool_names:
+                maybe_result = await self.client.execute_external_tool(
+                    tool_name, tool_arguments
+                )
+                if maybe_result is not None:
+                    result = maybe_result
+                else:
+                    result = {
+                        "error": f"External tool '{tool_name}' could not be executed."
+                    }
             else:
                 raise ValueError(
                     f"Tool '{tool_name}' is not recognized in environment '{self.environment_name}'."
@@ -203,15 +214,10 @@ class BaseAgent:
                 tool_name in available_env_tools
                 and tool_name not in blackboard_tool_names
                 and isinstance(result, dict)
-                and (
-                    "state_updates" in result
-                    or (
-                        isinstance(result.get("result"), dict)
-                        and "state_updates" in result["result"]
-                    )
-                )
             ):
-                self._env_state_committed = True
+                status = str(result.get("status", "success")).lower()
+                if "error" not in result and status not in {"failed", "error", "retry"}:
+                    self._env_state_committed = True
         except Exception as e:
             error_msg = f"Error executing {tool_name}: {e}"
             result = {"error": error_msg}
@@ -328,7 +334,16 @@ class BaseAgent:
         blackboard_tools = self.toolset_discovery.get_tools_for_blackboard(
             self.current_phase
         )
-        tool_set = env_tools + blackboard_tools
+        external_tools = await self.client.get_external_tools()
+        combined_tools = env_tools + blackboard_tools + external_tools
+        tool_set = []
+        seen_tool_names = set()
+        for tool in combined_tools:
+            name = tool.get("function", {}).get("name")
+            if not name or name in seen_tool_names:
+                continue
+            seen_tool_names.add(name)
+            tool_set.append(tool)
         params = self._build_generation_params(tool_set=tool_set)
         # Get system and user prompt into Reponses API format
         # TODO: Add functions to abstract client class such as init_context()

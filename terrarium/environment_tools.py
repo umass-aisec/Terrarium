@@ -22,7 +22,7 @@ def _project_root() -> Path:
 
 def _iter_tools_modules(*, root: Path) -> list[str]:
     modules: list[str] = []
-    for path in root.glob("envs/**/*_tools.py"):
+    for path in root.glob("terrarium/environments/**/*_tools.py"):
         if path.name.startswith("."):
             continue
         rel = path.relative_to(root).with_suffix("")
@@ -63,7 +63,8 @@ def _discover_tools() -> None:
 def get_environment_tools_class(environment_name: str) -> Type[Any]:
     """Resolve the Tools class for a given environment name.
 
-    Convention: `{Foo}Environment` -> `{Foo}Tools` in an `envs/**/_tools.py` module.
+    Convention: `{Foo}Environment` -> `{Foo}Tools` in a `terrarium.environments`
+    `*_tools.py` module.
     """
     _discover_tools()
     if not environment_name:
@@ -86,8 +87,12 @@ def get_environment_tools_class(environment_name: str) -> Type[Any]:
 
 
 def instantiate_environment_tools(
-    environment_name: str, blackboard_manager: Any
+    environment_name: str, blackboard_manager: Any, environment: Any = None
 ) -> Any:
     """Instantiate the tools handler for an environment."""
     cls = get_environment_tools_class(environment_name)
-    return cls(blackboard_manager)
+    try:
+        return cls(blackboard_manager, environment=environment)
+    except TypeError:
+        # Backward compatibility for tool classes that still use the old ctor.
+        return cls(blackboard_manager)

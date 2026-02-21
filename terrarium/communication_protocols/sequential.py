@@ -2,11 +2,14 @@
 Communication protocol for managing multi-agent interactions and phases.
 """
 
-import random
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from terrarium.blackboard import Megaboard, format_blackboard_events_for_prompt
 from terrarium.communication_protocols.base import BaseCommunicationProtocol
-from terrarium.blackboard import format_blackboard_events_for_prompt
+from terrarium.environment_tools import (
+    EnvironmentToolsNotFoundError,
+    instantiate_environment_tools,
+)
 from terrarium.logger import BlackboardLogger
 
 if TYPE_CHECKING:
@@ -25,19 +28,9 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
     def __init__(
         self,
         config: Dict[str, Any],
-        tool_logger,
-        mcp_client,
+        tool_logger: Any,
         run_timestamp: Optional[str] = None,
     ):
-        """
-        Initialize the communication protocol.
-
-        Args:
-            environment: The specific environment implementation
-            config: Full configuration dictionary with structured sections
-            client: Initialized LLM client for agent interactions
-            tool_logger: Tool call logger instance
-        """
         self.config = config
         self.simulation_config = config["simulation"]
         self.tool_logger = tool_logger
@@ -46,47 +39,59 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             self.config, run_timestamp=self.run_timestamp
         )
         self.blackboard_logger.clear_blackboard_logs()
-        self.mcp_client = mcp_client
+
+        self.megaboard = Megaboard()
         self.environment = None
-        self._server_logger_initialized = (
-            False  # Track if MCP server logger is initialized
-        )
+        self.environment_tools = None
+        self._environment_tools_name: Optional[str] = None
 
-    async def _ensure_server_logger_initialized(self, client):
+    def bind_environment(self, environment: Any) -> None:
         """
-        Ensure the MCP server-side logger is initialized.
-        """
-        if not self._server_logger_initialized and self.blackboard_logger:
-            await client.call_tool(
-                "initialize_blackboard_logger", {"config": self.config}
-            )
-            self._server_logger_initialized = True
+        Bind a concrete environment instance and initialize its tool handlers.
 
-    def _extract_environment_state(self) -> Dict[str, Any]:
+        This resets blackboards so each simulation run starts clean.
         """
-        Extract serializable state from environment for MCP transmission.
-        Delegates to environment-specific implementation.
-        """
-        assert self.environment is not None, (
-            "Environment should be set for communication protocol"
-        )
-        # Call environment-specific state extraction
-        if hasattr(self.environment, "get_serializable_state"):
-            return self.environment.get_serializable_state()
+        self.environment = environment
+        self.megaboard.clear_blackboards()
+        self.environment_tools = None
+        self._environment_tools_name = None
+        self._ensure_environment_tools_initialized()
 
-        return {}
+    def _ensure_environment_tools_initialized(self) -> None:
+        if self.environment is None:
+            raise ValueError("Environment must be set before using environment tools.")
 
-    def _apply_environment_state_updates(self, state_updates: Dict[str, Any]) -> None:
-        """
-        Apply state updates back to the environment.
-        Delegates to environment-specific implementation.
-        """
-        if not self.environment:
+        env_name = self.environment.__class__.__name__
+        if (
+            self.environment_tools is not None
+            and self._environment_tools_name == env_name
+        ):
             return
 
-        # Call environment-specific state application
-        if hasattr(self.environment, "apply_state_updates"):
-            self.environment.apply_state_updates(state_updates)
+        try:
+            self.environment_tools = instantiate_environment_tools(
+                env_name,
+                self.megaboard,
+                environment=self.environment,
+            )
+            self._environment_tools_name = env_name
+        except EnvironmentToolsNotFoundError as exc:
+            raise ValueError(str(exc)) from exc
+
+    def _log_blackboard_states(
+        self,
+        *,
+        iteration: int,
+        phase: str,
+        agent_name: str,
+        planning_round: Optional[int] = None,
+    ) -> None:
+        if not self.blackboard_logger:
+            return
+        for blackboard in self.megaboard.blackboards:
+            self.blackboard_logger.log_blackboard_state(
+                blackboard, iteration, phase, agent_name, planning_round
+            )
 
     async def environment_handle_tool_call(
         self,
@@ -96,51 +101,11 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """
-        Handle environment tool calls by extracting serializable state, calling MCP tools,
-        and applying state updates back to the environment.
-        """
-        # Extract serializable state from environment
-        env_state = self._extract_environment_state()
-
-        async with self.mcp_client as client:
-            response = (
-                await client.call_tool(
-                    "handle_environment_tool_call",
-                    {
-                        "tool_name": tool_name,
-                        "agent_name": agent_name,
-                        "arguments": arguments,
-                        "phase": phase,
-                        "iteration": iteration,
-                        "env_state": env_state,
-                    },
-                )
-            ).data
-
-            # Apply state updates back to environment if present
-            # Check both top-level and nested in "result"
-            state_updates = None
-            if "state_updates" in response:
-                state_updates = response["state_updates"]
-            elif (
-                "result" in response
-                and isinstance(response["result"], dict)
-                and "state_updates" in response["result"]
-            ):
-                state_updates = response["result"]["state_updates"]
-
-            if state_updates:
-                self._apply_environment_state_updates(state_updates)
-
-                # Call environment-specific post-tool execution callback if available
-                # This allows environments to do custom processing after state updates
-                if hasattr(self.environment, "post_tool_execution_callback"):
-                    self.environment.post_tool_execution_callback(
-                        state_updates, response
-                    )
-
-            return response
+        self._ensure_environment_tools_initialized()
+        response = self.environment_tools.handle_tool_call(
+            tool_name, agent_name, arguments, phase, iteration
+        )
+        return response if isinstance(response, dict) else {"result": response}
 
     async def blackboard_handle_tool_call(
         self,
@@ -150,49 +115,27 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
     ) -> Dict[str, Any]:
-        async with self.mcp_client as client:
-            response = (
-                await client.call_tool(
-                    "handle_blackboard_tool_call",
-                    {
-                        "tool_name": tool_name,
-                        "agent_name": agent_name,
-                        "arguments": arguments,
-                        "phase": phase,
-                        "iteration": iteration,
-                    },
-                )
-            ).data
-            return response
-        # return self.blackboard_manager.handle_tool_call(tool_name, agent_name, arguments, phase, iteration)
+        response = self.megaboard.handle_tool_call(
+            tool_name, agent_name, arguments, phase, iteration
+        )
+        return response if isinstance(response, dict) else {"result": response}
 
     async def get_all_blackboard_ids(self) -> List[str]:
-        async with self.mcp_client as client:
-            return (await client.call_tool("get_blackboard_string_ids")).data
+        return self.megaboard.get_blackboard_string_ids()
 
     async def post_system_message(
         self, blackboard_id: int, kind: str, payload: Optional[Dict[str, Any]] = None
     ) -> str:
-        async with self.mcp_client as client:
-            # Only pass the parameters that the MCP server tool accepts
-            return (
-                await client.call_tool(
-                    "post_system_message",
-                    {"blackboard_id": blackboard_id, "kind": kind, "payload": payload},
-                )
-            ).data
+        return self.megaboard.post_system_message(blackboard_id, kind, payload)
 
     async def _prefetch_blackboard_events(
         self,
-        client: Any,
         agent_name: str,
         *,
         phase: Optional[str],
         iteration: Optional[int],
     ) -> Dict[str, str]:
-        blackboard_ids = (
-            await client.call_tool("get_agent_blackboards", {"agent_name": agent_name})
-        ).data
+        blackboard_ids = self.megaboard.get_agent_blackboards(agent_name)
         if not isinstance(blackboard_ids, list):
             return {}
 
@@ -206,22 +149,10 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         for bb_id_str in sorted([str(b) for b in blackboard_ids], key=_sort_key):
             try:
                 bb_id_int = int(bb_id_str)
+                events = self.megaboard.get(bb_id_int, agent_name, limit=None)
             except Exception:
                 continue
 
-            response = (
-                await client.call_tool(
-                    "handle_blackboard_tool_call",
-                    {
-                        "tool_name": "get_blackboard_events",
-                        "agent_name": agent_name,
-                        "arguments": {"blackboard_id": bb_id_int},
-                        "phase": phase,
-                        "iteration": iteration,
-                    },
-                )
-            ).data
-            events = response.get("events") if isinstance(response, dict) else None
             contexts[bb_id_str] = format_blackboard_events_for_prompt(
                 events if isinstance(events, list) else []
             )
@@ -238,40 +169,32 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         planning_round: int,
     ):
         """Handle a single agent's planning turn."""
-        # Get blackboard contexts from blackboard manager (prefetch full event logs)
-        async with self.mcp_client as client:
-            blackboard_contexts = await self._prefetch_blackboard_events(
-                client,
-                agent_name,
-                phase="planning",
-                iteration=iteration,
-            )
-            self.environment = environment
-            # blackboard_contexts = self.blackboard_manager.get_agent_blackboard_contexts()
-            prompts = environment.prompts
-            response_data = await agent.generate_response(
-                agent_name=agent_name,
-                agent_context=agent_context,
-                blackboard_context=blackboard_contexts,
-                communication_protocol=self,
-                prompts=prompts,
-                phase="planning",
-                iteration=iteration,
-                round_num=planning_round,
-            )
+        self.environment = environment
+        self._ensure_environment_tools_initialized()
+        blackboard_contexts = await self._prefetch_blackboard_events(
+            agent_name,
+            phase="planning",
+            iteration=iteration,
+        )
 
-            # Log blackboard states after agent's turn via MCP
-            if self.blackboard_logger:
-                await self._ensure_server_logger_initialized(client)
-                await client.call_tool(
-                    "log_blackboard_states",
-                    {
-                        "iteration": iteration,
-                        "phase": "planning",
-                        "agent_name": agent_name,
-                        "planning_round": planning_round,
-                    },
-                )
+        prompts = environment.prompts
+        await agent.generate_response(
+            agent_name=agent_name,
+            agent_context=agent_context,
+            blackboard_context=blackboard_contexts,
+            communication_protocol=self,
+            prompts=prompts,
+            phase="planning",
+            iteration=iteration,
+            round_num=planning_round,
+        )
+
+        self._log_blackboard_states(
+            iteration=iteration,
+            phase="planning",
+            agent_name=agent_name,
+            planning_round=planning_round,
+        )
 
     async def generate_comm_network(
         self, participants, context: str, template: Optional[Dict[str, Any]] = None
@@ -282,28 +205,16 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         Args:
             participants: List of agent names that can access this blackboard.
             context: Initial context message to post as a system "context" event.
-            template: Optional blackboard template (passed through to MCP).
+            template: Optional blackboard template.
         """
-        async with self.mcp_client as client:
-            blackboard_id = (
-                await client.call_tool(
-                    "add_blackboard",
-                    {
-                        "agents": list(participants),
-                        "template": template,
-                    },
-                )
-            ).data
-
-            await client.call_tool(
-                "post_system_message",
-                {
-                    "blackboard_id": blackboard_id,
-                    "kind": "context",
-                    "payload": {"message": context},
-                },
-            )
-
+        blackboard_id = self.megaboard.add_blackboard(
+            list(participants), template=template
+        )
+        self.megaboard.post_system_message(
+            blackboard_id,
+            "context",
+            {"message": context},
+        )
         return blackboard_id
 
     async def agent_execution_turn(
@@ -316,40 +227,27 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
     ):
         """
         Handle a single agent's execution turn with retry logic.
-
-        Args:
-            agent_name: Name of the agent taking the turn
-            iteration: Current iteration
         """
+        self.environment = environment
+        self._ensure_environment_tools_initialized()
+        blackboard_contexts = await self._prefetch_blackboard_events(
+            agent_name,
+            phase="execution",
+            iteration=iteration,
+        )
+        prompts = environment.prompts
+        await agent.generate_response(
+            agent_name=agent_name,
+            agent_context=agent_context,
+            blackboard_context=blackboard_contexts,
+            communication_protocol=self,
+            prompts=prompts,
+            phase="execution",
+            iteration=iteration,
+        )
 
-        # Get blackboard contexts (prefetch full event logs)
-        async with self.mcp_client as client:
-            blackboard_contexts = await self._prefetch_blackboard_events(
-                client,
-                agent_name,
-                phase="execution",
-                iteration=iteration,
-            )
-            self.environment = environment
-            prompts = environment.prompts
-            await agent.generate_response(
-                agent_name=agent_name,
-                agent_context=agent_context,
-                blackboard_context=blackboard_contexts,
-                communication_protocol=self,
-                prompts=prompts,
-                phase="execution",
-                iteration=iteration,
-            )
-
-            # Log blackboard states after agent's turn via MCP
-            if self.blackboard_logger:
-                await self._ensure_server_logger_initialized(client)
-                await client.call_tool(
-                    "log_blackboard_states",
-                    {
-                        "iteration": iteration,
-                        "phase": "execution",
-                        "agent_name": agent_name,
-                    },
-                )
+        self._log_blackboard_states(
+            iteration=iteration,
+            phase="execution",
+            agent_name=agent_name,
+        )

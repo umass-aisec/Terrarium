@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from envs.abstract_environment import AbstractEnvironment
+    from terrarium.environments.abstract_environment import AbstractEnvironment
 
 
 def load_config(config_file) -> Dict[str, Any]:
@@ -303,7 +303,7 @@ def _get_vllm_model_name(llm_config: Dict[str, Any]) -> str:
 
 def build_vllm_runtime(llm_config: Dict[str, Any]):
     """Construct a VLLMProviderRuntime from normalized configuration."""
-    from llm_server.vllm.runtime import VLLMProviderRuntime
+    from terrarium.llm.vllm.runtime import VLLMProviderRuntime
 
     normalized = _normalize_vllm_block(llm_config.get("vllm"))
     normalized = _apply_vllm_model_presets(normalized)
@@ -488,29 +488,29 @@ def get_client_instance(
         provider = "fireworks"
 
     if provider == "openai":
-        from llm_server.clients.openai_client import OpenAIClient
+        from terrarium.llm.clients.openai_client import OpenAIClient
 
-        return OpenAIClient()
+        client = OpenAIClient()
     elif provider == "anthropic":
-        from llm_server.clients.anthropic_client import AnthropicClient
+        from terrarium.llm.clients.anthropic_client import AnthropicClient
 
-        return AnthropicClient()
+        client = AnthropicClient()
     elif provider == "gemini":
-        from llm_server.clients.gemini_client import GeminiClient
+        from terrarium.llm.clients.gemini_client import GeminiClient
 
-        return GeminiClient()
+        client = GeminiClient()
     elif provider == "together":
-        from llm_server.clients.together_client import TogetherClient
+        from terrarium.llm.clients.together_client import TogetherClient
 
         together_cfg = llm_config.get("together") or {}
         base_url = str(together_cfg.get("base_url") or "https://api.together.xyz/v1")
         request_timeout = int(together_cfg.get("request_timeout", 60))
         api_key = together_cfg.get("api_key")
-        return TogetherClient(
+        client = TogetherClient(
             base_url=base_url, api_key=api_key, request_timeout=request_timeout
         )
     elif provider == "fireworks":
-        from llm_server.clients.fireworks_client import FireworksClient
+        from terrarium.llm.clients.fireworks_client import FireworksClient
 
         fireworks_cfg = llm_config.get("fireworks") or {}
         base_url = str(
@@ -518,7 +518,7 @@ def get_client_instance(
         )
         request_timeout = int(fireworks_cfg.get("request_timeout", 60))
         api_key = fireworks_cfg.get("api_key")
-        return FireworksClient(
+        client = FireworksClient(
             base_url=base_url, api_key=api_key, request_timeout=request_timeout
         )
     elif provider == "vllm":
@@ -527,21 +527,34 @@ def get_client_instance(
         if agent_name is None:
             raise ValueError("agent_name must be provided when using vLLM provider")
         client, _ = vllm_runtime.create_client(agent_name)
-        return client
     else:
         raise ValueError(
             f"Unknown provider: {provider}. Must be one of: openai, anthropic, gemini, together, fireworks, vllm"
         )
 
+    configure_client_external_mcp(client, llm_config)
+    return client
+
+
+def configure_client_external_mcp(client: Any, llm_config: Dict[str, Any]) -> None:
+    """Attach optional external MCP server configuration to a client instance."""
+    configure = getattr(client, "configure_external_mcp", None)
+    if callable(configure):
+        configure(llm_config)
+
 
 def _get_environment_registry():
     """Return the mapping of implemented environment class names -> classes."""
     # Import here to avoid circular dependencies / heavy imports at module import time.
-    from envs.dcops.personal_assistant import PersonalAssistantEnvironment
-    from envs.dcops.smart_grid import SmartGridEnvironment
-    from envs.dcops.meeting_scheduling import MeetingSchedulingEnvironment
-    from envs.dcops.hospital import HospitalEnvironment
-    from envs.dcops.jira_ticket import JiraTicketEnvironment
+    from terrarium.environments.dcops.personal_assistant import (
+        PersonalAssistantEnvironment,
+    )
+    from terrarium.environments.dcops.smart_grid import SmartGridEnvironment
+    from terrarium.environments.dcops.meeting_scheduling import (
+        MeetingSchedulingEnvironment,
+    )
+    from terrarium.environments.dcops.hospital import HospitalEnvironment
+    from terrarium.environments.dcops.jira_ticket import JiraTicketEnvironment
 
     return {
         MeetingSchedulingEnvironment.__name__: MeetingSchedulingEnvironment,
@@ -640,22 +653,6 @@ def get_generation_params(llm_config: Dict[str, Any]) -> Dict[str, Any]:
 
     # Never leak model identifiers into request params
     return {k: v for k, v in raw_params.items() if k != "model"}
-
-
-def handle_mcp_connection_error(
-    exc: Exception, url: str = "http://localhost:8000/mcp"
-) -> bool:
-    message = str(exc)
-    connection_error = (
-        "Client failed to connect" in message
-        or "All connection attempts failed" in message
-    )
-    if connection_error:
-        logger.error(
-            f"Simulation aborted: could not connect to the MCP server at {url}. Start it in another terminal with `python -m terrarium.server` and retry."
-        )
-        return True
-    return False
 
 
 def configure_logging(level: Optional[int] = None) -> None:

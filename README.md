@@ -14,7 +14,7 @@ This repo is under active development :gear:, so please raise an issue for new f
 
 - **Blackboards (Communication Proxies)**: Append-only event/communication log which acts as a component of the agent's observation and communication with other agents.
 - **Two-Phase Communication Protocol**: The implemented communication protocol containes two phases, a (1) *planing phase* and an (2) *execution phase*. The planning phase enables communcation between agents to faciliate better action selection during the executation phase. During the executation phase, the agents take **actions** that affect their environment. This is done in a predefined sequential order to avoid environment simulation clashes.
-- **MCP Servers**: We use MCP servers to provide easy integration with varying LLM client APIs while enabling easier configuration of environment and external tools.
+- **Tooling Runtime + Optional External MCP**: Core environment and blackboard tools run in-process, and you can optionally attach external MCP servers per LLM client.
 - **DCOP Environments**: DCOPs (Distributed Constraint Optimization Problems) have a **ground-truth solution** and a well-grounded evalution function, evaluating the actions taken by a set of agents. We implement DCOP environments from the [CoLLAB](https://openreview.net/pdf?id=372FjQy1cF) benchmark.
   - SmartGrid - A home agent's objecitve is to schedule appliance usage throughout the day without overworking the powergrid (Uses real-world home-meter data)
   - MeetingScheduling - A calendar agent is tasked with assigning meetings with other agents, trying to satisfy preferences and constraints with respect to other agents schedules (Uses real-world locations)
@@ -45,6 +45,18 @@ Optional extras:
 - `terrarium-agents[openai]`, `terrarium-agents[anthropic]`, `terrarium-agents[gemini]` (provider SDKs)
 - `terrarium-agents[vllm]` (local vLLM serving; heavy)
 - `terrarium-agents[all]` (everything)
+
+Public environment import path:
+```python
+from terrarium.environments import JiraTicketEnvironment
+from terrarium.environments.dcops import HospitalEnvironment
+```
+
+Public LLM import path:
+```python
+from terrarium.llm.clients import OpenAIClient
+from terrarium.llm.vllm import VLLMProviderRuntime
+```
 
 ### Install (Source)
 
@@ -80,17 +92,9 @@ Next, set the model and provider you want to use at `llm.provider` and `llm.<pro
 For vLLM servicing, simply set `llm.provider:"vllm"` and `llm.vllm.auto_start_server:true` in `examples/configs/<config>.yaml` for auto-startup and shutdown for a single run. If you require a persistent vLLM server, which is useful for using the same vLLM model for different configurations or environments without the costly startup time, then set `llm.vllm.persistent_server:true`. To kill all vLLM servers run `pkill -f vllm.entrypoints.openai.api_server`.
 
 ### Running a Multi-Agent Trajectory
-1. Start up the persistent MCP server once for tool calls and the blackboard server:
-```bash
-python -m terrarium.server & export MCP_PID=$!
-```
-2. Run a simulation using an execution script along with a config file:
+1. Run a simulation using an execution script along with a config file:
 ```bash
 python examples/base_main.py --config <yaml_config_path>
-```
-3. When done, close the persistent MCP server:
-```bash
-kill -9 $MCP_PID
 ```
 
 ## Attack Scenarios
@@ -101,7 +105,7 @@ Terrarium ships three reference attacks that exercise different points in the st
 | --- | --- | --- | --- |
 | Agent poisoning | Replaces every `post_message` payload from the compromised agent before it reaches the blackboard. | `examples/attack_main.py --attack_type agent_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
 | Context overflow | Appends a large filler block to agent messages to force downstream context truncation. | `examples/attack_main.py --attack_type context_overflow` | `examples/configs/attack_config.yaml` (`header`, `filler_token`, `repeat`, `max_chars`) |
-| Communication protocol poisoning | Injects malicious system messages into every blackboard via the MCP layer. | `examples/attack_main.py --communication_protocol_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
+| Communication protocol poisoning | Injects malicious system messages into every blackboard via the communication layer. | `examples/attack_main.py --communication_protocol_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
 
 ### Running agent-side attacks
 
@@ -179,9 +183,27 @@ Consolidates runs and logs into a static dashboard for easier navigation:
 
 4. New runs? Simply repeat step (1.) and refresh the website (No need to restart the server)
 
-## Tooling (MCP Servers)
+## Tooling (In-Process + External MCP)
 
-To standardize tool usage among different model providers, we employ an MCP server using FastMCP. Each environment has their own set of MCP tools that are readily available to the agent with the functionality of permitting certain tools by the communication protocol. Some examples of environment tools are MeetingScheduling -> attend_meeting(.), PersonalAssistant -> choose_outfit(.), and SmartGrid -> assign_source(.).
+Environment and blackboard tools are executed in-process by Terrarium (no Terrarium MCP server process required).
+Examples: MeetingScheduling -> `attend_meeting`, PersonalAssistant -> `choose_outfit`, SmartGrid -> `assign_source`.
+
+You can optionally attach external MCP servers at `llm.external_mcp_servers`:
+
+```yaml
+llm:
+  provider: "openai"
+  external_mcp_servers:
+    - name: "filesystem"
+      url: "http://127.0.0.1:9000/mcp"
+      enabled: true
+      tool_prefix: "fs_"
+      # include_tools: ["read_file", "write_file"]
+      # exclude_tools: ["dangerous_tool"]
+      # timeout_seconds: 20
+```
+
+External tools are auto-discovered and exposed to each client as regular function-calling tools.
 
 
 ## Logging

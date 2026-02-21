@@ -29,22 +29,12 @@ from terrarium.utils import (
     create_environment,
     get_model_name,
     build_vllm_runtime,
-    handle_mcp_connection_error,
     get_generation_params,
 )
 import asyncio
-from fastmcp import Client
 from attack_module.attack_modules import AgentPoisoningAttack, CommunicationProtocolPoisoningAttack, ContextOverflowAttack
 
-from requests.exceptions import ConnectionError
 from dotenv import load_dotenv
-
-try:
-    mcp_client = Client("http://localhost:8000/mcp")
-except ConnectionError as exc:
-    raise RuntimeError(
-        "MCP server is not running. Start it with `python -m terrarium.server` before retrying."
-    ) from exc
 
 
 async def run_simulation(config: Dict[str, Any]) -> bool:
@@ -76,15 +66,10 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         trajectory_logger = AgentTrajectoryLogger(environment_name, seed, config, run_timestamp=run_timestamp)
 
         communication_protocol = SequentialCommunicationProtocol(
-            config, tool_logger, mcp_client, run_timestamp=run_timestamp
+            config, tool_logger, run_timestamp=run_timestamp
         )
         environment = create_environment(communication_protocol, environment_name, config, tool_logger)
-
-        # Initialize environment-specific tools on the MCP server
-        async with mcp_client as client:
-            env_class_name = environment.__class__.__name__
-            result = await client.call_tool("initialize_environment_tools", {"environment_name": env_class_name})
-            print(f"MCP server environment tools: {result.data}")
+        communication_protocol.bind_environment(environment)
 
         agent_names = environment.get_agent_names()
         communication_network = build_communication_network(agent_names, config)
@@ -175,9 +160,6 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         return True
 
     except Exception as e:
-        if handle_mcp_connection_error(e):
-            return False
-
         print(f"Simulation failed: {e}")
         traceback.print_exc()
         return False

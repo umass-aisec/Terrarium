@@ -56,6 +56,9 @@ def build_agents(
             if not vllm_runtime:
                 raise ValueError("vllm_runtime is required when provider == 'vllm'")
             client, agent_model_name = vllm_runtime.create_client(name)
+            from terrarium.utils import configure_client_external_mcp
+
+            configure_client_external_mcp(client, llm_config)
         else:
             from terrarium.utils import get_client_instance
 

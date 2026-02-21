@@ -55,7 +55,7 @@ class Megaboard:
     Factor graph-based blackboard system for multi-agent communication.
 
     Maintains multiple blackboards with template verification and factor graph initialization.
-    Designed for MCP server integration and structured agent communication.
+    Designed for structured agent communication and optional external tool integration.
     """
 
     def __init__(self):
