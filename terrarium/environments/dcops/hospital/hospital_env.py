@@ -624,7 +624,7 @@ class HospitalEnvironment(AbstractEnvironment):
         with open(log_dir / f"data_iteration_{iteration}.json", "w") as f:
             json.dump({"iteration": iteration, "joint_reward": s, "agent_rewards": r, "inventory": self.inventory, "failures": self.resource_failures}, f, indent=2)
     def get_final_summary(self):
-        s, _ = self._calculate_makespan_and_flow()
+        s, agent_rewards = self._calculate_makespan_and_flow()
         total_patients = len(self.patients)
         converged_patients = 0
         failed_list = []
@@ -640,4 +640,16 @@ class HospitalEnvironment(AbstractEnvironment):
                 status = f"RESOURCE FAILED (Steps: {', '.join(steps_failed)})"
             if status == "OK": converged_patients += 1
             else: failed_list.append(f"{pid}: {status}")
-        return {"status": "complete" if not failed_list else "partial_convergence", "joint_reward": s, "convergence_report": {"total_patients": total_patients, "converged_count": converged_patients, "resource_failures": self.resource_failures, "final_inventory": self.inventory, "failed_patients": failed_list}, "schedule": self.schedule}
+        return {
+            "status": "complete" if not failed_list else "partial_convergence",
+            "joint_reward": s,
+            "agent_rewards": dict(agent_rewards),
+            "convergence_report": {
+                "total_patients": total_patients,
+                "converged_count": converged_patients,
+                "resource_failures": self.resource_failures,
+                "final_inventory": self.inventory,
+                "failed_patients": failed_list,
+            },
+            "schedule": self.schedule,
+        }

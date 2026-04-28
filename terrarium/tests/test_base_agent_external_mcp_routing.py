@@ -83,6 +83,41 @@ class _DummyClient:
         return {"status": "success", "result": {"echo": arguments.get("payload")}}
 
 
+class _FailingClient(_DummyClient):
+    def generate_response(
+        self, input: List[Any], params: Dict[str, Any]
+    ) -> tuple[Dict[str, Any], str]:
+        raise RuntimeError("synthetic upstream failure")
+
+
+class _NoToolClient(_DummyClient):
+    async def process_tool_calls(self, response, context, execute_tool_callback):
+        return 0, context, []
+
+
+class _DummyTrajectoryLogger:
+    def __init__(self):
+        self.calls: List[Dict[str, Any]] = []
+
+    def log_trajectory(
+        self,
+        agent_name: str,
+        iteration: int,
+        phase: str,
+        trajectory_dict: Dict[str, Any],
+        round_num: int | None = None,
+    ) -> None:
+        self.calls.append(
+            {
+                "agent_name": agent_name,
+                "iteration": iteration,
+                "phase": phase,
+                "trajectory_dict": trajectory_dict,
+                "round_num": round_num,
+            }
+        )
+
+
 class BaseAgentExternalMCPRoutingTests(unittest.IsolatedAsyncioTestCase):
     async def test_external_tools_are_exposed_and_routed(self):
         client = _DummyClient()
@@ -119,6 +154,54 @@ class BaseAgentExternalMCPRoutingTests(unittest.IsolatedAsyncioTestCase):
             {"status": "success", "result": {"echo": "hello"}},
         )
         self.assertTrue(result["has_tool_calls"])
+
+    async def test_initial_model_failure_is_logged_to_trajectory(self):
+        client = _FailingClient()
+        trajectory_logger = _DummyTrajectoryLogger()
+        agent = BaseAgent(
+            client=client,  # type: ignore[arg-type]
+            name="agent_1",
+            model_name="dummy-model",
+            max_conversation_steps=1,
+            trajectory_logger=trajectory_logger,
+            environment_name="DummyEnvironment",
+        )
+        agent.toolset_discovery = _DummyToolsetDiscovery()  # type: ignore[assignment]
+        agent.communication_protocol = _DummyProtocol()
+        agent.set_meta_context(agent_name="agent_1", phase="planning", iteration=3)
+
+        with self.assertRaisesRegex(RuntimeError, "synthetic upstream failure"):
+            await agent._multi_step_response_generation(
+                system_prompt="system",
+                user_prompt="user",
+            )
+
+        self.assertEqual(len(trajectory_logger.calls), 1)
+        logged = trajectory_logger.calls[0]["trajectory_dict"]["step_1"]
+        self.assertEqual(logged["exception_type"], "RuntimeError")
+        self.assertIn("synthetic upstream failure", logged["error"])
+
+    async def test_multi_step_generation_stops_after_plain_response_without_tools(self):
+        client = _NoToolClient()
+        agent = BaseAgent(
+            client=client,  # type: ignore[arg-type]
+            name="agent_1",
+            model_name="dummy-model",
+            max_conversation_steps=3,
+            environment_name="DummyEnvironment",
+        )
+        agent.toolset_discovery = _DummyToolsetDiscovery()  # type: ignore[assignment]
+        agent.communication_protocol = _DummyProtocol()
+        agent.set_meta_context(agent_name="agent_1", phase="execution", iteration=1)
+
+        result = await agent._multi_step_response_generation(
+            system_prompt="system",
+            user_prompt="user",
+        )
+
+        self.assertEqual(len(client.generate_params_history), 1)
+        self.assertEqual(result["conversation_steps"], 1)
+        self.assertFalse(result["has_tool_calls"])
 
 
 if __name__ == "__main__":

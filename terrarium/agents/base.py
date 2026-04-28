@@ -60,6 +60,28 @@ class BaseAgent:
         self.communication_protocol = None
         self._env_state_committed = False
 
+    @staticmethod
+    def _build_response_diagnostics(response: Any) -> Dict[str, Any]:
+        """Capture lightweight response metadata for debugging empty/failed turns."""
+        output_items = getattr(response, "output", None) or []
+        output_types = []
+        for item in output_items:
+            item_type = getattr(item, "type", None)
+            if item_type:
+                output_types.append(item_type)
+
+        diagnostics: Dict[str, Any] = {
+            "response_status": getattr(response, "status", None),
+        }
+        if output_types:
+            diagnostics["response_output_types"] = output_types
+
+        output_text = getattr(response, "output_text", None)
+        if isinstance(output_text, str) and output_text:
+            diagnostics["response_output_text"] = output_text
+
+        return {k: v for k, v in diagnostics.items() if v is not None}
+
     def _build_generation_params(self, tool_set) -> Dict[str, Any]:
         """
         Merge generic generation defaults with provider-specific params.
@@ -352,15 +374,29 @@ class BaseAgent:
         total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         # Get a response and update context for next conversation step
         # response object will have tool calls embedded inside and text response
-        response, response_str = await run_blocking(
-            self.client.generate_response, input=context, params=params
-        )
+        try:
+            response, response_str = await run_blocking(
+                self.client.generate_response, input=context, params=params
+            )
+        except Exception as e:
+            self._log_trajectory(
+                {
+                    "step_1": {
+                        "error": str(e),
+                        "exception_type": type(e).__name__,
+                    }
+                }
+            )
+            raise
         total_usage = self.client.get_usage(response, total_usage)
         current_response = response
 
         trajectory_dict: Dict[str, Any] = {}
         conversation_steps = 1
-        trajectory_dict["step_1"] = {"reasoning": response_str}
+        trajectory_dict["step_1"] = {
+            "reasoning": response_str,
+            **self._build_response_diagnostics(response),
+        }
 
         for step in range(self.max_conversation_steps):
             self._env_state_committed = False
@@ -382,6 +418,9 @@ class BaseAgent:
                 step_key = f"step_{step + 1}"
                 trajectory_dict.setdefault(step_key, {})["tools"] = step_tools
 
+            if tool_calls_executed == 0:
+                break
+
             # Break if the agent executed the environment tool call
             if self._env_state_committed:
                 break
@@ -398,11 +437,18 @@ class BaseAgent:
                 current_response = response
                 conversation_steps += 1
                 trajectory_dict[f"step_{conversation_steps}"] = {
-                    "reasoning": response_str
+                    "reasoning": response_str,
+                    **self._build_response_diagnostics(response),
                 }
             except Exception as e:
                 logger.exception(
                     "Failed to continue conversation at step %s: %s", step + 1, e
+                )
+                trajectory_dict.setdefault(f"step_{conversation_steps + 1}", {}).update(
+                    {
+                        "error": str(e),
+                        "exception_type": type(e).__name__,
+                    }
                 )
                 self._log_trajectory(trajectory_dict)
 

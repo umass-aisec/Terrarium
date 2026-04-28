@@ -21,9 +21,11 @@ dependencies = [
 [project.optional-dependencies]
 # LLM providers (optional; only required when selected via config).
 openai = ["openai>=1.0.0"]
+foundry = ["openai>=1.0.0", "azure-identity>=1.17.0"]
 anthropic = ["anthropic>=0.71.0"]
 gemini = ["google-genai>=1.60.0", "protobuf>=6.33.0"]
 providers = [
+    "azure-identity>=1.17.0",
     "anthropic>=0.71.0",
     "google-genai>=1.60.0",
     "openai>=1.0.0",
@@ -41,6 +43,7 @@ science = ["numpy>=1.26,<2.3", "pandas>=2.0.0", "scipy>=1.11.0"]
 
 # Convenience meta-extra.
 all = [
+    "azure-identity>=1.17.0",
     "anthropic>=0.71.0",
     "google-genai>=1.60.0",
     "matplotlib>=3.8.0",

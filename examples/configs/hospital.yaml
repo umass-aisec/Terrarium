@@ -26,11 +26,11 @@ communication_network:
   consolidate_channels: true
 
 llm:
-  # Provider: "openai", "anthropic", "gemini", "together", "fireworks", or "vllm"
+  # Provider: "openai", "foundry", "anthropic", "gemini", "together", "fireworks", or "vllm"
   # Switched to "openai" (GPT-4o) as scheduling requires high arithmetic precision
   provider: "openai"
   # Optional external MCP servers (discovered as extra tools per client):
-  # Experimental: provider-agnostic and can be used with OpenAI/Anthropic/Gemini/Together/Fireworks/vLLM.
+  # Experimental: provider-agnostic and can be used with OpenAI/Foundry/Anthropic/Gemini/Together/Fireworks/vLLM.
   # external_mcp_servers:
   #   - name: "filesystem"
   #     url: "http://127.0.0.1:9000/mcp"
@@ -42,6 +42,11 @@ llm:
   
   openai:
     model: "gpt-4.1-mini-2025-04-14"
+    params:
+      max_tokens: 1024
+      temperature: 0.7
+  foundry:
+    model: "<model_or_deployment_name>"
     params:
       max_tokens: 1024
       temperature: 0.7

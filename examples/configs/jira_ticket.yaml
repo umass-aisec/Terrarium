@@ -27,9 +27,10 @@ communication_network:
   consolidate_channels: true
 
 llm:
-  provider: "openai"
+  # Provider: "openai", "foundry", "anthropic", "gemini", "together", "fireworks", or "vllm"
+  provider: "foundry"
   # Optional external MCP servers (discovered as extra tools per client):
-  # Experimental: provider-agnostic and can be used with OpenAI/Anthropic/Gemini/Together/Fireworks/vLLM.
+  # Experimental: provider-agnostic and can be used with OpenAI/Foundry/Anthropic/Gemini/Together/Fireworks/vLLM.
   # external_mcp_servers:
   #   - name: "filesystem"
   #     url: "http://127.0.0.1:9000/mcp"
@@ -45,6 +46,14 @@ llm:
       temperature: 0.4
       reasoning_effort: "low"
       verbosity: "low"
+  foundry:
+    model: "gpt-5-nano"
+    params:
+      max_tokens: 4096
+      reasoning_effort: "minimal"
+      verbosity: "low"
+      # Forces a tool call instead of allowing a plain text reply.
+      tool_choice: "required"
   anthropic:
     model: "claude-sonnet-4-5"
     params:

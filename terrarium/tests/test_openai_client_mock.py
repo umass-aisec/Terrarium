@@ -144,8 +144,8 @@ class OpenAIClientMockTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call["model"], "gpt-5-nano")
         self.assertEqual(call["max_output_tokens"], 128)
         self.assertNotIn("temperature", call)
-        self.assertEqual(call["reasoning_effort"], "low")
-        self.assertEqual(call["verbosity"], "low")
+        self.assertEqual(call["reasoning"], {"effort": "low"})
+        self.assertEqual(call["text"], {"verbosity": "low"})
         self.assertEqual(
             call["tools"],
             [
@@ -160,6 +160,98 @@ class OpenAIClientMockTests(unittest.IsolatedAsyncioTestCase):
                 }
             ],
         )
+        self.assertNotIn("reasoning_effort", call)
+        self.assertNotIn("verbosity", call)
+
+    def test_generate_response_falls_back_to_response_output_text(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(
+            output=[
+                SimpleNamespace(
+                    type="message",
+                    content=[SimpleNamespace(type="text", text="ignored-content")],
+                )
+            ],
+            output_text="preferred-output-text",
+        )
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.next_response = fake_response
+
+            context = client.init_context("system", "user")
+            response, response_str = client.generate_response(
+                input=context,
+                params={"model": "gpt-5-nano"},
+            )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "preferred-output-text")
+
+    def test_generate_response_sanitizes_followup_items(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.next_response = fake_response
+
+            response, response_str = client.generate_response(
+                input=[
+                    {"type": "message", "role": "system", "content": "system"},
+                    {"type": "message", "role": "user", "content": "user"},
+                    SimpleNamespace(
+                        type="function_call",
+                        id="msg_bad_id",
+                        call_id="call_1",
+                        name="ext_ping",
+                        arguments='{"payload":"hello"}',
+                    ),
+                    SimpleNamespace(
+                        type="function_call_output",
+                        id="msg_bad_tool_output",
+                        call_id="call_1",
+                        output='{"status":"ok"}',
+                    ),
+                    SimpleNamespace(
+                        type="message",
+                        role="assistant",
+                        id="msg_123",
+                        status="completed",
+                        content=[],
+                    ),
+                    SimpleNamespace(
+                        type="reasoning",
+                        id="rs_123",
+                        summary=[SimpleNamespace(type="summary_text", text="summary")],
+                        content=[SimpleNamespace(type="reasoning_text", text="trace")],
+                        status="completed",
+                    ),
+                ],
+                params={"model": "gpt-5-nano"},
+            )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "")
+        call = sdk_instance.responses.calls[0]
+        self.assertEqual(len(call["input"]), 6)
+        self.assertEqual(call["input"][2]["type"], "function_call")
+        self.assertEqual(call["input"][2]["call_id"], "call_1")
+        self.assertNotIn("id", call["input"][2])
+        self.assertEqual(call["input"][3]["type"], "function_call_output")
+        self.assertEqual(call["input"][3]["call_id"], "call_1")
+        self.assertNotIn("id", call["input"][3])
+        self.assertEqual(call["input"][4]["role"], "assistant")
+        self.assertEqual(call["input"][4]["id"], "msg_123")
+        self.assertEqual(call["input"][5]["type"], "reasoning")
+        self.assertEqual(call["input"][5]["id"], "rs_123")
+        self.assertEqual(call["input"][5]["summary"][0]["text"], "summary")
 
     async def test_process_tool_calls_executes_callback_and_appends_outputs(self):
         module = _import_openai_client_with_mocks()
@@ -170,12 +262,26 @@ class OpenAIClientMockTests(unittest.IsolatedAsyncioTestCase):
 
         function_call = SimpleNamespace(
             type="function_call",
+            id="msg_bad_id",
             name="ext_ping",
             arguments='{"payload":"hello"}',
             call_id="call_1",
         )
-        message = SimpleNamespace(type="message", content=[])
-        response = SimpleNamespace(output=[function_call, message])
+        message = SimpleNamespace(
+            type="message",
+            role="assistant",
+            id="msg_123",
+            status="completed",
+            content=[],
+        )
+        reasoning = SimpleNamespace(
+            type="reasoning",
+            id="rs_123",
+            summary=[SimpleNamespace(type="summary_text", text="summary")],
+            content=[],
+            status="completed",
+        )
+        response = SimpleNamespace(output=[reasoning, function_call, message])
 
         async def _execute_tool(tool_name, args):
             return {"tool_name": tool_name, "args": args, "status": "ok"}
@@ -186,13 +292,39 @@ class OpenAIClientMockTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(tools_executed, 1)
-        self.assertEqual(len(updated_context), 3)
+        self.assertEqual(len(updated_context), 4)
         self.assertIn('ext_ping -- {"payload": "hello"}', step_tools)
-        self.assertEqual(updated_context[0], function_call)
-        self.assertEqual(updated_context[1].type, "function_call_output")
-        self.assertEqual(updated_context[1].call_id, "call_1")
-        self.assertIn("payload", updated_context[1].output)
-        self.assertEqual(updated_context[2], message)
+        self.assertEqual(updated_context[0]["type"], "reasoning")
+        self.assertEqual(updated_context[1]["type"], "function_call")
+        self.assertEqual(updated_context[1]["call_id"], "call_1")
+        self.assertNotIn("id", updated_context[1])
+        self.assertEqual(updated_context[2]["role"], "assistant")
+        self.assertEqual(updated_context[2]["id"], "msg_123")
+        self.assertEqual(updated_context[3]["type"], "function_call_output")
+        self.assertEqual(updated_context[3]["call_id"], "call_1")
+        self.assertIn("payload", updated_context[3]["output"])
+
+    async def test_process_tool_calls_skips_message_outputs_in_followup_context(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+
+        response = SimpleNamespace(
+            output=[
+                SimpleNamespace(type="message", id="msg_123", content=[]),
+            ]
+        )
+
+        context = [{"role": "system", "content": "system"}]
+        tools_executed, updated_context, step_tools = await client.process_tool_calls(
+            response, context, None
+        )
+
+        self.assertEqual(tools_executed, 0)
+        self.assertEqual(updated_context, context)
+        self.assertEqual(step_tools, [])
 
 
 if __name__ == "__main__":

@@ -104,20 +104,29 @@ class Megaboard:
         Returns:
             The blackboard ID (index in the list)
         """
-        # Check if blackboard with same agents already exists
+        raw_template = template
+        template = template or {}
+        allow_duplicate = bool(template.get("allow_duplicate")) or bool(
+            template.get("secret_channel")
+        )
+
+        # Check if blackboard with same agents already exists. Secret/private
+        # overlays must be allowed to duplicate participant sets so a hidden
+        # channel can coexist with a public channel over the same agents.
         agents_set = set(agents)
-        for i, blackboard in enumerate(self.blackboards):
-            if blackboard.agents == agents_set:
-                return i
+        if not allow_duplicate:
+            for i, blackboard in enumerate(self.blackboards):
+                if blackboard.agents == agents_set:
+                    return i
 
         # Create new blackboard
-        verify_template = 1 if template is not None else 0
+        verify_template = 1 if raw_template is not None else 0
         blackboard_id = len(self.blackboards)
         blackboard = Blackboard(
             blackboard_id=str(blackboard_id),  # Convert to string for compatibility
             participants=agents.copy(),
             agents=agents_set,
-            template=template or {},
+            template=template,
             verify_template=verify_template,
             logs=[],
         )

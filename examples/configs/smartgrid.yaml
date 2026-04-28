@@ -25,10 +25,10 @@ communication_network:
   # consolidate_channels=true => one blackboard per clique (plus leftover edges)
   consolidate_channels: false
 llm:
-  # Provider: "openai", "anthropic", "gemini", "together", "fireworks", or "vllm"
+  # Provider: "openai", "foundry", "anthropic", "gemini", "together", "fireworks", or "vllm"
   provider: "openai"
   # Optional external MCP servers (discovered as extra tools per client):
-  # Experimental: provider-agnostic and can be used with OpenAI/Anthropic/Gemini/Together/Fireworks/vLLM.
+  # Experimental: provider-agnostic and can be used with OpenAI/Foundry/Anthropic/Gemini/Together/Fireworks/vLLM.
   # external_mcp_servers:
   #   - name: "filesystem"
   #     url: "http://127.0.0.1:9000/mcp"
@@ -44,6 +44,11 @@ llm:
       temperature: 0.7
       reasoning_effort: "low"
       verbosity: "low"
+  foundry:
+    model: "<model_or_deployment_name>"
+    params:
+      max_tokens: 1024
+      temperature: 0.7
   anthropic:
     model: "claude-sonnet-4-5"
     params:

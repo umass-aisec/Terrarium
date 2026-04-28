@@ -28,6 +28,7 @@ class GeminiClient(AbstractClient):
 
         try:
             from google import genai
+            from google.genai import types
             from dotenv import load_dotenv
         except ImportError as e:
             raise ImportError(
@@ -37,12 +38,55 @@ class GeminiClient(AbstractClient):
 
         load_dotenv(override=True)
         api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "Gemini API key not found. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY in .env file"
-            )
 
-        self.client = genai.Client(api_key=api_key)
+        use_vertexai = (
+            str(os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "")).strip().lower()
+            in {
+                "1",
+                "true",
+                "yes",
+                "y",
+                "on",
+            }
+        )
+        if use_vertexai:
+            project = os.getenv("GOOGLE_CLOUD_PROJECT")
+            location = os.getenv("GOOGLE_CLOUD_LOCATION")
+            client_kwargs: Dict[str, Any] = {
+                "vertexai": True,
+                "http_options": types.HttpOptions(
+                    api_version=os.getenv("GOOGLE_GENAI_API_VERSION", "v1")
+                ),
+            }
+            if project and location:
+                # Full Vertex AI mode: project/location and API key are mutually
+                # exclusive in google-genai, so do not pass GOOGLE_API_KEY here.
+                client_kwargs["project"] = project
+                client_kwargs["location"] = location
+            elif api_key:
+                # Vertex AI Express mode.
+                client_kwargs["api_key"] = api_key
+            else:
+                raise ValueError(
+                    "Gemini Vertex AI is enabled. Set GOOGLE_CLOUD_PROJECT and "
+                    "GOOGLE_CLOUD_LOCATION, or provide GOOGLE_API_KEY for "
+                    "Vertex AI Express mode."
+                )
+            self.client = genai.Client(**client_kwargs)
+        else:
+            if not api_key:
+                raise ValueError(
+                    "Gemini API key not found. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY in .env file"
+                )
+            self.client = genai.Client(api_key=api_key)
+
+        self._using_vertexai = use_vertexai
+        self._google_cloud_project = (
+            os.getenv("GOOGLE_CLOUD_PROJECT") if use_vertexai else None
+        )
+        self._google_cloud_location = (
+            os.getenv("GOOGLE_CLOUD_LOCATION") if use_vertexai else None
+        )
         self._current_meta_context = {}  # For logging metadata
 
     def set_meta_context(
@@ -50,7 +94,7 @@ class GeminiClient(AbstractClient):
         agent_name: str,
         phase: str,
         iteration: Optional[int] = None,
-        round_num: Optional[int] = None
+        round_num: Optional[int] = None,
     ) -> None:
         """
         Set metadata context for logging purposes.
@@ -65,7 +109,7 @@ class GeminiClient(AbstractClient):
             "agent_name": agent_name,
             "phase": phase,
             "iteration": iteration,
-            "round_num": round_num
+            "round_num": round_num,
         }
 
     @staticmethod
@@ -282,6 +326,16 @@ class GeminiClient(AbstractClient):
             tools=converted_tools or None,
             tool_config=tool_config,
         )
+        thinking_config = params.get("thinking_config")
+        thinking_level = params.get("thinking_level")
+        if isinstance(thinking_config, dict):
+            generation_config.thinking_config = types.ThinkingConfig(**thinking_config)
+        elif isinstance(thinking_config, types.ThinkingConfig):
+            generation_config.thinking_config = thinking_config
+        elif thinking_level is not None:
+            generation_config.thinking_config = types.ThinkingConfig(
+                thinking_level=str(thinking_level)
+            )
 
         contents = []
         for msg in input:
@@ -350,6 +404,7 @@ class GeminiClient(AbstractClient):
         # Append the model response (includes both text and function calls).
         context.append(candidate_content)
 
+        function_response_parts = []
         for part in candidate_content.parts:
             function_call = getattr(part, "function_call", None)
             if not function_call:
@@ -368,10 +423,11 @@ class GeminiClient(AbstractClient):
                 response={"result": result},
             )
 
-            function_response_part = types.Part(function_response=function_response)
-
-            context.append(types.Content(role="user", parts=[function_response_part]))
+            function_response_parts.append(types.Part(function_response=function_response))
 
             tool_calls_executed += 1
+
+        if function_response_parts:
+            context.append(types.Content(role="user", parts=function_response_parts))
 
         return tool_calls_executed, context, step_tools

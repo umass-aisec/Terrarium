@@ -10,6 +10,9 @@ import yaml
 from pathlib import Path
 from typing import TYPE_CHECKING, Union, Any, Dict, List, Optional
 import re
+import os
+
+from dotenv import load_dotenv
 
 import logging
 
@@ -17,6 +20,78 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from terrarium.environments.abstract_environment import AbstractEnvironment
+
+
+def _normalize_provider_name(provider: Any) -> str:
+    normalized = str(provider or "").strip().lower()
+    aliases = {
+        "firework": "fireworks",
+        "foundary": "foundry",
+        "microsoft_foundry": "foundry",
+        "azure_foundry": "foundry",
+        "xai": "grok",
+        "x_ai": "grok",
+        "official_grok": "grok",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _get_provider_block(provider: str, llm_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the provider-specific config block, with Foundry as the only Microsoft path."""
+    if provider == "foundry":
+        block = llm_config.get("foundry", {})
+    elif provider == "grok":
+        block = llm_config.get("grok") or llm_config.get("xai") or {}
+    else:
+        block = llm_config.get(provider, {}) if provider else {}
+    return block if isinstance(block, dict) else {}
+
+
+def _resolve_optional_secret(
+    provider_block: Dict[str, Any],
+    *,
+    direct_key: str,
+    env_var_key: str,
+) -> Optional[str]:
+    load_dotenv(override=False)
+
+    direct_value = provider_block.get(direct_key)
+    if direct_value is not None and str(direct_value).strip():
+        return str(direct_value)
+
+    env_var_name = provider_block.get(env_var_key)
+    if env_var_name is None:
+        return None
+    env_var_name_s = str(env_var_name).strip()
+    if not env_var_name_s:
+        return None
+    return os.getenv(env_var_name_s)
+
+
+def _resolve_optional_value(
+    provider_block: Dict[str, Any],
+    *,
+    direct_keys: List[str],
+    env_var_keys: List[str],
+) -> Optional[str]:
+    load_dotenv(override=False)
+
+    for key in direct_keys:
+        value = provider_block.get(key)
+        if value is not None and str(value).strip():
+            return str(value)
+
+    for key in env_var_keys:
+        env_var_name = provider_block.get(key)
+        if env_var_name is None:
+            continue
+        env_var_name_s = str(env_var_name).strip()
+        if not env_var_name_s:
+            continue
+        env_value = os.getenv(env_var_name_s)
+        if env_value is not None and str(env_value).strip():
+            return str(env_value)
+    return None
 
 
 def load_config(config_file) -> Dict[str, Any]:
@@ -324,13 +399,17 @@ def extract_model_info(full_config: Dict[str, Any]) -> str:
         return "unknown"
 
     llm_config = full_config.get("llm", {})
-    provider = llm_config.get("provider", "unknown").lower()
-    if provider == "firework":
-        provider = "fireworks"
+    provider = _normalize_provider_name(llm_config.get("provider", "unknown"))
 
     # Handle each provider using the new config format
     if provider == "openai":
         model_name = llm_config.get("openai", {}).get("model", "unknown")
+    elif provider == "foundry":
+        model_name = _get_provider_block("foundry", llm_config).get(
+            "model", "unknown"
+        )
+    elif provider == "grok":
+        model_name = _get_provider_block("grok", llm_config).get("model", "unknown")
     elif provider == "anthropic":
         model_name = llm_config.get("anthropic", {}).get("model", "unknown")
     elif provider == "gemini":
@@ -477,20 +556,62 @@ def get_client_instance(
         llm_config: LLM configuration dictionary containing provider and provider-specific settings
 
     Returns:
-        Instantiated client (OpenAIClient, AnthropicClient, GeminiClient, TogetherClient, or VLLMClient)
+        Instantiated client (OpenAI/Foundry/Grok/Anthropic/Gemini/Together/Fireworks/VLLM)
 
     Raises:
         ValueError: If provider is unknown
         NotImplementedError: If vllm provider is selected (currently not implemented)
     """
-    provider = llm_config.get("provider", "vllm").lower()
-    if provider == "firework":
-        provider = "fireworks"
+    provider = _normalize_provider_name(llm_config.get("provider", "vllm"))
 
     if provider == "openai":
         from terrarium.llm.clients.openai_client import OpenAIClient
 
         client = OpenAIClient()
+    elif provider == "foundry":
+        from terrarium.llm.clients.foundry_client import FoundryClient
+
+        foundry_cfg = _get_provider_block("foundry", llm_config)
+        client = FoundryClient(
+            project_endpoint=_resolve_optional_value(
+                foundry_cfg,
+                direct_keys=["project_endpoint", "endpoint", "base_url"],
+                env_var_keys=[
+                    "project_endpoint_env_var",
+                    "endpoint_env_var",
+                    "base_url_env_var",
+                ],
+            ),
+            api_key=_resolve_optional_secret(
+                foundry_cfg,
+                direct_key="api_key",
+                env_var_key="api_key_env_var",
+            ),
+            auth_mode=foundry_cfg.get("auth_mode"),
+            entra_scope=foundry_cfg.get("entra_scope"),
+            timeout=float(foundry_cfg.get("request_timeout", 30)),
+            base_model=foundry_cfg.get("base_model"),
+            api_style=foundry_cfg.get("api_style"),
+        )
+    elif provider == "grok":
+        from terrarium.llm.clients.grok_client import GrokClient
+
+        grok_cfg = _get_provider_block("grok", llm_config)
+        client = GrokClient(
+            api_key=_resolve_optional_secret(
+                grok_cfg,
+                direct_key="api_key",
+                env_var_key="api_key_env_var",
+            ),
+            api_key_env_var=str(grok_cfg.get("api_key_env_var") or "GROK_API_KEY"),
+            base_url=_resolve_optional_value(
+                grok_cfg,
+                direct_keys=["base_url", "endpoint"],
+                env_var_keys=["base_url_env_var", "endpoint_env_var"],
+            ),
+            timeout=float(grok_cfg.get("request_timeout", 3600)),
+            base_model=grok_cfg.get("base_model"),
+        )
     elif provider == "anthropic":
         from terrarium.llm.clients.anthropic_client import AnthropicClient
 
@@ -529,7 +650,7 @@ def get_client_instance(
         client, _ = vllm_runtime.create_client(agent_name)
     else:
         raise ValueError(
-            f"Unknown provider: {provider}. Must be one of: openai, anthropic, gemini, together, fireworks, vllm"
+            f"Unknown provider: {provider}. Must be one of: openai, foundry, grok, anthropic, gemini, together, fireworks, vllm"
         )
 
     configure_client_external_mcp(client, llm_config)
@@ -603,7 +724,7 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
     Extract model name based on provider from LLM configuration.
 
     Args:
-        provider: LLM provider name (openai, anthropic, gemini, together, fireworks, vllm)
+        provider: LLM provider name (openai, foundry, anthropic, gemini, together, fireworks, vllm)
         llm_config: LLM configuration dictionary
 
     Returns:
@@ -614,11 +735,18 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
         NotImplementedError: If vllm provider is selected (currently not implemented)
     """
     # Extract model name based on provider
-    if provider == "firework":
-        provider = "fireworks"
+    provider = _normalize_provider_name(provider)
 
     if provider == "openai":
         model_name = llm_config.get("openai", {}).get("model", "gpt-4o")
+    elif provider == "foundry":
+        model_name = _get_provider_block("foundry", llm_config).get(
+            "model", "unknown-foundry-model"
+        )
+    elif provider == "grok":
+        model_name = _get_provider_block("grok", llm_config).get(
+            "model", "unknown-grok-model"
+        )
     elif provider == "anthropic":
         model_name = llm_config.get("anthropic", {}).get("model", "claude-sonnet-4-5")
     elif provider == "gemini":
@@ -640,12 +768,8 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
 
 
 def get_generation_params(llm_config: Dict[str, Any]) -> Dict[str, Any]:
-    provider = llm_config.get("provider", "").lower()
-    if provider == "firework":
-        provider = "fireworks"
-    provider_block = llm_config.get(provider, {}) if provider else {}
-    if not isinstance(provider_block, dict):
-        return {}
+    provider = _normalize_provider_name(llm_config.get("provider", ""))
+    provider_block = _get_provider_block(provider, llm_config)
 
     raw_params = provider_block.get("params") or provider_block.get("generation") or {}
     if not isinstance(raw_params, dict):

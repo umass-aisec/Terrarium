@@ -138,7 +138,7 @@ if __name__ == "__main__":
     load_dotenv()
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Run a multi-agent simulation")
-    parser.add_argument("--config", type=str)
+    parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--note", type=str, default=None,
                         help="Optional experiment note to record alongside logs")
 

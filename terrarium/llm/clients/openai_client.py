@@ -31,12 +31,36 @@ class OpenAIClient(AbstractClient):
         - OPENAI_RETRY_JITTER (default: 0.1)
     """
     
-    def __init__(self):
+    def __init__(
+        self,
+        *,
+        api_key: Optional[Any] = None,
+        api_key_env_var: str = "OPENAI_API_KEY",
+        base_url: Optional[str] = None,
+        default_query: Optional[Dict[str, Any]] = None,
+        timeout: float = 30.0,
+        provider_name: str = "OpenAI",
+        capability_model: Optional[str] = None,
+    ):
         load_dotenv(override=True)
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or os.getenv(api_key_env_var)
         if not self.api_key:
-            raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY in .env file")
-        self.client = OpenAI(api_key=self.api_key, timeout=30.0)
+            raise ValueError(
+                f"{provider_name} API key not found. Set {api_key_env_var} in .env file"
+            )
+
+        client_kwargs: Dict[str, Any] = {
+            "api_key": self.api_key,
+            "timeout": float(timeout),
+        }
+        if base_url:
+            client_kwargs["base_url"] = str(base_url).rstrip("/") + "/"
+        if default_query:
+            client_kwargs["default_query"] = default_query
+        self.client = OpenAI(**client_kwargs)
+        self._capability_model = (
+            str(capability_model).strip() if capability_model else None
+        )
 
         # Retry/backoff settings (sync; this client is called from async code paths).
         self._max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "6"))
@@ -48,13 +72,27 @@ class OpenAIClient(AbstractClient):
 
     def _has_temperature_restrictions(self, model_name: str) -> bool:
         """Check if the model has temperature restrictions (only supports default)."""
-        restricted_models = ["gpt-4.1-nano", "gpt-5-nano"]
+        restricted_models = [
+            "gpt-4.1-nano",
+            "gpt-5-nano",
+            "gpt-5.4-nano",
+        ]
         return any(restricted_model in model_name.lower() for restricted_model in restricted_models)
 
     def _is_reasoning_model(self, model_name: str) -> bool:
         """Check if model is a reasoning model (o1-series, o3-series)."""
+        model_name_lower = model_name.lower()
+        non_reasoning_indicators = ["non-reasoning", "non_reasoning", "nonreasoning"]
+        if any(
+            indicator in model_name_lower for indicator in non_reasoning_indicators
+        ):
+            return any(indicator in model_name_lower for indicator in ["o1-", "o3-"])
         reasoning_indicators = ["o1-", "o3-", "reasoning"]
-        return any(indicator in model_name.lower() for indicator in reasoning_indicators)
+        return any(indicator in model_name_lower for indicator in reasoning_indicators)
+
+    def _resolve_capability_model(self, params: Dict[str, Any]) -> str:
+        """Return the model label used for provider capability checks."""
+        return str(self._capability_model or params.get("model", "") or "")
 
     @staticmethod
     def get_usage(response: Any, current_usage: dict[str, int]) -> Dict[str, int]:
@@ -81,14 +119,138 @@ class OpenAIClient(AbstractClient):
                 content=msg["content"]
             ))
         return context
+
+    @staticmethod
+    def _get_item_field(item: Any, field: str, default: Any = None) -> Any:
+        if isinstance(item, dict):
+            return item.get(field, default)
+        return getattr(item, field, default)
+
+    @classmethod
+    def _normalize_structured_value(cls, value: Any) -> Any:
+        if hasattr(value, "model_dump"):
+            value = value.model_dump(exclude_none=True)
+        elif hasattr(value, "__dict__") and not isinstance(value, type):
+            value = vars(value)
+        if isinstance(value, dict):
+            return {
+                key: cls._normalize_structured_value(val)
+                for key, val in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            return [cls._normalize_structured_value(item) for item in value]
+        return value
+
+    @classmethod
+    def _sanitize_response_input_item(cls, item: Any) -> Optional[dict[str, Any]]:
+        item_type = cls._get_item_field(item, "type")
+        role = cls._get_item_field(item, "role")
+
+        if item_type == "message":
+            content = cls._normalize_structured_value(cls._get_item_field(item, "content"))
+            if role in {"system", "user", "developer"}:
+                sanitized = {
+                    "type": "message",
+                    "role": role,
+                    "content": content,
+                }
+                status = cls._get_item_field(item, "status")
+                if status in {"in_progress", "completed", "incomplete"}:
+                    sanitized["status"] = status
+                return sanitized
+
+            if role == "assistant":
+                item_id = cls._get_item_field(item, "id")
+                status = cls._get_item_field(item, "status")
+                if not isinstance(item_id, str) or status not in {
+                    "in_progress",
+                    "completed",
+                    "incomplete",
+                }:
+                    return None
+                return {
+                    "type": "message",
+                    "role": "assistant",
+                    "id": item_id,
+                    "status": status,
+                    "content": content,
+                }
+
+            return None
+
+        if item_type == "function_call":
+            sanitized = {
+                "type": "function_call",
+                "call_id": cls._get_item_field(item, "call_id"),
+                "name": cls._get_item_field(item, "name"),
+                "arguments": cls._get_item_field(item, "arguments"),
+            }
+            item_id = cls._get_item_field(item, "id")
+            if isinstance(item_id, str) and item_id.startswith("fc"):
+                sanitized["id"] = item_id
+            status = cls._get_item_field(item, "status")
+            if status in {"in_progress", "completed", "incomplete"}:
+                sanitized["status"] = status
+            return sanitized
+
+        if item_type == "function_call_output":
+            sanitized = {
+                "type": "function_call_output",
+                "call_id": cls._get_item_field(item, "call_id"),
+                "output": cls._normalize_structured_value(
+                    cls._get_item_field(item, "output")
+                ),
+            }
+            status = cls._get_item_field(item, "status")
+            if status in {"in_progress", "completed", "incomplete"}:
+                sanitized["status"] = status
+            return sanitized
+
+        if item_type == "reasoning":
+            item_id = cls._get_item_field(item, "id")
+            summary = cls._normalize_structured_value(cls._get_item_field(item, "summary"))
+            if not isinstance(item_id, str) or summary is None:
+                return None
+            sanitized = {
+                "type": "reasoning",
+                "id": item_id,
+                "summary": summary,
+            }
+            content = cls._normalize_structured_value(cls._get_item_field(item, "content"))
+            if content is not None:
+                sanitized["content"] = content
+            encrypted_content = cls._get_item_field(item, "encrypted_content")
+            if encrypted_content is not None:
+                sanitized["encrypted_content"] = encrypted_content
+            status = cls._get_item_field(item, "status")
+            if status in {"in_progress", "completed", "incomplete"}:
+                sanitized["status"] = status
+            return sanitized
+
+        if isinstance(item, dict):
+            return cls._normalize_structured_value(item)
+
+        return None
+
+    @classmethod
+    def _sanitize_response_input(cls, items: List[Any]) -> List[Any]:
+        sanitized_items: List[Any] = []
+        for item in items:
+            sanitized_item = cls._sanitize_response_input_item(item)
+            if sanitized_item is not None:
+                sanitized_items.append(sanitized_item)
+        return sanitized_items
     
     @staticmethod
     def _extract_message_content(output) -> str:
-        """Extract text content from response output message (Responses API uses 'output_text' type)."""
+        """Extract text content from a response output message."""
         content = ""
         if hasattr(output, 'content') and output.content:
             for content_part in output.content:
-                if hasattr(content_part, 'type') and content_part.type == 'output_text':
+                if (
+                    hasattr(content_part, 'type')
+                    and content_part.type in {'output_text', 'text'}
+                ):
                     if hasattr(content_part, 'text'):
                         content += content_part.text
         return content
@@ -208,22 +370,33 @@ class OpenAIClient(AbstractClient):
             "max_output_tokens": params.get("max_output_tokens", None),
             "tools": params.get("tools", []),
             "temperature": params.get("temperature", None),
-            "reasoning_effort": params.get("reasoning_effort", None),
-            "verbosity": params.get("verbosity", None),
+            "tool_choice": params.get("tool_choice", None),
+            "parallel_tool_calls": params.get("parallel_tool_calls", None),
         }
 
+        reasoning_effort = params.get("reasoning_effort", None)
+        if reasoning_effort is not None:
+            api_params["reasoning"] = {"effort": reasoning_effort}
+
+        verbosity = params.get("verbosity", None)
+        if verbosity is not None:
+            api_params["text"] = {"verbosity": verbosity}
+
+        capability_model = self._resolve_capability_model(params)
+
         # Remove temperature for reasoning/restricted models
-        if self._is_reasoning_model(params.get("model", "")) or self._has_temperature_restrictions(params.get("model", "")):
+        if self._is_reasoning_model(capability_model) or self._has_temperature_restrictions(capability_model):
             api_params.pop("temperature", None)
         # Remove GPT-5 specific parameters for non-GPT-5 models
-        if "gpt-5" not in params.get("model", "").lower():
-            api_params.pop("reasoning_effort", None)
-            api_params.pop("verbosity", None)
+        if "gpt-5" not in capability_model.lower():
+            api_params.pop("reasoning", None)
+            api_params.pop("text", None)
         # Remove all None values from api_params
         api_params = {k: v for k, v in api_params.items() if v is not None}
 
-        api_params["input"] = input
-        context = input
+        sanitized_input = self._sanitize_response_input(input)
+        api_params["input"] = sanitized_input
+        context = sanitized_input
         # Convert tools to responses.create() format (flattened structure)
         tools_for_api = []
         for tool in api_params.get("tools", []):
@@ -266,10 +439,11 @@ class OpenAIClient(AbstractClient):
         # to avoid duplicate IDs in the input array
 
         # Extract content from the new response for next iteration
-        response_str = ""
-        for output in response.output:
-            if hasattr(output, 'type') and output.type == 'message':
-                response_str += self._extract_message_content(output)
+        response_str = getattr(response, "output_text", "") or ""
+        if not response_str:
+            for output in response.output:
+                if hasattr(output, 'type') and output.type == 'message':
+                    response_str += self._extract_message_content(output)
 
         return response, response_str
 
@@ -296,12 +470,14 @@ class OpenAIClient(AbstractClient):
         tool_calls_executed = 0
         step_tools = []
 
+        tool_outputs: list[dict[str, Any]] = []
         for output in response.output:
             if not hasattr(output, 'type'):
                 continue
+            sanitized_output = self._sanitize_response_input_item(output)
+            if sanitized_output is not None:
+                context.append(sanitized_output)
             if output.type == 'function_call':
-                # First, add the function_call output itself to context (before executing)
-                context.append(output)
                 # Extract and execute tool call
                 tool_name = getattr(output, 'name', 'unknown')
                 try:
@@ -316,13 +492,11 @@ class OpenAIClient(AbstractClient):
                 # Execute the tool
                 result = await execute_tool_callback(tool_name, args)
                 # Add tool result to context (after the function_call)
-                context.append(FunctionCallOutput(
-                    type="function_call_output",
-                    call_id=tool_call_id,
-                    output=str(result)
-                ))
+                tool_outputs.append({
+                    "type": "function_call_output",
+                    "call_id": tool_call_id,
+                    "output": str(result),
+                })
                 tool_calls_executed += 1
-            elif output.type == 'message':
-                # Add message output to context (already a proper response output object)
-                context.append(output)
+        context.extend(tool_outputs)
         return tool_calls_executed, context, step_tools

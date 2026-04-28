@@ -42,7 +42,7 @@ export TERRARIUM_COLLAB_PATH=/path/to/CoLLAB
 ```
 
 Optional extras:
-- `terrarium-agents[openai]`, `terrarium-agents[anthropic]`, `terrarium-agents[gemini]` (provider SDKs)
+- `terrarium-agents[openai]`, `terrarium-agents[foundry]`, `terrarium-agents[anthropic]`, `terrarium-agents[gemini]` (provider SDKs)
 - `terrarium-agents[vllm]` (local vLLM serving; heavy)
 - `terrarium-agents[all]` (everything)
 
@@ -77,17 +77,25 @@ uv sync
 ---
 Terrarium enables two types of servicing: (1) API-based providers and (2) [vLLM](https://github.com/vllm-project/vllm) integration for open-source models.
 
-For API-based providers, we currently support OpenAI, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Copy `.env.example` to `.env` and set your API keys (never put real keys in `.env.example`).
+For API-based providers, we currently support OpenAI, first-party xAI Grok, Microsoft Foundry Models, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Copy `.env.example` to `.env` and set your API keys (never put real keys in `.env.example`).
 ```bash
 cp -n .env.example .env
 # Edit `.env` and set (as needed):
 # OPENAI_API_KEY=...
+# GROK_API_KEY=...
+# AI_FOUNDRY_API_KEY=...
+# AI_FOUNDRY_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
 # GOOGLE_API_KEY=...
 # ANTHROPIC_API_KEY=...
 # TOGETHER_API_KEY=...
 # FIREWORKS_API_KEY=...
 ```
+
+For Foundry deployments whose deployment name differs from the underlying model family, set `base_model` next to `model` in the provider config so Terrarium can keep model-specific request flags aligned with the actual deployed model.
+Prefer keeping the Foundry project endpoint in `.env` as `AI_FOUNDRY_PROJECT_ENDPOINT` instead of checking a resource/project name into YAML.
 Next, set the model and provider you want to use at `llm.provider` and `llm.<provider>.model` in `examples/configs/<config>.yaml`.
+
+For a new-user Foundry setup guide, see [FOUNDARY.md](FOUNDARY.md).
 
 For vLLM servicing, simply set `llm.provider:"vllm"` and `llm.vllm.auto_start_server:true` in `examples/configs/<config>.yaml` for auto-startup and shutdown for a single run. If you require a persistent vLLM server, which is useful for using the same vLLM model for different configurations or environments without the costly startup time, then set `llm.vllm.persistent_server:true`. To kill all vLLM servers run `pkill -f vllm.entrypoints.openai.api_server`.
 
