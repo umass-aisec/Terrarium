@@ -28,7 +28,7 @@ communication_network:
 llm:
   # Provider: "openai", "foundry", "anthropic", "gemini", "together", "fireworks", or "vllm"
   # Switched to "openai" (GPT-4o) as scheduling requires high arithmetic precision
-  provider: "openai"
+  provider: "foundry"
   # Optional external MCP servers (discovered as extra tools per client):
   # Experimental: provider-agnostic and can be used with OpenAI/Foundry/Anthropic/Gemini/Together/Fireworks/vLLM.
   # external_mcp_servers:
@@ -46,10 +46,12 @@ llm:
       max_tokens: 1024
       temperature: 0.7
   foundry:
-    model: "<model_or_deployment_name>"
+    auth_mode: api_key
+    api_key_env_var: AI_FOUNDRY_API_KEY
+    project_endpoint_env_var: AI_FOUNDRY_PROJECT_ENDPOINT
+    model: gpt-5.4-nano
     params:
-      max_tokens: 1024
-      temperature: 0.7
+      max_tokens: 1500
       
   anthropic:
     model: "claude-sonnet-4-5"

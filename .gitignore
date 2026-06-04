@@ -5,8 +5,7 @@ __pycache__/
 
 logs/
 /plots/
-experiments/plots/
-*.pyc
+terrarium/environments/dcops/outputs
 *.pyo
 *.pyd
 *.swp
@@ -34,9 +33,7 @@ coverage/
 *.iml
 dashboards/public/dashboard_data.json
 */outputs/
-experiments/*/outputs/
 */plots_outputs/
-experiments/*/plots_outputs/
 
 envs/dcops/outputs
 .venv
@@ -45,6 +42,9 @@ data/hospital/outpatient_merged.csv
 /bigtemp/duh6ae/Terrarium/data/hospital/outpatient_merged.csv
 
 experiments/
+experiments/*/outputs/
+experiments/*/plots_outputs/
+experiments/plots/
 
 AGENTS.md
 .codex

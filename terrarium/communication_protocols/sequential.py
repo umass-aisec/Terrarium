@@ -11,6 +11,7 @@ from terrarium.tools.environment import (
     instantiate_environment_tools,
 )
 from terrarium.core.logger import BlackboardLogger
+from terrarium.compaction import compact_events
 
 if TYPE_CHECKING:
     from terrarium.agents.base import BaseAgent
@@ -133,6 +134,8 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         agent_name: str,
         *,
         phase: Optional[str],
+        llm_client=None,
+        model_name=None,
         iteration: Optional[int],
     ) -> Dict[str, str]:
         blackboard_ids = self.megaboard.get_agent_blackboards(agent_name)
@@ -153,8 +156,10 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             except Exception:
                 continue
 
-            contexts[bb_id_str] = format_blackboard_events_for_prompt(
-                events if isinstance(events, list) else []
+            contexts[bb_id_str] = compact_events(
+                events if isinstance(events, list) else [],
+                llm_client=llm_client,
+                model_name=model_name,
             )
 
         return contexts
@@ -175,6 +180,8 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             agent_name,
             phase="planning",
             iteration=iteration,
+            llm_client=agent.client,
+            model_name=agent.model_name,
         )
 
         prompts = environment.prompts
@@ -234,6 +241,8 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             agent_name,
             phase="execution",
             iteration=iteration,
+            llm_client=agent.client,
+            model_name=agent.model_name,
         )
         prompts = environment.prompts
         await agent.generate_response(
