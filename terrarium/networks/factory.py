@@ -18,6 +18,7 @@ def build_communication_network(
     """Build a CommunicationNetwork from config.
 
     Supported config keys:
+
     - `communication_network.topology` (required)
       Values: complete | path | star | erdos_renyi | watts_strogatz | barabasi_albert
     - `communication_network.consolidate_channels` (optional bool; default false)
@@ -26,7 +27,7 @@ def build_communication_network(
     - `communication_network.k` (watts_strogatz; even int < num_agents)
     - `communication_network.rewire_prob` (watts_strogatz; float in [0, 1])
     - `communication_network.m` (barabasi_albert; int in [1, num_agents-1])
-    - random graph seed is taken from `simulation.seed` (for erdos_renyi/ws/ba)
+    - random graph seed is taken from `simulation.seed` for random graph families
     """
     cfg = config["communication_network"]
     agents = list(agent_names)
@@ -47,11 +48,7 @@ def build_communication_network(
         return StarNetwork(
             agents, center=center_name, consolidate_channels=consolidate_channels
         )
-    if topology == "random":
-        raise ValueError(
-            "communication_network.topology='random' is not supported; use 'erdos_renyi'."
-        )
-    if topology in {"erdos_renyi", "erdos-renyi", "er"}:
+    if topology == "erdos_renyi":
         edge_prob = float(cfg["edge_prob"])
         seed_int = int(config["simulation"]["seed"])
         assert isinstance(edge_prob, (int, float)) and 0 <= edge_prob <= 1, (
@@ -66,7 +63,7 @@ def build_communication_network(
             seed=seed_int,
             consolidate_channels=consolidate_channels,
         )
-    if topology in {"watts_strogatz", "watts-strogatz", "ws"}:
+    if topology == "watts_strogatz":
         # Parameter aliases: allow both snake_case and more descriptive keys.
         k = cfg.get("k", cfg.get("nearest_neighbors", cfg.get("num_neighbors")))
         p = cfg.get("rewire_prob", cfg.get("rewiring_prob", cfg.get("beta")))
@@ -82,7 +79,7 @@ def build_communication_network(
             seed=seed_int,
             consolidate_channels=consolidate_channels,
         )
-    if topology in {"barabasi_albert", "barabasi-albert", "ba"}:
+    if topology == "barabasi_albert":
         m = cfg.get("m", cfg.get("edges_per_node", cfg.get("num_edges_to_attach")))
         if m is None:
             raise ValueError("barabasi_albert requires communication_network.m")
