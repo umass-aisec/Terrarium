@@ -24,6 +24,16 @@ This repo is under active development :gear:, so please raise an issue for new f
 
 Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/docs) for detailed instructions about on how to use the framework. 
 
+The documentation website sources live in `docs/` and use Sphinx with MyST Markdown and the Furo theme, matching the Gymnasium documentation style. To build the site locally:
+
+```bash
+uv venv --python 3.11 .venv
+source .venv/bin/activate
+uv pip install -r docs/requirements.txt -e .
+python -m sphinx -b dirhtml docs docs/_build/dirhtml
+python -m http.server 8000 --directory docs/_build/dirhtml
+```
+
 Follow the quick guide provided below for basic testing.
 
 ## Quick Start

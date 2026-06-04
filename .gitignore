@@ -17,6 +17,7 @@ terrarium/environments/dcops/outputs
 .idea/
 dist/
 build/
+docs/_build/
 *.log
 coverage/
 *.egg-info/

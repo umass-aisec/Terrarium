@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
 from terrarium.core.blackboard import format_blackboard_events_for_prompt
 import logging
 logger = logging.getLogger(__name__)
@@ -10,6 +9,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 def _count_tokens(text: str) -> int:
+    # Cheap heuristic instead of using a full tokenizer
     return len(text) // 4
 
 def compact_events(
@@ -24,22 +24,20 @@ def compact_events(
 
     if llm_client is None or model_name is None or token_count <= token_threshold:
         logger.info(f"Compaction skipped: {token_count} tokens (threshold={token_threshold})")
-        logger.debug(f"[NON-COMPACTED PROMPT]\n{formatted}")  # add this
+        logger.debug(f"[NON-COMPACTED PROMPT]\n{formatted}")
         return formatted
 
     logger.info(f"Compaction triggered: {token_count} tokens exceeds {token_threshold}, summarizing {len(events) - keep_recent} events")
     logger.debug(f"[PRE-COMPACTION PROMPT]\n{formatted}")  
 
     old = events[:-keep_recent]
-    # if not old:
-    #     return formatted
     recent = events[-keep_recent:]
     old_text = format_blackboard_events_for_prompt(old)
     summary = _summarize(old_text, llm_client, model_name)
     recent_text = format_blackboard_events_for_prompt(recent)
     result = f"[Summary of earlier conversation]\n{summary}\n\n[Recent messages]\n{recent_text}"
     
-    logger.debug(f"[COMPACTED PROMPT]\n{result}")  # add this
+    logger.debug(f"[COMPACTED PROMPT]\n{result}")
     return result
 
 
