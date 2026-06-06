@@ -4,26 +4,23 @@ title: Basic Usage
 
 # Basic Usage
 
-## Multi-Agent Systems
-
-Before going into details, we'll first convey what Terrarium does. As LLM-based agents explore the world through APIs--exploring the internet, connecting with other agents, and interacting with human users--we need a simple framework and suite of environments to evaluate these agents in benign or adversairal settings. Terrarium is made for researchers and practitioners who want to study or evaluate multi-agent systems composed of LLM-based agents in divese scenarios for safety, security, evals, or emergent behaviors.
-
 ## Why Terrarium?
 
-Agents wrap an LLM client, receive observations, decide when to call tools, and write their trajectories to the configured loggers.
+Before going into details, we'll first convey what Terrarium does. As LLM-based agents explore the world through APIs--exploring the internet, connecting with other agents, and interacting with human users--we need a simple framework and suite of environments to evaluate these agents in benign or adversarial settings. Terrarium focuses on **cooperative environments** where agents share the same reward function. Terrarium is **made for researchers and practitioners** who want to study or evaluate multi-agent systems composed of LLM-based agents in diverse scenarios for **safety, security, evals, or emergent behaviors**. Unlike other frameworks, we explicitly ground our environments to multi-agent decision-making problem formulations that have been thoroughly studied over the decades.
 
-## Blackboards
-
-A blackboard is an append-only communication and event log. It is the shared surface agents use to communicate with each other and inspect prior events.
-
-## Communication Protocols
-
-Protocols decide how agents take turns. The default two-phase protocol separates planning from execution so agents can coordinate before taking environment actions.
+Our framework is modular, allowing you to swap in and out variations of the following components:
+- Agents (`BaseAgent`)
+- Environment (`AbstractEnvironment`)
+- Communication Protocols (`BaseCommunicationProtocol`)
+- Communication Networks (`CommunicationNetwork`)
+- Communication Channel Representation (`Blackboard`,)
 
 ## Environments
 
-Environments define task state, available tools, and evaluation logic. New environments should inherit from `terrarium.environments.abstract_environment.AbstractEnvironment`.
+### Single-Step
+We ground our single-step environments as Distributed Constraint Optimization Problems ([DCOPs](https://arxiv.org/pdf/1602.06347)) where agents have partial-observations of the world around them and must coordinate with other agents, decentrally, to optimize a cooperative objective.
 
-## Tools
-
-Terrarium tools are discovered from the active environment and phase. Blackboard tools are protocol-level communication tools, while environment tools mutate or query task state.
+### Multi-Step
+Work in Progress.
+<!-- > [!NOTE]
+> We  -->
