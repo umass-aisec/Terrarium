@@ -51,6 +51,12 @@ autodoc_mock_imports = [
     "google",
     "google.genai",
     "openai",
+    "problem_layer",
+    "problem_layer.base",
+    "problem_layer.meeting_scheduling",
+    "problem_layer.personal_assistant",
+    "problem_layer.personal_assistant.problem",
+    "problem_layer.smart_grid",
     "torch",
     "vllm",
 ]
@@ -65,7 +71,7 @@ html_baseurl = "https://aisec.cs.umass.edu/projects/terrarium/docs"
 html_copy_source = False
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
-html_favicon = "_static/terrarium_logo_rounded.png"
+html_favicon = "_static/leaf_favicon.svg"
 html_theme_options = {
     "light_logo": "terrarium_logo_rounded.png",
     "dark_logo": "terrarium_logo_rounded.png",

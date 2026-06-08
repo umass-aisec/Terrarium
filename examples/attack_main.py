@@ -32,7 +32,11 @@ from terrarium.utils import (
     get_generation_params,
 )
 import asyncio
-from attack_module.attack_modules import AgentPoisoningAttack, CommunicationProtocolPoisoningAttack, ContextOverflowAttack
+from terrarium.attacks import (
+    AgentPoisoningAttack,
+    CommunicationProtocolPoisoningAttack,
+    ContextOverflowAttack,
+)
 
 from dotenv import load_dotenv
 

@@ -16,17 +16,30 @@ Terrarium is a hackable, modular, and configurable framework for studying decent
 :maxdepth: 2
 
 basic_usage
+comparison_to_other_frameworks
 quickstart
-concepts
-configuration
 ```
 
 ```{toctree}
 :hidden:
-:caption: Environments and Experiments
+:caption: Components
 :maxdepth: 2
 
-environments
+components/agents
+components/environments
+components/communication
+components/networks
+components/tools
+components/llm
+components/attacks
+components/logging
+```
+
+```{toctree}
+:hidden:
+:caption: Tutorial
+:maxdepth: 2
+
 attacks
 ```
 

@@ -21,14 +21,16 @@ class OpenAIClient(AbstractClient):
     This module provides a client for using OpenAI models via their Responses API.
     Supports tool use, multi-turn conversations, and various OpenAI models.
 
-    Retries:
-      Exponential backoff is applied on transient errors (timeouts, connection errors,
-      408/409/429/5xx). Configure via env vars:
-        - OPENAI_MAX_RETRIES (default: 6)
-        - OPENAI_RETRY_INITIAL_S (default: 0.5)
-        - OPENAI_RETRY_MAX_S (default: 20)
-        - OPENAI_RETRY_MULTIPLIER (default: 2)
-        - OPENAI_RETRY_JITTER (default: 0.1)
+    Retries use exponential backoff for transient errors such as timeouts,
+    connection errors, 408/409/429 responses, and 5xx responses.
+
+    Environment variables:
+
+    - ``OPENAI_MAX_RETRIES`` (default: 6)
+    - ``OPENAI_RETRY_INITIAL_S`` (default: 0.5)
+    - ``OPENAI_RETRY_MAX_S`` (default: 20)
+    - ``OPENAI_RETRY_MULTIPLIER`` (default: 2)
+    - ``OPENAI_RETRY_JITTER`` (default: 0.1)
     """
     
     def __init__(

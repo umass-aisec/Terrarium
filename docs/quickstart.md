@@ -143,3 +143,22 @@ export TERRARIUM_COLLAB_PATH=/path/to/CoLLAB
 ```
 
 This is required for DCOP environments that use CoLLAB instance generation, including `MeetingSchedulingEnvironment`, `PersonalAssistantEnvironment`, and `SmartGridEnvironment`.
+
+
+## External MCP Servers
+
+```{warning}
+This is experimental and may not work for your particular configuration.
+```
+
+External MCP servers can be attached per LLM client:
+
+```yaml
+llm:
+  provider: openai
+  external_mcp_servers:
+    - name: filesystem
+      url: http://127.0.0.1:9000/mcp
+      enabled: true
+      tool_prefix: fs_
+```

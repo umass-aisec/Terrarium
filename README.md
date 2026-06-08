@@ -1,241 +1,195 @@
-# Terrarium
+<p align="center">
+  <img src="dev/terrarium_logo_rounded.png" alt="Terrarium logo" width="620">
+</p>
 
-![alt text](dev/terrarium_logo_rounded.png)
+<!-- <h1 align="center">Terrarium</h1> -->
 
-## Overview :herb:
+<p align="center">
+  A configurable laboratory for studying decentralized LLM-based multi-agent systems.
+</p>
 
-Terrarium is a hackable, modular, and configurable open-source framework for studying and evaluating decentralized LLM-based multi-agent systems (MAS). As the capabilities of agents progress (e.g., tool calling) and their state space expands (e.g., the internet), multi-agent systems will naturally arise in unique and unexpected scenarios. This repo aims to provide researchers, engineers, and students the ability to study this new agentic paradigm in an isolated playground for studying agent behavior, vulnerabilities, and safety. It enables full customization of the communication protocol, communication proxy, environment, tool usage, and agents. View the paper at [https://arxiv.org/pdf/2510.14312v1](https://arxiv.org/pdf/2510.14312v1).
+<p align="center">
+  <a href="docs/index.md">Docs</a>
+  ·
+  <a href="https://arxiv.org/pdf/2510.14312v1">Paper</a>
+  ·
+  <a href="docs/quickstart.md">Quick start</a>
+  ·
+  <a href="examples/configs">Example configs</a>
+  ·
+  <a href="docs/api/index.md">API reference</a>
+</p>
 
-This repo is under active development :gear:, so please raise an issue for new features, bugs, or suggestions. If you find this repo useful or interesting please :star: it!
+<p align="center">
+  <a href="https://pypi.org/project/terrarium-agents/">
+    <img alt="PyPI" src="https://img.shields.io/pypi/v/terrarium-agents.svg">
+  </a>
+  <a href="https://pypi.org/project/terrarium-agents/">
+    <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue.svg">
+  </a>
+  <a href="LICENSE">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg">
+  </a>
+  <a href="https://arxiv.org/pdf/2510.14312v1">
+    <img alt="arXiv" src="https://img.shields.io/badge/arXiv-2510.14312-b31b1b.svg">
+  </a>
+</p>
 
-![Framework Diagram](dev/framework_rounded.png)
+Terrarium is an open-source framework for building controlled multi-agent environments and testing how communication, topology, private information, tools, model providers, and adversarial conditions affect coordination.
 
-## Features
+It is not primarily a production agent orchestrator or a fixed benchmark. Terrarium is built for researchers, engineers, and students who want to run repeatable multi-agent experiments where the environment, communication structure, and attack surface are explicit.
 
-- **Blackboards (Communication Proxies)**: Append-only event/communication log which acts as a component of the agent's observation and communication with other agents.
-- **Two-Phase Communication Protocol**: The implemented communication protocol containes two phases, a (1) *planing phase* and an (2) *execution phase*. The planning phase enables communcation between agents to faciliate better action selection during the executation phase. During the executation phase, the agents take **actions** that affect their environment. This is done in a predefined sequential order to avoid environment simulation clashes.
-- **Tooling Runtime + Optional External MCP**: Core environment and blackboard tools run in-process, and you can optionally attach external MCP servers per LLM client.
-- **DCOP Environments**: DCOPs (Distributed Constraint Optimization Problems) have a **ground-truth solution** and a well-grounded evalution function, evaluating the actions taken by a set of agents. We implement DCOP environments from the [CoLLAB](https://openreview.net/pdf?id=372FjQy1cF) benchmark.
-  - SmartGrid - A home agent's objecitve is to schedule appliance usage throughout the day without overworking the powergrid (Uses real-world home-meter data)
-  - MeetingScheduling - A calendar agent is tasked with assigning meetings with other agents, trying to satisfy preferences and constraints with respect to other agents schedules (Uses real-world locations)
-  - PersonalAssistant - An assistant agent chooses outfits for a human while meeting social norm preferences, the preferences of the human, and constrained outfit selection (Uses fully synthetic data)
+![Terrarium framework diagram](dev/framework_rounded.png)
 
-## Documentation 
+## Why Terrarium?
 
-Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/docs) for detailed instructions about on how to use the framework. 
+Modern LLM agents increasingly act through tools, APIs, shared memory, and other agents. That makes multi-agent behavior hard to evaluate with only single-agent prompts or fixed task suites. Terrarium gives you a small set of swappable components so you can ask sharper questions:
 
-The documentation website sources live in `docs/` and use Sphinx with MyST Markdown and the Furo theme, matching the Gymnasium documentation style. To build the site locally:
+- What changes when agents communicate through a complete graph instead of a path?
+- Does a shared blackboard improve reward, or does it spread bad information faster?
+- Which agents need private state for coordination to work?
+- How does an attack change the final utility, tool calls, and message trajectory?
+- Do different model providers behave differently under the same protocol?
 
-```bash
-uv venv --python 3.11 .venv
-source .venv/bin/activate
-uv pip install -r docs/requirements.txt -e .
-python -m sphinx -b dirhtml docs docs/_build/dirhtml
-python -m http.server 8000 --directory docs/_build/dirhtml
-```
+Terrarium makes these experiments available to researchers and practitioners instead of hiding them inside deeply convoluted or less modular frameworks.
 
-Follow the quick guide provided below for basic testing.
+## Install
 
-## Quick Start
+Install the common provider, science, and plotting extras:
 
-### Install (PyPI)
-
-Install Terrarium:
 ```bash
 pip install "terrarium-agents[providers,science,plots]"
 ```
 
-CoLLAB is required for the DCOP environments. Clone it somewhere and point Terrarium at it:
+For local development:
+
+```bash
+git clone https://github.com/umass-aisec/Terrarium.git
+cd Terrarium
+uv venv --python 3.11 .venv
+source .venv/bin/activate
+uv sync
+```
+
+Some DCOP environments use CoLLAB instance generation. If CoLLAB is not available through the repository submodule, clone it and point Terrarium at it:
+
 ```bash
 git clone https://github.com/Saad-Mahmud/CoLLAB_SEA.git /path/to/CoLLAB
 export TERRARIUM_COLLAB_PATH=/path/to/CoLLAB
 ```
 
-Optional extras:
-- `terrarium-agents[openai]`, `terrarium-agents[foundry]`, `terrarium-agents[anthropic]`, `terrarium-agents[gemini]` (provider SDKs)
-- `terrarium-agents[vllm]` (local vLLM serving; heavy)
-- `terrarium-agents[all]` (everything)
+## First Run
 
-Public environment import path:
-```python
-from terrarium.environments import JiraTicketEnvironment
-from terrarium.environments.dcops import HospitalEnvironment
-```
+Copy the environment template and set only the provider keys you need:
 
-Public LLM import path:
-```python
-from terrarium.llm.clients import OpenAIClient
-from terrarium.llm.vllm import VLLMProviderRuntime
-```
-
-### Install (Source)
-
-Clone the repository and update submodules. A submodule exists at `external/CoLLAB` for a suite of external environments.
-```bash
-git clone <repository-url> Terrarium
-cd Terrarium
-git submodule update --init --recursive
-```
-
-In this repo, we use [uv](https://docs.astral.sh/uv/) as our extremely fast package manager. If not already installed follow these [installation instructions](https://docs.astral.sh/uv/getting-started/installation/).
-```bash
-# Run this at the root directory .../Terrarium
-uv venv --python 3.11 .venv
-source .venv/bin/activate
-uv sync
-```
----
-Terrarium enables two types of servicing: (1) API-based providers and (2) [vLLM](https://github.com/vllm-project/vllm) integration for open-source models.
-
-For API-based providers, we currently support OpenAI, first-party xAI Grok, Microsoft Foundry Models, Google, Anthropic, and [together.ai](https://api.together.ai/) models. Copy `.env.example` to `.env` and set your API keys (never put real keys in `.env.example`).
 ```bash
 cp -n .env.example .env
-# Edit `.env` and set (as needed):
-# OPENAI_API_KEY=...
-# GROK_API_KEY=...
-# AI_FOUNDRY_API_KEY=...
-# AI_FOUNDRY_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
-# GOOGLE_API_KEY=...
-# ANTHROPIC_API_KEY=...
-# TOGETHER_API_KEY=...
-# FIREWORKS_API_KEY=...
 ```
 
-For Foundry deployments whose deployment name differs from the underlying model family, set `base_model` next to `model` in the provider config so Terrarium can keep model-specific request flags aligned with the actual deployed model.
-Prefer keeping the Foundry project endpoint in `.env` as `AI_FOUNDRY_PROJECT_ENDPOINT` instead of checking a resource/project name into YAML.
-Next, set the model and provider you want to use at `llm.provider` and `llm.<provider>.model` in `examples/configs/<config>.yaml`.
-
-For a new-user Foundry setup guide, see [FOUNDARY.md](FOUNDARY.md).
-
-For vLLM servicing, simply set `llm.provider:"vllm"` and `llm.vllm.auto_start_server:true` in `examples/configs/<config>.yaml` for auto-startup and shutdown for a single run. If you require a persistent vLLM server, which is useful for using the same vLLM model for different configurations or environments without the costly startup time, then set `llm.vllm.persistent_server:true`. To kill all vLLM servers run `pkill -f vllm.entrypoints.openai.api_server`.
-
-### Running a Multi-Agent Trajectory
-1. Run a simulation using an execution script along with a config file:
-```bash
-python examples/base_main.py --config <yaml_config_path>
-```
-
-## Attack Scenarios
-
-Terrarium ships three reference attacks that exercise different points in the stack. Implementations live in `attack_module/attack_modules.py` and can be mixed into any simulation via the provided runners.
-
-| Attack | What it targets | Entry point | Payload config |
-| --- | --- | --- | --- |
-| Agent poisoning | Replaces every `post_message` payload from the compromised agent before it reaches the blackboard. | `examples/attack_main.py --attack_type agent_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
-| Context overflow | Appends a large filler block to agent messages to force downstream context truncation. | `examples/attack_main.py --attack_type context_overflow` | `examples/configs/attack_config.yaml` (`header`, `filler_token`, `repeat`, `max_chars`) |
-| Communication protocol poisoning | Injects malicious system messages into every blackboard via the communication layer. | `examples/attack_main.py --communication_protocol_poisoning` | `examples/configs/attack_config.yaml` (`poisoning_string`) |
-
-### Running agent-side attacks
-
-Use the unified driver to launch both the standard run and the selected attack:
+Then run a meeting-scheduling simulation:
 
 ```bash
-# Agent poisoning example
-python examples/attack_main.py \
-  --config examples/configs/meeting_scheduling.yaml \
-  --poison_payload examples/configs/attack_config.yaml \
-  --attack_type agent_poisoning
-
-# Context overflow example
-python examples/attack_main.py \
-  --config examples/configs/meeting_scheduling.yaml \
-  --poison_payload examples/configs/attack_config.yaml \
-  --attack_type context_overflow
+python examples/base_main.py --config examples/configs/meeting_scheduling.yaml
 ```
 
-## Quick Tips
-- When working with Terrarium, use sublass definitions (e.g., A2ACommunicationProtocol, EvilAgent) of the base module classes (e.g., CommunicationProtocol, Agent) rather than directly changing the base module classes.
-- When creating new environments, ensure they inherit the AbstractEnvironment class and all methods are properly defined.
-- Keep in mind some models (e.g., gpt-4.1-nano) are not capable enough of utilizing tools to take actions in the environment, so track the completion rate such as `Meeting completion: 15/15 (100.0%)` for MeetingScheduling.
+Terrarium writes prompts, tool calls, blackboard state, communication network plots, and agent trajectories below:
 
-## vLLM Provider (Open-Source Models)
-1. Install vLLM (`pip install vllm`) and make sure CUDA is available.
-2. Set `llm.provider: "vllm"` in your config and describe the single server under `llm.vllm`.
-3. All agents share the one configured vLLM model; advanced routing is disabled in this setup.
+```text
+logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed>/
+```
 
-Best *small* model for successful tool use tested so far: Qwen/Qwen2.5-7B-Instruct. We have not tested on large >70B open-source models, but use use the [Berkeley Function-Calling Leaderboard - BFCL](https://gorilla.cs.berkeley.edu/leaderboard.html) as a reference.
+## Minimal Config
 
-Minimal example:
+Terrarium runs are configured with YAML. The four required sections are `simulation`, `environment`, `communication_network`, and `llm`.
 
 ```yaml
+simulation:
+  max_iterations: 3
+  max_planning_rounds: 1
+  max_conversation_steps: 3
+  seed: 42
+  tags:
+    - baseline
+
+environment:
+  name: MeetingSchedulingEnvironment
+  assignment_filling: false
+  num_meetings: 2
+  timeline_length: 12
+  min_participants: 2
+  max_participants: 4
+
+communication_network:
+  topology: erdos_renyi
+  num_agents: 2
+  edge_prob: 0.7
+  consolidate_channels: true
+
 llm:
-  provider: "vllm"
-  vllm:
-    auto_start_server: true
-    persistent_server: false
-    startup_timeout: 180
-    models:
-      - checkpoint: "/data/models/Qwen2-7B-Instruct"
-        served_model_name: "Qwen2-7B-Instruct"
-        host: "127.0.0.1"
-        port: 8001
-        tensor_parallel_size: 1
-        trust_remote_code: true
-        additional_args:
-          - "--max-model-len"
-          - "65536"
+  provider: openai
+  openai:
+    model: gpt-4.1-mini
+    params:
+      max_tokens: 1024
+      temperature: 0.7
 ```
 
-If `auto_start_server` is true and the configured endpoint is unreachable, Terrarium launches `python -m vllm.entrypoints.openai.api_server` with the supplied checkpoint and writes stdout/stderr to `logs/vllm/<model_id>.log`. Processes are cleaned up automatically after each run.
+See [Quick Start](docs/quickstart.md) for the full configuration guide.
 
-## Dashboard
+## Core Ideas
 
-Consolidates runs and logs into a static dashboard for easier navigation:
+Terrarium runs are built from components. Swap one component while holding the others fixed to isolate the effect of an environment, protocol, topology, model, or attack.
 
-1. Export the data bundle (runs + config):
+| Component | Base surface | What it controls |
+| --- | --- | --- |
+| Agents | `BaseAgent` | LLM/tool loop for each participant. |
+| Environments | `AbstractEnvironment` | Task state, private observations, legal actions, rewards, and stopping conditions. |
+| Communication protocols | `BaseCommunicationProtocol` | Turn order, phases, and tool routing. |
+| Communication Networks | `CommunicationNetwork` | Which agents can share communication channels. |
+| Communication Channels | `Blackboard` / `Megaboard` | Append-only message state visible to channel participants. |
+| Tools | `ToolsetDiscovery` and environment `Tools` classes | Blackboard communication, environment actions, and optional external MCP tools. |
+| LLM clients | `AbstractClient` | Provider-specific generation and tool-call parsing. |
 
-   ```bash
-   python dashboards/build_data.py \
-     --logs-root logs \
-     --config examples/configs/meeting_scheduling.yaml \
-     --output dashboards/public/dashboard_data.json
-   ```
+Component guides live in [docs/components](docs/components).
 
-2. Serve the static front-end (or simply open the file via your browser if it allows `file://` fetches – a local server is recommended):
 
-   ```bash
-   python -m http.server 5050 --directory dashboards/public
-   ```
+## Repository Layout
 
-3. Navigate to <http://127.0.0.1:5050> to inspect the raw event logs parsed directly from `dashboard_data.json` in the browser (no backend required).
+```text
+terrarium/
+  agents/                  # Base agent and factory
+  attacks/                 # Reference adversarial components
+  communication_protocols/ # Planning/execution protocols
+  core/                    # Blackboards, loggers, async helpers
+  environments/            # Implemented environments and task tools
+  llm/                     # Provider clients and vLLM runtime
+  networks/                # Communication topology builders
+  tools/                   # Tool discovery and prompt helpers
 
-4. New runs? Simply repeat step (1.) and refresh the website (No need to restart the server)
+examples/
+  base_main.py             # Standard simulation runner
+  attack_main.py           # Attack simulation runner
+  configs/                 # Example YAML configs
 
-## Tooling (In-Process + External MCP)
-
-Environment and blackboard tools are executed in-process by Terrarium (no Terrarium MCP server process required).
-Examples: MeetingScheduling -> `attend_meeting`, PersonalAssistant -> `choose_outfit`, SmartGrid -> `assign_source`.
-
-You can optionally attach external MCP servers at `llm.external_mcp_servers`:
-
-```yaml
-llm:
-  provider: "openai"
-  external_mcp_servers:
-    - name: "filesystem"
-      url: "http://127.0.0.1:9000/mcp"
-      enabled: true
-      tool_prefix: "fs_"
-      # include_tools: ["read_file", "write_file"]
-      # exclude_tools: ["dangerous_tool"]
-      # timeout_seconds: 20
+docs/                      # Documentation source
+dashboards/                # Static dashboard utilities
 ```
 
-External tools are auto-discovered and exposed to each client as regular function-calling tools.
+## Contributing
 
+Contributions are welcome, especially focused fixes, new environments, new tools, documentation improvements, and reproducible attack or evaluation workflows.
 
-## Logging
+For larger changes, open an issue first so the scope is clear. A good pull request should include:
 
-Terrarium incorporates a set of loggers for prompts, tool usage, agent trajectories, and blackboards. All loggers are defined in `terrarium/core/logger.py`, conisting of
-- BlackboardLogger -- Logs events for all existing blackboards in human-readable format (Useful for tracking conversations between agents and tool calls)
-- ToolCallLogger -- Tracks the tool called, success, and duration for each agent (Useful for debugging tool implementations)
-- PromptLogger -- Shows exact system and user prompts used (Useful for debugging F-string formatted prompts)
-- AgentTrajectoryLogger -- Logs the multi-step conversation of each agent showing their pseudo-reasoning traces (Useful for approximately evaluating the internal reasoning of agents and their associated tool calls)
+- A focused description of the change and why it is needed.
+- Updated docs or examples when behavior changes.
+- Relevant checks, or a short note explaining why a check was not run.
+- A small config or reproduction when the change affects simulation behavior.
 
-All logs are saved to `logs/<environment>/<tag_model>/<run_timestamp>/seed_<seed>/`, including a snapshot of the config used for that run.
+## Citation
 
-## :page_facing_up: Paper Citation
-If you use this repository in your research, please cite:
+If you use Terrarium in your research, please cite us using the following:
+
 ```bibtex
 @article{nakamura2025terrarium,
   title={Terrarium: Revisiting the Blackboard for Multi-Agent Safety, Privacy, and Security Studies},
@@ -245,42 +199,6 @@ If you use this repository in your research, please cite:
 }
 ```
 
-## :raised_hands: Contributing
-
-We love contributions of all sizes, from typo fixes to new features :sparkles:
-
-### Ways to contribute :seedling:
-- :bug: Report bugs or unexpected behavior
-- :bulb: Propose new features or environment ideas
-- :memo: Improve docs, examples, and tutorials
-- :toolbox: Add tools, attacks, or evaluation workflows
-
-### Contribution workflow :rocket:
-1. Fork the repository and clone your fork.
-2. Create a branch:
-   ```bash
-   git checkout -b feature/short-description
-   ```
-3. Make your changes and update tests/docs where relevant.
-4. Run local checks relevant to your change.
-5. Commit with a clear message:
-   ```bash
-   git commit -m "feat: short summary"
-   ```
-6. Push your branch and open a Pull Request:
-   ```bash
-   git push origin feature/short-description
-   ```
-
-### PR checklist :white_check_mark:
-- [ ] :dart: Change is focused and scoped
-- [ ] :book: Docs/examples updated if behavior changed
-- [ ] :test_tube: Relevant tests pass (or rationale included if not applicable)
-- [ ] :speech_balloon: PR description explains what changed and why
-
-For larger changes, open an issue or discussion first so we can align on scope and avoid overlap. **New contributors** are absolutely welcome here, so if you are unsure where to start, open an issue and we can help point you in the right direction :blush:
-
-
 ## License
 
-MIT. See `LICENSE`.
+Terrarium is released under the MIT License. See [LICENSE](LICENSE).

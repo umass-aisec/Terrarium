@@ -143,16 +143,10 @@ class AnthropicClient(AbstractClient):
         Generate a response using Anthropic's Messages API.
 
         Args:
-            input: List of message dictionaries in Anthropic format
-            params: Generation parameters including:
-                - model: Model name (e.g., "claude-sonnet-4-5")
-                - max_tokens: Maximum tokens to generate
-                - max_output_tokens: Alternative parameter name for max_tokens
-                - temperature: Sampling temperature
-                - tools: List of tool definitions (OpenAI format, will be converted)
-                - system: System prompt (optional)
-                - thinking: Extended thinking config (optional)
-                    Format: {"type": "enabled", "budget_tokens": 1024}
+            input: List of message dictionaries in Anthropic format.
+            params: Generation parameters. Supported keys include ``model``,
+                ``max_tokens``, ``max_output_tokens``, ``temperature``,
+                ``tools``, ``system``, and ``thinking``.
 
         Returns:
             Tuple of (response_object, response_text)

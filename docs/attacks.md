@@ -4,7 +4,7 @@ title: Attack Scenarios
 
 # Attack Scenarios
 
-Terrarium ships reference attacks that can be mixed into simulations with `examples/attack_main.py`.
+Terrarium implements a few attack scenarios that can be mixed into simulations with `examples/attack_main.py`.
 
 ## Agent Poisoning
 

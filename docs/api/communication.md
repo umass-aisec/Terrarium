@@ -17,3 +17,7 @@ title: Communication
    :members:
    :show-inheritance:
 ```
+
+```{note}
+`terrarium.communication_protocols.distributed` is currently a placeholder module and is not included in the generated API reference.
+```
