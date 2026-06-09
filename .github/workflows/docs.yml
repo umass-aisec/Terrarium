@@ -59,6 +59,7 @@ jobs:
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         env:
           DOCS_VERSION: ${{ steps.docs-version.outputs.version }}
+          MIN_PUBLIC_DOCS_VERSION: v0.2.0
         shell: bash
         run: |
           set -euo pipefail
@@ -79,12 +80,29 @@ jobs:
           cp -a docs/_build/html/. "${SITE_DIR}/${DOCS_VERSION}/"
           touch "${SITE_DIR}/.nojekyll"
 
-          SITE_DIR="${SITE_DIR}" python - <<'PY'
+          SITE_DIR="${SITE_DIR}" MIN_PUBLIC_DOCS_VERSION="${MIN_PUBLIC_DOCS_VERSION}" python - <<'PY'
           import json
           import os
+          import shutil
           from pathlib import Path
 
           site = Path(os.environ["SITE_DIR"])
+
+          def parse_release_tag(name: str) -> tuple[int, ...] | None:
+              if not name.startswith("v"):
+                  return None
+              parts = name[1:].split(".")
+              if not parts or any(not part.isdigit() for part in parts):
+                  return None
+              return tuple(int(part) for part in parts)
+
+          min_public_version = parse_release_tag(os.environ["MIN_PUBLIC_DOCS_VERSION"])
+          if min_public_version is not None:
+              for path in site.iterdir():
+                  parsed = parse_release_tag(path.name)
+                  if path.is_dir() and parsed is not None and parsed < min_public_version:
+                      shutil.rmtree(path)
+
           version_dirs = [
               path.name
               for path in site.iterdir()
