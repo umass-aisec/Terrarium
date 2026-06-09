@@ -1,6 +1,7 @@
 {
   "versions": [
-    "latest"
+    "latest",
+    "v0.1.2"
   ],
   "default": "latest"
 }
