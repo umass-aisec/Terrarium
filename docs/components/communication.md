@@ -31,7 +31,7 @@ communication_protocol.bind_environment(environment)
 
 `SequentialCommunicationProtocol` currently runs simple protocol: all agents plan, then all agents execute for one iteration of the simulation. During planning, agents can write messages to blackboards. During execution, agents use environment tools to commit task actions.
 
-```pythonIn
+```python
 for planning_round in range(1, max_planning_rounds + 1):
     for agent in environment.agents:
         agent_context = environment.build_agent_context(
