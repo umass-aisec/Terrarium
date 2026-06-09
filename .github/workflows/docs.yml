@@ -3,6 +3,8 @@ name: Build and Deploy Docs
 on:
   push:
     branches: [main]
+    tags:
+      - "v*"
   pull_request:
     paths:
       - "docs/**"
@@ -31,20 +33,105 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Select docs version
+        id: docs-version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install docs dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r docs/requirements.txt -e .
 
       - name: Build docs
+        env:
+          TERRARIUM_DOCS_BASEURL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.docs-version.outputs.version }}/
         run: |
           python -m sphinx -E -a -b html docs docs/_build/html
           touch docs/_build/html/.nojekyll
 
-      - name: Deploy to gh-pages
-        if: github.event_name != 'pull_request'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: docs/_build/html
+      - name: Deploy versioned docs to gh-pages
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        env:
+          DOCS_VERSION: ${{ steps.docs-version.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SITE_DIR="${RUNNER_TEMP}/terrarium-gh-pages"
+          rm -rf "${SITE_DIR}"
+
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages
+            git worktree add "${SITE_DIR}" origin/gh-pages
+          else
+            git worktree add --detach "${SITE_DIR}"
+            git -C "${SITE_DIR}" checkout --orphan gh-pages
+            git -C "${SITE_DIR}" rm -rf . || true
+          fi
+
+          rm -rf "${SITE_DIR}/${DOCS_VERSION}"
+          mkdir -p "${SITE_DIR}/${DOCS_VERSION}"
+          cp -a docs/_build/html/. "${SITE_DIR}/${DOCS_VERSION}/"
+          touch "${SITE_DIR}/.nojekyll"
+
+          SITE_DIR="${SITE_DIR}" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          site = Path(os.environ["SITE_DIR"])
+          version_dirs = [
+              path.name
+              for path in site.iterdir()
+              if path.is_dir() and (path / "index.html").exists()
+          ]
+          versions = []
+          if "latest" in version_dirs:
+              versions.append("latest")
+          versions.extend(sorted((v for v in version_dirs if v != "latest"), reverse=True))
+
+          target = "latest" if "latest" in versions else (versions[0] if versions else "")
+          links = "\n".join(
+              f'      <li><a href="{version}/">{version}</a></li>'
+              for version in versions
+          )
+
+          html = f"""<!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Terrarium Documentation</title>
+              <meta http-equiv="refresh" content="0; url={target}/">
+            </head>
+            <body>
+              <h1>Terrarium Documentation</h1>
+              <p>Redirecting to <a href="{target}/">{target}</a>.</p>
+              <h2>Available versions</h2>
+              <ul>
+          {links}
+              </ul>
+            </body>
+          </html>
+          """
+          (site / "index.html").write_text(html, encoding="utf-8")
+          (site / "versions.json").write_text(
+              json.dumps({"versions": versions, "default": target}, indent=2),
+              encoding="utf-8",
+          )
+          PY
+
+          git -C "${SITE_DIR}" config user.name "github-actions[bot]"
+          git -C "${SITE_DIR}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "${SITE_DIR}" add -A
+          if git -C "${SITE_DIR}" diff --cached --quiet; then
+            echo "No docs changes to deploy."
+          else
+            git -C "${SITE_DIR}" commit -m "docs: deploy ${DOCS_VERSION}"
+            git -C "${SITE_DIR}" push origin HEAD:gh-pages
+          fi

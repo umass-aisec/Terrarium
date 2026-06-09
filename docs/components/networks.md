@@ -26,7 +26,7 @@ Terrarium supports deterministic and random graph families.
 | `path` | Deterministic | Information should move through a chain. |
 | `star` | Deterministic | One central agent should be connected to all others. |
 | `erdos_renyi` | Random | You want a random graph controlled by edge probability. |
-| `watts_strogatz` | Random | You want local neighborhoods with some rewired long-range links. |
+| `watts_strogatz` | Random | You want a random graph with local neighborhoods with some rewired links. |
 | `barabasi_albert` | Random | You want a hub-heavy graph built by preferential attachment. |
 
 Deterministic families always build the same graph from the same agent list, while random families sample graph structure using `simulation.seed`.

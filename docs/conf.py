@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import tomllib
 from pathlib import Path
@@ -67,7 +68,10 @@ intersphinx_mapping = {
 
 html_theme = "furo"
 html_title = "Terrarium Documentation"
-html_baseurl = "https://aisec.cs.umass.edu/projects/terrarium/docs"
+html_baseurl = os.environ.get(
+    "TERRARIUM_DOCS_BASEURL",
+    "https://umass-aisec.github.io/Terrarium/latest/",
+)
 html_copy_source = False
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
