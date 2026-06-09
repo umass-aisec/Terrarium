@@ -1,0 +1,1026 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html">
+        <link rel="canonical" href="https://umass-aisec.github.io/Terrarium/latest/_modules/terrarium/llm/vllm/runtime.html">
+        <link rel="prefetch" href="../../../../_static/terrarium_logo_rounded.png" as="image">
+        <link rel="prefetch" href="../../../../_static/terrarium_logo_rounded.png" as="image">
+
+    <link rel="shortcut icon" href="../../../../_static/leaf_favicon.svg"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
+        <title>terrarium.llm.vllm.runtime - Terrarium Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=3eaf5691" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../../index.html"><div class="brand">Terrarium Documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../../../_static/terrarium_logo_rounded.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../../../_static/terrarium_logo_rounded.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Terrarium Documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../basic_usage.html">Basic Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../comparison_to_other_frameworks.html">Comparison to Other Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Components</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../components/environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../components/communication.html">Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../components/networks.html">Networks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../components/tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../components/llm.html">Inference Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../components/attacks.html">Attack Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../components/logging.html">Logging</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../attacks.html">Attack Scenarios</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/index.html">API</a><input aria-label="Toggle navigation of API" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/agents.html">Agents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/communication.html">Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/environments.html">Environments API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/llm.html">LLM Clients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/tools.html">Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/networks.html">Networks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/core.html">Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/utils.html">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/compaction.html">Compaction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/attacks.html">Attacks</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release_notes.html">Release Notes</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for terrarium.llm.vllm.runtime</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">atexit</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+
+
+<div class="viewcode-block" id="ToolCallingRule">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.ToolCallingRule">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ToolCallingRule</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Known vLLM tool/Reasoning presets keyed by substrings in the model id.&quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Label so logs can say “using {name} parser”</span>
+    <span class="n">substrings</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>  <span class="c1"># Lowercase tokens that match model ids/checkpoints</span>
+    <span class="n">parser</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  
+    <span class="n">chat_template</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Required chat template path/name vLLM needs for tool calling instructions per model family</span>
+    <span class="n">reasoning_parser</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">enable_reasoning</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">supports_tool_calling</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Some reasoning models don&#39;t support auto tool choice, we throw an error it this is False</span></div>
+
+
+
+<span class="c1"># Derived from vLLM&#39;s tool-calling &amp; reasoning-output docs:</span>
+<span class="c1"># https://docs.vllm.ai/en/latest/features/tool_calling/</span>
+<span class="c1"># https://docs.vllm.ai/en/latest/features/reasoning_outputs.html</span>
+<span class="n">TOOL_CALLING_RULES</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ToolCallingRule</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;hermes&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;hermes&quot;</span><span class="p">,),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;hermes&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mistral&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;mistral&quot;</span><span class="p">,),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;mistral&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;tool_chat_template_mistral_parallel.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;granite-4.0&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;granite-4.0&quot;</span><span class="p">,</span> <span class="s2">&quot;granite-4&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;hermes&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;granite-7b&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;granite-7b&quot;</span><span class="p">,),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;granite&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;granite-3.1&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;granite-3.1&quot;</span><span class="p">,),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;granite&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;granite-3.0&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;granite-3.0&quot;</span><span class="p">,),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;granite&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_granite.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;granite-20b&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;granite-20b&quot;</span><span class="p">,),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;granite-20b-fc&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_granite_20b_fc.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;internlm&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;internlm&quot;</span><span class="p">,</span> <span class="s2">&quot;internlm2.5&quot;</span><span class="p">,</span> <span class="s2">&quot;internlm2_5&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;internlm&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_internlm2_tool.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;jamba&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;jamba&quot;</span><span class="p">,</span> <span class="s2">&quot;ai21&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;jamba&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;xlam-llama&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;llama-xlam&quot;</span><span class="p">,</span> <span class="s2">&quot;xlam-2-8b&quot;</span><span class="p">,</span> <span class="s2">&quot;xlam-2-70b&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;xlam&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_xlam_llama.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;xlam-qwen&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;qwen-xlam&quot;</span><span class="p">,</span> <span class="s2">&quot;xlam-1b&quot;</span><span class="p">,</span> <span class="s2">&quot;xlam-3b&quot;</span><span class="p">,</span> <span class="s2">&quot;xlam-32b&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;xlam&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_xlam_qwen.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;qwen2.5&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;qwen2.5&quot;</span><span class="p">,</span> <span class="s2">&quot;qwen-2.5&quot;</span><span class="p">,</span> <span class="s2">&quot;qwen2_5&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;hermes&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;qwen3&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;qwen3&quot;</span><span class="p">,</span> <span class="s2">&quot;qwen 3&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;hermes&quot;</span><span class="p">,</span>
+        <span class="n">reasoning_parser</span><span class="o">=</span><span class="s2">&quot;qwen3&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;qwq-32b&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;qwq&quot;</span><span class="p">,</span> <span class="s2">&quot;qwq-32b&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;hermes&quot;</span><span class="p">,</span>
+        <span class="n">reasoning_parser</span><span class="o">=</span><span class="s2">&quot;deepseek_r1&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;minimax-m1&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;minimax&quot;</span><span class="p">,</span> <span class="s2">&quot;minimaxai&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;minimax&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_minimax_m1.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;deepseek-v3&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;deepseek-v3&quot;</span><span class="p">,</span> <span class="s2">&quot;deepseek-v3-0324&quot;</span><span class="p">,</span> <span class="s2">&quot;deepseek-r1-0528&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;deepseek_v3&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_deepseekv3.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;deepseek-v31&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;deepseek-v3.1&quot;</span><span class="p">,</span> <span class="s2">&quot;deepseek v3.1&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;deepseek_v31&quot;</span><span class="p">,</span>
+        <span class="n">chat_template</span><span class="o">=</span><span class="s2">&quot;examples/tool_chat_template_deepseekv31.jinja&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;deepseek-r1&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;deepseek r1&quot;</span><span class="p">,</span> <span class="s2">&quot;deepseek-r1&quot;</span><span class="p">),</span>
+        <span class="n">reasoning_parser</span><span class="o">=</span><span class="s2">&quot;deepseek_r1&quot;</span><span class="p">,</span>
+        <span class="n">supports_tool_calling</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;kimi-k2&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;kimi-k2&quot;</span><span class="p">,</span> <span class="s2">&quot;moonshotai/kimi&quot;</span><span class="p">,</span> <span class="s2">&quot;moonshot kimi&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;kimi_k2&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;hunyuan-a13b&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;hunyuan-a13b&quot;</span><span class="p">,</span> <span class="s2">&quot;hunyuan a13b&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;hunyuan_a13b&quot;</span><span class="p">,</span>
+        <span class="n">reasoning_parser</span><span class="o">=</span><span class="s2">&quot;hunyuan_a13b&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;glm-4.5&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;glm-4.5&quot;</span><span class="p">,</span> <span class="s2">&quot;glm45&quot;</span><span class="p">,</span> <span class="s2">&quot;glm_4.5&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;glm45&quot;</span><span class="p">,</span>
+        <span class="n">reasoning_parser</span><span class="o">=</span><span class="s2">&quot;glm45&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;glm-4-9b&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;glm-4-9b&quot;</span><span class="p">,</span> <span class="s2">&quot;glm4-9b&quot;</span><span class="p">),</span>
+        <span class="n">parser</span><span class="o">=</span><span class="s2">&quot;glm45&quot;</span><span class="p">,</span>
+        <span class="n">reasoning_parser</span><span class="o">=</span><span class="s2">&quot;glm45&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">ToolCallingRule</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ernie-4.5&quot;</span><span class="p">,</span>
+        <span class="n">substrings</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;ernie-4.5&quot;</span><span class="p">,</span> <span class="s2">&quot;ernie45&quot;</span><span class="p">),</span>
+        <span class="n">reasoning_parser</span><span class="o">=</span><span class="s2">&quot;ernie45&quot;</span><span class="p">,</span>
+        <span class="n">supports_tool_calling</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_match_tool_calling_rule</span><span class="p">(</span><span class="n">model_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ToolCallingRule</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the first tool-calling rule whose substring matches the label.&quot;&quot;&quot;</span>
+    <span class="n">normalized</span> <span class="o">=</span> <span class="p">(</span><span class="n">model_label</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">TOOL_CALLING_RULES</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">token</span> <span class="ow">in</span> <span class="n">normalized</span> <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">rule</span><span class="o">.</span><span class="n">substrings</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">rule</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_chat_template_candidate</span><span class="p">(</span><span class="n">template</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a chat-template path distributed with vLLM if needed.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">template</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="n">candidate</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">candidate</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;tool_use&quot;</span><span class="p">}:</span>
+        <span class="k">return</span> <span class="n">candidate</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+    <span class="n">search_paths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
+        <span class="n">search_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">search_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="n">path</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">vllm</span>  <span class="c1"># type: ignore</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">vllm_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">vllm_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">vllm</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>
+        <span class="n">search_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vllm_root</span> <span class="o">/</span> <span class="n">candidate</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">search_paths</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="p">),</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Chat template &#39;</span><span class="si">{</span><span class="n">candidate</span><span class="si">}</span><span class="s2">&#39; was not found relative to CWD or the vLLM package.&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_sanitize_model_id</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^a-z0-9_]+&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">cleaned</span><span class="p">)</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;_+&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">cleaned</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cleaned</span> <span class="ow">or</span> <span class="s2">&quot;model&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_derive_model_id</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">candidate</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;served_model_name&quot;</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">candidate</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Each vLLM model spec must include a checkpoint (or served_model_name/model/model_name) &quot;</span>
+            <span class="s2">&quot;to derive a model identifier.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_sanitize_model_id</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">candidate</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_base_url</span><span class="p">(</span><span class="n">base_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a normalized base URL ending with /v1.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">base_url</span><span class="p">:</span>
+        <span class="n">normalized</span> <span class="o">=</span> <span class="n">base_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">normalized</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;http://</span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/v1&quot;</span>
+    <span class="k">return</span> <span class="n">normalized</span>
+
+
+<div class="viewcode-block" id="VLLMModelSpec">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMModelSpec">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">VLLMModelSpec</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Per-model serving configuration.&quot;&quot;&quot;</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">checkpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">served_model_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">base_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;127.0.0.1&quot;</span>
+    <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8000</span>
+    <span class="n">tensor_parallel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">trust_remote_code</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">max_model_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">download_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">gpu_memory_utilization</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">additional_args</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">env</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">request_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>
+    <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">launch_command</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">auto_configure_tool_choice</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">enable_auto_tool_choice</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">tool_call_parser</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">chat_template</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">tool_parser_plugin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">reasoning_parser</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">enable_reasoning</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">api_base</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_normalize_base_url</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">served_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">served_model_name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">served_model_name</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span></div>
+
+
+
+<div class="viewcode-block" id="VLLMGlobalConfig">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMGlobalConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">VLLMGlobalConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Global configuration shared across all vLLM model specs.&quot;&quot;&quot;</span>
+
+    <span class="n">models</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">VLLMModelSpec</span><span class="p">]</span>
+    <span class="n">primary_model_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">auto_start_server</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">persistent_server</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">auto_configure_tool_choice</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">startup_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">180</span>
+    <span class="n">health_check_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/v1/models&quot;</span>
+    <span class="n">health_poll_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">env</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">raw_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;VLLMGlobalConfig&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">raw_config</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Missing llm.vllm configuration block&quot;</span><span class="p">)</span>
+
+        <span class="n">models_list</span> <span class="o">=</span> <span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">models_list</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;llm.vllm.models must contain at least one model spec&quot;</span><span class="p">)</span>
+
+        <span class="n">model_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">VLLMModelSpec</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">models_list</span><span class="p">:</span>
+            <span class="n">model_id</span> <span class="o">=</span> <span class="n">_derive_model_id</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">VLLMModelSpec</span><span class="p">(</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">model_id</span><span class="p">,</span>
+                <span class="n">checkpoint</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">),</span>
+                <span class="n">served_model_name</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;served_model_name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;served_name&quot;</span><span class="p">),</span>
+                <span class="n">base_url</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;base_url&quot;</span><span class="p">),</span>
+                <span class="n">host</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;host&quot;</span><span class="p">,</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">),</span>
+                <span class="n">port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;port&quot;</span><span class="p">,</span> <span class="mi">8000</span><span class="p">)),</span>
+                <span class="n">tensor_parallel_size</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tensor_parallel_size&quot;</span><span class="p">),</span>
+                <span class="n">trust_remote_code</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trust_remote_code&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)),</span>
+                <span class="n">max_model_len</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_model_len&quot;</span><span class="p">),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dtype&quot;</span><span class="p">),</span>
+                <span class="n">download_dir</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;download_dir&quot;</span><span class="p">),</span>
+                <span class="n">gpu_memory_utilization</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_memory_utilization&quot;</span><span class="p">),</span>
+                <span class="n">additional_args</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;additional_args&quot;</span><span class="p">,</span> <span class="p">[])),</span>
+                <span class="n">env</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}),</span>
+                <span class="n">request_timeout</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;connection_timeout&quot;</span><span class="p">,</span> <span class="mi">60</span><span class="p">))),</span>
+                <span class="n">api_key</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key&quot;</span><span class="p">),</span>
+                <span class="n">launch_command</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;launch_command&quot;</span><span class="p">),</span>
+                <span class="n">auto_configure_tool_choice</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auto_configure_tool_choice&quot;</span><span class="p">),</span>
+                <span class="n">enable_auto_tool_choice</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_auto_tool_choice&quot;</span><span class="p">),</span>
+                <span class="n">tool_call_parser</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_call_parser&quot;</span><span class="p">),</span>
+                <span class="n">chat_template</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chat_template&quot;</span><span class="p">),</span>
+                <span class="n">tool_parser_plugin</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_parser_plugin&quot;</span><span class="p">),</span>
+                <span class="n">reasoning_parser</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reasoning_parser&quot;</span><span class="p">),</span>
+                <span class="n">enable_reasoning</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_reasoning&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">model_map</span><span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">model_map</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;llm.vllm.models must contain at least one model spec&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">model_map</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;llm.vllm.models now supports exactly one model spec because per-agent routing was removed.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">primary_model_id</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">model_map</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="n">legacy_default</span> <span class="o">=</span> <span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;default_model&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">legacy_default</span> <span class="ow">and</span> <span class="n">legacy_default</span> <span class="o">!=</span> <span class="n">primary_model_id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Multiple vLLM models are no longer supported. Remove the legacy default_model setting &quot;</span>
+                <span class="s2">&quot;and keep a single entry under llm.vllm.models.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">legacy_default</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;llm.vllm.default_model is deprecated; remove it to simplify the config.&quot;</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">models</span><span class="o">=</span><span class="n">model_map</span><span class="p">,</span>
+            <span class="n">primary_model_id</span><span class="o">=</span><span class="n">primary_model_id</span><span class="p">,</span>
+            <span class="n">auto_start_server</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auto_start_server&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)),</span>
+            <span class="n">persistent_server</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;persistent_server&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)),</span>
+            <span class="n">auto_configure_tool_choice</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auto_configure_tool_choice&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)),</span>
+            <span class="n">startup_timeout</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;startup_timeout&quot;</span><span class="p">,</span> <span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;connection_timeout&quot;</span><span class="p">,</span> <span class="mi">180</span><span class="p">))),</span>
+            <span class="n">health_check_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;health_check_path&quot;</span><span class="p">,</span> <span class="s2">&quot;/v1/models&quot;</span><span class="p">)),</span>
+            <span class="n">health_poll_interval</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;health_poll_interval&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)),</span>
+            <span class="n">api_key</span><span class="o">=</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key&quot;</span><span class="p">),</span>
+            <span class="n">env</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">raw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_model_for_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VLLMModelSpec</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">agent_name</span>  <span class="c1"># unused, but preserved for API compatibility</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_model_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Configured vLLM model id &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">primary_model_id</span><span class="si">}</span><span class="s2">&#39; is missing from llm.vllm.models&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">primary_model_id</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="VLLMServerManager">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMServerManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">VLLMServerManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bootstraps and monitors vLLM server processes.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">VLLMGlobalConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shutdown</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stop_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">wait_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gracefully stop a managed vLLM process, waiting up to wait_seconds.&quot;&quot;&quot;</span>
+        <span class="n">process_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">process_entry</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">process</span><span class="p">,</span> <span class="n">log_file</span> <span class="o">=</span> <span class="n">process_entry</span>
+        <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">wait_seconds</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">:</span>
+                <span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">log_file</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">log_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Stopping </span><span class="si">{</span><span class="n">model_id</span><span class="si">}</span><span class="s2"> ===</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">log_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">model_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stop_all_servers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">except_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">wait_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop every tracked server except the optional except_id.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">model_id</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">except_id</span> <span class="ow">and</span> <span class="n">model_id</span> <span class="o">==</span> <span class="n">except_id</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_process</span><span class="p">(</span><span class="n">model_id</span><span class="p">,</span> <span class="n">wait_seconds</span><span class="o">=</span><span class="n">wait_seconds</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_health_url</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">VLLMModelSpec</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">VLLMGlobalConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">api_base</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">health_check_path</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">path</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_server_alive</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">resp</span><span class="o">.</span><span class="n">ok</span>
+        <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">RequestException</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_server_models</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">VLLMModelSpec</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the list of model ids served by the running vLLM server, if reachable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">models_url</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">api_base</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/models&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">models_url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resp</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[]</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[]</span>
+            <span class="n">ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="n">model_id</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">model_id</span><span class="p">:</span>
+                    <span class="n">ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">model_id</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">ids</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_server_matches_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">VLLMModelSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check whether an already-running server exposes the expected model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">available</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_models</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">served_name</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">expected</span> <span class="ow">in</span> <span class="n">available</span><span class="p">,</span> <span class="n">available</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_tool_and_reasoning_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">VLLMModelSpec</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inject --tool-call-parser/--reasoning-parser flags when possible.&quot;&quot;&quot;</span>
+        <span class="n">auto_cfg</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">auto_configure_tool_choice</span>
+        <span class="k">if</span> <span class="n">auto_cfg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">auto_cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_configure_tool_choice</span>
+
+        <span class="n">enable_auto_tool_choice</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">enable_auto_tool_choice</span>
+        <span class="k">if</span> <span class="n">enable_auto_tool_choice</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">enable_auto_tool_choice</span> <span class="o">=</span> <span class="n">auto_cfg</span>
+
+        <span class="n">matched_rule</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ToolCallingRule</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">label_candidates</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">spec</span><span class="o">.</span><span class="n">served_model_name</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">spec</span><span class="o">.</span><span class="n">checkpoint</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">spec</span><span class="o">.</span><span class="n">id</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">auto_cfg</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="n">label_candidates</span><span class="p">:</span>
+                <span class="n">rule</span> <span class="o">=</span> <span class="n">_match_tool_calling_rule</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">rule</span><span class="p">:</span>
+                    <span class="n">matched_rule</span> <span class="o">=</span> <span class="n">rule</span>
+                    <span class="k">break</span>
+
+        <span class="n">tool_call_parser</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">tool_call_parser</span> <span class="ow">or</span> <span class="p">(</span><span class="n">matched_rule</span><span class="o">.</span><span class="n">parser</span> <span class="k">if</span> <span class="n">matched_rule</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">reasoning_parser</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">reasoning_parser</span> <span class="ow">or</span> <span class="p">(</span><span class="n">matched_rule</span><span class="o">.</span><span class="n">reasoning_parser</span> <span class="k">if</span> <span class="n">matched_rule</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">chat_template</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">chat_template</span> <span class="ow">or</span> <span class="p">(</span><span class="n">matched_rule</span><span class="o">.</span><span class="n">chat_template</span> <span class="k">if</span> <span class="n">matched_rule</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">enable_auto_tool_choice</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">matched_rule</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">matched_rule</span><span class="o">.</span><span class="n">supports_tool_calling</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">spec</span><span class="o">.</span><span class="n">tool_call_parser</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Model &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39; is not listed as tool-calling capable in vLLM&#39;s docs &quot;</span>
+                    <span class="s2">&quot;and Terrarium requires structured tool calls. Pick a different checkpoint or &quot;</span>
+                    <span class="s2">&quot;override llm.vllm.models[].tool_call_parser with a known-compatible parser &quot;</span>
+                    <span class="s2">&quot;(see https://docs.vllm.ai/en/latest/features/tool_calling/).&quot;</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">tool_call_parser</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">spec</span><span class="o">.</span><span class="n">tool_parser_plugin</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Auto tool calling requested for &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39;, but no tool_call_parser could be resolved. &quot;</span>
+                    <span class="s2">&quot;Disabling --enable-auto-tool-choice for this launch. &quot;</span>
+                    <span class="s2">&quot;Set llm.vllm.models[].tool_call_parser explicitly if the model supports tools.&quot;</span>
+                <span class="p">)</span>
+                <span class="n">enable_auto_tool_choice</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">enable_auto_tool_choice</span><span class="p">:</span>
+            <span class="n">cmd</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--enable-auto-tool-choice&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">tool_call_parser</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--tool-call-parser&quot;</span><span class="p">,</span> <span class="n">tool_call_parser</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">tool_parser_plugin</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--tool-parser-plugin&quot;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">tool_parser_plugin</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">chat_template</span><span class="p">:</span>
+            <span class="n">resolved_template</span><span class="p">,</span> <span class="n">template_warning</span> <span class="o">=</span> <span class="n">_resolve_chat_template_candidate</span><span class="p">(</span><span class="n">chat_template</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">resolved_template</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--chat-template&quot;</span><span class="p">,</span> <span class="n">resolved_template</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">template_warning</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">template_warning</span><span class="si">}</span><span class="s2"> (model &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39;). &quot;</span>
+                    <span class="s2">&quot;Continuing without an explicit chat template; vLLM will use model defaults.&quot;</span>
+                <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">enable_reasoning</span><span class="p">:</span>
+            <span class="n">cmd</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--enable-reasoning&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reasoning_parser</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--reasoning-parser&quot;</span><span class="p">,</span> <span class="n">reasoning_parser</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">auto_cfg</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">matched_rule</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">spec</span><span class="o">.</span><span class="n">tool_call_parser</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Could not auto-configure tool calling for &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39; because it is not in Terrarium&#39;s &quot;</span>
+                    <span class="s2">&quot;supported model list. Refer to https://docs.vllm.ai/en/latest/features/tool_calling/ &quot;</span>
+                    <span class="s2">&quot;and set llm.vllm.models[].tool_call_parser manually.&quot;</span>
+                <span class="p">)</span>
+
+<div class="viewcode-block" id="VLLMServerManager.ensure_server">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMServerManager.ensure_server">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ensure_server</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">VLLMModelSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure a server for the given model is reachable, launching if needed.&quot;&quot;&quot;</span>
+        <span class="c1"># Stop any previous servers so we can spin up the new model cleanly unless persistence is requested.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">persistent_server</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_all_servers</span><span class="p">(</span><span class="n">except_id</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">wait_seconds</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+
+        <span class="n">health_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_health_url</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_server_alive</span><span class="p">(</span><span class="n">health_url</span><span class="p">):</span>
+            <span class="n">matches</span><span class="p">,</span> <span class="n">available</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_matches_model</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">matches</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;Detected an existing vLLM server but it does not expose the expected model.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Expected: </span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">served_name</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Available: </span><span class="si">{</span><span class="n">available</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;Stop the running server or change llm.vllm.port/served_model_name to avoid conflicts.&quot;</span>
+                <span class="s2">&quot;If you are only running one server, run &#39;pkill -f vllm.entrypoints.openai.api_server&#39; to kill the running server, and rerun your script.&quot;</span>
+                <span class="s2">&quot;If you have more than one server, try and find the running server that you want to kill with &#39;kill -9 &lt;pid&gt;&#39;.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_start_server</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;vLLM server for model &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39; is not reachable at </span><span class="si">{</span><span class="n">health_url</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="s2">&quot;and auto_start_server is disabled.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_launch_process</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wait_until_ready</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">health_url</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_launch_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">VLLMModelSpec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># already running</span>
+
+        <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">launch_command</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">launch_command</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">launch_command</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">launch_command</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">spec</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Model &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39; requires &#39;checkpoint&#39; (or explicit launch_command) to auto-start vLLM&quot;</span>
+                <span class="p">)</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span>
+                <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;vllm.entrypoints.openai.api_server&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;--model&quot;</span><span class="p">,</span>
+                <span class="n">spec</span><span class="o">.</span><span class="n">checkpoint</span><span class="p">,</span>
+                <span class="s2">&quot;--port&quot;</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">port</span><span class="p">),</span>
+                <span class="s2">&quot;--host&quot;</span><span class="p">,</span>
+                <span class="n">spec</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">served_model_name</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--served-model-name&quot;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">served_model_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">tensor_parallel_size</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--tensor-parallel-size&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">tensor_parallel_size</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">max_model_len</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--max-model-len&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">max_model_len</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--dtype&quot;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">dtype</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">download_dir</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--download-dir&quot;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">download_dir</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">gpu_memory_utilization</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;--gpu-memory-utilization&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">gpu_memory_utilization</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">trust_remote_code</span><span class="p">:</span>
+                <span class="n">cmd</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--trust-remote-code&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_tool_and_reasoning_settings</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">cmd</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">additional_args</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">additional_args</span><span class="p">)</span>
+
+        <span class="n">env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">env</span> <span class="ow">or</span> <span class="p">{})</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">env</span> <span class="ow">or</span> <span class="p">{})</span>
+
+        <span class="n">log_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;logs&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;vllm&quot;</span>
+        <span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">log_path</span> <span class="o">=</span> <span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">.log&quot;</span>
+        <span class="n">log_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">log_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;=== Launching vLLM model </span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> ===</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">log_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+        <span class="c1"># Detach from the parent&#39;s process group when persistence is enabled so Ctrl+C</span>
+        <span class="c1"># in the main simulation doesn&#39;t send SIGINT to the vLLM server.</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+            <span class="n">cmd</span><span class="p">,</span>
+            <span class="n">stdout</span><span class="o">=</span><span class="n">log_file</span><span class="p">,</span>
+            <span class="n">stderr</span><span class="o">=</span><span class="n">log_file</span><span class="p">,</span>
+            <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">start_new_session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">persistent_server</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">process</span><span class="p">,</span> <span class="n">log_file</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wait_until_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">VLLMModelSpec</span><span class="p">,</span> <span class="n">health_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Poll the health endpoint until it responds or timeout is reached.&quot;&quot;&quot;</span>
+        <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">startup_timeout</span>
+        <span class="n">process</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">deadline</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">process</span> <span class="ow">and</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;vLLM server for model &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39; exited prematurely with code </span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_server_alive</span><span class="p">(</span><span class="n">health_url</span><span class="p">):</span>
+                <span class="k">return</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">health_poll_interval</span><span class="p">)</span>
+
+        <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Timed out waiting for vLLM server &#39;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&#39; to become ready at </span><span class="si">{</span><span class="n">health_url</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="VLLMServerManager.shutdown">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMServerManager.shutdown">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Terminate any managed vLLM processes.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">persistent_server</span><span class="p">:</span>
+            <span class="c1"># Keep servers alive between simulation runs to avoid cold starts.</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_all_servers</span><span class="p">(</span><span class="n">wait_seconds</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="VLLMProviderRuntime">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMProviderRuntime">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">VLLMProviderRuntime</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;High level helper that ties configuration, server manager, and clients together.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_config</span> <span class="o">=</span> <span class="n">VLLMGlobalConfig</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">raw_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_manager</span> <span class="o">=</span> <span class="n">VLLMServerManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_config</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">describe_default_model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">default_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_config</span><span class="o">.</span><span class="n">models</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">global_config</span><span class="o">.</span><span class="n">primary_model_id</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">default_spec</span><span class="o">.</span><span class="n">served_name</span><span class="p">()</span>
+
+<div class="viewcode-block" id="VLLMProviderRuntime.describe_log_path">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMProviderRuntime.describe_log_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">describe_log_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the expected log file path for the active vLLM model.&quot;&quot;&quot;</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_config</span><span class="o">.</span><span class="n">get_model_for_agent</span><span class="p">(</span><span class="s2">&quot;unused&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;logs&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;vllm&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">.log&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="VLLMProviderRuntime.create_client">
+<a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.vllm.runtime.VLLMProviderRuntime.create_client">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_client</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (client, served_model_name) for a specific agent.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.vllm_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">VLLMClient</span>
+
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_config</span><span class="o">.</span><span class="n">get_model_for_agent</span><span class="p">(</span><span class="n">agent_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_manager</span><span class="o">.</span><span class="n">ensure_server</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+        <span class="n">client</span> <span class="o">=</span> <span class="n">VLLMClient</span><span class="p">(</span>
+            <span class="n">base_url</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">api_base</span><span class="p">(),</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">served_name</span><span class="p">(),</span>
+            <span class="n">api_key</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">api_key</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_config</span><span class="o">.</span><span class="n">api_key</span> <span class="ow">or</span> <span class="s2">&quot;EMPTY&quot;</span><span class="p">,</span>
+            <span class="n">request_timeout</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">request_timeout</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">client</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">served_name</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_manager</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../../_static/documentation_options.js?v=1be0d999"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../../_static/copybutton.js?v=fd10adb8"></script>
+    </body>
+</html>
