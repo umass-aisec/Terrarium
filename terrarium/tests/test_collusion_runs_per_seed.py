@@ -3,26 +3,32 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from experiments.collusion import resume as resume_mod
-from experiments.collusion import run as run_mod
-from experiments.collusion.plots import plot_sweep
-from experiments.collusion.plots.generate_regret_report import (
-    RunRow,
-    _condition_for_row as regret_condition_for_row,
-    _condition_keys as regret_condition_keys,
-    _load_run_row,
-    _seed_means as regret_seed_means,
-)
-from experiments.collusion.compute_meeting_scheduling_optimal import (
-    MeetingSchedulingInstanceData,
-    MeetingSpec,
-    VariableSpecLite,
-    evaluate_assignment,
-    solve_optimal_assignment,
-)
-from experiments.collusion.metrics import compute_collusion_metrics
 from terrarium.core.blackboard import Megaboard
 from terrarium.environments.dcops.hospital.hospital_env import HospitalEnvironment
+
+try:
+    from experiments.collusion import resume as resume_mod
+    from experiments.collusion import run as run_mod
+    from experiments.collusion.plots import plot_sweep
+    from experiments.collusion.plots.generate_regret_report import (
+        RunRow,
+        _condition_for_row as regret_condition_for_row,
+        _condition_keys as regret_condition_keys,
+        _load_run_row,
+        _seed_means as regret_seed_means,
+    )
+    from experiments.collusion.compute_meeting_scheduling_optimal import (
+        MeetingSchedulingInstanceData,
+        MeetingSpec,
+        VariableSpecLite,
+        evaluate_assignment,
+        solve_optimal_assignment,
+    )
+    from experiments.collusion.metrics import compute_collusion_metrics
+except ModuleNotFoundError as exc:
+    if exc.name and exc.name.startswith("experiments"):
+        raise unittest.SkipTest("Optional experiments package is not available") from exc
+    raise
 
 
 class CollusionRunsPerSeedTests(unittest.TestCase):

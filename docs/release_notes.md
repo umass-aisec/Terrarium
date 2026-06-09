@@ -4,9 +4,9 @@ title: Release Notes
 
 # Release Notes
 
-## v0.1.2 - 2026-06-08
+## v0.2.0 - 2026-06-08
 
-Terrarium v0.1.2 focuses on making the project easier to install, understand, and extend. The release adds a proper documentation site, clearer examples, broader provider support, and more explicit runtime modules for agents, tools, environments, and logs.
+Terrarium v0.2.0 focuses on making the project easier to install, understand, and extend. The release adds a proper documentation site, clearer examples, broader provider support, and more explicit runtime modules for agents, tools, environments, and logs.
 
 ### Documentation
 
@@ -15,6 +15,7 @@ Terrarium v0.1.2 focuses on making the project easier to install, understand, an
 - Added component guides for agents, environments, communication, networks, tools, inference clients, attacks, and logging.
 - Added generated API reference pages for the main Terrarium modules.
 - Added a framework comparison page explaining where Terrarium differs from orchestration frameworks and fixed benchmarks.
+- Added GitHub Pages deployment for versioned docs: `main` publishes to `latest/`, release tags publish to paths such as `v0.2.0/`, and the root page links available versions.
 
 ### Runtime Structure
 
@@ -38,6 +39,7 @@ Terrarium v0.1.2 focuses on making the project easier to install, understand, an
 ### Testing and Reliability
 
 - Added tests for provider clients, external MCP tool routing, tool-name normalization, network factory behavior, local protocol behavior, and collusion-related scenarios.
+- Made experiment-dependent tests skip cleanly when the optional experiment sources are not checked out.
 - Removed deprecated server/MCP paths in favor of in-process environment and blackboard tools plus optional external MCP servers.
 
 The full changelog is maintained in `CHANGELOG.md` at the repository root.
