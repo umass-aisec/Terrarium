@@ -9,15 +9,15 @@
 </p>
 
 <p align="center">
-  <a href="docs/index.md">Docs</a>
+  <a href="https://aisec.cs.umass.edu/Terrarium/latest/">Docs</a>
   ·
   <a href="https://arxiv.org/pdf/2510.14312v1">Paper</a>
   ·
-  <a href="docs/quickstart.md">Quick start</a>
+  <a href="https://aisec.cs.umass.edu/Terrarium/latest/quickstart.html">Quick start</a>
   ·
   <a href="examples/configs">Example configs</a>
   ·
-  <a href="docs/api/index.md">API reference</a>
+  <a href="https://aisec.cs.umass.edu/Terrarium/latest/api/">API reference</a>
 </p>
 
 <p align="center">
@@ -134,7 +134,7 @@ llm:
       temperature: 0.7
 ```
 
-See [Quick Start](docs/quickstart.md) for the full configuration guide.
+See the [Quick Start](https://aisec.cs.umass.edu/Terrarium/latest/quickstart.html) for the full configuration guide.
 
 ## Core Ideas
 
@@ -150,7 +150,7 @@ Terrarium runs are built from components. Swap one component while holding the o
 | Tools | `ToolsetDiscovery` and environment `Tools` classes | Blackboard communication, environment actions, and optional external MCP tools. |
 | LLM clients | `AbstractClient` | Provider-specific generation and tool-call parsing. |
 
-Component guides live in [docs/components](docs/components).
+Component guides live in the [hosted documentation](https://aisec.cs.umass.edu/Terrarium/latest/components/environments.html).
 
 
 ## Repository Layout
