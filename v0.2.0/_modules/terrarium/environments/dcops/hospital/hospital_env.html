@@ -1,0 +1,994 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html"><link rel="search" title="Search" href="../../../../../search.html">
+        <link rel="canonical" href="https://umass-aisec.github.io/Terrarium/v0.2.0/_modules/terrarium/environments/dcops/hospital/hospital_env.html">
+        <link rel="prefetch" href="../../../../../_static/terrarium_logo_rounded.png" as="image">
+        <link rel="prefetch" href="../../../../../_static/terrarium_logo_rounded.png" as="image">
+
+    <link rel="shortcut icon" href="../../../../../_static/leaf_favicon.svg"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
+        <title>terrarium.environments.dcops.hospital.hospital_env - Terrarium Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/custom.css?v=3eaf5691" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../../../index.html"><div class="brand">Terrarium Documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../../../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../../../../_static/terrarium_logo_rounded.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../../../../_static/terrarium_logo_rounded.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Terrarium Documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../basic_usage.html">Basic Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../comparison_to_other_frameworks.html">Comparison to Other Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Components</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../components/environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../components/communication.html">Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../components/networks.html">Networks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../components/tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../components/llm.html">Inference Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../components/attacks.html">Attack Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../components/logging.html">Logging</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorial</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../attacks.html">Attack Scenarios</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../../api/index.html">API</a><input aria-label="Toggle navigation of API" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/agents.html">Agents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/communication.html">Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/environments.html">Environments API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/llm.html">LLM Clients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/tools.html">Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/networks.html">Networks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/core.html">Core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/utils.html">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/compaction.html">Compaction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../api/attacks.html">Attacks</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../release_notes.html">Release Notes</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for terrarium.environments.dcops.hospital.hospital_env</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_run_timestamp</span><span class="p">,</span> <span class="n">build_log_dir</span><span class="p">,</span> <span class="n">get_tag_model_subdir</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.environments.abstract_environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">AbstractEnvironment</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.hospital_prompts</span><span class="w"> </span><span class="kn">import</span> <span class="n">HospitalPrompts</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HospitalEnvironment">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HospitalEnvironment</span><span class="p">(</span><span class="n">AbstractEnvironment</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">communication_protocol</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">tool_logger</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">full_config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;environment&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;seed&quot;</span><span class="p">,</span> <span class="mi">42</span><span class="p">))</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_timestamp</span> <span class="o">=</span> <span class="n">get_run_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tool_logger</span> <span class="o">=</span> <span class="n">tool_logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">communication_protocol</span> <span class="o">=</span> <span class="n">communication_protocol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">communication_protocol</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;IV_Kits&quot;</span><span class="p">,</span> <span class="s2">&quot;Anesthetics&quot;</span><span class="p">,</span> <span class="s2">&quot;Pain_Killers&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;Radio_Contrast&quot;</span><span class="p">,</span> <span class="s2">&quot;Oxygen_Tanks&quot;</span><span class="p">,</span> <span class="s2">&quot;Surgical_Packs&quot;</span><span class="p">,</span> <span class="s2">&quot;PPE_Sets&quot;</span>
+        <span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">consumption_map</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;Surgery&quot;</span><span class="p">:</span>   <span class="p">{</span><span class="s2">&quot;Anesthetics&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Surgical_Packs&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;PPE_Sets&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;IV_Kits&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Pain_Killers&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+            <span class="s2">&quot;Radiology&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;Radio_Contrast&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;PPE_Sets&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;IV_Kits&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+            <span class="s2">&quot;Ward&quot;</span><span class="p">:</span>      <span class="p">{</span><span class="s2">&quot;Oxygen_Tanks&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;IV_Kits&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Pain_Killers&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;PPE_Sets&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+            <span class="s2">&quot;Triage&quot;</span><span class="p">:</span>    <span class="p">{</span><span class="s2">&quot;PPE_Sets&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;IV_Kits&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span> 
+        <span class="p">}</span>
+
+        <span class="c1"># Pathway Templates</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">possible_pathways</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">[(</span><span class="s2">&quot;Triage&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Radiology&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Surgery&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Ward&quot;</span><span class="p">,</span> <span class="mi">48</span><span class="p">)],</span>
+            <span class="p">[(</span><span class="s2">&quot;Triage&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Ward&quot;</span><span class="p">,</span> <span class="mi">24</span><span class="p">)],</span>
+            <span class="p">[(</span><span class="s2">&quot;Triage&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Radiology&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Ward&quot;</span><span class="p">,</span> <span class="mi">12</span><span class="p">)]</span>
+        <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_hospital_names</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_flexible_jobshop_data</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prompts</span> <span class="o">=</span> <span class="n">HospitalPrompts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span> <span class="k">if</span> <span class="n">a</span> <span class="o">!=</span> <span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;scheduled_steps&quot;</span><span class="p">:</span> <span class="p">{},</span> <span class="s2">&quot;resource_failures&quot;</span><span class="p">:</span> <span class="p">[]}</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_scarcity_scenario</span><span class="p">()</span>
+        
+        <span class="c1"># Track GLOBAL failures for scoring</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_failures</span> <span class="o">=</span> <span class="p">{</span><span class="n">rt</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">}</span>
+
+        <span class="c1"># --- NEW: Track LOCAL failures for Provisioner Intelligence ---</span>
+        <span class="c1"># Maps &quot;General_Hospital&quot; -&gt; {&quot;IV_Kits&quot;: 5, ...}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hospital_failures</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">h</span><span class="p">:</span> <span class="p">{</span><span class="n">rt</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">}</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span>
+        <span class="p">}</span>
+        
+        <span class="c1"># Track Peer-to-Peer Transfer Rewards</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_rewards</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="c1"># Attribution for P2P transfer rewards (donor agent who executed the transfer).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_rewards_by_agent</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_time_horizon</span> <span class="o">=</span> <span class="mi">168</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_penalty_hours</span> <span class="o">=</span> <span class="mi">4</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">theoretical_max_score</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1000.0</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">joint_reward_history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_rewards_history</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">}</span>
+
+<div class="viewcode-block" id="HospitalEnvironment.compute_max_joint_reward">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.compute_max_joint_reward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_max_joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">theoretical_max_score</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_hospital_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">configured</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hospital_names&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">configured</span><span class="p">:</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">configured</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+            <span class="k">if</span> <span class="n">names</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">names</span>
+
+        <span class="n">num_hospitals</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_hospitals&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">num_hospitals</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">num_hospitals</span> <span class="o">=</span> <span class="mi">2</span>
+
+        <span class="c1"># Backwards-compatible defaults for the first two hospitals.</span>
+        <span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;General_Hospital&quot;</span><span class="p">,</span> <span class="s2">&quot;St_Marys_Center&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">num_hospitals</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">defaults</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">defaults</span><span class="p">[:</span><span class="n">num_hospitals</span><span class="p">]</span>
+
+        <span class="n">extra</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Hospital_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">defaults</span><span class="p">),</span> <span class="n">num_hospitals</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">defaults</span> <span class="o">+</span> <span class="n">extra</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_flexible_jobshop_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+        <span class="n">hospitals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span><span class="p">)</span>
+        <span class="n">services</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Triage&quot;</span><span class="p">,</span> <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Radiology&quot;</span><span class="p">,</span> <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Surgery&quot;</span><span class="p">,</span> <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Ward&quot;</span><span class="p">,</span> <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">24</span><span class="p">}</span>
+        <span class="p">]</span>
+        
+        <span class="n">agents_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hospitals</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">services</span><span class="p">:</span>
+                <span class="n">aid</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">agents_map</span><span class="p">[</span><span class="n">aid</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">aid</span><span class="p">,</span> <span class="s2">&quot;hospital&quot;</span><span class="p">:</span> <span class="n">h</span><span class="p">,</span> <span class="s2">&quot;service&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;capacity&quot;</span><span class="p">],</span> <span class="s2">&quot;default_duration&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;duration&quot;</span><span class="p">]</span>
+                <span class="p">}</span>
+        
+        <span class="n">agents_map</span><span class="p">[</span><span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;hospital&quot;</span><span class="p">:</span> <span class="s2">&quot;Global_Logistics&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;service&quot;</span><span class="p">:</span> <span class="s2">&quot;Provisioning&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="mi">9999</span> 
+        <span class="p">}</span>
+
+        <span class="n">patients</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_patients&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">)):</span>
+            <span class="n">pid</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Patient_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">possible_pathways</span><span class="p">)</span>
+            <span class="n">steps</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;step_index&quot;</span><span class="p">:</span> <span class="n">idx</span><span class="p">,</span> <span class="s2">&quot;service&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="n">d</span><span class="p">}</span> 
+                     <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">template</span><span class="p">)]</span>
+            <span class="n">patients</span><span class="p">[</span><span class="n">pid</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span> <span class="s2">&quot;arrival_time&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span> <span class="s2">&quot;pathway&quot;</span><span class="p">:</span> <span class="n">steps</span>
+            <span class="p">}</span>
+        <span class="k">return</span> <span class="n">agents_map</span><span class="p">,</span> <span class="n">patients</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_scarcity_scenario</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+        <span class="n">avg_costs</span> <span class="o">=</span> <span class="p">{</span><span class="n">rt</span><span class="p">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">possible_pathways</span><span class="p">:</span>
+            <span class="n">path_cost</span> <span class="o">=</span> <span class="p">{</span><span class="n">rt</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">}</span>
+            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+                <span class="n">service_name</span> <span class="o">=</span> <span class="n">step</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">consumption_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">service_name</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">for</span> <span class="n">res</span><span class="p">,</span> <span class="n">qty</span> <span class="ow">in</span> <span class="n">consumption</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">path_cost</span><span class="p">[</span><span class="n">res</span><span class="p">]</span> <span class="o">+=</span> <span class="n">qty</span>
+            <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">:</span>
+                <span class="n">avg_costs</span><span class="p">[</span><span class="n">rt</span><span class="p">]</span> <span class="o">+=</span> <span class="n">path_cost</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rt</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="n">avg_costs</span><span class="p">:</span> <span class="n">avg_costs</span><span class="p">[</span><span class="n">rt</span><span class="p">]</span> <span class="o">/=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">possible_pathways</span><span class="p">)</span>
+        <span class="n">num_patients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_patients&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+        
+        <span class="n">inventory</span> <span class="o">=</span> <span class="p">{</span><span class="n">h</span><span class="p">:</span> <span class="p">{</span><span class="n">rt</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">}</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span><span class="p">}</span>
+        <span class="n">inventory</span><span class="p">[</span><span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">rt</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">rt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">:</span>
+            <span class="n">velocity</span> <span class="o">=</span> <span class="n">avg_costs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rt</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">local_need</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">velocity</span> <span class="o">*</span> <span class="n">num_patients</span> <span class="o">*</span> <span class="mf">0.6</span><span class="p">)</span>
+            <span class="n">safety</span> <span class="o">=</span> <span class="n">local_need</span> <span class="o">+</span> <span class="mi">5</span>
+            <span class="k">if</span> <span class="n">velocity</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">safety</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span> <span class="n">safety</span> <span class="o">=</span> <span class="mi">3</span>
+            
+            <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span><span class="p">:</span>
+                <span class="n">inventory</span><span class="p">[</span><span class="n">h</span><span class="p">][</span><span class="n">rt</span><span class="p">]</span> <span class="o">=</span> <span class="n">safety</span>
+            
+            <span class="n">prov_stock</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">velocity</span> <span class="o">*</span> <span class="n">num_patients</span> <span class="o">*</span> <span class="mf">2.5</span><span class="p">)</span> <span class="o">+</span> <span class="mi">10</span>
+            <span class="n">inventory</span><span class="p">[</span><span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">][</span><span class="n">rt</span><span class="p">]</span> <span class="o">=</span> <span class="n">prov_stock</span>
+
+        <span class="k">return</span> <span class="n">inventory</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_transfer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+        <span class="n">dst</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;to_hospital&quot;</span><span class="p">)</span>
+        <span class="n">res_type</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;resource_type&quot;</span><span class="p">)</span>
+        <span class="n">amt</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;amount&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">rationale</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rationale&quot;</span><span class="p">,</span> <span class="s2">&quot;No rationale&quot;</span><span class="p">)</span>
+
+        <span class="n">sender_hospital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">[</span><span class="n">sender_id</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hospital&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sender_id</span> <span class="o">==</span> <span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">:</span> <span class="n">sender_hospital</span> <span class="o">=</span> <span class="s2">&quot;Resource_Provisioner&quot;</span>
+
+        <span class="n">dst_s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span> <span class="k">if</span> <span class="n">dst</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">dst_s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">:</span>
+            <span class="n">dst_hospital</span> <span class="o">=</span> <span class="n">dst_s</span>
+        <span class="k">elif</span> <span class="s2">&quot;General&quot;</span> <span class="ow">in</span> <span class="n">dst_s</span><span class="p">:</span>
+            <span class="n">dst_hospital</span> <span class="o">=</span> <span class="s2">&quot;General_Hospital&quot;</span>
+        <span class="k">elif</span> <span class="s2">&quot;Mary&quot;</span> <span class="ow">in</span> <span class="n">dst_s</span><span class="p">:</span>
+            <span class="n">dst_hospital</span> <span class="o">=</span> <span class="s2">&quot;St_Marys_Center&quot;</span>
+        <span class="k">elif</span> <span class="s2">&quot;Provisioner&quot;</span> <span class="ow">in</span> <span class="n">dst_s</span><span class="p">:</span>
+            <span class="n">dst_hospital</span> <span class="o">=</span> <span class="s2">&quot;Resource_Provisioner&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dst_hospital</span> <span class="o">=</span> <span class="n">dst_s</span>
+
+        <span class="k">if</span> <span class="n">sender_hospital</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span> <span class="ow">and</span> <span class="n">dst_hospital</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span> <span class="ow">and</span> <span class="n">res_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">:</span>
+            <span class="n">available</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="n">sender_hospital</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">res_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">actual_move</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">amt</span><span class="p">,</span> <span class="n">available</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">actual_move</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="n">sender_hospital</span><span class="p">][</span><span class="n">res_type</span><span class="p">]</span> <span class="o">-=</span> <span class="n">actual_move</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="n">dst_hospital</span><span class="p">][</span><span class="n">res_type</span><span class="p">]</span> <span class="o">+=</span> <span class="n">actual_move</span>
+                
+                <span class="c1"># --- Incentive for Hospital-to-Hospital Transfers ---</span>
+                <span class="k">if</span> <span class="n">sender_hospital</span> <span class="o">!=</span> <span class="s2">&quot;Resource_Provisioner&quot;</span> <span class="ow">and</span> <span class="n">sender_hospital</span> <span class="o">!=</span> <span class="n">dst_hospital</span><span class="p">:</span>
+                    <span class="c1"># Reward: +15 points per unit (Offsets holding cost of 10 + small bonus)</span>
+                    <span class="n">reward</span> <span class="o">=</span> <span class="n">actual_move</span> <span class="o">*</span> <span class="mf">15.0</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">transfer_rewards</span> <span class="o">+=</span> <span class="n">reward</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">transfer_rewards_by_agent</span><span class="p">[</span><span class="n">sender_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_rewards_by_agent</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sender_id</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">reward</span>
+                    <span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;P2P TRANSFER REWARD: +</span><span class="si">{</span><span class="n">reward</span><span class="si">}</span><span class="s2"> for moving </span><span class="si">{</span><span class="n">actual_move</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">res_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;FULL&quot;</span> <span class="k">if</span> <span class="n">actual_move</span> <span class="o">==</span> <span class="n">amt</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;PARTIAL (</span><span class="si">{</span><span class="n">actual_move</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">amt</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TRANSFER [</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">]: </span><span class="si">{</span><span class="n">sender_id</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">dst_hospital</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">actual_move</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">res_type</span><span class="si">}</span><span class="s2">. Rationale: </span><span class="si">{</span><span class="n">rationale</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TRANSFER FAILED [</span><span class="si">{</span><span class="n">sender_id</span><span class="si">}</span><span class="s2">]: Requested </span><span class="si">{</span><span class="n">amt</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">res_type</span><span class="si">}</span><span class="s2">, had </span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_schedule_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="n">p_id</span><span class="p">,</span> <span class="n">step_idx</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;patient_id&quot;</span><span class="p">),</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_index&quot;</span><span class="p">),</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_time&quot;</span><span class="p">)</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SCHEDULE [</span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">]: Patient </span><span class="si">{</span><span class="n">p_id</span><span class="si">}</span><span class="s2"> @ </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">p_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">:</span> <span class="k">return</span>
+
+        <span class="n">patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">[</span><span class="n">p_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">step_idx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">patient</span><span class="p">[</span><span class="s2">&quot;pathway&quot;</span><span class="p">]):</span> <span class="k">return</span>
+        
+        <span class="n">target_step</span> <span class="o">=</span> <span class="n">patient</span><span class="p">[</span><span class="s2">&quot;pathway&quot;</span><span class="p">][</span><span class="n">step_idx</span><span class="p">]</span>
+        <span class="n">agent_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">agent_info</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">target_step</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">]:</span> <span class="k">return</span>
+        
+        <span class="n">min_start</span> <span class="o">=</span> <span class="n">patient</span><span class="p">[</span><span class="s2">&quot;arrival_time&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">step_idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">prev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">p_id</span><span class="p">][</span><span class="s2">&quot;scheduled_steps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step_idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">prev</span><span class="p">:</span> <span class="k">return</span> 
+            <span class="n">prev_h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">[</span><span class="n">prev</span><span class="p">[</span><span class="s2">&quot;agent&quot;</span><span class="p">]][</span><span class="s2">&quot;hospital&quot;</span><span class="p">]</span>
+            <span class="n">curr_h</span> <span class="o">=</span> <span class="n">agent_info</span><span class="p">[</span><span class="s2">&quot;hospital&quot;</span><span class="p">]</span>
+            <span class="n">penalty</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_penalty_hours</span> <span class="k">if</span> <span class="n">prev_h</span> <span class="o">!=</span> <span class="n">curr_h</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">min_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">min_start</span><span class="p">,</span> <span class="n">prev</span><span class="p">[</span><span class="s2">&quot;end_time&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">penalty</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="n">min_start</span><span class="p">:</span> <span class="k">return</span>
+            
+        <span class="n">dur</span> <span class="o">=</span> <span class="n">target_step</span><span class="p">[</span><span class="s2">&quot;duration&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">dur</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_time_horizon</span><span class="p">:</span> <span class="k">return</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="p">[]))</span> <span class="o">&gt;=</span> <span class="n">agent_info</span><span class="p">[</span><span class="s2">&quot;capacity&quot;</span><span class="p">]:</span> <span class="k">return</span>
+            
+        <span class="n">hospital</span> <span class="o">=</span> <span class="n">agent_info</span><span class="p">[</span><span class="s2">&quot;hospital&quot;</span><span class="p">]</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">agent_info</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">]</span>
+        <span class="n">costs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">consumption_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="p">{})</span>
+        
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">res</span><span class="p">,</span> <span class="n">req_amt</span> <span class="ow">in</span> <span class="n">costs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="n">hospital</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">req_amt</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="n">hospital</span><span class="p">][</span><span class="n">res</span><span class="p">]</span> <span class="o">-=</span> <span class="n">req_amt</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="n">hospital</span><span class="p">][</span><span class="n">res</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> 
+                <span class="n">missing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">resource_failures</span><span class="p">[</span><span class="n">res</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                
+                <span class="c1"># --- NEW: Record specific hospital failure ---</span>
+                <span class="k">if</span> <span class="n">hospital</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_failures</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">hospital_failures</span><span class="p">[</span><span class="n">hospital</span><span class="p">][</span><span class="n">res</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RESOURCE FAILURE [</span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">]: Scheduled </span><span class="si">{</span><span class="n">p_id</span><span class="si">}</span><span class="s2"> missing </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;resource_failures&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">p_id</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">p_id</span><span class="p">][</span><span class="s2">&quot;resource_failures&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">p_id</span><span class="p">][</span><span class="s2">&quot;resource_failures&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">step_idx</span><span class="p">,</span> <span class="s2">&quot;missing&quot;</span><span class="p">:</span> <span class="n">missing</span><span class="p">,</span> <span class="s2">&quot;agent&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">dur</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]:</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">[</span><span class="n">agent_id</span><span class="p">][</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p_id</span><span class="p">)</span>
+            
+        <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">p_id</span><span class="p">][</span><span class="s2">&quot;scheduled_steps&quot;</span><span class="p">][</span><span class="n">step_idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;agent&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">,</span> <span class="s2">&quot;start_time&quot;</span><span class="p">:</span> <span class="n">start</span><span class="p">,</span> <span class="s2">&quot;end_time&quot;</span><span class="p">:</span> <span class="n">start</span> <span class="o">+</span> <span class="n">dur</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_makespan_and_flow</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Joint reward:</span>
+<span class="sd">          score = theoretical_max_score - total_flow - resource_penalty - holding_cost + transfer_rewards</span>
+
+<span class="sd">        Per-agent rewards returned by this method are an *exact decomposition* of the joint reward:</span>
+<span class="sd">          - Base: each patient contributes +1000, split evenly across its pathway steps (1000/len(path) per step),</span>
+<span class="sd">            attributed to the agent responsible for that step.</span>
+<span class="sd">          - Flow-time penalty: for each patient, split its flow penalty evenly across the same pathway steps</span>
+<span class="sd">            (patient-based attribution).</span>
+<span class="sd">          - Resource failure penalty: -300 per missing resource item, attributed to the agent where it occurs.</span>
+<span class="sd">          - Holding cost: -10 per leftover unit of hospital inventory, shared uniformly across that hospital&#39;s agents.</span>
+<span class="sd">          - Transfer rewards: attributed to the donor agent that executed the rewarded transfer.</span>
+
+<span class="sd">        By construction: sum(agent_rewards.values()) == joint_reward (up to float error).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total_flow</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">missed_step_penalty</span> <span class="o">=</span> <span class="mf">500.0</span>
+        <span class="n">agent_rewards</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">}</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_infer_step_agent</span><span class="p">(</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">patient_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">step_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">service</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">sched</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step_idx</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agent&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">a</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">a</span>
+
+            <span class="c1"># If a step isn&#39;t scheduled, infer a plausible agent so we can still allocate</span>
+            <span class="c1"># missed-step penalties and the base per-patient reward consistently.</span>
+            <span class="n">inferred_hospital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span> <span class="k">else</span> <span class="s2">&quot;General_Hospital&quot;</span>
+            <span class="k">if</span> <span class="n">step_idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">prev</span> <span class="o">=</span> <span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step_idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">prev_a</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">prev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agent&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">prev_a</span> <span class="ow">and</span> <span class="n">prev_a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">:</span>
+                        <span class="n">inferred_hospital</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">[</span><span class="n">prev_a</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hospital&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">inferred_hospital</span><span class="p">)</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">inferred_hospital</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">service</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># Patient-based base + flow attribution.</span>
+        <span class="k">for</span> <span class="n">pid</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sched</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">pid</span><span class="p">][</span><span class="s2">&quot;scheduled_steps&quot;</span><span class="p">]</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pathway&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">step_credit</span> <span class="o">=</span> <span class="mf">1000.0</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+
+            <span class="n">step_agents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_index&quot;</span><span class="p">))</span>
+                <span class="n">service</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;service&quot;</span><span class="p">))</span>
+                <span class="n">step_agents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">_infer_step_agent</span><span class="p">(</span><span class="n">patient_id</span><span class="o">=</span><span class="n">pid</span><span class="p">,</span> <span class="n">step_idx</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span> <span class="n">service</span><span class="o">=</span><span class="n">service</span><span class="p">,</span> <span class="n">sched</span><span class="o">=</span><span class="n">sched</span><span class="p">)</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Base credit: sums to +1000 per patient.</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">step_agents</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">agent_rewards</span><span class="p">:</span>
+                    <span class="n">agent_rewards</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">+=</span> <span class="n">step_credit</span>
+
+            <span class="c1"># Flow penalty: matches prior logic.</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sched</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="n">flow</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sched</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="s2">&quot;end_time&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;arrival_time&quot;</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">flow</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">sched</span><span class="p">))</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">missed_step_penalty</span><span class="p">)</span>
+            <span class="n">total_flow</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">flow</span><span class="p">)</span>
+
+            <span class="n">per_step_flow</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">flow</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">step_agents</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">agent_rewards</span><span class="p">:</span>
+                    <span class="n">agent_rewards</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">-=</span> <span class="n">per_step_flow</span>
+
+        <span class="c1"># Resource failures: exact -300 per missing resource item (type), attributed to failing agent.</span>
+        <span class="n">total_failures</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource_failures</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="n">resource_penalty</span> <span class="o">=</span> <span class="n">total_failures</span> <span class="o">*</span> <span class="mf">300.0</span>
+        <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">failures</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;resource_failures&quot;</span><span class="p">,</span> <span class="p">[])</span> <span class="ow">or</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">failures</span><span class="p">:</span>
+                <span class="n">agent</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agent&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">missing</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;missing&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">agent</span> <span class="ow">or</span> <span class="n">agent</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">agent_rewards</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">missing</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="n">missing</span><span class="p">:</span>
+                    <span class="n">agent_rewards</span><span class="p">[</span><span class="n">agent</span><span class="p">]</span> <span class="o">-=</span> <span class="mf">300.0</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span>
+
+        <span class="c1"># Holding cost: exact -10 per leftover unit in hospital inventories; shared uniformly among hospital agents.</span>
+        <span class="n">holding_cost</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">holding_units_by_hospital</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span><span class="p">:</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">if</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">qty</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">[</span><span class="n">h</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                    <span class="n">units</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">qty</span><span class="p">)</span>
+            <span class="n">holding_units_by_hospital</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">units</span>
+            <span class="n">holding_cost</span> <span class="o">+=</span> <span class="n">units</span> <span class="o">*</span> <span class="mf">10.0</span>
+
+        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span><span class="p">:</span>
+            <span class="n">units</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">holding_units_by_hospital</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">units</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">agents_h</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">a</span>
+                <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hospital&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">h</span> <span class="ow">and</span> <span class="n">a</span> <span class="o">!=</span> <span class="s2">&quot;Resource_Provisioner&quot;</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">agents_h</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">share</span> <span class="o">=</span> <span class="p">(</span><span class="n">units</span> <span class="o">*</span> <span class="mf">10.0</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">agents_h</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">agents_h</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">agent_rewards</span><span class="p">:</span>
+                    <span class="n">agent_rewards</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">-=</span> <span class="n">share</span>
+
+        <span class="c1"># Transfer rewards: attribute to donor agent that executed the rewarded transfer.</span>
+        <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transfer_rewards_by_agent</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">agent_rewards</span><span class="p">:</span>
+                <span class="n">agent_rewards</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+        <span class="c1"># Score includes transfer rewards.</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">theoretical_max_score</span> <span class="o">-</span> <span class="n">total_flow</span> <span class="o">-</span> <span class="n">resource_penalty</span> <span class="o">-</span> <span class="n">holding_cost</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_rewards</span>
+
+        <span class="c1"># Debug sanity check (should be exact by construction).</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">tot</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">agent_rewards</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">tot</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;agent_rewards sum mismatch: sum=</span><span class="si">{</span><span class="n">tot</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> score=</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> diff=</span><span class="si">{</span><span class="n">tot</span><span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="n">score</span><span class="p">,</span> <span class="n">agent_rewards</span>
+
+<div class="viewcode-block" id="HospitalEnvironment.joint_reward">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.joint_reward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">):</span>
+        <span class="n">s</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_makespan_and_flow</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">s</span></div>
+
+
+<div class="viewcode-block" id="HospitalEnvironment.agent_reward">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.agent_reward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">agent_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_makespan_and_flow</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_name</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_department_cost_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hospital</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">service</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">job_queue</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+        <span class="n">local_inventory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">hospital</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">procedure_costs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">consumption_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="n">cost_table</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">job_queue</span><span class="p">:</span>
+            <span class="n">missing</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">missing_types</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">resource_type</span><span class="p">,</span> <span class="n">required_qty</span> <span class="ow">in</span> <span class="n">procedure_costs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">on_hand</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">local_inventory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">deficit</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">required_qty</span><span class="p">)</span> <span class="o">-</span> <span class="n">on_hand</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">deficit</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">missing</span><span class="p">[</span><span class="n">resource_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">deficit</span>
+                    <span class="n">missing_types</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Local heuristic aligned with the env decomposition:</span>
+            <span class="c1"># - base credit per step is +1000/len(path) (typically +250); we subtract it from &quot;cost&quot;</span>
+            <span class="c1"># - each missing resource type implies a likely -300 failure penalty</span>
+            <span class="c1"># - earlier completion reduces patient flow; use earliest_end_time as a proxy (scaled by path length)</span>
+            <span class="n">pid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;patient_id&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">path_len</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pathway&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]))</span> <span class="k">if</span> <span class="n">pid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="n">path_len</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">path_len</span><span class="p">)</span> <span class="k">if</span> <span class="n">path_len</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">4.0</span>
+            <span class="n">step_credit</span> <span class="o">=</span> <span class="mf">1000.0</span> <span class="o">/</span> <span class="n">path_len</span>
+
+            <span class="n">resource_penalty_est</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">missing_types</span><span class="p">)</span> <span class="o">*</span> <span class="mf">300.0</span>
+            <span class="n">earliest_end</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;earliest_start_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;duration&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">flow_share_est</span> <span class="o">=</span> <span class="n">earliest_end</span> <span class="o">/</span> <span class="n">path_len</span>
+            <span class="n">cost</span> <span class="o">=</span> <span class="n">resource_penalty_est</span> <span class="o">+</span> <span class="n">flow_share_est</span> <span class="o">-</span> <span class="n">step_credit</span>
+
+            <span class="n">cost_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;job_id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">job</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;patient_id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">::step</span><span class="si">{</span><span class="n">job</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;step_index&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;patient_id&quot;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;patient_id&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;step_index&quot;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_index&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cost&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">cost</span><span class="p">),</span>
+                    <span class="s2">&quot;feasible&quot;</span><span class="p">:</span> <span class="n">missing_types</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;missing&quot;</span><span class="p">:</span> <span class="n">missing</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="n">cost_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="p">(</span><span class="ow">not</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feasible&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)))))</span>
+        <span class="k">return</span> <span class="n">cost_table</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_provisioner_cost_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">failures_by_hospital</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+        <span class="n">prov_inventory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># Heuristic targets informed by the prompt guidance:</span>
+        <span class="c1"># - treat &lt;2 as &quot;critical shortage&quot;</span>
+        <span class="c1"># - top up toward 5 units</span>
+        <span class="n">critical_threshold</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">target_stock</span> <span class="o">=</span> <span class="mi">5</span>
+
+        <span class="n">cost_table</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">hospital</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_names</span><span class="p">:</span>
+            <span class="n">local_inventory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">hospital</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="n">failures</span> <span class="o">=</span> <span class="n">failures_by_hospital</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">hospital</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">resource_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_types</span><span class="p">:</span>
+                <span class="n">on_hand</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">local_inventory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">prov_on_hand</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">prov_inventory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">failure_count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">failures</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+
+                <span class="n">shortage</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">critical_threshold</span> <span class="o">-</span> <span class="n">on_hand</span><span class="p">)</span>
+                <span class="n">recommended</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">target_stock</span> <span class="o">-</span> <span class="n">on_hand</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">failure_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">on_hand</span> <span class="o">&lt;</span> <span class="n">critical_threshold</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">recommended</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">amount</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">recommended</span><span class="p">,</span> <span class="n">prov_on_hand</span><span class="p">)</span>
+                <span class="n">feasible</span> <span class="o">=</span> <span class="n">amount</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+                <span class="c1"># Lower cost =&gt; more urgent/valuable to do.</span>
+                <span class="c1">#</span>
+                <span class="c1"># Align this heuristic with the environment&#39;s reward decomposition:</span>
+                <span class="c1"># - Preventing a failure avoids ~300 points per missing item.</span>
+                <span class="c1"># - Small shortages indicate risk of near-term failures/missed steps (soft weight).</span>
+                <span class="c1"># - Sending inventory that goes unused incurs holding cost (-10/unit) at hospitals.</span>
+                <span class="c1">#</span>
+                <span class="c1"># Provisioner-&gt;hospital transfers do not earn transfer_rewards; treat this as stabilization only.</span>
+                <span class="n">benefit_est</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">failure_count</span><span class="p">)</span> <span class="o">*</span> <span class="mf">300.0</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">shortage</span><span class="p">)</span> <span class="o">*</span> <span class="mf">150.0</span>
+                <span class="n">holding_risk_est</span> <span class="o">=</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span>
+                <span class="c1"># Net &quot;cost&quot;: holding risk minus expected benefit (lower is better).</span>
+                <span class="n">cost</span> <span class="o">=</span> <span class="n">holding_risk_est</span> <span class="o">-</span> <span class="n">benefit_est</span>
+
+                <span class="n">reason_bits</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">if</span> <span class="n">failure_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">reason_bits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">failure_count</span><span class="si">}</span><span class="s2"> failures&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">on_hand</span> <span class="o">&lt;</span> <span class="n">critical_threshold</span><span class="p">:</span>
+                    <span class="n">reason_bits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;critical stock (</span><span class="si">{</span><span class="n">on_hand</span><span class="si">}</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">critical_threshold</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reason_bits</span><span class="p">)</span> <span class="k">if</span> <span class="n">reason_bits</span> <span class="k">else</span> <span class="s2">&quot;top-up&quot;</span>
+
+                <span class="n">cost_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;transfer_id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">hospital</span><span class="si">}</span><span class="s2">::</span><span class="si">{</span><span class="n">resource_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;to_hospital&quot;</span><span class="p">:</span> <span class="n">hospital</span><span class="p">,</span>
+                        <span class="s2">&quot;resource_type&quot;</span><span class="p">:</span> <span class="n">resource_type</span><span class="p">,</span>
+                        <span class="s2">&quot;available&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">prov_on_hand</span><span class="p">),</span>
+                        <span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">amount</span><span class="p">),</span>
+                        <span class="s2">&quot;requested&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">recommended</span><span class="p">),</span>
+                        <span class="s2">&quot;benefit_est&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">benefit_est</span><span class="p">),</span>
+                        <span class="s2">&quot;holding_risk_est&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">holding_risk_est</span><span class="p">),</span>
+                        <span class="s2">&quot;cost&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">cost</span><span class="p">),</span>
+                        <span class="s2">&quot;feasible&quot;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">feasible</span><span class="p">),</span>
+                        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+
+        <span class="n">cost_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="p">(</span><span class="ow">not</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feasible&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)))))</span>
+        <span class="k">return</span> <span class="n">cost_table</span>
+
+<div class="viewcode-block" id="HospitalEnvironment.build_agent_context">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.build_agent_context">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_agent_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">my_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">agent_name</span> <span class="o">==</span> <span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">:</span>
+            <span class="c1"># --- NEW: Filter failure map to only show active problems ---</span>
+            <span class="n">active_failures</span> <span class="o">=</span> <span class="p">{</span><span class="n">h</span><span class="p">:</span> <span class="n">f</span> <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hospital_failures</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">}</span>
+            
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;agent_name&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span> <span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
+                <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;provisioner&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;inventory_snapshot&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">,</span>
+                <span class="s2">&quot;failures_so_far&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_failures</span><span class="p">,</span>
+                <span class="s2">&quot;failures_by_hospital&quot;</span><span class="p">:</span> <span class="n">active_failures</span><span class="p">,</span>  <span class="c1"># &lt;--- Granular visibility</span>
+                <span class="s2">&quot;cost_table&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_provisioner_cost_table</span><span class="p">(</span><span class="n">active_failures</span><span class="p">),</span>
+            <span class="p">}</span>
+
+        <span class="n">summary</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+            <span class="n">load</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">t</span><span class="o">+</span><span class="n">i</span><span class="p">,</span> <span class="p">[]))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span> <span class="o">/</span> <span class="mf">4.0</span>
+            <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;H</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">load</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">my_info</span><span class="p">[</span><span class="s1">&#39;capacity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            
+        <span class="n">queue</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">pid</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">done</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">pid</span><span class="p">][</span><span class="s2">&quot;scheduled_steps&quot;</span><span class="p">]</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">done</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;pathway&quot;</span><span class="p">]):</span>
+                <span class="n">step</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;pathway&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">step</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">]:</span>
+                    <span class="n">start</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;arrival_time&quot;</span><span class="p">]</span>
+                    <span class="n">note</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                    <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">prev</span> <span class="o">=</span> <span class="n">done</span><span class="p">[</span><span class="n">idx</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="n">prev_h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents_map</span><span class="p">[</span><span class="n">prev</span><span class="p">[</span><span class="s2">&quot;agent&quot;</span><span class="p">]][</span><span class="s2">&quot;hospital&quot;</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">prev_h</span> <span class="o">!=</span> <span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;hospital&quot;</span><span class="p">]:</span>
+                            <span class="n">note</span> <span class="o">=</span> <span class="s2">&quot;(Transfer)&quot;</span>
+                            <span class="n">start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">prev</span><span class="p">[</span><span class="s2">&quot;end_time&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_penalty_hours</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">prev</span><span class="p">[</span><span class="s2">&quot;end_time&quot;</span><span class="p">])</span>
+                    <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s2">&quot;patient_id&quot;</span><span class="p">:</span> <span class="n">pid</span><span class="p">,</span> <span class="s2">&quot;step_index&quot;</span><span class="p">:</span> <span class="n">idx</span><span class="p">,</span> 
+                        <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="n">step</span><span class="p">[</span><span class="s2">&quot;duration&quot;</span><span class="p">],</span> <span class="s2">&quot;earliest_start_time&quot;</span><span class="p">:</span> <span class="n">start</span><span class="p">,</span> <span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="n">note</span>
+                    <span class="p">})</span>
+
+        <span class="n">cost_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_department_cost_table</span><span class="p">(</span>
+            <span class="n">hospital</span><span class="o">=</span><span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;hospital&quot;</span><span class="p">],</span>
+            <span class="n">service</span><span class="o">=</span><span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">],</span>
+            <span class="n">job_queue</span><span class="o">=</span><span class="n">queue</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;agent_name&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span> <span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
+            <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;department&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dept_info&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;capacity&quot;</span><span class="p">:</span> <span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;capacity&quot;</span><span class="p">],</span> 
+                <span class="s2">&quot;service&quot;</span><span class="p">:</span> <span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">],</span> 
+                <span class="s2">&quot;hospital&quot;</span><span class="p">:</span> <span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;hospital&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;local_inventory&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;hospital&quot;</span><span class="p">],</span> <span class="p">{}),</span>
+                <span class="s2">&quot;procedure_costs&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">consumption_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">my_info</span><span class="p">[</span><span class="s2">&quot;service&quot;</span><span class="p">],</span> <span class="p">{}),</span>
+                <span class="s2">&quot;schedule_summary&quot;</span><span class="p">:</span> <span class="n">summary</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;job_queue&quot;</span><span class="p">:</span> <span class="n">queue</span><span class="p">,</span>
+            <span class="s2">&quot;cost_table&quot;</span><span class="p">:</span> <span class="n">cost_table</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="HospitalEnvironment.done">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.done">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">):</span>
+        <span class="c1"># NOTE: `examples/base_main.py` already bounds the loop by `simulation.max_iterations`.</span>
+        <span class="c1"># This method is for early-stopping when the schedule has truly converged.</span>
+        <span class="n">max_iterations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">iteration</span> <span class="o">&gt;</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="c1"># Converged only if every patient has all steps scheduled AND no resource failures occurred.</span>
+        <span class="k">for</span> <span class="n">pid</span><span class="p">,</span> <span class="n">patient</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">scheduled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scheduled_steps&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">pathway</span> <span class="o">=</span> <span class="n">patient</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pathway&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">scheduled</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pathway</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;resource_failures&quot;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="HospitalEnvironment.get_network_context">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.get_network_context">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_network_context</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="s2">&quot;Resource-Constrained Job Shop with Provisioner.&quot;</span></div>
+
+<div class="viewcode-block" id="HospitalEnvironment.async_init">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.async_init">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">async_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">async_init</span><span class="p">()</span></div>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">):</span>
+        <span class="n">s</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_makespan_and_flow</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">joint_reward_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">items</span><span class="p">():</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_rewards_history</span><span class="p">[</span><span class="n">a</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="n">tag</span> <span class="o">=</span> <span class="n">get_tag_model_subdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">)</span>
+        <span class="n">log_dir</span> <span class="o">=</span> <span class="n">build_log_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_timestamp</span><span class="p">)</span>
+        <span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">iteration</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_dir</span> <span class="o">/</span> <span class="s2">&quot;patients.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Iteration </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">: Score = </span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;data_iteration_</span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">({</span><span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span> <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">,</span> <span class="s2">&quot;agent_rewards&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span> <span class="s2">&quot;inventory&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">,</span> <span class="s2">&quot;failures&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_failures</span><span class="p">},</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<div class="viewcode-block" id="HospitalEnvironment.get_final_summary">
+<a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment.get_final_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_final_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span><span class="p">,</span> <span class="n">agent_rewards</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_makespan_and_flow</span><span class="p">()</span>
+        <span class="n">total_patients</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">)</span>
+        <span class="n">converged_patients</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">failed_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">pid</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">completed_steps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">pid</span><span class="p">][</span><span class="s2">&quot;scheduled_steps&quot;</span><span class="p">])</span>
+            <span class="n">required_steps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;pathway&quot;</span><span class="p">])</span>
+            <span class="n">resource_errors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">pid</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;resource_failures&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;OK&quot;</span>
+            <span class="k">if</span> <span class="n">completed_steps</span> <span class="o">!=</span> <span class="n">required_steps</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Incomplete (</span><span class="si">{</span><span class="n">completed_steps</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">required_steps</span><span class="si">}</span><span class="s2"> steps)&quot;</span>
+            <span class="k">elif</span> <span class="n">resource_errors</span><span class="p">:</span>
+                <span class="n">steps_failed</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;step&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">resource_errors</span><span class="p">]</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;RESOURCE FAILED (Steps: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">steps_failed</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;OK&quot;</span><span class="p">:</span> <span class="n">converged_patients</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span> <span class="n">failed_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;complete&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">failed_list</span> <span class="k">else</span> <span class="s2">&quot;partial_convergence&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">,</span>
+            <span class="s2">&quot;agent_rewards&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">agent_rewards</span><span class="p">),</span>
+            <span class="s2">&quot;convergence_report&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;total_patients&quot;</span><span class="p">:</span> <span class="n">total_patients</span><span class="p">,</span>
+                <span class="s2">&quot;converged_count&quot;</span><span class="p">:</span> <span class="n">converged_patients</span><span class="p">,</span>
+                <span class="s2">&quot;resource_failures&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_failures</span><span class="p">,</span>
+                <span class="s2">&quot;final_inventory&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">inventory</span><span class="p">,</span>
+                <span class="s2">&quot;failed_patients&quot;</span><span class="p">:</span> <span class="n">failed_list</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../../../_static/documentation_options.js?v=1be0d999"></script>
+    <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../../../_static/copybutton.js?v=fd10adb8"></script>
+    </body>
+</html>
