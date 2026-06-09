@@ -282,9 +282,9 @@
         <article role="main" id="furo-main-content">
           <section id="release-notes">
 <h1>Release Notes<a class="headerlink" href="#release-notes" title="Link to this heading">¶</a></h1>
-<section id="v0-1-2-2026-06-08">
-<h2>v0.1.2 - 2026-06-08<a class="headerlink" href="#v0-1-2-2026-06-08" title="Link to this heading">¶</a></h2>
-<p>Terrarium v0.1.2 focuses on making the project easier to install, understand, and extend. The release adds a proper documentation site, clearer examples, broader provider support, and more explicit runtime modules for agents, tools, environments, and logs.</p>
+<section id="v0-2-0-2026-06-08">
+<h2>v0.2.0 - 2026-06-08<a class="headerlink" href="#v0-2-0-2026-06-08" title="Link to this heading">¶</a></h2>
+<p>Terrarium v0.2.0 focuses on making the project easier to install, understand, and extend. The release adds a proper documentation site, clearer examples, broader provider support, and more explicit runtime modules for agents, tools, environments, and logs.</p>
 <section id="documentation">
 <h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h3>
 <ul class="simple">
@@ -293,6 +293,7 @@
 <li><p>Added component guides for agents, environments, communication, networks, tools, inference clients, attacks, and logging.</p></li>
 <li><p>Added generated API reference pages for the main Terrarium modules.</p></li>
 <li><p>Added a framework comparison page explaining where Terrarium differs from orchestration frameworks and fixed benchmarks.</p></li>
+<li><p>Added GitHub Pages deployment for versioned docs: <code class="docutils literal notranslate"><span class="pre">main</span></code> publishes to <code class="docutils literal notranslate"><span class="pre">latest/</span></code>, release tags publish to paths such as <code class="docutils literal notranslate"><span class="pre">v0.2.0/</span></code>, and the root page links available versions.</p></li>
 </ul>
 </section>
 <section id="runtime-structure">
@@ -324,6 +325,7 @@
 <h3>Testing and Reliability<a class="headerlink" href="#testing-and-reliability" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Added tests for provider clients, external MCP tool routing, tool-name normalization, network factory behavior, local protocol behavior, and collusion-related scenarios.</p></li>
+<li><p>Made experiment-dependent tests skip cleanly when the optional experiment sources are not checked out.</p></li>
 <li><p>Removed deprecated server/MCP paths in favor of in-process environment and blackboard tools plus optional external MCP servers.</p></li>
 </ul>
 <p>The full changelog is maintained in <code class="docutils literal notranslate"><span class="pre">CHANGELOG.md</span></code> at the repository root.</p>
@@ -379,7 +381,7 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Release Notes</a><ul>
-<li><a class="reference internal" href="#v0-1-2-2026-06-08">v0.1.2 - 2026-06-08</a><ul>
+<li><a class="reference internal" href="#v0-2-0-2026-06-08">v0.2.0 - 2026-06-08</a><ul>
 <li><a class="reference internal" href="#documentation">Documentation</a></li>
 <li><a class="reference internal" href="#runtime-structure">Runtime Structure</a></li>
 <li><a class="reference internal" href="#inference-and-tools">Inference and Tools</a></li>
