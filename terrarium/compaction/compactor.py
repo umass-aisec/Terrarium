@@ -16,8 +16,8 @@ def compact_events(
     events,
     llm_client=None,
     model_name=None,
-    token_threshold: int = 10,
-    keep_recent: int = 1,
+    token_threshold: int = 3000,
+    keep_recent: int = 3,
 ) -> str:
     formatted = format_blackboard_events_for_prompt(events)
     token_count = _count_tokens(formatted)
@@ -31,8 +31,8 @@ def compact_events(
     logger.debug(f"[PRE-COMPACTION PROMPT]\n{formatted}")  
 
     old = events[:-keep_recent]
-    # if not old:
-    #     return formatted
+    if not old:
+        return formatted
     recent = events[-keep_recent:]
     old_text = format_blackboard_events_for_prompt(old)
     summary = _summarize(old_text, llm_client, model_name)

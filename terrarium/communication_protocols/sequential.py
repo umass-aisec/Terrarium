@@ -2,6 +2,7 @@
 Communication protocol for managing multi-agent interactions and phases.
 """
 
+import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from terrarium.core.blackboard import Megaboard, format_blackboard_events_for_prompt
@@ -12,6 +13,9 @@ from terrarium.tools.environment import (
 )
 from terrarium.core.logger import BlackboardLogger
 from terrarium.compaction import compact_events
+from terrarium.utils import get_client_instance, get_model_name
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from terrarium.agents.base import BaseAgent
@@ -45,6 +49,37 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         self.environment = None
         self.environment_tools = None
         self._environment_tools_name: Optional[str] = None
+        self._compaction_client = None
+        self._compaction_model_name: Optional[str] = None
+
+    def _get_compaction_client_and_model(self):
+        llm_config = self.config.get("llm") or {}
+        compaction_config = llm_config.get("compaction")
+        if not isinstance(compaction_config, dict) or not compaction_config:
+            return None, None
+
+        if self._compaction_client is not None and self._compaction_model_name is not None:
+            return self._compaction_client, self._compaction_model_name
+
+        compaction_provider = str(
+            compaction_config.get("provider") or llm_config.get("provider") or ""
+        ).strip().lower()
+        if not compaction_provider:
+            return None, None
+
+        try:
+            self._compaction_client = get_client_instance(compaction_config)
+            self._compaction_model_name = get_model_name(compaction_provider, compaction_config)
+        except Exception as exc:
+            logger.warning(
+                "Compaction client initialization failed; falling back to main agent client: %s",
+                exc,
+            )
+            self._compaction_client = None
+            self._compaction_model_name = None
+            return None, None
+
+        return self._compaction_client, self._compaction_model_name
 
     def bind_environment(self, environment: Any) -> None:
         """
@@ -156,10 +191,17 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             except Exception:
                 continue
 
+            compaction_client = llm_client
+            compaction_model_name = model_name
+            override_client, override_model = self._get_compaction_client_and_model()
+            if override_client is not None and override_model is not None:
+                compaction_client = override_client
+                compaction_model_name = override_model
+
             contexts[bb_id_str] = compact_events(
                 events if isinstance(events, list) else [],
-                llm_client=llm_client,
-                model_name=model_name,
+                llm_client=compaction_client,
+                model_name=compaction_model_name,
             )
 
         return contexts
