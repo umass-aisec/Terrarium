@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from terrarium.core.logger import PromptLogger
 from terrarium.environments.abstract_environment import AbstractEnvironment
+from terrarium.personas import PRESETS, build_persona_prompt
 from terrarium.tools.prompts import build_vllm_tool_instructions, get_phase_tool_instructions
 
 
@@ -13,6 +14,16 @@ class IsThisSeatTakenPrompts:
         self.full_config = full_config
         self.prompt_logger = PromptLogger(env.__class__.__name__, env.current_seed, full_config)
         self.prompt_logger.reset_log()
+
+        persona_name = getattr(env, "env_config", {}).get("persona")
+        if persona_name:
+            if persona_name not in PRESETS:
+                raise ValueError(
+                    f"Unknown persona '{persona_name}'. Available presets: {sorted(PRESETS)}"
+                )
+            self.persona = PRESETS[persona_name]
+        else:
+            self.persona = None
         self.tool_instruction_data = build_vllm_tool_instructions(
             full_config,
             planning_tool_lines=[
@@ -95,6 +106,10 @@ IMPORTANT: When posting to the blackboard, do NOT specify a blackboard_id.
         system_text = (self.tool_instruction_data or {}).get("system")
         if system_text:
             base += "\n\nTOOL CALLING REQUIREMENTS:\n" + system_text
+
+        if self.persona is not None:
+            base = build_persona_prompt(self.persona, base)
+
         return base
 
     def get_user_prompt(
