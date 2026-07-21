@@ -33,10 +33,39 @@ class IsThisSeatTakenPrompts:
             ),
         )
 
-    def get_system_prompt(self) -> str:
-        base = """You are at a cinema trying to find a good seat for the movie. 
+    SCENARIO_INTROS = {
+        "airplane": (
+            "You just boarded a flight and are trying to find a good seat in the cabin.\n\n"
+            "You have preferences (aisle vs. window, wanting to sit near friends, avoiding certain "
+            "passengers). The cabin is filling up before departure, and you're navigating social "
+            "situations—sometimes you need to politely ask a fellow passenger to shift over, sometimes "
+            "a neighbor complains about legroom or the armrest, sometimes you just grab whatever's open "
+            "before the seatbelt sign comes on."
+        ),
+        "cinema": (
+            "You are at a cinema trying to find a good seat for the movie.\n\n"
+            "You have preferences (aisle vs. window, wanting to sit near friends, avoiding certain "
+            "people). The place is filling up, and you're navigating social situations—sometimes you "
+            "need to politely ask someone to move, sometimes you hear complaints from neighbors, "
+            "sometimes you just grab what's available."
+        ),
+    }
 
-You have preferences (aisle vs. window, wanting to sit near friends, avoiding certain people). The place is filling up, and you're navigating social situations—sometimes you need to politely ask someone to move, sometimes you hear complaints from neighbors, sometimes you just grab what's available.
+    def _scenario_intro(self) -> str:
+        scenario = getattr(self.env, "scenario_type", "cinema")
+        return self.SCENARIO_INTROS.get(
+            scenario,
+            (
+                f"You are trying to find a good seat in a {scenario} setting.\n\n"
+                "You have preferences (aisle vs. window, wanting to sit near friends, avoiding certain "
+                "people). The place is filling up, and you're navigating social situations—sometimes you "
+                "need to politely ask someone to move, sometimes you hear complaints from neighbors, "
+                "sometimes you just grab what's available."
+            ),
+        )
+
+    def get_system_prompt(self) -> str:
+        base = self._scenario_intro() + """
 
 WHAT YOU KNOW:
 - Your own seat and how happy you are with it

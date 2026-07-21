@@ -30,6 +30,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         "cinema": 5,
         "wedding": 4,
         "taxi": 3,
+        "airplane": 6,
         "default": 4,
     }
 
@@ -151,6 +152,18 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 return "front"
             if row == rows - 1:
                 return "back"
+            return "middle"
+        if self.scenario_type == "airplane":
+            if cols == 1:
+                return "window"
+            half = cols // 2
+            if col in {0, cols - 1}:
+                return "window"
+            if cols % 2 == 0:
+                if col in {half - 1, half}:
+                    return "aisle"
+            elif col == half:
+                return "aisle"
             return "middle"
         if col in {0, cols - 1}:
             return "window"

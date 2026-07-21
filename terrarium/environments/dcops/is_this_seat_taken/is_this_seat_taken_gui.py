@@ -374,23 +374,23 @@ HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>IsThisSeatTaken</title>
+<title>IsThisSeatTaken — Flight</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
 
 :root{
-  --bg:#0f0e0d;
-  --bg2:#181716;
-  --bg3:#201f1e;
-  --surface:#252422;
-  --surface2:#2e2c2a;
-  --border:#3a3835;
-  --border2:#484541;
-  --text:#e8e5e0;
-  --text2:#a09d98;
-  --text3:#6b6864;
+  --bg:#0b0f14;
+  --bg2:#121820;
+  --bg3:#182029;
+  --surface:#1a222c;
+  --surface2:#212b37;
+  --border:#2c3946;
+  --border2:#3a4a5a;
+  --text:#e8edf2;
+  --text2:#9caab8;
+  --text3:#647485;
   --accent:#c8a96e;
   --accent2:#8b6f3e;
   --blue:#4a9eff;
@@ -403,6 +403,7 @@ HTML = r"""<!DOCTYPE html>
   --amber-dim:#451a03;
   --purple:#a78bfa;
   --purple-dim:#2e1065;
+  --sky:#5eb4ff;
   --r:8px;
   --r2:12px;
 }
@@ -471,19 +472,61 @@ header{
 
 /* ── Layout ── */
 .main{
-  display:grid;
-  grid-template-columns:272px 1fr 1fr;
   flex:1;
+  position:relative;
   overflow:hidden;
+  display:flex;
   min-height:0;
 }
-.panel{
-  display:flex;flex-direction:column;
+.stage{
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  display:flex;
+  justify-content:center;
+}
+.stage-inner{
+  width:100%;max-width:640px;
+  padding:56px 24px 40px;
+  position:relative;
+}
+
+/* ── Drawer (toggleable Chat / Actions) ── */
+.drawer-toggles{margin-left:auto;display:flex;gap:8px}
+.toggle-btn{
+  font-size:11px;font-weight:600;
+  padding:5px 10px;border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--surface);color:var(--text3);
+  cursor:pointer;display:flex;align-items:center;gap:6px;
+  transition:all .15s;
+}
+.toggle-btn:hover{border-color:var(--border2);color:var(--text2)}
+.toggle-btn.on{
+  background:rgba(74,158,255,.15);color:var(--blue);
+  border-color:rgba(74,158,255,.35);
+}
+.toggle-btn .ph-count{margin:0}
+
+.drawer{
+  position:absolute;top:0;right:0;bottom:0;
+  width:0;overflow:hidden;
+  display:flex;
+  background:var(--bg2);
+  border-left:1px solid var(--border);
+  transition:width .25s ease;
+  z-index:30;
+  box-shadow:-14px 0 32px rgba(0,0,0,.35);
+}
+.drawer.w1{width:340px}
+.drawer.w2{width:660px}
+.drawer-panel{
+  width:330px;flex-shrink:0;
+  display:none;flex-direction:column;min-height:0;
   border-right:1px solid var(--border);
-  min-height:0;
-  overflow:hidden;
 }
-.panel:last-child{border-right:none}
+.drawer-panel:last-child{border-right:none}
+.drawer-panel.active{display:flex}
 
 /* ── Panel headers ── */
 .ph{
@@ -504,10 +547,8 @@ header{
   font-family:'JetBrains Mono',monospace;
 }
 
-/* ── Seat panel ── */
-.seat-panel{padding:16px;overflow-y:auto;background:var(--bg2)}
-
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
 .stat{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--r);padding:10px 8px;text-align:center;
@@ -519,20 +560,56 @@ header{
 }
 .stat-l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
 
-.screen{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r);text-align:center;
-  font-size:10px;color:var(--text3);padding:6px;
-  margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase;
+/* ── Fuselage ── */
+.fuselage{
+  background:linear-gradient(180deg,#1c2530,#111820);
+  border:1px solid var(--border2);
+  border-radius:60px 60px 22px 22px;
+  padding:18px 20px 24px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,.35);
+}
+.fuselage::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:6px;
+  background:repeating-linear-gradient(90deg,rgba(94,180,255,.4) 0 10px, transparent 10px 22px);
+}
+.nose,.tail{
+  text-align:center;font-size:10px;letter-spacing:.18em;color:var(--text3);
+  text-transform:uppercase;padding:2px 0;
+}
+.nose{margin-bottom:14px}
+.tail{margin-top:14px;border-top:1px dashed var(--border);padding-top:10px}
+
+#seat-grid{display:flex;flex-direction:column;gap:8px}
+
+.plane-row{display:flex;align-items:center;gap:10px}
+.plane-row.header-row{margin-bottom:2px}
+.row-num{
+  width:18px;flex-shrink:0;text-align:center;
+  font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+}
+.row-seats{display:flex;gap:8px;flex:1;align-items:stretch}
+.col-letter{
+  flex:1;text-align:center;font-size:10px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.aisle-gap{
+  width:26px;flex-shrink:0;position:relative;
+}
+.aisle-gap::before{
+  content:'';position:absolute;top:0;bottom:0;left:50%;
+  border-left:1px dashed var(--border2);
 }
 
-.grid{display:grid;gap:8px}
 .seat{
+  flex:1;min-width:0;
   border-radius:var(--r);border:1px solid var(--border);
   padding:8px 4px;
   display:flex;flex-direction:column;
   align-items:center;justify-content:center;
-  min-height:62px;
+  min-height:64px;
   transition:all .3s ease;
   position:relative;
   overflow:hidden;
@@ -565,16 +642,34 @@ header{
   );
   pointer-events:none;
 }
+.seat.k-window{box-shadow:inset 0 2px 0 rgba(94,180,255,.3)}
+.seat.k-aisle{box-shadow:inset 0 -2px 0 rgba(255,255,255,.12)}
 
 @keyframes flash{0%,100%{opacity:1}50%{opacity:.6}}
 
-.seat-id{font-size:9px;color:var(--text3);margin-bottom:3px;font-family:'JetBrains Mono',monospace}
-.agent-n{font-size:11px;font-weight:600;line-height:1}
+.seat-id{font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.agent-n{font-size:12px;font-weight:600;line-height:1}
 .settled-tag{
-  font-size:8px;color:var(--accent);
-  letter-spacing:.06em;text-transform:uppercase;
-  margin-top:2px;opacity:.8;
+  font-size:9px;color:var(--accent);
+  margin-top:3px;opacity:.9;line-height:1;
 }
+
+/* ── Speech bubbles ── */
+.bubble-layer{position:absolute;inset:0;pointer-events:none;z-index:6}
+.bubble{
+  position:absolute;transform:translate(-50%,-104%);
+  max-width:170px;background:var(--surface2);border:1px solid var(--border2);
+  border-radius:10px;padding:6px 9px;font-size:11px;line-height:1.4;color:var(--text);
+  box-shadow:0 6px 18px rgba(0,0,0,.45);
+  opacity:0;transition:opacity .25s ease, transform .25s ease;
+  z-index:6;
+}
+.bubble.show{opacity:1;transform:translate(-50%,-112%)}
+.bubble::after{
+  content:'';position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:var(--surface2);
+}
+.bubble .b-agent{font-weight:600;margin-bottom:2px;font-size:10px}
 
 .legend{
   display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;
@@ -685,30 +780,34 @@ header{
 <body>
 <header>
   <div class="logo">
-    <div class="logo-icon">🎬</div>
-    IsThisSeatTaken
+    <div class="logo-icon">✈️</div>
+    IsThisSeatTaken · Flight
   </div>
   <span class="hdr-sep">·</span>
   <span class="badge bn" id="hdr-phase">—</span>
   <span style="color:var(--text3);font-size:12px">iter <b id="hdr-iter" style="color:var(--text);font-family:'JetBrains Mono',monospace">—</b></span>
   <span class="hdr-log" id="hdr-log">{{ log }}</span>
+  <div class="drawer-toggles">
+    <button class="toggle-btn" id="btn-chat" onclick="toggleDrawer('chat')">💬 Chat <span class="ph-count" id="chat-count">0</span></button>
+    <button class="toggle-btn" id="btn-actions" onclick="toggleDrawer('actions')">⚡ Actions <span class="ph-count" id="act-count">0</span></button>
+  </div>
   <div class="pulse"></div>
 </header>
 <div class="main">
 
-  <!-- LEFT: seat map -->
-  <div class="panel">
-    <div class="ph">
-      <span class="ph-label">Cinema</span>
-    </div>
-    <div class="seat-panel">
+  <!-- CENTER: the airplane -->
+  <div class="stage">
+    <div class="stage-inner">
       <div class="stats">
         <div class="stat"><div class="stat-v" id="s-iter">—</div><div class="stat-l">iter</div></div>
         <div class="stat"><div class="stat-v" id="s-moves">0</div><div class="stat-l">moves</div></div>
         <div class="stat"><div class="stat-v" id="s-evts">0</div><div class="stat-l">events</div></div>
       </div>
-      <div class="screen">▬▬▬ screen ▬▬▬</div>
-      <div class="grid" id="seat-grid"></div>
+      <div class="fuselage">
+        <div class="nose">✈ nose · boarding</div>
+        <div id="seat-grid"></div>
+        <div class="tail">tail ✈</div>
+      </div>
       <div class="legend">
         <div class="li"><div class="ld" style="background:var(--blue-dim);border:1px solid rgba(74,158,255,.35)"></div>seated</div>
         <div class="li"><div class="ld" style="background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4)"></div>just moved</div>
@@ -717,6 +816,7 @@ header{
           settled
         </div>
         <div class="li"><div class="ld" style="background:var(--surface);border:1px solid var(--border)"></div>empty</div>
+        <div class="li"><span class="standing-chip" style="background:var(--text3);padding:1px 6px;font-size:8px">A0</span>not seated</div>
       </div>
       <div class="standing-area">
         <div class="standing-title">Standing</div>
@@ -725,28 +825,24 @@ header{
     </div>
   </div>
 
-  <!-- MIDDLE: chat -->
-  <div class="panel">
-    <div class="ph">
-      <span class="ph-label">Chat</span>
-      <span class="ph-count" id="chat-count">0</span>
+  <!-- Toggleable drawer: Chat / Actions -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-panel" id="panel-chat">
+      <div class="ph"><span class="ph-label">Chat</span></div>
+      <div class="feed" id="chat-feed"></div>
     </div>
-    <div class="feed" id="chat-feed"></div>
-  </div>
-
-  <!-- RIGHT: actions -->
-  <div class="panel">
-    <div class="ph">
-      <span class="ph-label">Actions</span>
-      <span class="ph-count" id="act-count">0</span>
-      <div class="filter-row">
-        <button class="fb on" onclick="setF('all',this)">all</button>
-        <button class="fb" onclick="setF('ok',this)">✓</button>
-        <button class="fb" onclick="setF('fail',this)">✗</button>
-        <button class="fb" onclick="setF('retry',this)">↻</button>
+    <div class="drawer-panel" id="panel-actions">
+      <div class="ph">
+        <span class="ph-label">Actions</span>
+        <div class="filter-row">
+          <button class="fb on" onclick="setF('all',this)">all</button>
+          <button class="fb" onclick="setF('ok',this)">✓</button>
+          <button class="fb" onclick="setF('fail',this)">✗</button>
+          <button class="fb" onclick="setF('retry',this)">↻</button>
+        </div>
       </div>
+      <div class="feed" id="act-feed"></div>
     </div>
-    <div class="feed" id="act-feed"></div>
   </div>
 
 </div>
@@ -762,30 +858,98 @@ function setF(f,btn){
   renderActions();
 }
 
-function renderGrid(seats,cols){
-  const g=document.getElementById('seat-grid');
-  g.style.gridTemplateColumns=`repeat(${cols},1fr)`;
-  g.innerHTML=seats.map(s=>{
-    let cls='seat ';
-    if(!s.occupant){ cls+='empty'; }
-    else if(s.settled){ cls+='settled'; }
-    else if(s.last_moved){ cls+='moved'; }
-    else { cls+='occ'; }
+/* ── Drawer toggles ── */
+let chatOpen=false, actionsOpen=false;
+function updateDrawer(){
+  document.getElementById('panel-chat').classList.toggle('active', chatOpen);
+  document.getElementById('panel-actions').classList.toggle('active', actionsOpen);
+  const openCount=(chatOpen?1:0)+(actionsOpen?1:0);
+  document.getElementById('drawer').className='drawer'+(openCount===1?' w1':openCount===2?' w2':'');
+  document.getElementById('btn-chat').classList.toggle('on', chatOpen);
+  document.getElementById('btn-actions').classList.toggle('on', actionsOpen);
+}
+function toggleDrawer(which){
+  if(which==='chat') chatOpen=!chatOpen;
+  if(which==='actions') actionsOpen=!actionsOpen;
+  updateDrawer();
+}
 
-    const col=AC[s.occupant]||'#888';
-    const shortId = s.id.replace('seat_','').replace('_',',');
+let seatByAgent = {};
 
-    let inner = `<span class="seat-id">${shortId}</span>`;
-    if(s.occupant){
-      inner += `<span class="agent-n" style="color:${col}">${s.occupant.replace('agent_','A')}</span>`;
-      if(s.settled){
-        inner += `<span class="settled-tag">settled</span>`;
-      }
-    } else {
-      inner += `<span style="font-size:9px;color:var(--text3)">—</span>`;
+function seatKind(col, cols){
+  if(cols<=1) return 'window';
+  const half = Math.floor(cols/2);
+  if(col===1 || col===cols) return 'window';
+  if(cols%2===0){
+    if(col===half || col===half+1) return 'aisle';
+  } else if(col===half+1){
+    return 'aisle';
+  }
+  return 'middle';
+}
+
+function splitCols(cols){
+  const half = Math.floor(cols/2);
+  if(cols%2===0) return {left:half, gap:true};
+  return {left:cols, gap:false};
+}
+
+function seatCellHtml(s, cols){
+  let cls='seat ';
+  if(!s.occupant){ cls+='empty'; }
+  else if(s.settled){ cls+='settled'; }
+  else if(s.last_moved){ cls+='moved'; }
+  else { cls+='occ'; }
+  cls += ' k-'+seatKind(s.col, cols);
+
+  const col=AC[s.occupant]||'#888';
+  const letter = String.fromCharCode(64+s.col);
+  const label = `${s.row}${letter}`;
+
+  let inner = `<span class="seat-id">${label}</span>`;
+  if(s.occupant){
+    inner += `<span class="agent-n" style="color:${col}">${s.occupant.replace('agent_','A')}</span>`;
+    if(s.settled){
+      inner += `<span class="settled-tag">✓ set</span>`;
     }
-    return `<div class="${cls}">${inner}</div>`;
-  }).join('');
+  } else {
+    const icon = seatKind(s.col, cols)==='window' ? '○' : seatKind(s.col, cols)==='aisle' ? '›' : '—';
+    inner += `<span style="font-size:9px;color:var(--text3)">${icon}</span>`;
+  }
+  return `<div class="${cls}" id="seat-${s.id}">${inner}</div>`;
+}
+
+function rowLettersHtml(cols){
+  const {left,gap}=splitCols(cols);
+  let cells='';
+  for(let c=1;c<=left;c++) cells+=`<span class="col-letter">${String.fromCharCode(64+c)}</span>`;
+  if(gap){
+    cells+=`<div class="aisle-gap"></div>`;
+    for(let c=left+1;c<=cols;c++) cells+=`<span class="col-letter">${String.fromCharCode(64+c)}</span>`;
+  }
+  return `<div class="plane-row header-row"><div class="row-num"></div><div class="row-seats">${cells}</div></div>`;
+}
+
+function renderPlaneRow(rowSeats, cols){
+  const {left,gap}=splitCols(cols);
+  let cells='';
+  rowSeats.forEach((s,i)=>{
+    if(gap && i===left) cells+=`<div class="aisle-gap"></div>`;
+    cells+=seatCellHtml(s, cols);
+  });
+  const rowNum = rowSeats.length ? rowSeats[0].row : '';
+  return `<div class="plane-row"><div class="row-num">${rowNum}</div><div class="row-seats">${cells}</div></div>`;
+}
+
+function renderGrid(seats,cols){
+  seatByAgent = {};
+  seats.forEach(s=>{ if(s.occupant) seatByAgent[s.occupant]=s.id; });
+
+  let html = rowLettersHtml(cols);
+  for(let i=0;i<seats.length;i+=cols){
+    html += renderPlaneRow(seats.slice(i,i+cols), cols);
+  }
+  document.getElementById('seat-grid').innerHTML = html;
 }
 
 function renderStanding(agents){
@@ -796,8 +960,66 @@ function renderStanding(agents){
   }
   el.innerHTML=agents.map(a=>{
     const col=AC[a]||'#888';
-    return `<span class="standing-chip" style="background:${col}">${a.replace('agent_','A')}</span>`;
+    return `<span class="standing-chip" data-agent="${a}" style="background:${col}">${a.replace('agent_','A')}</span>`;
   }).join('');
+}
+
+/* ── Speech bubbles ── */
+let lastChatIdx = -1, bubblesInitialized = false;
+const bubbleTimers = {};
+
+function ensureBubbleLayer(){
+  const panel=document.querySelector('.stage-inner');
+  let layer=document.getElementById('bubble-layer');
+  if(!layer){
+    layer=document.createElement('div');
+    layer.id='bubble-layer';
+    layer.className='bubble-layer';
+    panel.appendChild(layer);
+  }
+  return layer;
+}
+
+function showBubble(agentId, text){
+  const panel=document.querySelector('.stage-inner');
+  const layer=ensureBubbleLayer();
+  const seatEl=document.getElementById('seat-'+(seatByAgent[agentId]||''));
+  const anchor=seatEl || document.querySelector(`.standing-chip[data-agent="${agentId}"]`) || document.getElementById('standing-list');
+  if(!anchor) return;
+
+  let bub=document.getElementById('bubble-'+agentId);
+  if(!bub){
+    bub=document.createElement('div');
+    bub.id='bubble-'+agentId;
+    bub.className='bubble';
+    layer.appendChild(bub);
+  }
+  const color=AC[agentId]||'#888';
+  const shown = (text||'').length>140 ? text.slice(0,140)+'…' : (text||'…');
+  bub.innerHTML=`<div class="b-agent" style="color:${color}">${agentId.replace('agent_','A')}</div>${shown}`;
+
+  const pr=panel.getBoundingClientRect();
+  const ar=anchor.getBoundingClientRect();
+  bub.style.left=(ar.left-pr.left+ar.width/2+panel.scrollLeft)+'px';
+  bub.style.top=(ar.top-pr.top+panel.scrollTop)+'px';
+
+  requestAnimationFrame(()=>bub.classList.add('show'));
+  clearTimeout(bubbleTimers[agentId]);
+  bubbleTimers[agentId]=setTimeout(()=>{
+    bub.classList.remove('show');
+    setTimeout(()=>{ bub.remove(); }, 300);
+  }, 5000);
+}
+
+function processChats(chats){
+  if(!bubblesInitialized){
+    lastChatIdx = chats.reduce((m,c)=>Math.max(m,c.idx), -1);
+    bubblesInitialized = true;
+    return;
+  }
+  const fresh = chats.filter(c=>c.idx>lastChatIdx).sort((a,b)=>a.idx-b.idx);
+  fresh.forEach(c=>showBubble(c.agent, c.content));
+  if(fresh.length) lastChatIdx = fresh[fresh.length-1].idx;
 }
 
 function renderChats(chats){
@@ -897,6 +1119,7 @@ function apply(d){
   ph.className='badge '+(d.phase==='planning'?'bp':d.phase==='execution'?'be':'bn');
   renderGrid(d.seats,d.cols);
   renderStanding(d.standing_agents||[]);
+  processChats(d.chats||[]);
   renderChats(d.chats);
   renderActions();
 }
