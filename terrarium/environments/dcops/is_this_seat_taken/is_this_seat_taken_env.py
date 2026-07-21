@@ -784,7 +784,24 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             },
         }
 
+    def _decay_social_pressure(self, factor: float = 0.7) -> None:
+        """Ease off accumulated pressure between iterations.
+
+        social_pressure/pressure_complaints/pressure_requests previously only ever
+        increased for the life of the episode, so an agent complained about early on
+        stayed permanently more sensitive (lower effective tolerance) even after
+        moving away from the source of friction. That ratchet meant more iterations
+        or more planning chatter made convergence *less* likely, not more — agents
+        kept getting re-triggered into moving instead of settling. Decaying once per
+        iteration lets pressure fade if it isn't reinforced by fresh complaints.
+        """
+        for state in self.agent_state.values():
+            state["social_pressure"] = max(0.0, float(state["social_pressure"]) * factor)
+            state["pressure_complaints"] = max(0.0, float(state.get("pressure_complaints", 0)) * factor)
+            state["pressure_requests"] = max(0.0, float(state.get("pressure_requests", 0)) * factor)
+
     def log_iteration(self, iteration: int) -> None:
+        self._decay_social_pressure()
         logger.info("=== %s State - Iteration %s ===", self.__class__.__name__, iteration)
         logger.info(
             "Scenario=%s time_step=%s unsettled=%s total_moves=%s",
