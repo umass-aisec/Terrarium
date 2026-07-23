@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from terrarium.environments.abstract_environment import AbstractEnvironment
+from terrarium.personas import MAX_LEVEL, NEUTRAL_LEVEL, PRESETS, Persona
 from .is_this_seat_taken_prompts import IsThisSeatTakenPrompts
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         self.total_moves = 0
 
         self.agent_names = [f"agent_{idx}" for idx in range(self.num_agents)]
+        self.persona_by_agent = self._resolve_personas()
         self.seats = self._build_layout()
         self.agent_state = self._build_agent_state()
         self._assign_initial_seats()
@@ -88,6 +90,33 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             self.scenario_type,
             len(self.seats),
         )
+
+    def _resolve_personas(self) -> Dict[str, Optional[Persona]]:
+        """Resolve environment.persona (uniform) or environment.personas (per-agent)
+        into a Persona per agent. Shared by prompt-shaping and trait generation so
+        a persona's Extraversion also biases that agent's own generated traits.
+        """
+        persona_name = self.env_config.get("persona")
+        persona_map = self.env_config.get("personas")
+
+        def _resolve(name: str) -> Persona:
+            if name not in PRESETS:
+                raise ValueError(
+                    f"Unknown persona '{name}'. Available presets: {sorted(PRESETS)}"
+                )
+            return PRESETS[name]
+
+        if persona_map:
+            missing = [agent for agent in self.agent_names if agent not in persona_map]
+            if missing:
+                raise ValueError(
+                    f"environment.personas is missing entries for agents: {missing}"
+                )
+            return {agent: _resolve(name) for agent, name in persona_map.items()}
+        if persona_name:
+            persona = _resolve(persona_name)
+            return {agent: persona for agent in self.agent_names}
+        return {agent: None for agent in self.agent_names}
 
     def get_network_context(self) -> str:
         return (
@@ -199,11 +228,23 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
 
         return seats
 
-    def _generate_agent_public_traits(self) -> Dict[str, float]:
+    def _generate_agent_public_traits(self, agent_name: str) -> Dict[str, float]:
+        # Extraversion nudges loudness/talkativeness toward its pole (real personality
+        # research ties both to it) without fully determining them — a random draw is
+        # still shifted, not replaced. Scent is left alone: there's no personality basis
+        # for tying body odor to a trait, and manufacturing one risks an ugly association.
+        persona = self.persona_by_agent.get(agent_name)
+        ext_level = persona.traits.get("EXT", NEUTRAL_LEVEL) if persona else NEUTRAL_LEVEL
+        ext_bias = (ext_level - NEUTRAL_LEVEL) / (MAX_LEVEL - NEUTRAL_LEVEL)  # -1..1
+
+        def _biased_trait() -> float:
+            value = self.rng.uniform(0.0, 1.0) + ext_bias * 0.3
+            return round(max(0.0, min(1.0, value)), 3)
+
         return {
-            "loudness": round(self.rng.uniform(0.0, 1.0), 3),
+            "loudness": _biased_trait(),
             "scent": round(self.rng.uniform(0.0, 1.0), 3),
-            "talkativeness": round(self.rng.uniform(0.0, 1.0), 3),
+            "talkativeness": _biased_trait(),
         }
 
     def _build_agent_state(self) -> Dict[str, Dict[str, Any]]:
@@ -243,13 +284,12 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 "last_instant_reward": 0.0,
                 "base_tolerance": round(self.rng.uniform(1.0, 2.5), 3),
                 "tolerance_level": round(self.rng.uniform(1.0, 2.5), 3),
-                "social_boldness": round(self.rng.uniform(0.0, 1.0), 3),
                 "settled": False,
                 "social_pressure": 0.0,
                 "pending_reaction": False,
                 "pressure_requests": 0,
                 "pressure_complaints": 0,
-                "public_traits": self._generate_agent_public_traits(),
+                "public_traits": self._generate_agent_public_traits(agent),
             }
 
         return agent_state
@@ -383,26 +423,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 return True
         return False
 
-    def _best_relocation_seat(self, agent_name: str) -> Optional[str]:
-        state = self.agent_state[agent_name]
-        candidates: List[Tuple[float, str]] = []
-
-        for seat_id, seat in self.seats.items():
-            if seat.occupied_by is not None:
-                continue
-            original = state["current_seat"]
-            state["current_seat"] = seat_id
-            score = self._compute_instant_reward(agent_name)
-            state["current_seat"] = original
-
-            candidates.append((score, seat_id))
-
-        if candidates:
-            candidates.sort(key=lambda item: (-item[0], item[1]))
-            return candidates[0][1]
-        return None
-
-    def _move_agent(self, agent_name: str, seat_id: Optional[str], *, forced: bool = False) -> Dict[str, Any]:
+    def _move_agent(self, agent_name: str, seat_id: Optional[str]) -> Dict[str, Any]:
         state = self.agent_state[agent_name]
         current_seat_id = state["current_seat"]
 
@@ -416,7 +437,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 "status": "success",
                 "result": {
                     "agent": agent_name,
-                    "action": "forced_stand" if forced else "stand",
+                    "action": "stand",
                     "previous_seat": current_seat_id,
                     "current_seat": None,
                 },
@@ -453,24 +474,32 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 "action": "move",
                 "from_seat": current_seat_id,
                 "to_seat": seat_id,
-                "forced": forced,
             },
         }
 
-    def _force_reaction(self, target_agent: str, reason: str) -> Dict[str, Any]:
-        best_seat = self._best_relocation_seat(target_agent)
-        if best_seat is None:
-            return self._move_agent(target_agent, None, forced=True)
-
-        return self._move_agent(target_agent, best_seat, forced=True)
+    def _pressure_level(self, agent_name: str) -> str:
+        """Qualitative bucket for social_pressure relative to the agent's own base
+        tolerance — this is what gets surfaced to the agent (see build_agent_context),
+        never the raw number. Replaces a mechanical forced-move trigger: the agent now
+        decides for itself, via its own (persona-shaped) reasoning, how to respond.
+        """
+        state = self.agent_state[agent_name]
+        pressure = float(state["social_pressure"])
+        tolerance = max(0.1, float(state["base_tolerance"]))
+        ratio = pressure / tolerance
+        if ratio < 0.3:
+            return "none"
+        if ratio < 0.7:
+            return "mild"
+        if ratio < 1.1:
+            return "building"
+        return "high"
 
     def _request_neighbor_move(
         self,
         agent_name: str,
         target_agent: str,
         complaint: bool = False,
-        *,
-        resolve_reaction: bool = True,
     ) -> Dict[str, Any]:
         if target_agent not in self.agent_names:
             return {"status": "failed", "reason": f"Agent {target_agent} not found"}
@@ -480,36 +509,8 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         target_state = self.agent_state[target_agent]
         target_state["social_pressure"] += self.complaint_pressure if complaint else self.request_pressure
         target_state["pressure_complaints" if complaint else "pressure_requests"] += 1
-        target_state["pending_reaction"] = True if complaint else target_state["pending_reaction"]
-
-        requester_state = self.agent_state[agent_name]
-        requester_boldness = float(requester_state.get("social_boldness", 0.0))
-        target_tolerance = self._agent_effective_tolerance(target_agent)
-        pressure = float(target_state["social_pressure"])
-        reaction_chance = max(0.0, min(1.0, pressure / max(0.5, target_tolerance + 0.5) - requester_boldness * 0.25))
-
-        moved = False
-        if resolve_reaction:
-            if complaint:
-                if pressure >= target_tolerance or self.rng.random() < reaction_chance:
-                    moved = True
-            elif requester_boldness < 0.45 and (
-                pressure >= target_tolerance or self.rng.random() < reaction_chance
-            ):
-                moved = True
-
-        if moved:
-            reaction_result = self._force_reaction(target_agent, "pressure")
-        else:
-            reaction_result = {
-                "status": "success",
-                "result": {
-                    "agent": target_agent,
-                    "reaction": "ignored" if resolve_reaction else "deferred",
-                    "pressure": round(pressure, 3),
-                    "effective_tolerance": round(target_tolerance, 3),
-                },
-            }
+        if complaint:
+            target_state["pending_reaction"] = True
 
         self._apply_social_action_cost(agent_name)
         return {
@@ -518,8 +519,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 "requester": agent_name,
                 "target": target_agent,
                 "action": "complain" if complaint else "request_move",
-                "target_reacted": moved,
-                "target_result": reaction_result.get("result", reaction_result),
+                "target_pressure_level": self._pressure_level(target_agent),
             },
         }
 
@@ -529,7 +529,10 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         action_name: str,
         arguments: Mapping[str, Any],
     ) -> Dict[str, Any]:
-        """Apply social pressure during planning; defer forced moves to execution."""
+        """Apply social pressure during planning. The target decides how (and whether)
+        to react itself at execution time — nothing here forces a move; see
+        _pressure_level for what gets surfaced to the target instead.
+        """
         if action_name not in {"request_move", "complain"}:
             return {"error": f"Unknown planning social action: {action_name}"}
 
@@ -540,13 +543,11 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         if target_agent is None:
             return {"status": "retry", "reason": "agent_id is required"}
 
-        result = self._request_neighbor_move(
+        return self._request_neighbor_move(
             agent_name,
             str(target_agent),
             complaint=action_name == "complain",
-            resolve_reaction=False,
         )
-        return result
 
     def _settle_agent(self, agent_name: str) -> Dict[str, Any]:
         state = self.agent_state[agent_name]
@@ -568,12 +569,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         if agent_name not in self.agent_names:
             return {"status": "failed", "reason": f"Agent {agent_name} not found"}
 
-        if self.agent_state[agent_name]["pending_reaction"] and action_name not in {"move", "stand"}:
-            forced = self._force_reaction(agent_name, "pending_reaction")
-            self._refresh_rewards()
-            self._advance_time_step()
-            return forced
-
         if self.agent_state[agent_name]["settled"] and action_name != "settle":
             self.agent_state[agent_name]["settled"] = False
 
@@ -581,11 +576,11 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             seat_id = arguments.get("seat_id")
             if seat_id is None:
                 return {"status": "retry", "reason": "seat_id is required for move"}
-            result = self._move_agent(agent_name, str(seat_id), forced=False)
+            result = self._move_agent(agent_name, str(seat_id))
         elif action_name == "settle":
             result = self._settle_agent(agent_name)
         elif action_name == "stand":
-            result = self._move_agent(agent_name, None, forced=False)
+            result = self._move_agent(agent_name, None)
         else:
             return {"error": f"Unknown action type: {action_name}"}
 
@@ -648,6 +643,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 "tolerance_description": tol_description,
                 "time_pressure": time_pressure,
             },
+            "social_pressure_level": self._pressure_level(agent_name),
         }
 
         for key, value in kwargs.items():
