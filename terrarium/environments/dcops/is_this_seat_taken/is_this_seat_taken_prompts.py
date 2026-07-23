@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from terrarium.core.logger import PromptLogger
 from terrarium.environments.abstract_environment import AbstractEnvironment
-from terrarium.personas import PRESETS, build_persona_prompt
+from terrarium.personas import build_persona_prompt
 from terrarium.tools.prompts import build_vllm_tool_instructions, get_phase_tool_instructions
 
 
@@ -15,15 +15,10 @@ class IsThisSeatTakenPrompts:
         self.prompt_logger = PromptLogger(env.__class__.__name__, env.current_seed, full_config)
         self.prompt_logger.reset_log()
 
-        persona_name = getattr(env, "env_config", {}).get("persona")
-        if persona_name:
-            if persona_name not in PRESETS:
-                raise ValueError(
-                    f"Unknown persona '{persona_name}'. Available presets: {sorted(PRESETS)}"
-                )
-            self.persona = PRESETS[persona_name]
-        else:
-            self.persona = None
+        # Resolved once by the environment (env.persona_by_agent) so a persona's
+        # Extraversion can also bias that agent's generated public traits — reused
+        # here rather than re-resolved, so the two stay in sync.
+        self.persona_by_agent = getattr(env, "persona_by_agent", {})
         self.tool_instruction_data = build_vllm_tool_instructions(
             full_config,
             planning_tool_lines=[
@@ -75,7 +70,7 @@ class IsThisSeatTakenPrompts:
             ),
         )
 
-    def get_system_prompt(self) -> str:
+    def get_system_prompt(self, agent_name: Optional[str] = None) -> str:
         base = self._scenario_intro() + """
 
 WHAT YOU KNOW:
@@ -83,6 +78,7 @@ WHAT YOU KNOW:
 - What seats are empty
 - Who's sitting next to you (your immediate neighbors)
 - What other people are saying in the group chat
+- Whether social pressure is building on you (from requests/complaints directed at you)
 
 WHAT YOU CAN DO:
 Planning (talking):
@@ -94,6 +90,14 @@ Execution (physical):
 - move(seat_id) — get up and sit somewhere else
 - settle() — lock in your current seat; the run ends only when ALL agents have settled
 - stand() — leave your seat only as a last resort when no visible seat is tolerable
+
+IMPORTANT — nothing forces you to move. Pressure from requests and complaints is information,
+not a command: you decide for yourself, every turn, whether to move, settle, or hold your
+ground, based on how you'd really react to that kind of social pressure.
+
+IMPORTANT — your loudness, scent, and talkativeness are fixed for the whole flight. You
+cannot tone them down or change how you come across — the only way to address a neighbor's
+complaint about them is to move away, not to promise you'll be different.
 
 GOAL:
 Use planning to negotiate. Use execution to move, settle, or stand. Do not keep moving once your seat is acceptable — especially when time pressure is medium or high.
@@ -107,8 +111,9 @@ IMPORTANT: When posting to the blackboard, do NOT specify a blackboard_id.
         if system_text:
             base += "\n\nTOOL CALLING REQUIREMENTS:\n" + system_text
 
-        if self.persona is not None:
-            base = build_persona_prompt(self.persona, base)
+        persona = self.persona_by_agent.get(agent_name)
+        if persona is not None:
+            base = build_persona_prompt(persona, base)
 
         return base
 
@@ -186,6 +191,14 @@ IMPORTANT: When posting to the blackboard, do NOT specify a blackboard_id.
                 f"**Time pressure:** {time_pressure}.",
                 "",
             ])
+
+        social_pressure_level = agent_context.get("social_pressure_level", "none")
+        pending_reaction = bool(agent_context.get("pending_reaction"))
+        if social_pressure_level != "none" or pending_reaction:
+            pressure_line = f"**Social pressure on you:** {social_pressure_level}."
+            if pending_reaction:
+                pressure_line += " Someone complained about you and is waiting for you to react."
+            parts.extend([pressure_line, ""])
 
         # Neighbor drama — key changed to perceived_traits in POMDP context
         if agent_context.get("neighbor_observations"):
