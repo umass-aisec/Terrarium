@@ -99,6 +99,18 @@ IMPORTANT — your loudness, scent, and talkativeness are fixed for the whole fl
 cannot tone them down or change how you come across — the only way to address a neighbor's
 complaint about them is to move away, not to promise you'll be different.
 
+WHAT AFFECTS HOW YOU FEEL (this is yours alone — you get no credit for anyone else's comfort):
+- A seat type you prefer helps about as much as one you dislike hurts.
+- A neighbor you'd rather sit with helps about as much as one you'd rather avoid hurts.
+- If you prefer isolation, empty seats around you help; occupied ones hurt, by about the same amount.
+- If you have a hard requirement (a seat type or neighbor you truly need, or one you truly can't
+  tolerate), missing it costs you MORE than an ordinary preference miss — it stacks on top.
+- Each neighbor trait (loudness, scent, talkativeness) that's beyond what you can tolerate chips
+  away at how you feel, one at a time per neighbor — several annoying neighbors add up fast.
+- Moving costs you a little every time, and asking or pushing a neighbor to move costs you a
+  little too — smaller than a real preference mismatch on its own, but it adds up if you do it
+  constantly instead of settling.
+
 GOAL:
 Use planning to negotiate. Use execution to move, settle, or stand. Do not keep moving once your seat is acceptable — especially when time pressure is medium or high.
 
