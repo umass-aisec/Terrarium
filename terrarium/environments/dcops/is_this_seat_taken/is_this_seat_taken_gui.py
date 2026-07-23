@@ -83,8 +83,6 @@ class Event:
     action: Optional[str] = None; result_status: Optional[str] = None
     moved_from: Optional[str] = None; moved_to: Optional[str] = None
     current_seat: Optional[str] = None
-    forced_agent: Optional[str] = None
-    forced_from: Optional[str] = None; forced_to: Optional[str] = None
     settled_result: bool = False
     target: Optional[str] = None
     reason: Optional[str] = None
@@ -97,7 +95,7 @@ def _extract_inline(tail: str) -> str:
     return ""
 
 def _parse_details(raw: str):
-    moved_from = moved_to = forced_agent = forced_from = forced_to = current_seat = None
+    moved_from = moved_to = current_seat = None
     settled_result = False
     try:
         cleaned = raw.replace("'", '"').replace("True", "true").replace("False", "false").replace("None", "null")
@@ -111,17 +109,11 @@ def _parse_details(raw: str):
                 moved_to = res.get("to_seat")
             elif a in ("stay", "settle"):
                 current_seat = res.get("current_seat")
-            elif a in ("stand", "forced_stand"):
+            elif a == "stand":
                 moved_from = res.get("previous_seat")
-            if res.get("target_reacted"):
-                tr = res.get("target_result", {})
-                if isinstance(tr, dict):
-                    forced_agent = tr.get("agent")
-                    forced_from = tr.get("from_seat") or tr.get("previous_seat")
-                    forced_to = tr.get("to_seat") or tr.get("current_seat")
     except Exception:
         pass
-    return moved_from, moved_to, forced_agent, forced_from, forced_to, current_seat, settled_result
+    return moved_from, moved_to, current_seat, settled_result
 
 def parse_log(path):
     if not os.path.exists(path):
@@ -142,7 +134,7 @@ def parse_log(path):
         content = _extract_inline(tail)
         action = None; result_status = None; reason = None
         details_buf = []; in_details = False
-        moved_from = moved_to = forced_agent = forced_from = forced_to = current_seat = None
+        moved_from = moved_to = current_seat = None
         settled_result = False
         target_agent = None
         j = i + 1
@@ -189,7 +181,7 @@ def parse_log(path):
                 details_buf.append(s)
             j += 1
         if details_buf:
-            moved_from, moved_to, forced_agent, forced_from, forced_to, current_seat, settled_result = _parse_details(" ".join(details_buf))
+            moved_from, moved_to, current_seat, settled_result = _parse_details(" ".join(details_buf))
             # also try to extract reason from the full details block
             if not reason:
                 try:
@@ -205,7 +197,6 @@ def parse_log(path):
             action=action, result_status=result_status,
             moved_from=moved_from, moved_to=moved_to,
             current_seat=current_seat,
-            forced_agent=forced_agent, forced_from=forced_from, forced_to=forced_to,
             settled_result=settled_result,
             target=target_agent, reason=reason,
         ))
@@ -229,21 +220,15 @@ def infer_positions(events, num_agents):
                     settled.add(e.agent)
                 else:
                     settled.discard(e.agent)
-            if e.action in ("stand", "forced_stand") and e.moved_from:
+            if e.action == "stand" and e.moved_from:
                 # agent vacated a seat — remove from pos
                 if pos.get(e.agent) == e.moved_from:
                     pos.pop(e.agent, None)
                 settled.discard(e.agent)
             if e.action == "settle":
                 settled.add(e.agent)
-            if e.action in ("move", "stand", "forced_stand") and not e.settled_result:
+            if e.action in ("move", "stand") and not e.settled_result:
                 settled.discard(e.agent)
-            if e.forced_agent:
-                settled.discard(e.forced_agent)
-                if e.forced_to:
-                    pos[e.forced_agent] = e.forced_to
-                elif e.forced_from and pos.get(e.forced_agent) == e.forced_from:
-                    pos.pop(e.forced_agent, None)
     return pos, settled
 
 # ---------------------------------------------------------------------------
@@ -816,7 +801,7 @@ header{
           settled
         </div>
         <div class="li"><div class="ld" style="background:var(--surface);border:1px solid var(--border)"></div>empty</div>
-        <div class="li"><span class="standing-chip" style="background:var(--text3);padding:1px 6px;font-size:8px">A0</span>not seated</div>
+        <div class="li"><div class="ld" style="background:var(--text3);border:1px solid rgba(255,255,255,.12)"></div>not seated (see Standing below)</div>
       </div>
       <div class="standing-area">
         <div class="standing-title">Standing</div>

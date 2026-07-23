@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from terrarium.core.logger import PromptLogger
 from terrarium.environments.abstract_environment import AbstractEnvironment
 from terrarium.personas import build_persona_prompt
-from terrarium.tools.prompts import build_vllm_tool_instructions, get_phase_tool_instructions
+from terrarium.tools.prompts import build_vllm_tool_instructions
 
 
 class IsThisSeatTakenPrompts:
