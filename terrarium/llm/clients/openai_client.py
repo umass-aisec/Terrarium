@@ -76,6 +76,7 @@ class OpenAIClient(AbstractClient):
             "gpt-4.1-nano",
             "gpt-5-nano",
             "gpt-5.4-nano",
+            "gpt-5.5",
         ]
         return any(restricted_model in model_name.lower() for restricted_model in restricted_models)
 
