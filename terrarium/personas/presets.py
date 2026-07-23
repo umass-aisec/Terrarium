@@ -25,7 +25,27 @@ CONFIDENT_COLLABORATOR = Persona.from_big_five(
     description="A confident collaborator.",
 )
 
+DIPLOMAT = Persona.from_big_five(
+    ext=9,
+    agr=9,
+    name="diplomat",
+    description="A diplomat.",
+)
+
+TERRITORIAL = Persona.from_big_five(
+    ext=1,
+    agr=1,
+    name="territorial",
+    description="A territorial holdout.",
+)
+
 PRESETS = {
     persona.name: persona
-    for persona in (CAUTIOUS_SKEPTIC, ANXIOUS_PUSHOVER, CONFIDENT_COLLABORATOR)
+    for persona in (
+        CAUTIOUS_SKEPTIC,
+        ANXIOUS_PUSHOVER,
+        CONFIDENT_COLLABORATOR,
+        DIPLOMAT,
+        TERRITORIAL,
+    )
 }

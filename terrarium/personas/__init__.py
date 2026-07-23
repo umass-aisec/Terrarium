@@ -23,7 +23,9 @@ from terrarium.personas.presets import (
     ANXIOUS_PUSHOVER,
     CAUTIOUS_SKEPTIC,
     CONFIDENT_COLLABORATOR,
+    DIPLOMAT,
     PRESETS,
+    TERRITORIAL,
 )
 
 __all__ = [
@@ -46,5 +48,7 @@ __all__ = [
     "CAUTIOUS_SKEPTIC",
     "ANXIOUS_PUSHOVER",
     "CONFIDENT_COLLABORATOR",
+    "DIPLOMAT",
+    "TERRITORIAL",
     "PRESETS",
 ]
