@@ -198,11 +198,20 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
                 compaction_client = override_client
                 compaction_model_name = override_model
 
-            contexts[bb_id_str] = compact_events(
+            body = compact_events(
                 events if isinstance(events, list) else [],
                 llm_client=compaction_client,
                 model_name=compaction_model_name,
             )
+            # Label each channel so agents can address a specific blackboard_id.
+            blackboard = self.megaboard.blackboards[bb_id_int]
+            kind = (
+                "PRIVATE channel"
+                if blackboard.template.get("private_channel")
+                else "channel"
+            )
+            others = ", ".join(sorted(a for a in blackboard.agents if a != agent_name))
+            contexts[bb_id_str] = f"[{kind} {bb_id_str} — with {others}]\n{body}"
 
         return contexts
 

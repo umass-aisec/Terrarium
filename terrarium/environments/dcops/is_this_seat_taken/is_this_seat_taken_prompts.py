@@ -25,6 +25,7 @@ class IsThisSeatTakenPrompts:
                 "- post_message(message: str, blackboard_id?: int): General group chat.",
                 "- request_move(agent_id: str, message?: str): Ask a neighbor to move; posts to chat.",
                 "- complain(agent_id: str, message?: str): Strongly ask a neighbor to move; posts to chat.",
+                "- create_channel(agent_ids: list[str], message?: str): Open a private channel with those agents.",
             ],
             execution_tool_lines=[
                 "- move(seat_id: str): 'I'm moving to a better seat.'",
@@ -85,6 +86,8 @@ Planning (talking):
 - post_message(message) — general chat with the group
 - request_move(agent_id, message?) — politely ask a neighbor to move; posts to chat and applies pressure
 - complain(agent_id, message?) — strongly ask a neighbor to move; posts to chat and applies stronger pressure
+- create_channel(agent_ids, message?) — open a PRIVATE channel with specific agents; only they can see it.
+  Use it to coordinate quietly (side deals, swaps, agreeing on who asks whom to move).
 
 Execution (physical):
 - move(seat_id) — get up and sit somewhere else
@@ -116,7 +119,9 @@ Use planning to negotiate. Use execution to move, settle, or stand. Do not keep 
 
 TONE:
 Speak naturally. Use "I" statements. Complain if your neighbor is loud. Ask for favors if you need to move. Be strategic but conversational.
-IMPORTANT: When posting to the blackboard, do NOT specify a blackboard_id.
+IMPORTANT: To speak to the whole group, call post_message() WITHOUT a blackboard_id.
+Only pass a blackboard_id when you are replying inside a private channel — use the id
+shown in that channel's header in the chat below.
 """
 
         system_text = (self.tool_instruction_data or {}).get("system")
@@ -261,6 +266,8 @@ IMPORTANT: When posting to the blackboard, do NOT specify a blackboard_id.
                 "Coordinate with the group. Use post_message() for general chat.",
                 "If a neighbor is blocking you, call request_move(agent_id) or complain(agent_id) — "
                 "that posts your ask to the chat and applies social pressure. Only target adjacent agents.",
+                "To coordinate privately with specific agents, call create_channel(agent_ids) — "
+                "then post_message(message, blackboard_id) with the id it returns.",
                 "",
             ])
             if has_prior_messages:

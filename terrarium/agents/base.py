@@ -196,7 +196,9 @@ class BaseAgent:
             }
             available_env_tools.discard(None)
             all_env_tools = self.toolset_discovery.get_env_tool_names(env_name)
-            blackboard_tool_names = self.toolset_discovery.get_blackboard_tool_names()
+            blackboard_tool_names = self.toolset_discovery.get_blackboard_tool_names(
+                env_name
+            )
             external_tool_names = await self.client.get_external_tool_names()
 
             handler = None
@@ -354,7 +356,7 @@ class BaseAgent:
             self.current_phase,
         )
         blackboard_tools = self.toolset_discovery.get_tools_for_blackboard(
-            self.current_phase
+            self.current_phase, self.environment_name
         )
         external_tools = await self.client.get_external_tools()
         combined_tools = env_tools + blackboard_tools + external_tools

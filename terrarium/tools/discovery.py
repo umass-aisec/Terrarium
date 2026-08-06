@@ -56,16 +56,31 @@ class ToolsetDiscovery:
             return set()
         return tools.get_tool_names()
 
-    def get_blackboard_tool_names(self) -> Set[str]:
+    def supports_private_channels(self, environment_name: str = "") -> bool:
+        """
+        Whether an environment lets agents open their own private channels.
+
+        Environments opt in by setting `supports_private_channels = True` on
+        their Tools class; the channel machinery itself is environment-agnostic.
+        """
+        tools = self._get_tools_instance(environment_name)
+        return bool(getattr(tools, "supports_private_channels", False))
+
+    def get_blackboard_tool_names(self, environment_name: str = "") -> Set[str]:
         """
         Get the set of tool names that this blackboard manager supports.
 
         Returns:
             Set of supported tool names
         """
-        return {"post_message"}
+        names = {"post_message"}
+        if self.supports_private_channels(environment_name):
+            names.add("create_channel")
+        return names
 
-    def get_tools_for_blackboard(self, phase: str) -> List[Dict[str, Any]]:
+    def get_tools_for_blackboard(
+        self, phase: str, environment_name: str = ""
+    ) -> List[Dict[str, Any]]:
         """Get blackboard specific tools for the given phase. This is different from Environment tools."""
         # Add phase-specific tools
         if phase == "planning":
@@ -92,6 +107,35 @@ class ToolsetDiscovery:
                     },
                 },
             ]
+            if self.supports_private_channels(environment_name):
+                planning_tools.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "create_channel",
+                            "description": (
+                                "Open a private side channel with one or more other agents. "
+                                "Only the listed agents (and you) can read or post to it. "
+                                "Returns a blackboard_id to use with post_message."
+                            ),
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "agent_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "Agents to invite. You are added automatically.",
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "description": "Optional first message to post in the new channel.",
+                                    },
+                                },
+                                "required": ["agent_ids"],
+                            },
+                        },
+                    }
+                )
             return planning_tools
 
         return []

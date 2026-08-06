@@ -7,6 +7,9 @@ EXECUTION_PHYSICAL_ACTIONS = frozenset({"move", "settle", "stand"})
 
 
 class IsThisSeatTakenTools:
+    # Agents may open their own private channels (create_channel) during planning.
+    supports_private_channels = True
+
     def __init__(self, blackboard_manager, environment=None):
         self.blackboard_manager = blackboard_manager
         self.environment = environment
@@ -131,6 +134,9 @@ class IsThisSeatTakenTools:
 
         blackboard_ids = self.blackboard_manager.get_agent_blackboards(agent_name)
         for bb_id in blackboard_ids:
+            # request_move/complain are public acts; keep them out of side channels.
+            if self.blackboard_manager.is_private_channel(bb_id):
+                continue
             try:
                 self.blackboard_manager.post(
                     int(bb_id),

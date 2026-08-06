@@ -134,6 +134,101 @@ class Megaboard:
         self.blackboards.append(blackboard)
         return len(self.blackboards) - 1
 
+    def is_private_channel(self, blackboard_id: Any) -> bool:
+        """Whether a blackboard is an agent-created private channel."""
+        blackboard = self.get_blackboard_by_string_id(str(blackboard_id))
+        return bool(blackboard and blackboard.template.get("private_channel"))
+
+    def _reachable_agents(self, agent: str) -> Set[str]:
+        """Agents that already share at least one channel with `agent`."""
+        peers: Set[str] = set()
+        for blackboard in self.blackboards:
+            if agent in blackboard.agents:
+                peers |= blackboard.agents
+        peers.discard(agent)
+        return peers
+
+    def create_channel(
+        self,
+        agent_name: str,
+        participants: List[str],
+        message: str = "",
+        phase: Optional[str] = None,
+        iteration: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Open a private channel between the caller and the given agents.
+
+        The channel is a normal blackboard, so only its participants can read or
+        post to it. Reuses an existing private channel with the same membership.
+        """
+        invited = {str(a).strip() for a in participants if str(a).strip()}
+        invited.discard(agent_name)
+        if not invited:
+            return {"error": "create_channel requires at least one other agent in agent_ids"}
+
+        unreachable = sorted(invited - self._reachable_agents(agent_name))
+        if unreachable:
+            return {
+                "error": (
+                    f"Cannot open a channel with {', '.join(unreachable)}: "
+                    "you share no existing channel with them."
+                )
+            }
+
+        members = sorted(invited | {agent_name})
+        blackboard_id = next(
+            (
+                i
+                for i, bb in enumerate(self.blackboards)
+                if bb.template.get("private_channel") and bb.agents == set(members)
+            ),
+            None,
+        )
+        created = blackboard_id is None
+        if created:
+            blackboard_id = self.add_blackboard(
+                members,
+                # allow_duplicate so a private channel can coexist with a public
+                # channel over the same set of agents.
+                template={
+                    "private_channel": True,
+                    "created_by": agent_name,
+                    "allow_duplicate": True,
+                },
+            )
+            self.post_system_message(
+                blackboard_id,
+                "context",
+                {
+                    "message": (
+                        f"Private channel opened by {agent_name}. "
+                        f"Participants: {', '.join(members)}. "
+                        "Only these agents can see what is posted here."
+                    )
+                },
+                phase=phase,
+                iteration=iteration,
+            )
+
+        if message:
+            self.post(
+                blackboard_id,
+                agent_name,
+                "communication",
+                {"content": message},
+                phase=phase,
+                iteration=iteration,
+            )
+
+        return {
+            "status": "success",
+            "blackboard_id": blackboard_id,
+            "participants": members,
+            "created": created,
+            "note": "Post here with post_message(message, blackboard_id).",
+        }
+
     def post(
         self,
         blackboard_id: int,
@@ -367,12 +462,12 @@ class Megaboard:
                 blackboard_id = arguments.get("blackboard_id")
                 message = arguments.get("message", "")
 
-                # Use first available blackboard if none specified
+                # Use the agent's first blackboard if none specified
                 if blackboard_id is None:
-                    if len(self.blackboards) > 0:
-                        blackboard_id = 0  # Use first blackboard
-                    else:
+                    agent_blackboards = self.get_agent_blackboards(agent_name)
+                    if not agent_blackboards:
                         return {"error": "No blackboards available for communication"}
+                    blackboard_id = int(agent_blackboards[0])
                 else:
                     # Convert to int to handle float values from LLM responses (e.g., Gemini UltraThink)
                     blackboard_id = int(blackboard_id)
@@ -388,6 +483,18 @@ class Megaboard:
                     iteration=iteration,
                 )
                 return {"event_id": result}
+
+            elif tool_name == "create_channel":
+                agent_ids = arguments.get("agent_ids") or arguments.get("agent_id") or []
+                if isinstance(agent_ids, str):
+                    agent_ids = [a for a in agent_ids.split(",")]
+                return self.create_channel(
+                    agent_name,
+                    list(agent_ids),
+                    message=str(arguments.get("message") or "").strip(),
+                    phase=phase,
+                    iteration=iteration,
+                )
 
             else:
                 return {"error": f"Unknown blackboard tool: {tool_name}"}
