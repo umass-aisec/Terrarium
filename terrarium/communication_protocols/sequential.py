@@ -12,7 +12,7 @@ from terrarium.tools.environment import (
     instantiate_environment_tools,
 )
 from terrarium.core.logger import BlackboardLogger
-from terrarium.compaction import compact_events
+from terrarium.compaction import compact_events, CompactionLogger
 from terrarium.utils import get_client_instance, get_model_name
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,16 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             self.config, run_timestamp=self.run_timestamp
         )
         self.blackboard_logger.clear_blackboard_logs()
+
+        self.compaction_logger = CompactionLogger(
+            self.config, run_timestamp=self.run_timestamp
+        )
+        self.compaction_logger.reset_log()
+        _compaction_config = (self.config.get("llm") or {}).get("compaction")
+        _compaction_config = _compaction_config if isinstance(_compaction_config, dict) else {}
+        self._compaction_pin_context = bool(_compaction_config.get("pin_context_events", False))
+        self._compaction_token_threshold = int(_compaction_config.get("token_threshold", 3000))
+        self._compaction_keep_recent = int(_compaction_config.get("keep_recent", 3))
 
         self.megaboard = Megaboard()
         self.environment = None
@@ -202,6 +212,14 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
                 events if isinstance(events, list) else [],
                 llm_client=compaction_client,
                 model_name=compaction_model_name,
+                token_threshold=self._compaction_token_threshold,
+                keep_recent=self._compaction_keep_recent,
+                pin_context_events=self._compaction_pin_context,
+                compaction_logger=self.compaction_logger,
+                agent_name=agent_name,
+                blackboard_id=bb_id_int,
+                phase=phase,
+                iteration=iteration,
             )
             # Label each channel so agents can address a specific blackboard_id.
             blackboard = self.megaboard.blackboards[bb_id_int]
