@@ -33,7 +33,7 @@ import asyncio
 from terrarium.core.logger import ToolCallLogger, AgentTrajectoryLogger
 from dotenv import load_dotenv
 
-async def run_simulation(config: Dict[str, Any]) -> bool:
+async def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
     vllm_runtime = None
     try:
         seed = config["simulation"]["seed"]
@@ -120,17 +120,28 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
                         pbar.update(1)
 
                     environment.log_iteration_summary(current_iteration)
-                environment.generate_final_summary()
+                final_summary = environment.generate_final_summary()
         finally:
             if provider == "vllm" and vllm_runtime:
                 vllm_runtime.shutdown()
 
-        return True
+        return {
+            "success": True,
+            "final_summary": final_summary,
+            "log_dir": str(communication_protocol.compaction_logger.log_dir),
+            "run_timestamp": run_timestamp,
+        }
 
     except Exception as e:
         print(f"Simulation failed: {e}")
         traceback.print_exc()
-        return False
+        return {
+            "success": False,
+            "final_summary": {},
+            "log_dir": None,
+            "run_timestamp": None,
+            "error": str(e),
+        }
 
 if __name__ == "__main__":
     configure_logging()
