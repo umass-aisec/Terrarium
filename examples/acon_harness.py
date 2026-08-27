@@ -9,12 +9,18 @@ diagnose-and-rewrite step needs: feed both transcripts to a strong model, ask
 what the compacted run's summary lost, use the answer to edit the compaction
 prompt. See `diagnose_divergent_pair` below for that stub.
 
+Techniques are a mechanism × pinning factorial, matching
+compaction-techniques-survey.md — pinning is a modifier applied on top of
+whichever mechanism is active, not a peer technique of its own. See
+terrarium/compaction/compactor.py:MECHANISMS for the mechanism list
+(baseline, anchored, extractive, eviction, query_conditioned, structured).
+
 Usage:
     uv run python examples/acon_harness.py \
         --config examples/configs/is_this_seat_taken_seed7.yaml \
         --seeds 7,21,42 \
-        --technique pinned_context \
-        --run-tag pin_vs_baseline
+        --mechanism anchored --pin \
+        --run-tag anchored_pinned_vs_oracle
 """
 import argparse
 import asyncio
@@ -30,18 +36,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dotenv import load_dotenv
 
 from terrarium.utils import load_config, configure_logging
+from terrarium.compaction.compactor import MECHANISMS
 
 import base_main  # examples/base_main.py — single-simulation driver, reused as-is
 
 
 ORACLE_TOKEN_THRESHOLD = 10**9  # high enough that compact_events() never triggers
 
-# Named technique presets: llm.compaction overrides applied to the *compacted* run.
-# Add new mechanisms here as they're built (anchored, extractive, retrieval, ...).
-TECHNIQUES: Dict[str, Dict[str, Any]] = {
-    "baseline": {},
-    "pinned_context": {"pin_context_events": True},
-}
+
+def _technique_label(mechanism: str, pin_context_events: bool) -> str:
+    return mechanism + ("+pinned_context" if pin_context_events else "")
 
 
 def _set_compaction_overrides(config: Dict[str, Any], overrides: Dict[str, Any]) -> None:
@@ -53,12 +57,13 @@ def _set_compaction_overrides(config: Dict[str, Any], overrides: Dict[str, Any])
 def build_paired_configs(
     base_config_path: str,
     seed: int,
-    technique: str,
+    mechanism: str,
+    pin_context_events: bool,
     run_tag: str,
 ) -> Dict[str, Dict[str, Any]]:
     """Build the (oracle, compacted) config pair for one seed."""
-    if technique not in TECHNIQUES:
-        raise ValueError(f"Unknown technique '{technique}'. Known: {list(TECHNIQUES)}")
+    if mechanism not in MECHANISMS:
+        raise ValueError(f"Unknown mechanism '{mechanism}'. Known: {MECHANISMS}")
 
     # Load twice rather than deep-copying once — load_config() reparses the
     # YAML fresh each call, so there's no risk of the two configs sharing
@@ -69,11 +74,15 @@ def build_paired_configs(
     for cfg in (oracle_config, compacted_config):
         cfg.setdefault("simulation", {})["seed"] = seed
 
+    label = _technique_label(mechanism, pin_context_events)
     oracle_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_oracle"
-    compacted_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_{technique}"
+    compacted_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_{label}"
 
     _set_compaction_overrides(oracle_config, {"token_threshold": ORACLE_TOKEN_THRESHOLD})
-    _set_compaction_overrides(compacted_config, TECHNIQUES[technique])
+    _set_compaction_overrides(
+        compacted_config,
+        {"mechanism": mechanism, "pin_context_events": pin_context_events},
+    )
 
     return {"oracle": oracle_config, "compacted": compacted_config}
 
@@ -81,18 +90,21 @@ def build_paired_configs(
 async def run_pair(
     base_config_path: str,
     seed: int,
-    technique: str,
+    mechanism: str,
+    pin_context_events: bool,
     run_tag: str,
 ) -> Dict[str, Any]:
     """Run the oracle and compacted variants for one seed, sequentially."""
-    configs = build_paired_configs(base_config_path, seed, technique, run_tag)
+    configs = build_paired_configs(base_config_path, seed, mechanism, pin_context_events, run_tag)
 
     oracle_result = await base_main.run_simulation(configs["oracle"])
     compacted_result = await base_main.run_simulation(configs["compacted"])
 
     return {
         "seed": seed,
-        "technique": technique,
+        "technique": _technique_label(mechanism, pin_context_events),
+        "mechanism": mechanism,
+        "pin_context_events": pin_context_events,
         "oracle": oracle_result,
         "compacted": compacted_result,
     }
@@ -154,23 +166,25 @@ def score_divergence(
 async def run_trial_suite(
     base_config_path: str,
     seeds: List[int],
-    technique: str,
+    mechanism: str,
+    pin_context_events: bool,
     run_tag: str,
     reward_delta_threshold: float = 1.0,
     results_dir: str = "logs/acon_trials",
 ) -> List[Dict[str, Any]]:
     """Run paired trials across seeds and persist a scored manifest to disk."""
+    label = _technique_label(mechanism, pin_context_events)
     records = []
     for seed in seeds:
-        pair_result = await run_pair(base_config_path, seed, technique, run_tag)
+        pair_result = await run_pair(base_config_path, seed, mechanism, pin_context_events, run_tag)
         record = score_divergence(pair_result, reward_delta_threshold=reward_delta_threshold)
         records.append(record)
         status = "DIVERGED" if record["diverged"] else ("skipped" if record["diverged"] is None else "matched")
-        print(f"[seed {seed}] {technique}: {status} (reward_delta={record.get('reward_delta')})")
+        print(f"[seed {seed}] {label}: {status} (reward_delta={record.get('reward_delta')})")
 
     out_dir = Path(results_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = out_dir / f"{run_tag}_{technique}.json"
+    manifest_path = out_dir / f"{run_tag}_{label}.json"
     manifest_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
     print(f"\nWrote {len(records)} trial records to {manifest_path}")
 
@@ -210,7 +224,10 @@ if __name__ == "__main__":
         "--seeds", type=str, required=True, help="Comma-separated seeds, e.g. 7,21,42"
     )
     parser.add_argument(
-        "--technique", type=str, default="baseline", choices=list(TECHNIQUES.keys())
+        "--mechanism", type=str, default="baseline", choices=list(MECHANISMS)
+    )
+    parser.add_argument(
+        "--pin", action="store_true", help="Apply the context-event pinning modifier."
     )
     parser.add_argument("--run-tag", type=str, required=True)
     parser.add_argument("--reward-delta-threshold", type=float, default=1.0)
@@ -222,7 +239,8 @@ if __name__ == "__main__":
         run_trial_suite(
             args.config,
             seeds,
-            args.technique,
+            args.mechanism,
+            args.pin,
             args.run_tag,
             reward_delta_threshold=args.reward_delta_threshold,
         )

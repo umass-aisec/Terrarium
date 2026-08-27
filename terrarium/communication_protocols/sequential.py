@@ -54,6 +54,13 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         self._compaction_pin_context = bool(_compaction_config.get("pin_context_events", False))
         self._compaction_token_threshold = int(_compaction_config.get("token_threshold", 3000))
         self._compaction_keep_recent = int(_compaction_config.get("keep_recent", 3))
+        self._compaction_mechanism = str(_compaction_config.get("mechanism", "baseline"))
+        self._compaction_extract_limit = int(_compaction_config.get("extract_limit", 5))
+        _evict_kinds = _compaction_config.get("evict_kinds")
+        self._compaction_evict_kinds = set(_evict_kinds) if isinstance(_evict_kinds, list) else None
+        # Per-blackboard mutable state for mechanism="anchored" — carries the
+        # running summary across turns instead of re-summarizing everything.
+        self._compaction_caches: Dict[int, Dict[str, Any]] = {}
 
         self.megaboard = Megaboard()
         self.environment = None
@@ -214,7 +221,11 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
                 model_name=compaction_model_name,
                 token_threshold=self._compaction_token_threshold,
                 keep_recent=self._compaction_keep_recent,
+                mechanism=self._compaction_mechanism,
                 pin_context_events=self._compaction_pin_context,
+                cache=self._compaction_caches.setdefault(bb_id_int, {}),
+                evict_kinds=self._compaction_evict_kinds,
+                extract_limit=self._compaction_extract_limit,
                 compaction_logger=self.compaction_logger,
                 agent_name=agent_name,
                 blackboard_id=bb_id_int,

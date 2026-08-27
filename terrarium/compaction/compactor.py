@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 from terrarium.core.blackboard import format_blackboard_events_for_prompt
 import logging
 logger = logging.getLogger(__name__)
@@ -9,8 +9,55 @@ logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
+MECHANISMS: Tuple[str, ...] = (
+    "baseline",
+    "anchored",
+    "extractive",
+    "eviction",
+    "query_conditioned",
+    "structured",
+)
+
+# Event kinds the "eviction" mechanism drops outright before summarizing.
+# Physical actions (move/settle/stand) are already visible to every agent
+# directly through their own environment state each turn (see "WHAT YOU
+# KNOW" in the system prompt) — the blackboard's action_executed log is
+# redundant for negotiation history, so it's the one class of event that's
+# safe to delete rather than paraphrase.
+DEFAULT_EVICT_KINDS: FrozenSet[str] = frozenset({"action_executed"})
+
+# Keyword markers the "extractive" mechanism uses to flag a communication
+# event as high-signal (a number or a commitment word) and therefore worth
+# keeping verbatim instead of folding into the abstractive summary.
+_EXTRACTIVE_MARKERS: Tuple[str, ...] = (
+    "agree", "deal", "promise", "swap", "settle", "move to", "will move",
+)
+
+
 def _count_tokens(text: str) -> int:
     return len(text) // 4
+
+
+def _is_high_signal(event: Any) -> bool:
+    if not isinstance(event, dict):
+        return False
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        return False
+    content = str(payload.get("content") or "")
+    if not content:
+        return False
+    lowered = content.lower()
+    return any(ch.isdigit() for ch in content) or any(m in lowered for m in _EXTRACTIVE_MARKERS)
+
+
+def _split_pinned(events: List[Any], pin_context_events: bool) -> Tuple[List[Any], List[Any]]:
+    if not pin_context_events:
+        return [], events
+    pinned = [e for e in events if isinstance(e, dict) and e.get("kind") == "context"]
+    compactable = [e for e in events if not (isinstance(e, dict) and e.get("kind") == "context")]
+    return pinned, compactable
+
 
 def compact_events(
     events,
@@ -18,7 +65,11 @@ def compact_events(
     model_name=None,
     token_threshold: int = 3000,
     keep_recent: int = 3,
+    mechanism: str = "baseline",
     pin_context_events: bool = False,
+    cache: Optional[Dict[str, Any]] = None,
+    evict_kinds: Optional[Set[str]] = None,
+    extract_limit: int = 5,
     compaction_logger=None,
     agent_name: Optional[str] = None,
     blackboard_id: Any = None,
@@ -28,23 +79,27 @@ def compact_events(
     """
     Compact a blackboard's event history into prompt text.
 
-    pin_context_events=False reproduces the original baseline behavior exactly
-    (control group). pin_context_events=True holds every `kind == "context"`
-    event (channel-purpose / standing-rule messages posted once when a
-    blackboard is created) out of the summarizer entirely, so it can never be
-    paraphrased away once it ages past `keep_recent` — this is the
-    "constraint pinning" technique.
+    `mechanism` selects how the aged-out portion of history is compressed
+    once the token budget is exceeded (see MECHANISMS). `pin_context_events`
+    is an orthogonal modifier, not a mechanism of its own: it holds every
+    `kind == "context"` event (channel-purpose / standing-rule messages
+    posted once when a blackboard is created) out of whichever mechanism is
+    active, so it can never be paraphrased or evicted away once it ages past
+    `keep_recent`. mechanism="baseline", pin_context_events=False reproduces
+    the original behavior exactly (control group).
+
+    `cache`, if provided, is a mutable dict the caller owns (one per
+    blackboard) used by mechanism="anchored" to carry its running summary
+    across calls instead of re-summarizing the whole history every turn.
+    Ignored by every other mechanism.
     """
-    technique = "pinned_context" if pin_context_events else "baseline"
+    if mechanism not in MECHANISMS:
+        raise ValueError(f"Unknown compaction mechanism '{mechanism}'. Known: {MECHANISMS}")
+
+    technique = mechanism + ("+pinned_context" if pin_context_events else "")
     events = events if isinstance(events, list) else []
 
-    if pin_context_events:
-        pinned = [e for e in events if isinstance(e, dict) and e.get("kind") == "context"]
-        compactable = [e for e in events if not (isinstance(e, dict) and e.get("kind") == "context")]
-    else:
-        pinned = []
-        compactable = events
-
+    pinned, compactable = _split_pinned(events, pin_context_events)
     pinned_text = format_blackboard_events_for_prompt(pinned) if pinned else ""
     formatted = format_blackboard_events_for_prompt(events)
     compactable_formatted = format_blackboard_events_for_prompt(compactable)
@@ -54,18 +109,17 @@ def compact_events(
         logger.info(f"Compaction skipped: {token_count} tokens (threshold={token_threshold})")
         logger.debug(f"[NON-COMPACTED PROMPT]\n{formatted}")
         # Non-compacted path already contains pinned events in natural order,
-        # so no separate section is needed — pinning only changes behavior
-        # once compaction actually triggers.
-        result = formatted
+        # so no separate section is needed — mechanism/pinning only change
+        # behavior once compaction actually triggers.
         _log(
             compaction_logger, agent_name=agent_name, blackboard_id=blackboard_id,
             phase=phase, iteration=iteration, technique=technique, triggered=False,
             token_count=token_count, token_threshold=token_threshold,
-            pre_text=formatted, post_text=result, pinned_text=pinned_text,
+            pre_text=formatted, post_text=formatted, pinned_text=pinned_text,
         )
-        return result
+        return formatted
 
-    logger.info(f"Compaction triggered: {token_count} tokens exceeds {token_threshold}, summarizing {len(compactable) - keep_recent} events")
+    logger.info(f"Compaction triggered: {token_count} tokens exceeds {token_threshold}, summarizing {len(compactable) - keep_recent} events (mechanism={mechanism})")
     logger.debug(f"[PRE-COMPACTION PROMPT]\n{formatted}")
 
     old = compactable[:-keep_recent] if keep_recent else compactable
@@ -79,14 +133,34 @@ def compact_events(
         return formatted
 
     recent = compactable[-keep_recent:] if keep_recent else []
-    old_text = format_blackboard_events_for_prompt(old)
-    summary = _summarize(old_text, llm_client, model_name)
     recent_text = format_blackboard_events_for_prompt(recent)
+
+    extractive_text = ""
+    if mechanism == "baseline":
+        summary = _summarize(format_blackboard_events_for_prompt(old), llm_client, model_name)
+    elif mechanism == "anchored":
+        summary = _summarize_anchored(old, cache, llm_client, model_name)
+    elif mechanism == "eviction":
+        kinds = evict_kinds if evict_kinds is not None else DEFAULT_EVICT_KINDS
+        kept = [e for e in old if not (isinstance(e, dict) and e.get("kind") in kinds)]
+        summary = _summarize(format_blackboard_events_for_prompt(kept), llm_client, model_name)
+    elif mechanism == "extractive":
+        summary, extractive_text = _summarize_extractive(old, llm_client, model_name, extract_limit)
+    elif mechanism == "query_conditioned":
+        summary = _summarize_query_conditioned(
+            format_blackboard_events_for_prompt(old), llm_client, model_name, agent_name, phase
+        )
+    elif mechanism == "structured":
+        summary = _summarize_structured(format_blackboard_events_for_prompt(old), llm_client, model_name)
+    else:  # pragma: no cover — guarded above
+        raise ValueError(f"Unhandled mechanism '{mechanism}'")
 
     sections = []
     if pinned_text:
         sections.append(f"[Standing context]\n{pinned_text}")
     sections.append(f"[Summary of earlier conversation]\n{summary}")
+    if extractive_text:
+        sections.append(f"[Notable events kept verbatim]\n{extractive_text}")
     sections.append(f"[Recent messages]\n{recent_text}")
     result = "\n\n".join(sections)
 
@@ -121,6 +195,138 @@ def _summarize(text: str, llm_client, model_name: str) -> str:
     )
     context = llm_client.init_context(
         system_prompt="You are a helpful assistant that summarizes agent conversations concisely.",
+        user_prompt=prompt,
+    )
+    _, summary = llm_client.generate_response(
+        input=context,
+        params={"max_tokens": 500, "model": model_name},
+    )
+    return summary
+
+
+def _summarize_incremental(previous_summary: str, new_text: str, llm_client, model_name: str) -> str:
+    """Fold new events into an existing summary instead of re-summarizing everything."""
+    prompt = (
+        "You maintain a running summary of an ongoing agent conversation. "
+        "Update the EXISTING SUMMARY by folding in the NEW MESSAGES below it. "
+        "Keep the result 3-5 bullet points, one short sentence each. "
+        "No headers, no bold, no markdown formatting. "
+        "Only decisions, time slots, and commitments — drop anything that's now stale or superseded. "
+        "Don't restate facts from the existing summary that haven't changed; just carry them forward silently.\n\n"
+        f"EXISTING SUMMARY:\n{previous_summary}\n\nNEW MESSAGES:\n{new_text}"
+    )
+    context = llm_client.init_context(
+        system_prompt="You are a helpful assistant that maintains a running summary of an agent conversation.",
+        user_prompt=prompt,
+    )
+    _, summary = llm_client.generate_response(
+        input=context,
+        params={"max_tokens": 500, "model": model_name},
+    )
+    return summary
+
+
+def _summarize_anchored(old_events: List[Any], cache: Optional[Dict[str, Any]], llm_client, model_name: str) -> str:
+    """
+    Incremental/anchored summarization: reuse the cached summary and fold in
+    only events that arrived since the last compaction call for this
+    blackboard, instead of re-summarizing the whole history every turn.
+    Falls back to a fresh summarize if no cache was supplied (e.g. a caller
+    that doesn't maintain per-blackboard state), or on the first call.
+    """
+    if cache is None:
+        return _summarize(format_blackboard_events_for_prompt(old_events), llm_client, model_name)
+
+    previous_summary = cache.get("summary")
+    summarized_count = int(cache.get("summarized_count", 0))
+
+    if previous_summary and len(old_events) >= summarized_count:
+        new_events = old_events[summarized_count:]
+        if not new_events:
+            return previous_summary
+        new_text = format_blackboard_events_for_prompt(new_events)
+        summary = _summarize_incremental(previous_summary, new_text, llm_client, model_name)
+    else:
+        summary = _summarize(format_blackboard_events_for_prompt(old_events), llm_client, model_name)
+
+    cache["summary"] = summary
+    cache["summarized_count"] = len(old_events)
+    return summary
+
+
+def _summarize_extractive(
+    old_events: List[Any], llm_client, model_name: str, extract_limit: int
+) -> Tuple[str, str]:
+    """
+    Extractive-then-abstractive: keep events that look like commitments or
+    contain numbers verbatim (up to extract_limit, oldest-first), summarize
+    only the residue abstractly. Sidesteps the numeric/temporal fidelity loss
+    that pure summarization causes, at the cost of only being as good as the
+    keyword heuristic in _is_high_signal.
+    """
+    high_signal = [e for e in old_events if _is_high_signal(e)][:extract_limit]
+    high_signal_ids = {id(e) for e in high_signal}
+    residue = [e for e in old_events if id(e) not in high_signal_ids]
+
+    extractive_text = format_blackboard_events_for_prompt(high_signal) if high_signal else ""
+    if residue:
+        summary = _summarize(format_blackboard_events_for_prompt(residue), llm_client, model_name)
+    else:
+        summary = "No decisions made."
+    return summary, extractive_text
+
+
+def _summarize_query_conditioned(
+    text: str, llm_client, model_name: str, agent_name: Optional[str], phase: Optional[str]
+) -> str:
+    """Condition the summary on who's about to read it, so the compressor
+    isn't blind to what the summary will actually be used for."""
+    reader_note = ""
+    if agent_name:
+        reader_note = f"This summary will be read by {agent_name}"
+        if phase:
+            reader_note += f", who is about to act during the {phase} phase"
+        reader_note += (
+            ". Prioritize facts most relevant to their next decision — their own "
+            "commitments, requests directed at them, and unresolved asks — over "
+            "facts that only concern other agents.\n\n"
+        )
+    prompt = (
+        f"{reader_note}"
+        "Summarize this agent conversation in 3-5 bullet points. "
+        "Be extremely concise — one short sentence per bullet. "
+        "No headers, no bold, no markdown formatting, no caveats about missing data. "
+        "Only include actual decisions, time slots, and commitments. "
+        "If nothing was decided, write only: 'No decisions made.'\n\n"
+        f"{text}"
+    )
+    context = llm_client.init_context(
+        system_prompt="You are a helpful assistant that summarizes agent conversations concisely for a specific reader.",
+        user_prompt=prompt,
+    )
+    _, summary = llm_client.generate_response(
+        input=context,
+        params={"max_tokens": 500, "model": model_name},
+    )
+    return summary
+
+
+def _summarize_structured(text: str, llm_client, model_name: str) -> str:
+    """Force the summary into labeled slots instead of free-text bullets, so
+    numeric/temporal facts (seat IDs, time steps) have a dedicated place to
+    survive rather than getting paraphrased away."""
+    prompt = (
+        "Summarize this agent conversation into these labeled sections. One short "
+        "line per item. Omit a section entirely if it has nothing in it. No other "
+        "text, no markdown formatting beyond the labels below.\n\n"
+        "DECISIONS: finalized agreements\n"
+        "COMMITMENTS: promises made — who, to whom, and any condition attached\n"
+        "OPEN REQUESTS: asks that haven't been resolved yet\n"
+        "SEAT/STATE FACTS: specific seat numbers, positions, or counts mentioned\n\n"
+        f"{text}"
+    )
+    context = llm_client.init_context(
+        system_prompt="You are a helpful assistant that summarizes agent conversations into a fixed structured format.",
         user_prompt=prompt,
     )
     _, summary = llm_client.generate_response(
