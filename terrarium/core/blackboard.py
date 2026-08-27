@@ -363,6 +363,33 @@ class Megaboard:
                 result.append(str(i))
         return result
 
+    def recall(
+        self, blackboard_id: int, agent: str, query: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search the FULL, uncompacted event log for a blackboard for events
+        matching `query` — the retrieval-backed compaction technique. The
+        underlying `blackboard.logs` list is never pruned by compaction (only
+        the prompt string built from it is lossy), so this recovers detail a
+        compacted summary may have dropped, scoped to a keyword query rather
+        than dumping the entire history back.
+
+        Matching is a simple case-insensitive substring match against each
+        event's formatted text, keeping the most recent matches.
+        """
+        events = self.get(blackboard_id, agent, limit=None)
+        terms = [t for t in query.lower().split() if t]
+        if not terms:
+            return []
+
+        matches: List[Dict[str, Any]] = []
+        for event in events:
+            text = format_blackboard_events_for_prompt([event]).lower()
+            if any(term in text for term in terms):
+                matches.append(event)
+
+        return matches[-limit:] if limit else matches
+
     def get_agent_blackboard_contexts(self, agent_name: str) -> Dict[str, str]:
         """
         Get context summaries for all blackboards that an agent participates in. This is used as context in agent prompts.
@@ -456,6 +483,30 @@ class Megaboard:
 
                 result = self.get(blackboard_id, agent_name, limit=None)
                 return {"events": result}
+
+            elif tool_name == "recall":
+                query = str(arguments.get("query", "")).strip()
+                if not query:
+                    return {"error": "query is required for recall"}
+
+                blackboard_id = arguments.get("blackboard_id")
+                if blackboard_id is None:
+                    agent_blackboards = self.get_agent_blackboards(agent_name)
+                    if not agent_blackboards:
+                        return {"error": "No blackboards available to recall from"}
+                    blackboard_id = int(agent_blackboards[0])
+                else:
+                    blackboard_id = int(blackboard_id)
+
+                limit = arguments.get("limit")
+                limit = int(limit) if limit else 5
+                matches = self.recall(blackboard_id, agent_name, query, limit=limit)
+                if not matches:
+                    return {"result": "No matching events found in the full archive."}
+                return {
+                    "events": matches,
+                    "result": format_blackboard_events_for_prompt(matches),
+                }
 
             elif tool_name == "post_message":
                 # Handle post_message as a special case of post_event

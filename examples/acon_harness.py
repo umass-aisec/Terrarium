@@ -9,18 +9,22 @@ diagnose-and-rewrite step needs: feed both transcripts to a strong model, ask
 what the compacted run's summary lost, use the answer to edit the compaction
 prompt. See `diagnose_divergent_pair` below for that stub.
 
-Techniques are a mechanism × pinning factorial, matching
-compaction-techniques-survey.md — pinning is a modifier applied on top of
-whichever mechanism is active, not a peer technique of its own. See
-terrarium/compaction/compactor.py:MECHANISMS for the mechanism list
-(baseline, anchored, extractive, eviction, query_conditioned, structured).
+Techniques are a mechanism × pinning × retrieval factorial, matching
+compaction-techniques-survey.md — pinning and retrieval are modifiers applied
+on top of whichever mechanism is active, not peer techniques of their own.
+Pinning changes what compact_events() is allowed to summarize; retrieval
+doesn't touch compact_events() at all — it's a recall() tool that lets the
+compacted agent search the full, never-pruned archive for something the
+summary dropped. See terrarium/compaction/compactor.py:MECHANISMS for the
+mechanism list (baseline, anchored, extractive, eviction, query_conditioned,
+structured).
 
 Usage:
     uv run python examples/acon_harness.py \
         --config examples/configs/is_this_seat_taken_seed7.yaml \
         --seeds 7,21,42 \
-        --mechanism anchored --pin \
-        --run-tag anchored_pinned_vs_oracle
+        --mechanism anchored --pin --retrieval \
+        --run-tag anchored_pinned_retrieval_vs_oracle
 """
 import argparse
 import asyncio
@@ -44,8 +48,13 @@ import base_main  # examples/base_main.py — single-simulation driver, reused a
 ORACLE_TOKEN_THRESHOLD = 10**9  # high enough that compact_events() never triggers
 
 
-def _technique_label(mechanism: str, pin_context_events: bool) -> str:
-    return mechanism + ("+pinned_context" if pin_context_events else "")
+def _technique_label(mechanism: str, pin_context_events: bool, retrieval_enabled: bool = False) -> str:
+    label = mechanism
+    if pin_context_events:
+        label += "+pinned_context"
+    if retrieval_enabled:
+        label += "+retrieval"
+    return label
 
 
 def _set_compaction_overrides(config: Dict[str, Any], overrides: Dict[str, Any]) -> None:
@@ -59,6 +68,7 @@ def build_paired_configs(
     seed: int,
     mechanism: str,
     pin_context_events: bool,
+    retrieval_enabled: bool,
     run_tag: str,
 ) -> Dict[str, Dict[str, Any]]:
     """Build the (oracle, compacted) config pair for one seed."""
@@ -74,14 +84,22 @@ def build_paired_configs(
     for cfg in (oracle_config, compacted_config):
         cfg.setdefault("simulation", {})["seed"] = seed
 
-    label = _technique_label(mechanism, pin_context_events)
+    label = _technique_label(mechanism, pin_context_events, retrieval_enabled)
     oracle_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_oracle"
     compacted_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_{label}"
 
+    # retrieval doesn't touch compact_events() at all — it's a tool
+    # (recall()) the agent calls, not a compaction parameter. The oracle
+    # never compacts, so there's nothing for it to recall; only the
+    # compacted config needs the flag.
     _set_compaction_overrides(oracle_config, {"token_threshold": ORACLE_TOKEN_THRESHOLD})
     _set_compaction_overrides(
         compacted_config,
-        {"mechanism": mechanism, "pin_context_events": pin_context_events},
+        {
+            "mechanism": mechanism,
+            "pin_context_events": pin_context_events,
+            "retrieval_enabled": retrieval_enabled,
+        },
     )
 
     return {"oracle": oracle_config, "compacted": compacted_config}
@@ -92,19 +110,23 @@ async def run_pair(
     seed: int,
     mechanism: str,
     pin_context_events: bool,
+    retrieval_enabled: bool,
     run_tag: str,
 ) -> Dict[str, Any]:
     """Run the oracle and compacted variants for one seed, sequentially."""
-    configs = build_paired_configs(base_config_path, seed, mechanism, pin_context_events, run_tag)
+    configs = build_paired_configs(
+        base_config_path, seed, mechanism, pin_context_events, retrieval_enabled, run_tag
+    )
 
     oracle_result = await base_main.run_simulation(configs["oracle"])
     compacted_result = await base_main.run_simulation(configs["compacted"])
 
     return {
         "seed": seed,
-        "technique": _technique_label(mechanism, pin_context_events),
+        "technique": _technique_label(mechanism, pin_context_events, retrieval_enabled),
         "mechanism": mechanism,
         "pin_context_events": pin_context_events,
+        "retrieval_enabled": retrieval_enabled,
         "oracle": oracle_result,
         "compacted": compacted_result,
     }
@@ -168,15 +190,18 @@ async def run_trial_suite(
     seeds: List[int],
     mechanism: str,
     pin_context_events: bool,
+    retrieval_enabled: bool,
     run_tag: str,
     reward_delta_threshold: float = 1.0,
     results_dir: str = "logs/acon_trials",
 ) -> List[Dict[str, Any]]:
     """Run paired trials across seeds and persist a scored manifest to disk."""
-    label = _technique_label(mechanism, pin_context_events)
+    label = _technique_label(mechanism, pin_context_events, retrieval_enabled)
     records = []
     for seed in seeds:
-        pair_result = await run_pair(base_config_path, seed, mechanism, pin_context_events, run_tag)
+        pair_result = await run_pair(
+            base_config_path, seed, mechanism, pin_context_events, retrieval_enabled, run_tag
+        )
         record = score_divergence(pair_result, reward_delta_threshold=reward_delta_threshold)
         records.append(record)
         status = "DIVERGED" if record["diverged"] else ("skipped" if record["diverged"] is None else "matched")
@@ -229,6 +254,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--pin", action="store_true", help="Apply the context-event pinning modifier."
     )
+    parser.add_argument(
+        "--retrieval",
+        action="store_true",
+        help="Give the compacted agent a recall() tool over the full uncompacted archive.",
+    )
     parser.add_argument("--run-tag", type=str, required=True)
     parser.add_argument("--reward-delta-threshold", type=float, default=1.0)
 
@@ -241,6 +271,7 @@ if __name__ == "__main__":
             seeds,
             args.mechanism,
             args.pin,
+            args.retrieval,
             args.run_tag,
             reward_delta_threshold=args.reward_delta_threshold,
         )

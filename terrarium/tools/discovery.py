@@ -66,7 +66,9 @@ class ToolsetDiscovery:
         tools = self._get_tools_instance(environment_name)
         return bool(getattr(tools, "supports_private_channels", False))
 
-    def get_blackboard_tool_names(self, environment_name: str = "") -> Set[str]:
+    def get_blackboard_tool_names(
+        self, environment_name: str = "", retrieval_enabled: bool = False
+    ) -> Set[str]:
         """
         Get the set of tool names that this blackboard manager supports.
 
@@ -76,10 +78,12 @@ class ToolsetDiscovery:
         names = {"post_message"}
         if self.supports_private_channels(environment_name):
             names.add("create_channel")
+        if retrieval_enabled:
+            names.add("recall")
         return names
 
     def get_tools_for_blackboard(
-        self, phase: str, environment_name: str = ""
+        self, phase: str, environment_name: str = "", retrieval_enabled: bool = False
     ) -> List[Dict[str, Any]]:
         """Get blackboard specific tools for the given phase. This is different from Environment tools."""
         # Add phase-specific tools
@@ -128,10 +132,43 @@ class ToolsetDiscovery:
                                     },
                                     "message": {
                                         "type": "string",
-                                        "description": "Optional first message to post in the new channel.",
+                                        "description": (
+                                            "Optional first message. Posted immediately — do NOT "
+                                            "call post_message again to repeat it."
+                                        ),
                                     },
                                 },
                                 "required": ["agent_ids"],
+                            },
+                        },
+                    }
+                )
+            if retrieval_enabled:
+                planning_tools.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "recall",
+                            "description": (
+                                "Search the FULL, uncompacted history of a channel for "
+                                "something the summarized context may have dropped — a "
+                                "specific number, seat, or commitment. Use this when you "
+                                "suspect you're missing a detail, not as a substitute for "
+                                "reading the chat normally."
+                            ),
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "query": {
+                                        "type": "string",
+                                        "description": "Keywords to search for, e.g. 'seat 12C' or 'Bob agreed'.",
+                                    },
+                                    "blackboard_id": {
+                                        "type": "integer",
+                                        "description": "Which channel to search. Defaults to your main channel.",
+                                    },
+                                },
+                                "required": ["query"],
                             },
                         },
                     }
