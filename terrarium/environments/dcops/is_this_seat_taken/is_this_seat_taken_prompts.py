@@ -19,13 +19,18 @@ class IsThisSeatTakenPrompts:
         # Extraversion can also bias that agent's generated public traits — reused
         # here rather than re-resolved, so the two stay in sync.
         self.persona_by_agent = getattr(env, "persona_by_agent", {})
+        _compaction_config = (full_config.get("llm") or {}).get("compaction")
+        self.retrieval_enabled = bool(
+            isinstance(_compaction_config, dict)
+            and _compaction_config.get("retrieval_enabled", False)
+        )
         self.tool_instruction_data = build_vllm_tool_instructions(
             full_config,
             planning_tool_lines=[
                 "- post_message(message: str, blackboard_id?: int): General group chat.",
                 "- request_move(agent_id: str, message?: str): Ask a neighbor to move; posts to chat.",
                 "- complain(agent_id: str, message?: str): Strongly ask a neighbor to move; posts to chat.",
-                "- create_channel(agent_ids: list[str], message?: str): Open a private channel with those agents.",
+                "- create_channel(agent_ids: list[str], message?: str): Open a private channel with those agents; message (if given) is posted immediately, don't repeat it via post_message.",
             ],
             execution_tool_lines=[
                 "- move(seat_id: str): 'I'm moving to a better seat.'",
@@ -88,7 +93,15 @@ Planning (talking):
 - complain(agent_id, message?) — strongly ask a neighbor to move; posts to chat and applies stronger pressure
 - create_channel(agent_ids, message?) — open a PRIVATE channel with specific agents; only they can see it.
   Use it to coordinate quietly (side deals, swaps, agreeing on who asks whom to move).
-
+  If you pass message, it is posted immediately — don't call post_message again to repeat it.
+""" + (
+            "- recall(query, blackboard_id?) — search the FULL original conversation history for "
+            "something specific, like a seat number or who agreed to what. The chat above may be "
+            "a compressed summary of an older conversation and could be missing a detail — if "
+            "you're about to make a decision and aren't sure you have the full picture, call "
+            "recall() with a few keywords before acting instead of guessing.\n"
+            if self.retrieval_enabled else ""
+        ) + """
 Execution (physical):
 - move(seat_id) — get up and sit somewhere else
 - settle() — lock in your current seat; the run ends only when ALL agents have settled
@@ -140,7 +153,9 @@ shown in that channel's header in the chat below.
         agent_context: Dict[str, Any],
         blackboard_context: Dict[str, Any],
     ) -> str:
-        system_prompt = self.get_system_prompt()
+        # Must pass agent_name: without it the persona branch never fires and the
+        # logged prompt is not what the agent actually saw.
+        system_prompt = self.get_system_prompt(agent_name)
         user_prompt = self._get_user_prompt_impl(agent_name, agent_context, blackboard_context)
 
         if self.prompt_logger:

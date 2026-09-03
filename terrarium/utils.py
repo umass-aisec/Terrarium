@@ -824,3 +824,5 @@ def configure_logging(level: Optional[int] = None) -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("mcp.client.streamable_http").setLevel(logging.WARNING)
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)

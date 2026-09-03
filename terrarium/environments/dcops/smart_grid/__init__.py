@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import importlib
-from typing import Any
+from terrarium.environments._lazy import lazy_namespace
 
 __all__ = ["SmartGridEnvironment", "SmartGridTools", "SmartGridPrompts"]
 
@@ -14,17 +13,4 @@ _LAZY_ATTRS = {
 }
 
 
-def __getattr__(name: str) -> Any:
-    target = _LAZY_ATTRS.get(name)
-    if target is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-    module_path, _, attr = target.partition(":")
-    module = importlib.import_module(module_path, __name__)
-    value = getattr(module, attr)
-    globals()[name] = value
-    return value
-
-
-def __dir__() -> list[str]:
-    return sorted(set(list(globals().keys()) + __all__))
+__getattr__, __dir__ = lazy_namespace(__name__, _LAZY_ATTRS, globals(), __all__)

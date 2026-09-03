@@ -4,10 +4,8 @@ ACON-style paired-trajectory harness (scaffolding).
 Runs the same scenario twice per seed — once with compaction effectively
 disabled (the "oracle"), once with a named compaction technique active — and
 scores whether the two runs diverge on ground-truth outcome (joint reward,
-settled state). Divergent pairs are exactly what the not-yet-built
-diagnose-and-rewrite step needs: feed both transcripts to a strong model, ask
-what the compacted run's summary lost, use the answer to edit the compaction
-prompt. See `diagnose_divergent_pair` below for that stub.
+settled state). Divergent pairs are the input a diagnose-and-rewrite step
+would need: compare both transcripts to see what the summary dropped.
 
 Techniques are a mechanism × pinning × retrieval factorial, matching
 compaction-techniques-survey.md — pinning and retrieval are modifiers applied
@@ -19,11 +17,26 @@ summary dropped. See terrarium/compaction/compactor.py:MECHANISMS for the
 mechanism list (baseline, anchored, extractive, eviction, query_conditioned,
 structured).
 
+The oracle config never varies by mechanism/pin/retrieval — it only ever sets
+token_threshold to effectively infinity — so running a fresh oracle for every
+technique wastes a paired simulation on a config that's identical every time.
+Each (run_tag, seed)'s oracle result is cached to disk on first success and
+reused by every later `--mechanism`/`--pin`/`--retrieval` combo sharing that
+run_tag, so a 24-combo × 3-seed sweep costs 3 oracle + 72 compacted runs
+instead of 72 + 72. Pass --fresh-oracle to bypass the cache for one call.
+
 Usage:
     uv run python examples/acon_harness.py \
-        --config examples/configs/is_this_seat_taken_seed7.yaml \
+        --config examples/configs/is_this_seat_taken.yaml \
         --seeds 7,21,42 \
         --mechanism anchored --pin --retrieval \
+        --run-tag anchored_pinned_retrieval_vs_oracle
+
+    # A later call reusing the same run-tag + seeds skips re-running the oracle:
+    uv run python examples/acon_harness.py \
+        --config examples/configs/is_this_seat_taken.yaml \
+        --seeds 7,21,42 \
+        --mechanism extractive --pin \
         --run-tag anchored_pinned_retrieval_vs_oracle
 """
 import argparse
@@ -31,7 +44,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root))
@@ -46,7 +59,6 @@ import base_main  # examples/base_main.py — single-simulation driver, reused a
 
 
 ORACLE_TOKEN_THRESHOLD = 10**9  # high enough that compact_events() never triggers
-
 
 def _technique_label(mechanism: str, pin_context_events: bool, retrieval_enabled: bool = False) -> str:
     label = mechanism
@@ -63,36 +75,33 @@ def _set_compaction_overrides(config: Dict[str, Any], overrides: Dict[str, Any])
     compaction_config.update(overrides)
 
 
-def build_paired_configs(
+def build_oracle_config(base_config_path: str, seed: int, run_tag: str) -> Dict[str, Any]:
+    """Build the oracle (compaction-disabled) config for one seed. Never
+    varies by mechanism/pin/retrieval — see the module docstring on why the
+    oracle is cached instead of rebuilt per technique."""
+    oracle_config = load_config(base_config_path)
+    oracle_config.setdefault("simulation", {})["seed"] = seed
+    oracle_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_oracle"
+    _set_compaction_overrides(oracle_config, {"token_threshold": ORACLE_TOKEN_THRESHOLD})
+    return oracle_config
+
+
+def build_compacted_config(
     base_config_path: str,
     seed: int,
     mechanism: str,
     pin_context_events: bool,
     retrieval_enabled: bool,
     run_tag: str,
-) -> Dict[str, Dict[str, Any]]:
-    """Build the (oracle, compacted) config pair for one seed."""
+) -> Dict[str, Any]:
+    """Build the compacted (technique-under-test) config for one seed."""
     if mechanism not in MECHANISMS:
         raise ValueError(f"Unknown mechanism '{mechanism}'. Known: {MECHANISMS}")
 
-    # Load twice rather than deep-copying once — load_config() reparses the
-    # YAML fresh each call, so there's no risk of the two configs sharing
-    # nested dict references.
-    oracle_config = load_config(base_config_path)
     compacted_config = load_config(base_config_path)
-
-    for cfg in (oracle_config, compacted_config):
-        cfg.setdefault("simulation", {})["seed"] = seed
-
+    compacted_config.setdefault("simulation", {})["seed"] = seed
     label = _technique_label(mechanism, pin_context_events, retrieval_enabled)
-    oracle_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_oracle"
     compacted_config["simulation"]["run_timestamp"] = f"acon_{run_tag}_seed{seed}_{label}"
-
-    # retrieval doesn't touch compact_events() at all — it's a tool
-    # (recall()) the agent calls, not a compaction parameter. The oracle
-    # never compacts, so there's nothing for it to recall; only the
-    # compacted config needs the flag.
-    _set_compaction_overrides(oracle_config, {"token_threshold": ORACLE_TOKEN_THRESHOLD})
     _set_compaction_overrides(
         compacted_config,
         {
@@ -101,8 +110,27 @@ def build_paired_configs(
             "retrieval_enabled": retrieval_enabled,
         },
     )
+    return compacted_config
 
-    return {"oracle": oracle_config, "compacted": compacted_config}
+
+def _oracle_cache_path(run_tag: str, seed: int, results_dir: str) -> Path:
+    return Path(results_dir) / "_oracle_cache" / f"{run_tag}_seed{seed}.json"
+
+
+def _load_cached_oracle(run_tag: str, seed: int, results_dir: str) -> Optional[Dict[str, Any]]:
+    path = _oracle_cache_path(run_tag, seed, results_dir)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _save_oracle_cache(run_tag: str, seed: int, result: Dict[str, Any], results_dir: str) -> None:
+    path = _oracle_cache_path(run_tag, seed, results_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(result, indent=2), encoding="utf-8")
 
 
 async def run_pair(
@@ -112,14 +140,31 @@ async def run_pair(
     pin_context_events: bool,
     retrieval_enabled: bool,
     run_tag: str,
+    reuse_oracle: bool = True,
+    results_dir: str = "logs/acon_trials",
 ) -> Dict[str, Any]:
-    """Run the oracle and compacted variants for one seed, sequentially."""
-    configs = build_paired_configs(
+    """
+    Run the oracle and compacted variants for one seed.
+
+    With reuse_oracle=True (the default), a successful oracle result for this
+    (run_tag, seed) is cached to disk and reused across every later call that
+    shares the same run_tag and seed — regardless of which mechanism/pin/
+    retrieval combo those later calls test — since the oracle config never
+    depends on any of those. A failed cached run is not reused; it's retried.
+    """
+    oracle_result = _load_cached_oracle(run_tag, seed, results_dir) if reuse_oracle else None
+    if oracle_result is not None and oracle_result.get("success"):
+        print(f"[seed {seed}] reusing cached oracle from {oracle_result.get('log_dir')}")
+    else:
+        oracle_config = build_oracle_config(base_config_path, seed, run_tag)
+        oracle_result = await base_main.run_simulation(oracle_config)
+        if reuse_oracle and oracle_result.get("success"):
+            _save_oracle_cache(run_tag, seed, oracle_result, results_dir)
+
+    compacted_config = build_compacted_config(
         base_config_path, seed, mechanism, pin_context_events, retrieval_enabled, run_tag
     )
-
-    oracle_result = await base_main.run_simulation(configs["oracle"])
-    compacted_result = await base_main.run_simulation(configs["compacted"])
+    compacted_result = await base_main.run_simulation(compacted_config)
 
     return {
         "seed": seed,
@@ -194,13 +239,21 @@ async def run_trial_suite(
     run_tag: str,
     reward_delta_threshold: float = 1.0,
     results_dir: str = "logs/acon_trials",
+    reuse_oracle: bool = True,
 ) -> List[Dict[str, Any]]:
     """Run paired trials across seeds and persist a scored manifest to disk."""
     label = _technique_label(mechanism, pin_context_events, retrieval_enabled)
     records = []
     for seed in seeds:
         pair_result = await run_pair(
-            base_config_path, seed, mechanism, pin_context_events, retrieval_enabled, run_tag
+            base_config_path,
+            seed,
+            mechanism,
+            pin_context_events,
+            retrieval_enabled,
+            run_tag,
+            reuse_oracle=reuse_oracle,
+            results_dir=results_dir,
         )
         record = score_divergence(pair_result, reward_delta_threshold=reward_delta_threshold)
         records.append(record)
@@ -214,27 +267,6 @@ async def run_trial_suite(
     print(f"\nWrote {len(records)} trial records to {manifest_path}")
 
     return records
-
-
-def diagnose_divergent_pair(record: Dict[str, Any]) -> str:
-    """
-    TODO — not yet implemented. This is the next piece of the ACON loop.
-
-    For a divergent record, this should:
-      1. Read `record['compacted_log_dir']/compaction_events.jsonl` for the
-         exact pre/post-compaction text the compacted agent saw.
-      2. Read the oracle's full (uncompacted) prompt logs from
-         `record['oracle_log_dir']/agent_prompts.md` for the same turns.
-      3. Feed both to a strong model: "the compacted agent failed where the
-         full-context agent succeeded — what specific fact, commitment, or
-         instruction did the summary drop or distort that explains this?"
-      4. Return the diagnosis so it can be turned into a compaction-prompt or
-         compaction-logic edit (e.g. a new pinned event kind, a rewritten
-         `_summarize()` instruction).
-    """
-    raise NotImplementedError(
-        "Diagnose-and-rewrite step not yet built — see docstring for the plan."
-    )
 
 
 if __name__ == "__main__":
@@ -261,6 +293,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--run-tag", type=str, required=True)
     parser.add_argument("--reward-delta-threshold", type=float, default=1.0)
+    parser.add_argument(
+        "--fresh-oracle",
+        action="store_true",
+        help="Ignore any cached oracle for this run-tag/seed and run a new one.",
+    )
 
     args = parser.parse_args()
     seeds = [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
@@ -274,5 +311,6 @@ if __name__ == "__main__":
             args.retrieval,
             args.run_tag,
             reward_delta_threshold=args.reward_delta_threshold,
+            reuse_oracle=not args.fresh_oracle,
         )
     )

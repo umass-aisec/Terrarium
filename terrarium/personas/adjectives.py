@@ -23,15 +23,6 @@ OPE = "OPE"
 
 DOMAINS: Tuple[str, ...] = (EXT, AGR, CON, NEU, OPE)
 
-DOMAIN_NAMES = {
-    EXT: "Extraversion",
-    AGR: "Agreeableness",
-    CON: "Conscientiousness",
-    NEU: "Neuroticism",
-    OPE: "Openness",
-}
-
-
 @dataclass(frozen=True)
 class FacetMarker:
     domain: str

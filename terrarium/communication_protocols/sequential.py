@@ -45,12 +45,19 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         )
         self.blackboard_logger.clear_blackboard_logs()
 
-        self.compaction_logger = CompactionLogger(
-            self.config, run_timestamp=self.run_timestamp
-        )
-        self.compaction_logger.reset_log()
         _compaction_config = (self.config.get("llm") or {}).get("compaction")
         _compaction_config = _compaction_config if isinstance(_compaction_config, dict) else {}
+        # Compaction is opt-in: with no llm.compaction block the agent sees the raw
+        # transcript, as it did before compaction existed. Without this, every
+        # environment that never configured compaction silently got lossy,
+        # LLM-summarized prompts once a transcript passed the default threshold.
+        self.compaction_enabled = bool(_compaction_config)
+        self.compaction_logger = None
+        if self.compaction_enabled:
+            self.compaction_logger = CompactionLogger(
+                self.config, run_timestamp=self.run_timestamp
+            )
+            self.compaction_logger.reset_log()
         self._compaction_pin_context = bool(_compaction_config.get("pin_context_events", False))
         self._compaction_token_threshold = int(_compaction_config.get("token_threshold", 3000))
         self._compaction_keep_recent = int(_compaction_config.get("keep_recent", 3))
@@ -208,6 +215,13 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             except Exception:
                 continue
 
+            if not self.compaction_enabled:
+                body = format_blackboard_events_for_prompt(
+                    events if isinstance(events, list) else []
+                )
+                contexts[bb_id_str] = self._label_channel(bb_id_str, bb_id_int, agent_name, body)
+                continue
+
             compaction_client = llm_client
             compaction_model_name = model_name
             override_client, override_model = self._get_compaction_client_and_model()
@@ -232,17 +246,20 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
                 phase=phase,
                 iteration=iteration,
             )
-            # Label each channel so agents can address a specific blackboard_id.
-            blackboard = self.megaboard.blackboards[bb_id_int]
-            kind = (
-                "PRIVATE channel"
-                if blackboard.template.get("private_channel")
-                else "channel"
-            )
-            others = ", ".join(sorted(a for a in blackboard.agents if a != agent_name))
-            contexts[bb_id_str] = f"[{kind} {bb_id_str} — with {others}]\n{body}"
+            contexts[bb_id_str] = self._label_channel(bb_id_str, bb_id_int, agent_name, body)
 
         return contexts
+
+    def _label_channel(self, bb_id_str: str, bb_id_int: int, agent_name: str, body: str) -> str:
+        """Label a channel so agents can address a specific blackboard_id."""
+        blackboard = self.megaboard.blackboards[bb_id_int]
+        kind = (
+            "PRIVATE channel"
+            if blackboard.template.get("private_channel")
+            else "channel"
+        )
+        others = ", ".join(sorted(a for a in blackboard.agents if a != agent_name))
+        return f"[{kind} {bb_id_str} — with {others}]\n{body}"
 
     async def agent_planning_turn(
         self,

@@ -152,7 +152,7 @@ class ToolsetDiscovery:
                             "description": (
                                 "Search the FULL, uncompacted history of a channel for "
                                 "something the summarized context may have dropped — a "
-                                "specific number, seat, or commitment. Use this when you "
+                                "specific number, identifier, or commitment. Use this when you "
                                 "suspect you're missing a detail, not as a substitute for "
                                 "reading the chat normally."
                             ),
@@ -161,7 +161,7 @@ class ToolsetDiscovery:
                                 "properties": {
                                     "query": {
                                         "type": "string",
-                                        "description": "Keywords to search for, e.g. 'seat 12C' or 'Bob agreed'.",
+                                        "description": "Keywords to search for, e.g. a specific identifier or 'Bob agreed'.",
                                     },
                                     "blackboard_id": {
                                         "type": "integer",

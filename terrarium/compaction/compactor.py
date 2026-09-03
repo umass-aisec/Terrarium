@@ -3,11 +3,6 @@ from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 from terrarium.core.blackboard import format_blackboard_events_for_prompt
 import logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger("openai").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 MECHANISMS: Tuple[str, ...] = (
     "baseline",
@@ -30,7 +25,7 @@ DEFAULT_EVICT_KINDS: FrozenSet[str] = frozenset({"action_executed"})
 # event as high-signal (a number or a commitment word) and therefore worth
 # keeping verbatim instead of folding into the abstractive summary.
 _EXTRACTIVE_MARKERS: Tuple[str, ...] = (
-    "agree", "deal", "promise", "swap", "settle", "move to", "will move",
+    "agree", "deal", "promise", "commit", "accept", "confirm", "will ",
 )
 
 
@@ -107,7 +102,7 @@ def compact_events(
 
     if llm_client is None or model_name is None or token_count <= token_threshold:
         logger.info(f"Compaction skipped: {token_count} tokens (threshold={token_threshold})")
-        logger.debug(f"[NON-COMPACTED PROMPT]\n{formatted}")
+        logger.debug("[NON-COMPACTED PROMPT]\n%s", formatted)
         # Non-compacted path already contains pinned events in natural order,
         # so no separate section is needed — mechanism/pinning only change
         # behavior once compaction actually triggers.
@@ -120,7 +115,7 @@ def compact_events(
         return formatted
 
     logger.info(f"Compaction triggered: {token_count} tokens exceeds {token_threshold}, summarizing {len(compactable) - keep_recent} events (mechanism={mechanism})")
-    logger.debug(f"[PRE-COMPACTION PROMPT]\n{formatted}")
+    logger.debug("[PRE-COMPACTION PROMPT]\n%s", formatted)
 
     old = compactable[:-keep_recent] if keep_recent else compactable
     if not old:
@@ -152,8 +147,6 @@ def compact_events(
         )
     elif mechanism == "structured":
         summary = _summarize_structured(format_blackboard_events_for_prompt(old), llm_client, model_name)
-    else:  # pragma: no cover — guarded above
-        raise ValueError(f"Unhandled mechanism '{mechanism}'")
 
     sections = []
     if pinned_text:
@@ -164,7 +157,7 @@ def compact_events(
     sections.append(f"[Recent messages]\n{recent_text}")
     result = "\n\n".join(sections)
 
-    logger.debug(f"[COMPACTED PROMPT]\n{result}")
+    logger.debug("[COMPACTED PROMPT]\n%s", result)
     _log(
         compaction_logger, agent_name=agent_name, blackboard_id=blackboard_id,
         phase=phase, iteration=iteration, technique=technique, triggered=True,
@@ -184,24 +177,37 @@ def _log(compaction_logger, **kwargs) -> None:
         logger.debug("Compaction logging failed", exc_info=True)
 
 
-def _summarize(text: str, llm_client, model_name: str) -> str:
-    prompt = (
-        "Summarize this agent conversation in 3-5 bullet points. "
-        "Be extremely concise — one short sentence per bullet. "
-        "No headers, no bold, no markdown formatting, no caveats about missing data. "
-        "Only include actual decisions, time slots, and commitments. "
-        "If nothing was decided, write only: 'No decisions made.'\n\n"
-        f"{text}"
-    )
+_MAX_SUMMARY_TOKENS = 500
+
+# Shared by the bullet-style mechanisms so the instruction can't drift between them.
+_BULLET_RULES = (
+    "Summarize this agent conversation in 3-5 bullet points. "
+    "Be extremely concise — one short sentence per bullet. "
+    "No headers, no bold, no markdown formatting, no caveats about missing data. "
+    "Only include actual decisions, time slots, and commitments. "
+    "If nothing was decided, write only: 'No decisions made.'\n\n"
+)
+
+
+def _ask(llm_client, model_name: str, system_prompt: str, user_prompt: str) -> str:
+    """Single place every mechanism goes through to call the summarizer model."""
     context = llm_client.init_context(
-        system_prompt="You are a helpful assistant that summarizes agent conversations concisely.",
-        user_prompt=prompt,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
     )
     _, summary = llm_client.generate_response(
         input=context,
-        params={"max_tokens": 500, "model": model_name},
+        params={"max_tokens": _MAX_SUMMARY_TOKENS, "model": model_name},
     )
     return summary
+
+
+def _summarize(text: str, llm_client, model_name: str) -> str:
+    return _ask(
+        llm_client, model_name,
+        "You are a helpful assistant that summarizes agent conversations concisely.",
+        f"{_BULLET_RULES}{text}",
+    )
 
 
 def _summarize_incremental(previous_summary: str, new_text: str, llm_client, model_name: str) -> str:
@@ -215,15 +221,11 @@ def _summarize_incremental(previous_summary: str, new_text: str, llm_client, mod
         "Don't restate facts from the existing summary that haven't changed; just carry them forward silently.\n\n"
         f"EXISTING SUMMARY:\n{previous_summary}\n\nNEW MESSAGES:\n{new_text}"
     )
-    context = llm_client.init_context(
-        system_prompt="You are a helpful assistant that maintains a running summary of an agent conversation.",
-        user_prompt=prompt,
+    return _ask(
+        llm_client, model_name,
+        "You are a helpful assistant that maintains a running summary of an agent conversation.",
+        prompt,
     )
-    _, summary = llm_client.generate_response(
-        input=context,
-        params={"max_tokens": 500, "model": model_name},
-    )
-    return summary
 
 
 def _summarize_anchored(old_events: List[Any], cache: Optional[Dict[str, Any]], llm_client, model_name: str) -> str:
@@ -291,29 +293,16 @@ def _summarize_query_conditioned(
             "commitments, requests directed at them, and unresolved asks — over "
             "facts that only concern other agents.\n\n"
         )
-    prompt = (
-        f"{reader_note}"
-        "Summarize this agent conversation in 3-5 bullet points. "
-        "Be extremely concise — one short sentence per bullet. "
-        "No headers, no bold, no markdown formatting, no caveats about missing data. "
-        "Only include actual decisions, time slots, and commitments. "
-        "If nothing was decided, write only: 'No decisions made.'\n\n"
-        f"{text}"
+    return _ask(
+        llm_client, model_name,
+        "You are a helpful assistant that summarizes agent conversations concisely for a specific reader.",
+        f"{reader_note}{_BULLET_RULES}{text}",
     )
-    context = llm_client.init_context(
-        system_prompt="You are a helpful assistant that summarizes agent conversations concisely for a specific reader.",
-        user_prompt=prompt,
-    )
-    _, summary = llm_client.generate_response(
-        input=context,
-        params={"max_tokens": 500, "model": model_name},
-    )
-    return summary
 
 
 def _summarize_structured(text: str, llm_client, model_name: str) -> str:
     """Force the summary into labeled slots instead of free-text bullets, so
-    numeric/temporal facts (seat IDs, time steps) have a dedicated place to
+    numeric/temporal facts (identifiers, time steps) have a dedicated place to
     survive rather than getting paraphrased away."""
     prompt = (
         "Summarize this agent conversation into these labeled sections. One short "
@@ -322,15 +311,11 @@ def _summarize_structured(text: str, llm_client, model_name: str) -> str:
         "DECISIONS: finalized agreements\n"
         "COMMITMENTS: promises made — who, to whom, and any condition attached\n"
         "OPEN REQUESTS: asks that haven't been resolved yet\n"
-        "SEAT/STATE FACTS: specific seat numbers, positions, or counts mentioned\n\n"
+        "STATE FACTS: specific identifiers, positions, quantities, or counts mentioned\n\n"
         f"{text}"
     )
-    context = llm_client.init_context(
-        system_prompt="You are a helpful assistant that summarizes agent conversations into a fixed structured format.",
-        user_prompt=prompt,
+    return _ask(
+        llm_client, model_name,
+        "You are a helpful assistant that summarizes agent conversations into a fixed structured format.",
+        prompt,
     )
-    _, summary = llm_client.generate_response(
-        input=context,
-        params={"max_tokens": 500, "model": model_name},
-    )
-    return summary

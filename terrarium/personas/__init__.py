@@ -3,7 +3,6 @@
 from terrarium.personas.adjectives import (
     COMPACT_TRAITS,
     DOMAINS,
-    DOMAIN_NAMES,
     TABLE_12,
     VERBOSITY_COMPACT,
     VERBOSITY_FULL,
@@ -30,7 +29,6 @@ from terrarium.personas.presets import (
 
 __all__ = [
     "DOMAINS",
-    "DOMAIN_NAMES",
     "TABLE_12",
     "COMPACT_TRAITS",
     "VERBOSITY_COMPACT",

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from terrarium.environments.abstract_environment import AbstractEnvironment
+from terrarium.utils import clear_seed_directories, get_run_timestamp
 from terrarium.personas import MAX_LEVEL, NEUTRAL_LEVEL, PRESETS, Persona
 from .is_this_seat_taken_prompts import IsThisSeatTakenPrompts
 
@@ -47,6 +48,9 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
 
         self.current_seed = int(self.simulation_config.get("seed", 0))
         self.rng = random.Random(self.current_seed)
+        self.run_timestamp = get_run_timestamp(self.full_config)
+        # Clear seed directories FIRST to ensure clean state for this run.
+        clear_seed_directories(self.__class__.__name__, self.current_seed, self.full_config)
 
         network_cfg = config.get("communication_network") or {}
         num_agents = network_cfg.get("num_agents")
@@ -76,9 +80,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         self.prompts = IsThisSeatTakenPrompts(self, self.full_config)
 
         self.joint_reward_history: List[float] = []
-        self.agent_rewards_history: Dict[str, List[float]] = {
-            agent: [] for agent in self.agent_names
-        }
         self.max_joint_reward = self.compute_max_joint_reward()
         self.reward_convergence_threshold = float(self.env_config.get("reward_convergence_threshold", 0.05))
         self.convergence_window = int(self.env_config.get("convergence_window", 3))
@@ -155,8 +156,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
 
     def _seat_role(self, row: int, col: int, rows: int, cols: int) -> str:
         if self.scenario_type == "bus":
-            if cols == 1:
-                return "window"
             if col == 0:
                 return "window"
             if col == cols - 1:
@@ -183,8 +182,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 return "back"
             return "middle"
         if self.scenario_type == "airplane":
-            if cols == 1:
-                return "window"
             half = cols // 2
             if col in {0, cols - 1}:
                 return "window"
@@ -283,7 +280,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 "satisfaction_score": 0.0,
                 "last_instant_reward": 0.0,
                 "base_tolerance": round(self.rng.uniform(1.0, 2.5), 3),
-                "tolerance_level": round(self.rng.uniform(1.0, 2.5), 3),
                 "settled": False,
                 "social_pressure": 0.0,
                 "pending_reaction": False,
@@ -595,7 +591,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         state = self.agent_state[agent_name]
         true_satisfaction = float(state["satisfaction_score"])
         current_instant_reward = float(state.get("last_instant_reward", 0.0))
-        true_tolerance = float(state["tolerance_level"])
+        true_tolerance = self._agent_effective_tolerance(agent_name)
         progress = float(iteration) / max(1.0, float(self.max_iterations))
 
         if progress >= 0.8:

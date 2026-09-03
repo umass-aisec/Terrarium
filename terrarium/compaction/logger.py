@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import json
-import time
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from terrarium.utils import build_log_dir, get_run_timestamp, get_tag_model_subdir
 

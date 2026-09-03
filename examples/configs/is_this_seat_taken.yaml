@@ -5,7 +5,7 @@ simulation:
   seed: 42
   tags:
     - baseline
-  note: "minimal live run for IsThisSeatTakenEnvironment"
+    - persona_none
 environment:
   name: IsThisSeatTakenEnvironment
   assignment_filling: false
@@ -47,7 +47,3 @@ llm:
       params:
         max_tokens: 128
         temperature: 0.0
-notes:
-- Minimal live config for the IsThisSeatTakenEnvironment
-- Designed to keep planning and execution short for credit-conscious testing
-- Two agents only, one iteration, one planning round

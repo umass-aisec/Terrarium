@@ -108,7 +108,6 @@ class IsThisSeatTakenTools:
 
     @staticmethod
     def _default_social_message(
-        agent_name: str,
         target_agent: str,
         action_name: str,
     ) -> str:
@@ -176,7 +175,7 @@ class IsThisSeatTakenTools:
                 target_agent = str(action.get("agent_id", ""))
                 message = str(action.get("message") or "").strip()
                 if not message:
-                    message = self._default_social_message(agent_name, target_agent, str(tool_name))
+                    message = self._default_social_message(target_agent, str(tool_name))
                 self._post_social_message(agent_name, message, phase, iteration)
             return result
 
