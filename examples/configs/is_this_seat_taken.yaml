@@ -11,8 +11,6 @@ environment:
   assignment_filling: false
   # Social seating scenario for MAS coordination research.
   scenario_type: airplane
-  max_time_steps: 8
-  standing_limit: 2
   cols: 6
   rows: 3
   empty_seat_buffer: 1

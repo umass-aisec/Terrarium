@@ -318,9 +318,11 @@ python terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py
 
 ## 11) Notes and limitations
 
-- **`max_time_steps` and `standing_limit` are not read.** They appear in the
-  shipped config but no code consumes them. `time_step` increments per action
-  and is reported, but nothing bounds it and no standing limit is enforced.
+- **Nothing bounds time steps or standing.** `time_step` increments per action
+  and is reported in the final summary, but it is telemetry only — no episode
+  bound is derived from it, and an agent may stand indefinitely. (Config keys
+  `max_time_steps` and `standing_limit` used to be shipped for this and were
+  removed, as no code ever read them.)
 - **`compute_max_joint_reward()` is an optimistic bound, not an optimum.** The
   90%-of-max termination branch is therefore heuristic.
 - **`satisfaction_score` is not cumulative in the seat-quality term** (§6). Any
