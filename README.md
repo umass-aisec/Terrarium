@@ -19,12 +19,24 @@ This repo is under active development :gear:, so please raise an issue for new f
   - SmartGrid - A home agent's objecitve is to schedule appliance usage throughout the day without overworking the powergrid (Uses real-world home-meter data)
   - MeetingScheduling - A calendar agent is tasked with assigning meetings with other agents, trying to satisfy preferences and constraints with respect to other agents schedules (Uses real-world locations)
   - PersonalAssistant - An assistant agent chooses outfits for a human while meeting social norm preferences, the preferences of the human, and constrained outfit selection (Uses fully synthetic data)
+- **Social-Coordination Environment**: [IsThisSeatTaken](terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_environment.md) - agents negotiate over seats with private preferences and social pressure. Generated in-process; no CoLLAB dependency.
+- **Blackboard Compaction**: [Six interchangeable strategies](terrarium/compaction/README.md) for compressing channel history into the prompt, with paired oracle-vs-compacted evaluation. Opt-in per run.
+- **Personas**: [Big Five trait shaping](terrarium/personas/README.md) applied purely through prompting, following Jiang et al.
 
 ## Documentation 
 
 Use the following [documentation](https://aisec.cs.umass.edu/projects/terrarium/docs) for detailed instructions about on how to use the framework. 
 
 Follow the quick guide provided below for basic testing.
+
+In-repo references for individual components:
+
+| Component | Reference |
+|---|---|
+| IsThisSeatTaken environment | [`is_this_seat_taken_environment.md`](terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_environment.md) |
+| JiraTicket environment | [`jira_ticket_environment.md`](terrarium/environments/dcops/jira_ticket/jira_ticket_environment.md) |
+| Blackboard compaction | [`terrarium/compaction/README.md`](terrarium/compaction/README.md) |
+| Personas (Big Five prompting) | [`terrarium/personas/README.md`](terrarium/personas/README.md) |
 
 ## Quick Start
 
