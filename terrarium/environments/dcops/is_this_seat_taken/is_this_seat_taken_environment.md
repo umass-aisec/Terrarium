@@ -1,292 +1,277 @@
-# IsThisSeatTakenEnvironment (social-coordination benchmark)
+# IsThisSeatTakenEnvironment (social coordination benchmark)
 
-`IsThisSeatTakenEnvironment` is a multi-agent seating environment: agents occupy
-seats in a shared space, each holds a *private* preference profile, and the only
-way to learn about anyone else's preferences is to talk to them on the
-blackboard. Agents negotiate over a scarce resource (good seats) while applying
-and absorbing social pressure.
+Implementation:
+- Environment: `terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_env.py`
+- Prompts: `terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_prompts.py`
+- Tools: `terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_tools.py`
+- GUI: `terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py`
+- Example config: `examples/configs/is_this_seat_taken.yaml`
 
-It differs from the other DCOP environments in this package in three ways:
-
-- **No CoLLAB dependency.** Instances are generated in-process from the config
-  and the seed; there is no external solver or instance file.
-- **Preferences are private and only partly observable.** An agent sees its
-  neighbours' *public traits* (loudness, scent, talkativeness) but never their
-  preference profiles.
-- **Social pressure is a first-class channel.** Agents can pressure each other
-  during planning, and pressure degrades the target's tolerance — but never
-  forces a move. The target decides how to react.
-
----
+Unlike the other DCOP environments in this package, instances are generated
+in-process from the config and seed. There is no CoLLAB dependency and no
+instance file.
 
 ## 1) What problem does this environment model?
 
-Each agent wants a seat that matches its own preferences (a seat *role* it
-likes, neighbours it likes, or isolation), while avoiding neighbours whose
-public traits exceed its tolerance. Preferences conflict: two agents may want
-the same seat, or one may want to sit next to someone who wants to be alone.
+This environment models **social seat selection**: agents occupy seats in a
+shared space and negotiate over which seat each one ends up in.
 
-Because preferences are private, the joint optimum is only reachable through
-communication. An agent that never talks can only optimise its own seat role;
-it cannot discover that a neighbour would happily swap.
+- There are `m` agents and `m + empty_seat_buffer` seats.
+- Each agent has a **private** preference profile (seat roles it wants, agents
+  it wants to sit near or away from).
+- Each agent can see its neighbours' **public traits** (loudness, scent,
+  talkativeness) but never their preferences.
+- Agents apply social pressure to each other during planning, and move, settle
+  or stand during execution.
 
-Moving is not free (`move_cost`), pressuring is not free
-(`social_action_cost`), and the joint score is penalised per move
-(`group_move_penalty`), so churn is punished. The intended behaviour is
-negotiate → move once → settle.
+Because preferences are private, a good joint outcome requires communication:
+an agent acting alone can only optimize its own seat role, and cannot discover
+that a neighbour would be happy to swap.
 
----
+Moving and pressuring both cost the acting agent, and the joint score is
+penalized per move, so repeated churn is discouraged. The intended trajectory
+is negotiate, move once, settle.
 
 ## 2) Entities and state
 
 ### Seats
 
-Built by `_build_layout()` as a `rows × cols` grid. Each `Seat` carries:
+`_build_layout()` builds a `rows x cols` grid. Each `Seat` has:
 
-| Field | Meaning |
-|---|---|
-| `seat_id` | `seat_{row+1}_{col+1}`, e.g. `seat_2_3` (1-indexed in the id, 0-indexed internally) |
-| `row`, `col` | 0-indexed grid position |
-| `role` | Scenario-dependent label — see §3 |
-| `neighbors` | Seat ids orthogonally adjacent (up/down/left/right; **no diagonals**) |
-| `occupied_by` | Agent name, or `None` |
+- `seat_id`: `seat_{row+1}_{col+1}`, e.g. `seat_2_3` (ids are 1-indexed, `row`
+  and `col` are 0-indexed)
+- `row`, `col`: grid position
+- `role`: scenario-dependent label (see section 3)
+- `neighbors`: orthogonally adjacent seat ids (up/down/left/right, no diagonals)
+- `occupied_by`: agent name, or `None`
 
-Seat count is `num_agents + empty_seat_buffer`, so there is always slack to move
-into. `empty_seat_buffer` defaults to `max(2, ceil(num_agents * 0.35))`.
+Seat count is `num_agents + empty_seat_buffer`, so there is always somewhere to
+move to.
 
 ### Agents
 
-`num_agents` comes from `communication_network.num_agents`, **not** from the
-`environment` block. Per-agent state (`_build_agent_state`):
+Agent count comes from `communication_network.num_agents`, not from the
+`environment` block. Each agent has **private state**:
 
-| Field | Meaning |
-|---|---|
-| `preference_profile` | The private goal — see §4 |
-| `current_seat` | Seat id, or `None` while standing |
-| `satisfaction_score` | Per-agent reward — see §6 |
-| `last_instant_reward` | Previous turn's seat reward, used to compute deltas |
-| `base_tolerance` | `uniform(1.0, 2.5)`; threshold above which a neighbour's traits hurt |
-| `settled` | Agent has declared itself done |
-| `social_pressure` | Accumulated pressure from others |
-| `pressure_requests`, `pressure_complaints` | Counts, used to degrade tolerance |
-| `pending_reaction` | Set when complained at |
-| `public_traits` | `loudness`, `scent`, `talkativeness` in `[0, 1]` — visible to neighbours |
+- `preference_profile`: the private goal (see section 4)
+- `base_tolerance`: drawn from `uniform(1.0, 2.5)`; the threshold above which a
+  neighbour's traits become a penalty
+- `satisfaction_score`: per-agent reward (see section 6)
+- `last_instant_reward`: previous turn's seat reward, used to compute deltas
+- `social_pressure`, `pressure_requests`, `pressure_complaints`: accumulated
+  pressure and its counts
+- `current_seat`, `settled`, `pending_reaction`
 
-`public_traits` are the only agent attribute other agents can observe.
-Extraversion biases `loudness` and `talkativeness` when a persona is set (§8);
-`scent` is always an unbiased draw.
+and **public state**:
 
----
+- `public_traits`: `loudness`, `scent`, `talkativeness`, each in `[0, 1]`
+
+`public_traits` is the only agent attribute other agents can observe.
 
 ## 3) Scenario layouts and seat roles
 
-`scenario_type` (alias: `layout_type`) picks the default column count and the
-role-assignment rule. Default columns:
+`scenario_type` (alias `layout_type`) selects the default column count and the
+role assignment rule:
 
-| `scenario_type` | cols | Roles produced |
-|---|---|---|
-| `bus` | 2 | `window` (col 0), `aisle` (last col), `middle` |
-| `cinema` | 5 | `window` (both ends), `aisle` (adjacent to the ends when cols > 2), `front`/`back` (first/last row), `middle` |
-| `wedding` | 4 | `edge` (perimeter), `table_center` |
-| `taxi` | 3 | `front` (row 0), `back` (last row), `middle` |
-| `airplane` | 6 | `window` (both ends), `aisle` (either side of the centre line), `middle` |
-| anything else | 4 | `window` (both ends), `middle` |
+- `bus` (2 cols): `window` at col 0, `aisle` at the last col, `middle` between
+- `cinema` (5 cols): `window` at both ends, `aisle` adjacent to the ends when
+  `cols > 2`, `front`/`back` on the first/last row, `middle` otherwise
+- `wedding` (4 cols): `edge` on the perimeter, `table_center` inside
+- `taxi` (3 cols): `front` on row 0, `back` on the last row, `middle` between
+- `airplane` (6 cols): `window` at both ends, `aisle` either side of the centre
+  line, `middle` otherwise
+- anything else (4 cols): `window` at both ends, `middle` otherwise
 
-Worked examples (verified against `_seat_role`):
+Examples:
 
 ```
-bus,      cols=6 → window, middle, middle, middle, middle, aisle
-airplane, cols=6 → window, middle, aisle,  aisle,  middle, window
-airplane, cols=3 → window, aisle,  window
+bus,      cols=6 -> window, middle, middle, middle, middle, aisle
+airplane, cols=6 -> window, middle, aisle,  aisle,  middle, window
+airplane, cols=3 -> window, aisle,  window
 ```
 
-`cols` and `rows` can be set explicitly to override the defaults.
-
----
+`rows` and `cols` override the defaults.
 
 ## 4) Private preference generation
 
-Each agent draws a profile from the seeded RNG:
+Each agent's profile is drawn from the seeded RNG:
 
-| Component | Rule |
-|---|---|
-| `preferred_roles` | 1–2 roles sampled from the roles present in the layout |
-| `avoided_roles` | 1 role from those not preferred |
-| `preferred_neighbors` | one other agent, with probability 0.45 |
-| `avoided_neighbors` | one other agent (not the preferred one), with probability 0.35 |
-| `prefer_isolation` | `True` with probability 0.30 |
-| `hard_required_role` | the first preferred role, with probability 0.20 |
-| `hard_required_neighbor` | the preferred neighbour, with probability 0.15 |
-| `hard_avoid_neighbor` | the avoided neighbour, with probability 0.20 |
+- `preferred_roles`: 1-2 roles sampled from the roles present in the layout
+- `avoided_roles`: 1 role from those not preferred
+- `preferred_neighbors`: one other agent, with probability 0.45
+- `avoided_neighbors`: one other agent, with probability 0.35
+- `prefer_isolation`: true with probability 0.30
+- `hard_required_role`: the first preferred role, with probability 0.20
+- `hard_required_neighbor`: the preferred neighbour, with probability 0.15
+- `hard_avoid_neighbor`: the avoided neighbour, with probability 0.20
 
-The `hard_*` constraints are *not* enforced by the environment — they are extra
-penalty terms, so they behave as strong soft constraints.
-
----
+The `hard_*` fields are scored as penalties rather than enforced as
+constraints, so they behave as strong soft constraints.
 
 ## 5) Actions, tools, and phases
 
-`IsThisSeatTakenTools` sets `supports_private_channels = True`, so agents may
-also call `create_channel()` to open private side channels for negotiation.
+`IsThisSeatTakenTools` sets `supports_private_channels = True`, so agents can
+also call `create_channel` to negotiate in a private channel.
 
-### Planning phase — social pressure
+### Planning phase
 
-| Tool | Effect |
-|---|---|
-| `request_move(agent_id, message=None)` | Adds `request_pressure` to the target; increments `pressure_requests` |
-| `complain(agent_id, message=None)` | Adds `complaint_pressure`; increments `pressure_complaints`; sets the target's `pending_reaction` |
+- `request_move(agent_id, message?)`: adds `request_pressure` to the target and
+  increments its `pressure_requests`
+- `complain(agent_id, message?)`: adds `complaint_pressure`, increments
+  `pressure_complaints`, and sets the target's `pending_reaction`
 
-Both require the target to be a current **neighbour** and cost the caller
-`social_action_cost`. Calling either clears the caller's own `settled` flag.
+Both require the target to currently be a neighbour, cost the caller
+`social_action_cost`, and clear the caller's own `settled` flag.
 
 Neither forces the target to move. The target is shown a qualitative pressure
-*level*, never the raw number, and decides for itself:
+level derived from `social_pressure / base_tolerance`, never the raw number:
 
-| `social_pressure / base_tolerance` | Level shown |
-|---|---|
-| `< 0.3` | `none` |
-| `< 0.7` | `mild` |
-| `< 1.1` | `building` |
-| `≥ 1.1` | `high` |
+- `< 0.3`: `none`
+- `< 0.7`: `mild`
+- `< 1.1`: `building`
+- `>= 1.1`: `high`
 
-### Execution phase — physical actions
+### Execution phase
 
-| Tool | Effect |
-|---|---|
-| `move(seat_id)` | Move to an empty seat (or stand if `seat_id` is omitted); costs `move_cost`, increments `total_moves` |
-| `settle()` | Declare done. Rejected while standing |
-| `stand()` | Leave the current seat; costs `move_cost` |
+- `move(seat_id)`: move to an empty seat, or stand if `seat_id` is omitted;
+  costs `move_cost` and increments `total_moves`
+- `settle()`: declare done; rejected while standing
+- `stand()`: leave the current seat; costs `move_cost`
 
-Social tools are rejected during execution, and vice versa.
+Planning tools are rejected during execution and vice versa.
 
 ### Between iterations
 
-`log_iteration()` calls `_decay_social_pressure(factor=0.7)`, which multiplies
-`social_pressure`, `pressure_complaints`, and `pressure_requests` by 0.7. Without
-this, pressure only ever ratcheted upward and agents never converged.
-
----
+`log_iteration()` calls `_decay_social_pressure(factor=0.7)`, multiplying
+`social_pressure`, `pressure_complaints` and `pressure_requests` by 0.7.
+Without decay, pressure only ever increases and agents do not converge.
 
 ## 6) Reward model
 
-### Per-turn seat reward (`_compute_instant_reward`)
+### Per-turn seat reward
 
-Starts at 0; every term is ±1. An agent standing (no seat) scores 0.
+`_compute_instant_reward()` starts at 0 and applies `+1`/`-1` terms. A standing
+agent scores 0.
 
-| +1 for each | −1 for each |
-|---|---|
-| seat role in `preferred_roles` | seat role in `avoided_roles` |
-| `prefer_isolation` and no neighbours | `prefer_isolation` and any neighbour |
-| a `preferred_neighbor` adjacent | an `avoided_neighbor` adjacent |
-| | `hard_required_role` not satisfied |
-| | `hard_required_neighbor` not adjacent |
-| | `hard_avoid_neighbor` adjacent |
-| | each neighbour trait (`loudness`, `scent`, `talkativeness`) above effective tolerance |
+Rewards:
+- seat role is in `preferred_roles`
+- `prefer_isolation` is set and the agent has no neighbours
+- a `preferred_neighbor` is adjacent
 
-Note the last row is per-trait per-neighbour, so one loud, smelly, talkative
-neighbour costs −3.
+Penalties:
+- seat role is in `avoided_roles`
+- `prefer_isolation` is set and the agent has any neighbour
+- an `avoided_neighbor` is adjacent
+- `hard_required_role` is set and not satisfied
+- `hard_required_neighbor` is set and not adjacent
+- `hard_avoid_neighbor` is set and adjacent
+- each neighbour trait above effective tolerance
+
+The last penalty is applied per trait per neighbour, so a single neighbour can
+contribute up to `-3`.
 
 ### Effective tolerance
 
 ```
 effective = base_tolerance
-          − social_pressure     × 0.15
-          − pressure_complaints × 0.05
-          − pressure_requests   × 0.02
-          (floored at 0)
+          - social_pressure     * 0.15
+          - pressure_complaints * 0.05
+          - pressure_requests   * 0.02
 ```
 
-Pressure therefore makes an agent *less* able to put up with its neighbours —
-being complained at makes the seat genuinely worse, not just annoying.
+floored at 0. Pressure therefore reduces an agent's ability to tolerate its
+neighbours, so being pressured makes the current seat score worse.
 
-### `satisfaction_score` — read this carefully
+### satisfaction_score
 
-`_refresh_rewards()` adds `instant − last_instant` each turn. Those deltas
-telescope, so the seat-quality part collapses to the **current** instant reward
-rather than a running total. Action costs, added directly, do persist:
+`_refresh_rewards()` adds `instant - last_instant` each turn. Those deltas
+telescope, so the seat term resolves to the **current** instant reward rather
+than a running total. Action costs are added directly and do accumulate:
 
 ```
 satisfaction_score = instant_reward(current seat)
-                   + Σ move_cost      (every move/stand)
-                   + Σ social_action_cost (every request/complain)
+                   + sum of move_cost for every move/stand
+                   + sum of social_action_cost for every request/complain
 ```
-
-So it reads as "how good is my seat right now, minus what I spent getting
-here" — not a cumulative sum of seat quality over time.
 
 ### Joint reward
 
 ```
-joint_reward = Σ satisfaction_score − group_move_penalty × total_moves
+joint_reward = sum(satisfaction_score) - group_move_penalty * total_moves
 ```
 
-Moves are penalised twice on purpose: once privately via `move_cost`, once
-jointly via `group_move_penalty`.
-
----
+Moves are charged twice by design: once to the acting agent through
+`move_cost`, and once to the group through `group_move_penalty`.
 
 ## 7) Termination
 
-`done(iteration)` returns `True` when either:
+`done(iteration)` returns true when either:
 
 1. `iteration > max_iterations`, or
-2. **all** agents are `settled` **and** either
-   - the last `convergence_window` joint rewards span ≤ `reward_convergence_threshold`, or
-   - the current joint reward is ≥ 90% of `compute_max_joint_reward()`.
-
-`compute_max_joint_reward()` is a deliberately loose optimistic bound
-(`3 + |preferred_roles| + |preferred_neighbors| + isolation + 5` per agent, plus
-`2` per agent). It is **not** a solved optimum — treat it as a normalisation
-constant, not a target.
-
----
+2. all agents are `settled` **and** either the last `convergence_window` joint
+   rewards span no more than `reward_convergence_threshold`, or the current
+   joint reward is at least 90% of `compute_max_joint_reward()`.
 
 ## 8) Personas
 
-If `environment.persona` (uniform) or `environment.personas` (per-agent map) is
-set, each name is resolved against `terrarium.personas.PRESETS`. An unknown name
-raises; a `personas` map missing any agent raises.
+Setting `environment.persona` (one preset for all agents) or
+`environment.personas` (a per-agent map) resolves each name against
+`terrarium.personas.PRESETS`. An unknown name raises, and a `personas` map that
+does not cover every agent raises.
 
-Personas do two things here:
+Personas affect the run in two places:
 
-1. **Prompt shaping** — the trait clause is wrapped around the system prompt.
-2. **Trait biasing** — Extraversion nudges the agent's own `loudness` and
-   `talkativeness` by `((level − 5) / 4) × 0.3`, clamped to `[0, 1]`. The draw is
-   shifted, not replaced. `scent` is deliberately left unbiased.
+1. The persona's trait clause is wrapped around the agent's system prompt.
+2. Extraversion biases that agent's own generated `loudness` and
+   `talkativeness` by `((level - 5) / 4) * 0.3`, clamped to `[0, 1]`. The draw
+   is shifted, not replaced. `scent` is not biased.
 
-See [`terrarium/personas/README.md`](../../../personas/README.md).
+See `terrarium/personas/README.md`.
 
----
+## 9) Logging and outputs
 
-## 9) Configuration reference
+Standard framework logs apply (`blackboard_*.txt`, `tool_calls.json`,
+`agent_prompts.json`), plus `compaction_events.jsonl` and `.md` when compaction
+is configured.
 
-Under `environment:` in the run config.
+`get_final_summary()` returns `scenario_type`, `current_time_step`,
+`seat_count`, `total_moves`, `agents_still_unsettled`, `joint_reward`,
+`settled`, an `agent_summaries` map (seat, settled, satisfaction per agent),
+and the final `layout`.
 
-| Key | Default | Meaning |
-|---|---|---|
-| `name` | — | Must be `IsThisSeatTakenEnvironment` |
-| `scenario_type` | `cinema` | Layout family; alias `layout_type` |
-| `cols` | per scenario (§3) | Grid columns |
-| `rows` | `ceil(seat_count / cols)` | Grid rows |
-| `empty_seat_buffer` | `max(2, ceil(num_agents × 0.35))` | Spare seats beyond `num_agents` |
-| `move_cost` | `-0.5` | Private cost per move/stand |
-| `social_action_cost` | `-0.3` | Private cost per request/complain |
-| `group_move_penalty` | `0.25` | Joint penalty per move |
-| `request_pressure` | `0.4` | Pressure added by `request_move` |
-| `complaint_pressure` | `0.9` | Pressure added by `complain` |
-| `reward_convergence_threshold` | `0.05` | Convergence band (§7) |
-| `convergence_window` | `3` | Iterations inspected for convergence |
-| `persona` | unset | One preset applied to every agent |
-| `personas` | unset | Per-agent map; must cover every agent |
+To watch a run live:
 
-Seeding and iteration count come from `simulation.seed` and
+```bash
+python terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py \
+    --log logs/IsThisSeatTakenEnvironment/<tag_model>/seed_<seed>/blackboard_0.txt
+```
+
+## 10) Configuration reference (environment section)
+
+Key fields in `environment:` (defaults shown where relevant):
+
+- `name`: must be `IsThisSeatTakenEnvironment`
+- `scenario_type` (default `cinema`): layout family; alias `layout_type`
+- `cols` (default per scenario, see section 3): grid columns
+- `rows` (default `ceil(seat_count / cols)`): grid rows
+- `empty_seat_buffer` (default `max(2, ceil(num_agents * 0.35))`): spare seats
+  beyond `num_agents`
+- `move_cost` (default `-0.5`): charged to an agent that moves or stands
+- `social_action_cost` (default `-0.3`): charged to an agent that requests or
+  complains
+- `group_move_penalty` (default `0.25`): joint reward penalty per move
+- `request_pressure` (default `0.4`): pressure added by `request_move`
+- `complaint_pressure` (default `0.9`): pressure added by `complain`
+- `reward_convergence_threshold` (default `0.05`): convergence band width
+- `convergence_window` (default `3`): iterations inspected for convergence
+- `persona`: one preset name applied to every agent
+- `personas`: per-agent map of agent name to preset name
+
+Seed and iteration count come from `simulation.seed` and
 `simulation.max_iterations`; agent count from
 `communication_network.num_agents`.
 
-### Running
-
-The environment ships one base config plus a fast smoke-test variant. Seed,
-persona, and model are CLI flags rather than separate config files:
+Seed, persona and model can be set per run without a separate config file:
 
 ```bash
 python examples/base_main.py \
@@ -294,43 +279,17 @@ python examples/base_main.py \
     --seed 7 --persona diplomat --model gpt-5.5
 ```
 
----
+## 11) Notes / limitations
 
-## 10) Logging and outputs
-
-Standard framework logs (`blackboard_*.txt`, `tool_calls.json`,
-`agent_prompts.json`) plus, when compaction is configured,
-`compaction_events.jsonl` / `.md`.
-
-`get_final_summary()` returns `scenario_type`, `current_time_step`,
-`seat_count`, `total_moves`, `agents_still_unsettled`, `joint_reward`,
-`settled`, a per-agent `agent_summaries` block (seat, settled, satisfaction),
-and the full final `layout`.
-
-A live viewer is available:
-
-```bash
-python terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py \
-    --log logs/IsThisSeatTakenEnvironment/<tag>/seed_<n>/blackboard_0.txt
-```
-
----
-
-## 11) Notes and limitations
-
-- **Nothing bounds time steps or standing.** `time_step` increments per action
-  and is reported in the final summary, but it is telemetry only — no episode
-  bound is derived from it, and an agent may stand indefinitely. (Config keys
-  `max_time_steps` and `standing_limit` used to be shipped for this and were
-  removed, as no code ever read them.)
-- **`compute_max_joint_reward()` is an optimistic bound, not an optimum.** The
-  90%-of-max termination branch is therefore heuristic.
-- **`satisfaction_score` is not cumulative in the seat-quality term** (§6). Any
-  analysis treating it as a running total of seat quality will be wrong.
-- **Neighbour adjacency is 4-way.** Diagonal seats are not neighbours, which
-  matters for `airplane` and `cinema` layouts where a diagonal is intuitively
-  "next to" you.
-- **Hard constraints are soft.** `hard_required_role` and friends only add
-  penalties; nothing prevents violating them.
-- **Tolerance is one-directional.** Pressure lowers tolerance and decay restores
-  it, but there is no mechanism by which a pleasant neighbour raises it.
+- The `hard_*` preference fields are penalties, not enforced constraints.
+- `compute_max_joint_reward()` is an **upper bound**, not a solved optimum, by
+  design (no solver dependency). The 90%-of-maximum termination branch is
+  therefore heuristic.
+- `satisfaction_score` accumulates action costs but not seat quality; its seat
+  term is the current instant reward (see section 6).
+- Seat adjacency is orthogonal only. Diagonal seats are not neighbours, which
+  matters most for the `airplane` and `cinema` layouts.
+- `time_step` increments per action and is reported, but nothing is derived from
+  it: there is no time-step bound and no limit on how long an agent may stand.
+- Tolerance moves in one direction only. Pressure lowers it and decay restores
+  it; no interaction raises it above `base_tolerance`.

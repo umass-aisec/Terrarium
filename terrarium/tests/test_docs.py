@@ -5,8 +5,8 @@ These docs state defaults, symbol names and rendered output. All of that can
 drift silently when the code changes, so each claim is parsed back out of the
 markdown and compared against the real thing rather than restated here.
 
-What this cannot check: prose about rationale and trade-offs. Those need a
-human read.
+What this cannot check is prose about rationale and trade-offs, which still
+needs a human read.
 """
 
 import importlib
@@ -19,7 +19,11 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 ENV_DOC = "terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_environment.md"
 COMPACTION_DOC = "terrarium/compaction/README.md"
 PERSONAS_DOC = "terrarium/personas/README.md"
-ALL_DOCS = [ENV_DOC, COMPACTION_DOC, PERSONAS_DOC, "README.md"]
+COMPONENT_DOCS = [ENV_DOC, COMPACTION_DOC, PERSONAS_DOC]
+ALL_DOCS = COMPONENT_DOCS + ["README.md"]
+
+# "- `key` (default `x`): description" / "- `key`: description"
+BULLET = re.compile(r"^- `([^`]+)`(?:\s*\(([^)]*)\))?\s*:\s*(.*)$")
 
 
 def read(rel):
@@ -27,27 +31,34 @@ def read(rel):
         return f.read()
 
 
-def table_rows(markdown, header_contains):
-    """Yield cell-lists for the markdown table whose header mentions the given text."""
-    rows, in_table = [], False
+def section(markdown, heading_contains):
+    """Return the text of the `## ...` section whose heading matches."""
+    out, keeping = [], False
     for line in markdown.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|"):
-            in_table = False
+        if line.startswith("## "):
+            if keeping:
+                break
+            keeping = heading_contains.lower() in line.lower()
             continue
-        cells = [c.strip() for c in stripped.strip("|").split("|")]
-        if not in_table:
-            if header_contains.lower() in " | ".join(cells).lower():
-                in_table = True
-            continue
-        if set("".join(cells)) <= set("-: "):
-            continue
-        rows.append(cells)
-    return rows
+        if keeping:
+            out.append(line)
+    return "\n".join(out)
 
 
-def unbacktick(s):
-    return s.strip().strip("`").strip()
+def bullets(text):
+    """Parse '- `key` (paren): description' lines into (key, paren, description)."""
+    found = []
+    for line in text.splitlines():
+        m = BULLET.match(line.strip())
+        if m:
+            found.append((m.group(1), m.group(2) or "", m.group(3)))
+    return found
+
+
+def documented_default(paren):
+    """Pull `x` out of 'default `x`'; return None when the default is prose."""
+    m = re.search(r"default\s+`([^`]+)`", paren)
+    return m.group(1) if m else None
 
 
 class DocLinks(unittest.TestCase):
@@ -65,27 +76,38 @@ class DocLinks(unittest.TestCase):
     def test_referenced_source_files_exist(self):
         missing = []
         for doc in ALL_DOCS:
-            for path in re.findall(r"`((?:terrarium|examples)/[\w./-]+\.(?:py|md|yaml))`", read(doc)):
+            for path in re.findall(
+                r"`((?:terrarium|examples)/[\w./-]+\.(?:py|md|yaml))`", read(doc)
+            ):
                 if not os.path.exists(os.path.join(REPO, path)):
                     missing.append(f"{doc} -> {path}")
         self.assertEqual(missing, [], f"docs name files that do not exist: {missing}")
 
+    def test_implementation_blocks_list_real_files(self):
+        """Each component doc opens with an Implementation list; those must resolve."""
+        for doc in COMPONENT_DOCS:
+            head = read(doc).split("## ")[0]
+            self.assertIn("Implementation:", head, f"{doc} has no Implementation block")
+            paths = re.findall(r"`((?:terrarium|examples)/[\w./-]+)`", head)
+            self.assertGreaterEqual(len(paths), 3, f"{doc} Implementation block looks empty")
+            for p in paths:
+                self.assertTrue(
+                    os.path.exists(os.path.join(REPO, p)), f"{doc} -> missing {p}"
+                )
+
 
 class EnvironmentDoc(unittest.TestCase):
-    """The env doc's config table must match the environment's real defaults."""
-
     def setUp(self):
         self.doc = read(ENV_DOC)
-        self.src = read("terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_env.py")
+        self.src = read(
+            "terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_env.py"
+        )
 
     def test_documented_defaults_match_code(self):
-        # Only rows whose default is a bare number; the rest are prose defaults.
         checked, mismatches = 0, []
-        for cells in table_rows(self.doc, "Key | Default"):
-            if len(cells) < 2:
-                continue
-            key, documented = unbacktick(cells[0]), unbacktick(cells[1])
-            if not re.fullmatch(r"-?\d+(\.\d+)?", documented):
+        for key, paren, _desc in bullets(section(self.doc, "Configuration reference")):
+            documented = documented_default(paren)
+            if documented is None or not re.fullmatch(r"-?\d+(\.\d+)?", documented):
                 continue
             m = re.search(rf'env_config\.get\("{re.escape(key)}",\s*([^)]+?)\)', self.src)
             if m is None:
@@ -99,11 +121,7 @@ class EnvironmentDoc(unittest.TestCase):
         self.assertGreaterEqual(checked, 7, "expected to check at least 7 numeric defaults")
 
     def test_pressure_level_thresholds_match(self):
-        """Probe each band the doc defines and confirm the code agrees.
-
-        Expectations are derived from the table, not hardcoded, so editing a
-        label in the doc without changing _pressure_level fails here.
-        """
+        """Probe each band the doc defines; expectations come from the doc."""
         env = importlib.import_module(
             "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
         )
@@ -113,29 +131,27 @@ class EnvironmentDoc(unittest.TestCase):
             pass
 
         bands, lower = [], 0.0
-        for cells in table_rows(self.doc, "Level shown"):
-            if len(cells) < 2:
+        for key, _paren, desc in bullets(section(self.doc, "Actions, tools, and phases")):
+            m = re.match(r"([<>]=?)\s*([\d.]+)$", key.strip())
+            if not m:
                 continue
-            bound_text, label = unbacktick(cells[0]), unbacktick(cells[1])
-            m = re.match(r"([<≥])\s*([\d.]+)", bound_text)
-            self.assertIsNotNone(m, f"unparsed pressure band {bound_text!r}")
             op, value = m.group(1), float(m.group(2))
-            # a ratio inside this band
+            label = desc.strip().strip("`")
             probe = (lower + value) / 2 if op == "<" else value + 1.0
-            bands.append((probe, label, bound_text))
+            bands.append((probe, label, key))
             lower = value
         self.assertEqual(len(bands), 4, f"expected 4 pressure bands, parsed {len(bands)}")
 
         f = Fake()
-        for probe, label, bound_text in bands:
+        for probe, label, key in bands:
             f.agent_state = {"a": {"social_pressure": probe * 2.0, "base_tolerance": 2.0}}
             actual = cls._pressure_level(f, "a")
             self.assertEqual(
                 actual, label,
-                f"ratio {probe} (band {bound_text}): code says {actual!r}, doc says {label!r}",
+                f"ratio {probe} (band {key}): code says {actual!r}, doc says {label!r}",
             )
 
-    def test_seat_role_worked_examples_match(self):
+    def test_seat_role_examples_match(self):
         env = importlib.import_module(
             "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
         )
@@ -144,39 +160,36 @@ class EnvironmentDoc(unittest.TestCase):
         class Fake:
             pass
 
-        # parse the fenced "scenario, cols=N -> a, b, c" examples out of the doc
         found = 0
         for line in self.doc.splitlines():
-            m = re.match(r"\s*(\w+),\s*cols=(\d+)\s*→\s*(.+)$", line)
+            m = re.match(r"\s*(\w+),\s*cols=(\d+)\s*->\s*(.+)$", line)
             if not m:
                 continue
-            scenario, cols, expected = m.group(1), int(m.group(2)), m.group(3)
-            expected_roles = [r.strip() for r in expected.split(",")]
+            scenario, cols = m.group(1), int(m.group(2))
+            expected = [r.strip() for r in m.group(3).split(",")]
             f = Fake()
             f.scenario_type = scenario
             actual = [cls._seat_role(f, 0, c, 3, cols) for c in range(cols)]
             self.assertEqual(
-                actual, expected_roles,
-                f"{scenario} cols={cols}: code gives {actual}, doc says {expected_roles}",
+                actual, expected,
+                f"{scenario} cols={cols}: code gives {actual}, doc says {expected}",
             )
             found += 1
-        self.assertGreaterEqual(found, 3, "expected at least 3 worked seat-role examples")
+        self.assertGreaterEqual(found, 3, "expected at least 3 seat-role examples")
 
     def test_documented_config_keys_are_all_read(self):
-        """The doc's config table should not list a key no code reads."""
         pkg = "terrarium/environments/dcops/is_this_seat_taken"
-        sources = []
+        blob = read("terrarium/environments/abstract_environment.py")
         for root, _dirs, files in os.walk(os.path.join(REPO, pkg)):
             if "__pycache__" in root:
                 continue
-            sources += [read(os.path.relpath(os.path.join(root, f), REPO))
-                        for f in files if f.endswith(".py")]
-        blob = "\n".join(sources) + read("terrarium/environments/abstract_environment.py")
+            for f in files:
+                if f.endswith(".py"):
+                    blob += read(os.path.relpath(os.path.join(root, f), REPO))
 
         unread = []
-        for cells in table_rows(self.doc, "Key | Default"):
-            key = unbacktick(cells[0])
-            if key in ("name",) or not re.fullmatch(r"[a-z_]+", key):
+        for key, _paren, _desc in bullets(section(self.doc, "Configuration reference")):
+            if key == "name" or not re.fullmatch(r"[a-z_]+", key):
                 continue
             if f'"{key}"' not in blob:
                 unread.append(key)
@@ -190,7 +203,8 @@ class CompactionDoc(unittest.TestCase):
         self.compactor = importlib.import_module("terrarium.compaction.compactor")
 
     def test_documented_mechanisms_match_code(self):
-        documented = {unbacktick(c[0]) for c in table_rows(self.doc, "Mechanism | What it does")}
+        documented = {k for k, _p, _d in bullets(section(self.doc, "Mechanisms"))}
+        documented = {k for k in documented if re.fullmatch(r"[a-z_]+", k)}
         self.assertEqual(
             documented, set(self.compactor.MECHANISMS),
             f"doc mechanisms {sorted(documented)} != code {sorted(self.compactor.MECHANISMS)}",
@@ -198,28 +212,30 @@ class CompactionDoc(unittest.TestCase):
 
     def test_documented_defaults_match_code(self):
         mismatches, checked = [], 0
-        for cells in table_rows(self.doc, "Key | Default | Meaning"):
-            if len(cells) < 2:
+        for key, paren, _desc in bullets(section(self.doc, "Configuration reference")):
+            documented = documented_default(paren)
+            if documented is None:
                 continue
-            key, documented = unbacktick(cells[0]), unbacktick(cells[1])
-            m = re.search(rf'_compaction_config\.get\("{re.escape(key)}",\s*([^)]+?)\)', self.seq)
+            m = re.search(
+                rf'_compaction_config\.get\("{re.escape(key)}",\s*([^)]+?)\)', self.seq
+            )
             if m is None:
-                continue  # prose default (e.g. "falls back to llm.provider")
-            actual = m.group(1).strip()
+                continue
+            actual = m.group(1).strip().strip('"')
             checked += 1
             norm = {"false": "False", "true": "True"}
-            doc_norm = norm.get(documented.lower(), documented)
-            if actual.strip('"') != doc_norm.strip('"'):
+            expected = norm.get(documented.lower(), documented).strip('"')
+            if actual != expected:
                 mismatches.append(f"{key}: doc={documented} code={actual}")
         self.assertEqual(mismatches, [], f"compaction defaults drifted: {mismatches}")
         self.assertGreaterEqual(checked, 5, "expected to check at least 5 compaction defaults")
 
     def test_evict_kinds_and_markers_match(self):
-        self.assertIn("`action_executed`", self.doc)
         self.assertEqual(set(self.compactor.DEFAULT_EVICT_KINDS), {"action_executed"})
+        self.assertIn("`action_executed`", self.doc)
         for marker in self.compactor._EXTRACTIVE_MARKERS:
             self.assertIn(
-                f"`{marker}`".replace("` `", "`"), self.doc.replace("will `", "will `"),
+                f"`{marker}`", self.doc,
                 f"extractive marker {marker!r} is in the code but not the doc",
             )
 
@@ -229,7 +245,6 @@ class CompactionDoc(unittest.TestCase):
         self.assertEqual(int(m.group(1)), self.compactor._MAX_SUMMARY_TOKENS)
 
     def test_opt_in_claim_holds(self):
-        """Doc says: no llm.compaction block -> compaction disabled."""
         self.assertIn("self.compaction_enabled = bool(_compaction_config)", self.seq)
         self.assertIn("if not self.compaction_enabled:", self.seq)
         self.assertIn("format_blackboard_events_for_prompt(", self.seq)
@@ -243,77 +258,88 @@ class PersonasDoc(unittest.TestCase):
 
     def test_documented_api_symbols_exist(self):
         missing = []
-        for cells in table_rows(self.doc, "Function | Purpose"):
-            name = unbacktick(cells[0]).split("(")[0].split(".")[0]
+        api = bullets(section(self.doc, "API reference"))
+        self.assertGreaterEqual(len(api), 5, "API reference section looks empty")
+        for key, _paren, _desc in api:
+            name = key.split("(")[0].split(".")[0]
             if not hasattr(self.personas, name):
                 missing.append(name)
-        for const in re.findall(r"`([A-Z][A-Z_]+)`", self.doc):
-            if const in ("EXT", "AGR", "CON", "NEU", "OPE", "DECISIONS", "COMMITMENTS"):
+        for const in re.findall(r"`([A-Z][A-Z_]{2,})`", self.doc):
+            # domain codes are trait keys, not exported symbols -- check them
+            # against DOMAINS instead
+            if const in self.personas.DOMAINS:
                 continue
             if not hasattr(self.personas, const):
                 missing.append(const)
+
+        # every domain code the doc names must really be a domain
+        named_domains = set(re.findall(r"`(EXT|AGR|CON|NEU|OPE)`", self.doc))
+        self.assertEqual(
+            named_domains, set(self.personas.DOMAINS),
+            f"doc names domains {sorted(named_domains)}, code has {sorted(self.personas.DOMAINS)}",
+        )
         self.assertEqual(missing, [], f"doc names symbols that do not exist: {sorted(set(missing))}")
 
-    def test_qualifier_table_matches_code(self):
+    def test_qualifier_levels_match_code(self):
         documented = {}
-        for cells in table_rows(self.doc, "Level | Rendering"):
-            for i in (0, 3):
-                if i + 1 >= len(cells):
-                    continue
-                lvl, rendering = cells[i].strip(), cells[i + 1].strip()
-                if lvl.isdigit() and rendering:
-                    documented[int(lvl)] = rendering.replace("`", "").strip()
-        self.assertTrue(documented, "qualifier table not found")
+        for key, _paren, desc in bullets(section(self.doc, "Trait levels")):
+            if key.isdigit():
+                documented[int(key)] = desc.strip().strip("`")
+        self.assertEqual(len(documented), 9, f"expected 9 levels, parsed {sorted(documented)}")
 
         for level, rendering in documented.items():
             got = self.persona_mod.qualify(level, "LOW", "HIGH")
-            if level == 5:
-                self.assertIsNone(got, "level 5 should contribute nothing")
+            if "contributes nothing" in rendering:
+                self.assertIsNone(got, f"level {level} should contribute nothing")
                 continue
             expected = rendering.replace("<low>", "LOW").replace("<high>", "HIGH")
-            expected = expected.replace(" (bare)", "")
             self.assertEqual(got, expected, f"level {level}: code={got!r} doc={expected!r}")
 
-    def test_preset_table_matches_code(self):
+    def test_preset_list_matches_code(self):
         mismatches = []
-        for cells in table_rows(self.doc, "EXT | AGR | CON"):
-            name = unbacktick(cells[0])
-            if name not in self.personas.PRESETS:
-                mismatches.append(f"{name}: documented but not in PRESETS")
+        parsed = bullets(section(self.doc, "Presets"))
+        documented_names = set()
+        for key, paren, desc in parsed:
+            if not paren.startswith("`") or "," not in desc and "EXT" not in desc:
                 continue
-            traits = self.personas.PRESETS[name].traits
-            for idx, domain in enumerate(("EXT", "AGR", "CON", "NEU", "OPE"), start=1):
-                documented = unbacktick(cells[idx])
+            documented_names.add(key)
+            if key not in self.personas.PRESETS:
+                mismatches.append(f"{key}: documented but not in PRESETS")
+                continue
+            traits = self.personas.PRESETS[key].traits
+            documented_levels = {
+                d.strip().split()[0]: int(d.strip().split()[1])
+                for d in desc.split(",") if len(d.strip().split()) == 2
+            }
+            for domain in ("EXT", "AGR", "CON", "NEU", "OPE"):
+                expected = documented_levels.get(domain, 5)
                 actual = traits.get(domain, 5)
-                expected = 5 if documented in ("–", "-", "—", "") else int(documented)
                 if actual != expected:
-                    mismatches.append(f"{name}.{domain}: doc={documented} code={actual}")
-        self.assertEqual(mismatches, [], f"preset table drifted: {mismatches}")
+                    mismatches.append(f"{key}.{domain}: doc={expected} code={actual}")
+            constant = paren.strip("`")
+            if getattr(self.personas, constant, None) is not self.personas.PRESETS[key]:
+                mismatches.append(f"{key}: constant {constant} does not point at the preset")
+        self.assertEqual(mismatches, [], f"preset list drifted: {mismatches}")
         self.assertEqual(
-            len(self.personas.PRESETS), 5,
-            "doc says five presets ship; PRESETS has a different count",
+            documented_names, set(self.personas.PRESETS),
+            f"doc presets {sorted(documented_names)} != code {sorted(self.personas.PRESETS)}",
         )
 
     def test_rendered_examples_match_actual_output(self):
-        """Every prose example in the doc must be real output, not paraphrase."""
         build = self.personas.build_trait_clause
         Persona = self.personas.Persona
-
-        cases = [
-            (Persona(traits={"Trust": 9}), "I'm extremely trustful."),
-            (Persona(traits={"A1": 9}), "I'm extremely trustful."),
-        ]
-        for persona, expected in cases:
-            self.assertEqual(build(persona), expected)
-            self.assertIn(expected, self.doc, f"doc no longer shows {expected!r}")
-
-        # the compact/full EXT=9 block in section 4
-        compact = build(Persona(traits={"EXT": 9}))
-        full = build(Persona(traits={"EXT": 9}, verbosity="full"))
         doc_flat = " ".join(self.doc.split())
-        for label, text in (("compact", compact), ("full", full)):
+
+        self.assertEqual(build(Persona(traits={"Trust": 9})), "I'm extremely trustful.")
+        self.assertIn("I'm extremely trustful.", self.doc)
+
+        for label, persona in (
+            ("compact", Persona(traits={"EXT": 9})),
+            ("full", Persona(traits={"EXT": 9}, verbosity="full")),
+        ):
+            text = " ".join(build(persona).split())
             self.assertIn(
-                " ".join(text.split()), doc_flat,
+                text, doc_flat,
                 f"the {label} EXT=9 example in the doc is not what the code renders:\n{text}",
             )
 
@@ -321,14 +347,12 @@ class PersonasDoc(unittest.TestCase):
         prompt = self.personas.build_persona_prompt(
             self.personas.PRESETS["diplomat"], task="You are seated in row 2."
         )
-        doc_flat = " ".join(self.doc.split())
         self.assertIn(
-            " ".join(prompt.split()), doc_flat,
+            " ".join(prompt.split()), " ".join(self.doc.split()),
             f"the quick-start example does not match real output:\n{prompt}",
         )
 
     def test_persona_precedence_claim(self):
-        """Doc says `personas` wins over `persona` when both are set."""
         import inspect
         from terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env import (
             IsThisSeatTakenEnvironment,
@@ -339,31 +363,33 @@ class PersonasDoc(unittest.TestCase):
 
 class DocumentedCLI(unittest.TestCase):
     def test_documented_flags_exist(self):
-        main = read("examples/base_main.py")
         flags = set()
-        for doc in (ENV_DOC, COMPACTION_DOC, PERSONAS_DOC):
+        for doc in COMPONENT_DOCS:
             flags |= set(re.findall(r"(--[a-z][a-z-]+)", read(doc)))
-        known = set(re.findall(r'add_argument\("(--[a-z-]+)"', main))
-        # flags belonging to the harness, not base_main
-        others = set()
-        for entry in ("examples/acon_harness.py",
-                      "terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py"):
-            others |= set(re.findall(r'add_argument\(\s*"(--[a-z-]+)"', read(entry)))
-        missing = sorted(f for f in flags if f not in known | others)
+        self.assertGreaterEqual(len(flags), 4, "expected the docs to show CLI flags")
+
+        known = set()
+        for entry in (
+            "examples/base_main.py",
+            "examples/acon_harness.py",
+            "terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py",
+        ):
+            known |= set(re.findall(r'add_argument\(\s*"(--[a-z-]+)"', read(entry)))
+        missing = sorted(f for f in flags if f not in known)
         self.assertEqual(missing, [], f"docs show flags nothing defines: {missing}")
 
 
 class ShippedConfigs(unittest.TestCase):
-    def test_no_dead_keys_in_seating_configs(self):
+    def test_no_dead_keys_in_seating_config(self):
         import yaml
-        blob = ""
+
+        blob = read("examples/base_main.py")
         for root, _dirs, files in os.walk(os.path.join(REPO, "terrarium")):
             if "__pycache__" in root:
                 continue
             for f in files:
                 if f.endswith(".py"):
                     blob += read(os.path.relpath(os.path.join(root, f), REPO))
-        blob += read("examples/base_main.py")
 
         cfg = yaml.safe_load(read("examples/configs/is_this_seat_taken.yaml"))
         dead = [k for k in cfg["environment"] if f'"{k}"' not in blob]
