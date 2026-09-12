@@ -361,6 +361,372 @@ class PersonasDoc(unittest.TestCase):
         self.assertLess(src.index("if persona_map"), src.index("if persona_name"))
 
 
+class ObservationDoc(unittest.TestCase):
+    """Section 6 of the env doc: what each agent is and is not told."""
+
+    ENV_MOD = "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
+    PROMPTS_MOD = "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_prompts"
+
+    def setUp(self):
+        self.doc = read(ENV_DOC)
+        self.obs = section(self.doc, "What agents observe")
+        self.assertTrue(self.obs.strip(), "env doc has no 'What agents observe' section")
+        self.env_mod = importlib.import_module(self.ENV_MOD)
+        self.E = self.env_mod.IsThisSeatTakenEnvironment
+        self.P = importlib.import_module(self.PROMPTS_MOD).IsThisSeatTakenPrompts
+
+    def _bare_env(self, **state):
+        import random
+        env = self.E.__new__(self.E)
+        env.rng = random.Random(0)
+        env.max_iterations = 10
+        env.scenario_type = "airplane"
+        env.seats = {}
+        base = {
+            "satisfaction_score": 0.0, "last_instant_reward": 0.0,
+            "base_tolerance": 2.0, "social_pressure": 0.0,
+            "pressure_requests": 0, "pressure_complaints": 0,
+            "current_seat": None, "settled": False, "pending_reaction": False,
+            "preference_profile": {},
+        }
+        base.update(state)
+        env.agent_state = {"a": base}
+        return env
+
+    def _bullet_rules(self, name):
+        """Parse "`< 1.2` is `low ...`" style rules from a derived-signal bullet."""
+        text = " ".join(section(self.doc, "What agents observe").split())
+        m = re.search(rf"- `{re.escape(name)}`:(.*?)(?= - `|###|$)", text)
+        self.assertIsNotNone(m, f"no derived-signal bullet for {name}")
+        body = m.group(1)
+        rules = [(op, float(v), label) for op, v, label in
+                 re.findall(r"`([<>]=?)\s*([\d.]+)` is `([^`]+)`", body)]
+        other = re.search(r"otherwise `([^`]+)`", body)
+        return rules, (other.group(1) if other else None)
+
+    def test_tolerance_description_bands(self):
+        rules, otherwise = self._bullet_rules("comfort_signal.tolerance_description")
+        self.assertEqual(len(rules), 2, f"expected 2 tolerance bands, parsed {rules}")
+        # probe just either side of each documented edge, not band midpoints, so a
+        # shifted boundary is caught even when the labels are unchanged
+        labels = [label for _op, _v, label in rules] + [otherwise]
+        probes = []
+        for i, (_op, value, label) in enumerate(rules):
+            probes.append((value - 0.01, label))
+            probes.append((value + 0.01, labels[i + 1]))
+        for tol, label in probes:
+            env = self._bare_env(base_tolerance=tol)
+            got = env.build_agent_context("a", "planning", 1)["comfort_signal"]["tolerance_description"]
+            self.assertEqual(got, label, f"tolerance {tol}: code {got!r}, doc {label!r}")
+
+    def test_time_pressure_bands(self):
+        rules, otherwise = self._bullet_rules("comfort_signal.time_pressure")
+        self.assertEqual(len(rules), 2, f"expected 2 time-pressure bands, parsed {rules}")
+        # rules are ">= edge is label", highest edge first; below the lowest edge is
+        # `otherwise`. Probe just above and just below every edge.
+        ordered = sorted(rules, key=lambda r: r[1])  # ascending edges
+        cases = []
+        for i, (_op, value, label) in enumerate(ordered):
+            below = otherwise if i == 0 else ordered[i - 1][2]
+            cases.append((value + 0.01, label))
+            cases.append((value - 0.01, below))
+        for fraction, label in cases:
+            env = self._bare_env()
+            # iteration is fraction * max_iterations (10)
+            got = env.build_agent_context("a", "planning", fraction * 10)["comfort_signal"]["time_pressure"]
+            self.assertEqual(got, label, f"progress {fraction}: code {got!r}, doc {label!r}")
+
+    def test_felt_satisfaction_noise_and_clamp(self):
+        m = re.search(r"uniform\((-?[\d.]+),\s*([\d.]+)\)", self.obs)
+        c = re.search(r"clamped\s+to\s+`\[(-?\d+),\s*(-?\d+)\]`", self.obs)
+        self.assertIsNotNone(m, "doc no longer states the felt_satisfaction noise")
+        self.assertIsNotNone(c, "doc no longer states the felt_satisfaction clamp")
+        amp, lo, hi = float(m.group(2)), int(c.group(1)), int(c.group(2))
+
+        for true_score, expected in ((1000.0, hi), (-1000.0, lo)):
+            env = self._bare_env(satisfaction_score=true_score)
+            got = env.build_agent_context("a", "planning", 1)["felt_satisfaction"]
+            self.assertEqual(got, expected, f"clamp: score {true_score} -> {got}, doc [{lo}, {hi}]")
+        env = self._bare_env(satisfaction_score=0.0)
+        worst = max(abs(env.build_agent_context("a", "planning", 1)["felt_satisfaction"]) for _ in range(500))
+        self.assertLessEqual(worst, amp + 0.005, f"noise exceeded documented ±{amp}: {worst}")
+        self.assertGreaterEqual(worst, amp * 0.9,
+                                f"noise never reached the documented ±{amp} (max seen {worst})")
+
+    def test_perception_noise_is_documented_correctly(self):
+        m = re.search(r"gauss\(0,\s*([\d.]+)\)", self.obs)
+        self.assertIsNotNone(m, "doc no longer states the perception noise")
+        import inspect
+        src = inspect.getsource(self.E._occupied_neighbors)
+        self.assertIn(f"gauss(0, {m.group(1)})", src, "perception noise sigma drifted from the doc")
+        self.assertIn("noisy=True", inspect.getsource(self.E.build_agent_context),
+                      "doc says agents see perceived (noisy) traits")
+
+    def test_visible_seat_radius(self):
+        m = re.search(r"Manhattan distance (\d+)", self.obs)
+        self.assertIsNotNone(m, "doc no longer states the visibility radius")
+        radius = int(m.group(1))
+        Seat = self.env_mod.Seat
+        env = self._bare_env(current_seat="seat_2_2")
+        env.seats = {f"seat_{r+1}_{c+1}": Seat(f"seat_{r+1}_{c+1}", r, c, "middle")
+                     for r in range(3) for c in range(3)}
+        seated = {s["seat_id"] for s in env.build_agent_context("a", "planning", 1)["visible_seats"]}
+        expected = {sid for sid, st in env.seats.items() if abs(st.row - 1) + abs(st.col - 1) <= radius}
+        self.assertEqual(seated, expected, "visible seats for a seated agent do not match the documented radius")
+
+        env.agent_state["a"]["current_seat"] = None
+        standing = env.build_agent_context("a", "planning", 1)["visible_seats"]
+        self.assertEqual(len(standing), 9, "doc says a standing agent sees every seat")
+
+    def test_hard_constraints_are_not_shown_to_agents(self):
+        self.assertIn("hard_required_role", section(self.doc, "What agents observe"))
+
+        class Fake:
+            pass
+
+        ctx = {
+            "phase": "planning", "current_seat": "seat_1_1", "iteration": 1, "max_iterations": 10,
+            "preference_profile": {
+                "preferred_roles": ["window"], "hard_required_role": "aisle",
+                "hard_required_neighbor": "agent_9", "hard_avoid_neighbor": "agent_8",
+            },
+            "comfort_signal": {}, "social_pressure_level": "none",
+        }
+        rendered = self.P._get_user_prompt_impl(Fake(), "a", ctx, {})
+        for leaked in ("aisle", "agent_9", "agent_8", "hard"):
+            self.assertNotIn(leaked, rendered, f"doc says hard_* is hidden, but prompt shows {leaked!r}")
+
+    def test_recall_listed_only_with_retrieval(self):
+        self.assertIn("`recall` is\n  listed only when `llm.compaction.retrieval_enabled` is true", self.doc)
+
+        def system_prompt(retrieval):
+            pr = self.P.__new__(self.P)
+            pr.env = type("Env", (), {"scenario_type": "airplane"})()
+            pr.retrieval_enabled = retrieval
+            pr.persona_by_agent = {}
+            pr.tool_instruction_data = None
+            return pr.get_system_prompt("a")
+
+        self.assertIn("recall(", system_prompt(True))
+        self.assertNotIn("recall(", system_prompt(False))
+
+    def test_user_prompt_example_is_real_output(self):
+        block = self.obs.split("Example (planning phase):", 1)[1].split("```", 2)[1].strip("\n")
+
+        class Fake:
+            pass
+
+        ctx = {
+            "phase": "planning", "iteration": 2, "max_iterations": 10, "current_seat": "seat_1_2",
+            "preference_profile": {"preferred_roles": ["window"], "avoided_roles": ["middle"],
+                                   "preferred_neighbors": ["agent_3"]},
+            "comfort_signal": {"label": "uncomfortable", "tolerance_description": "moderate",
+                               "time_pressure": "low"},
+            "felt_satisfaction": -1.17, "social_pressure_level": "mild", "pending_reaction": True,
+            "neighbor_observations": [{"agent_id": "agent_1", "seat_id": "seat_1_1",
+                                       "perceived_traits": {"loudness": 0.82, "talkativeness": 0.4,
+                                                            "scent": 0.11}}],
+            "visible_seats": [{"seat_id": "seat_1_2", "occupied": True},
+                              {"seat_id": "seat_2_2", "occupied": False},
+                              {"seat_id": "seat_1_3", "occupied": False}],
+        }
+        rendered = self.P._get_user_prompt_impl(Fake(), "agent_2", ctx, {})
+        self.assertIn(block, rendered, "the example user prompt is not what the prompt builder renders")
+
+    def test_action_event_example_is_real_output(self):
+        """Rebuild the example from a real move, not from the doc's own payload.
+
+        The event is produced by _move_agent and Megaboard.log_action_to_blackboards,
+        then formatted, so both the content (seat ids) and the format are checked.
+        """
+        import json
+        from terrarium.core.blackboard import Megaboard, format_blackboard_events_for_prompt as fmt
+
+        m = re.search(r"^\[\d+\] \[action_executed\] (\S+) payload=(.*)$", self.obs, re.M)
+        self.assertIsNotNone(m, "doc no longer shows an action_executed example")
+        agent, doc_payload = m.group(1), json.loads(m.group(2))
+        doc_params = doc_payload["action_params"]
+        doc_result = doc_payload["details"]["result"]
+
+        Seat = self.env_mod.Seat
+        env = self.E.__new__(self.E)
+        env.move_cost, env.total_moves = -0.5, 0
+        env.seats = {
+            doc_result["from_seat"]: Seat(doc_result["from_seat"], 0, 0, "middle", occupied_by=agent),
+            doc_result["to_seat"]: Seat(doc_result["to_seat"], 0, 1, "aisle"),
+        }
+        env.agent_state = {agent: {"current_seat": doc_result["from_seat"], "satisfaction_score": 0.0,
+                                   "settled": False, "pending_reaction": False}}
+        real_result = env._move_agent(agent, doc_params["seat_id"])
+
+        posted = {}
+
+        class Board:
+            agents = [agent]
+
+        class FakeMegaboard:
+            blackboards = [Board()]
+
+            def post(self, **kwargs):
+                posted.update(kwargs)
+
+        Megaboard.log_action_to_blackboards(FakeMegaboard(), agent, dict(doc_params), real_result)
+        rendered = fmt([{"kind": posted["kind"], "agent": agent, "payload": posted["payload"]}])
+        self.assertEqual(
+            rendered.split("] ", 1)[1], m.group(0).split("] ", 1)[1],
+            "the action_executed example does not match a real move event",
+        )
+
+    def test_initial_seating_broadcast(self):
+        import inspect
+        self.assertIn("Initial seating: ", self.obs)
+        src = inspect.getsource(self.E.async_init)
+        self.assertIn('"Initial seating: "', src)
+        self.assertIn("get_all_blackboard_ids", src, "doc says the map is posted to every channel")
+
+    def test_own_tool_result_is_not_shown_to_the_model(self):
+        """Doc: a successful env tool call ends the turn, so the result is never read."""
+        import inspect
+        from terrarium.agents import base
+        execute = inspect.getsource(base.BaseAgent._execute_tool_call)
+        loop = inspect.getsource(base.BaseAgent._multi_step_response_generation)
+        self.assertIn("self._env_state_committed = True", execute)
+        self.assertIn("if self._env_state_committed:", loop)
+        # the follow-up model call (the one that would read tool results) is the one
+        # inside the step loop, not the initial call before it
+        loop_start = loop.index("for step in range")
+        self.assertLess(loop.index("if self._env_state_committed:", loop_start),
+                        loop.index("self.client.generate_response", loop_start),
+                        "the turn no longer ends before the model sees the tool result")
+
+    def test_social_asks_skip_private_channels(self):
+        import inspect
+        tools = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_tools"
+        ).IsThisSeatTakenTools
+        self.assertIn("to non-private channels only", self.obs)
+        self.assertIn("is_private_channel", inspect.getsource(tools._post_social_message))
+        self.assertNotIn("log_action_to_blackboards",
+                         inspect.getsource(tools.execute_action).split("EXECUTION_PHYSICAL_ACTIONS")[0],
+                         "social asks are now broadcast as action events")
+
+
+class ActionCostDoc(unittest.TestCase):
+    """Section 5 execution actions: costs and side effects, checked by running them."""
+
+    def setUp(self):
+        import random
+        self.doc = read(ENV_DOC)
+        self.actions = section(self.doc, "Actions, tools, and phases")
+        self.flat = " ".join(self.actions.split())
+        mod = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
+        )
+        self.E, self.Seat, self.random = mod.IsThisSeatTakenEnvironment, mod.Seat, random
+
+    def _env(self):
+        env = self.E.__new__(self.E)
+        env.rng = self.random.Random(0)
+        env.move_cost, env.social_action_cost = -0.5, -0.3
+        env.total_moves, env.time_step, env.max_iterations = 0, 0, 10
+        env.scenario_type = "airplane"
+        env.agent_names = ["a", "b"]
+        env.seats = {
+            "s1": self.Seat("s1", 0, 0, "window", neighbors=["s2"], occupied_by="a"),
+            "s2": self.Seat("s2", 0, 1, "middle", neighbors=["s1", "s3"], occupied_by="b"),
+            "s3": self.Seat("s3", 0, 2, "aisle", neighbors=["s2"]),
+        }
+
+        def state(seat):
+            return {"current_seat": seat, "satisfaction_score": 0.0, "last_instant_reward": 0.0,
+                    "settled": True, "pending_reaction": False, "base_tolerance": 9.0,
+                    "social_pressure": 0.0, "pressure_requests": 0, "pressure_complaints": 0,
+                    "preference_profile": {},
+                    "public_traits": {"loudness": 0, "scent": 0, "talkativeness": 0}}
+
+        env.agent_state = {"a": state("s1"), "b": state("s2")}
+        return env
+
+    def _run(self, action, args):
+        env = self._env()
+        result = env._apply_agent_action("a", action, args)
+        return env, result, env.agent_state["a"]["satisfaction_score"]
+
+    def _documented_cost(self, bullet_key):
+        descs = {k: d for k, _p, d in bullets(self.actions)}
+        self.assertIn(bullet_key, descs, f"section 5 has no bullet for {bullet_key}")
+        # a bullet's description continues on indented lines; take the whole paragraph
+        start = self.flat.index(f"- `{bullet_key}`:")
+        nxt = self.flat.find(" - `", start + 1)
+        text = self.flat[start: nxt if nxt != -1 else None]
+        if "No cost" in text:
+            return 0.0, text
+        if "costs `move_cost`" in text:
+            return -0.5, text
+        self.fail(f"cannot tell the documented cost of {bullet_key}: {text!r}")
+
+    def test_successful_move_cost(self):
+        expected, text = self._documented_cost("move(seat_id)")
+        env, result, cost = self._run("move", {"seat_id": "s3"})
+        self.assertEqual(result["status"], "success")
+        self.assertAlmostEqual(cost, expected, msg=f"move cost: code {cost}, doc {expected}")
+        self.assertIn("increments `total_moves`", text)
+        self.assertEqual(env.total_moves, 1)
+
+    def test_failed_move_into_occupied_seat(self):
+        charged = re.search(r"occupied seat fails but still costs `move_cost`", self.flat)
+        free = re.search(r"occupied seat fails at no cost", self.flat)
+        self.assertTrue(charged or free, "doc no longer says what a failed move costs")
+        env, result, cost = self._run("move", {"seat_id": "s2"})
+        self.assertEqual(result["status"], "failed")
+        expected = -0.5 if charged else 0.0
+        self.assertAlmostEqual(cost, expected, msg=f"failed move: code {cost}, doc {expected}")
+        if "without incrementing `total_moves`" in self.flat:
+            self.assertEqual(env.total_moves, 0)
+
+    def test_stand_cost(self):
+        expected, text = self._documented_cost("stand()")
+        env, result, cost = self._run("stand", {})
+        self.assertEqual(result["status"], "success")
+        self.assertAlmostEqual(cost, expected, msg=f"stand cost: code {cost}, doc {expected}")
+        if "does not increment `total_moves`" in text:
+            self.assertEqual(env.total_moves, 0)
+
+    def test_settle_cost(self):
+        expected, _text = self._documented_cost("settle()")
+        _env, result, cost = self._run("settle", {})
+        self.assertEqual(result["status"], "success")
+        self.assertAlmostEqual(cost, expected, msg=f"settle cost: code {cost}, doc {expected}")
+
+    def test_rejected_action_clears_settled(self):
+        self.assertRegex(
+            self.flat,
+            r"clears the agent's `settled` flag before it is validated",
+            "doc no longer states that a rejected action un-settles the agent",
+        )
+        env, result, cost = self._run("move", {})
+        self.assertEqual(result["status"], "retry")
+        self.assertEqual(cost, 0.0, "a move with no seat_id should cost nothing")
+        self.assertFalse(env.agent_state["a"]["settled"], "rejected action did not clear settled")
+
+
+class TerminationClaimDoc(unittest.TestCase):
+    def test_agents_are_told_an_incomplete_termination_rule(self):
+        import inspect
+        doc = " ".join(read(ENV_DOC).split())
+        self.assertIn("The user prompt and the `settle` tool description both tell agents", doc)
+        tools = read("terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_tools.py")
+        prompts = read("terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_prompts.py")
+        self.assertIn("The simulation ends when every agent has settled.", tools)
+        self.assertIn("The simulation ends when every agent has called settle()", prompts)
+        env = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
+        ).IsThisSeatTakenEnvironment
+        done = inspect.getsource(env.done)
+        self.assertIn("reward_converged or reward_near_max", done,
+                      "termination no longer needs convergence; update the limitation")
+
+
 class DocumentedCLI(unittest.TestCase):
     def test_documented_flags_exist(self):
         flags = set()
