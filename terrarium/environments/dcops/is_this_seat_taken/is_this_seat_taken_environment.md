@@ -101,12 +101,6 @@ Each agent's profile is drawn from the seeded RNG:
 - `preferred_neighbors`: one other agent, with probability 0.45
 - `avoided_neighbors`: one other agent, with probability 0.35
 - `prefer_isolation`: true with probability 0.30
-- `hard_required_role`: the first preferred role, with probability 0.20
-- `hard_required_neighbor`: the preferred neighbour, with probability 0.15
-- `hard_avoid_neighbor`: the avoided neighbour, with probability 0.20
-
-The `hard_*` fields are scored as penalties rather than enforced as
-constraints, so they behave as strong soft constraints.
 
 ## 5) Actions, tools, and phases
 
@@ -242,8 +236,9 @@ them only for agents it shares a channel with.
 
 - Each channel opens with a `context` message from `get_network_context()`
   naming the scenario and listing the channel's participants.
-- `async_init()` then posts `Initial seating: agent_0→seat_1_1, ...` as a
-  `context` message, so every agent starts with the full initial seating map.
+- The starting layout is **not** posted. `async_init()` writes it to
+  `initial_seating.json` in the run's log directory for the GUI and for
+  analysis.
 - `request_move` and `complain` post the requester's message (or a default
   message) as ordinary chat, to non-private channels only.
 - `move`, `settle` and `stand` are posted as `action_executed` events with the
@@ -254,18 +249,18 @@ them only for agents it shares a channel with.
 [2] [action_executed] agent_2 payload={"action_params":{"action":"move","seat_id":"seat_1_3"},"action_type":"move","details":{"result":{"action":"move","agent":"agent_2","from_seat":"seat_1_2","to_seat":"seat_1_3"},"status":"success"},"result_status":"success"}
 ```
 
-Agents can therefore track global occupancy from the chat even though
-`visible_seats` is local.
+An agent can therefore learn the seat of anyone who has moved, stood or
+settled, but not where an agent is sitting if that agent has never acted and is
+not its neighbour.
 
 ### Information agents do not receive
 
 - other agents' preference profiles, satisfaction or tolerance
+- the starting seating map, beyond their own seat and their neighbours
 - neighbours' true trait values (only noisy estimates)
 - their own exact `satisfaction_score`, `base_tolerance`, effective tolerance
   or `social_pressure` (only the noisy score and the labels above)
 - the reward formula and its weights, the joint reward, or the termination rule
-- their own `hard_required_role`, `hard_required_neighbor` and
-  `hard_avoid_neighbor` (see section 12)
 - the result of their own `request_move` or `complain`: a successful
   environment tool call ends the agent's turn, so the returned
   `target_pressure_level` is written to `tool_calls.json` but never shown to
@@ -288,9 +283,6 @@ Penalties:
 - seat role is in `avoided_roles`
 - `prefer_isolation` is set and the agent has any neighbour
 - an `avoided_neighbor` is adjacent
-- `hard_required_role` is set and not satisfied
-- `hard_required_neighbor` is set and not adjacent
-- `hard_avoid_neighbor` is set and adjacent
 - each neighbour trait above effective tolerance
 
 The last penalty is applied per trait per neighbour, so a single neighbour can
@@ -359,7 +351,8 @@ See `terrarium/personas/README.md`.
 
 Standard framework logs apply (`blackboard_*.txt`, `tool_calls.json`,
 `agent_prompts.json`), plus `compaction_events.jsonl` and `.md` when compaction
-is configured.
+is configured. `initial_seating.json` records each agent's starting seat; the
+GUI reads it to place agents before anyone moves.
 
 `get_final_summary()` returns `scenario_type`, `current_time_step`,
 `seat_count`, `total_moves`, `agents_still_unsettled`, `joint_reward`,
@@ -409,14 +402,6 @@ python examples/base_main.py \
 
 ## 12) Notes / limitations
 
-- The `hard_*` preference fields are penalties, not enforced constraints, and
-  they are never shown to the agent. The system prompt says hard requirements
-  cost more than ordinary preferences, but the user prompt renders only the soft
-  preference fields, so an agent is penalized for constraints it cannot see.
-- The user prompt and the `settle` tool description both tell agents that the
-  simulation ends when every agent has settled. Termination also requires reward convergence or
-  near-maximum reward, and happens regardless once `max_iterations` is exceeded
-  (see section 8).
 - The system prompt lists "What seats are empty" under `WHAT YOU KNOW`, but a
   seated agent is shown only empty seats within distance 1.
 - Perception noise is resampled every turn, so the same neighbour's perceived

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 import random
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from terrarium.environments.abstract_environment import AbstractEnvironment
@@ -128,16 +130,24 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
     
     async def async_init(self):
         await super().async_init()
-        layout_msg = "Initial seating: " + ", ".join(
-            f"{seat.occupied_by}→{sid}"
-            for sid, seat in self.seats.items()
+        # The starting layout is recorded for the GUI and analysis rather than posted
+        # to agent channels, so agents learn positions only from their own view, their
+        # neighbours, and moves announced in the chat.
+        self._write_initial_seating()
+
+    def _initial_seating(self) -> Dict[str, str]:
+        return {
+            seat.occupied_by: seat_id
+            for seat_id, seat in self.seats.items()
             if seat.occupied_by is not None
-        )
-        blackboard_ids = await self.communication_protocol.get_all_blackboard_ids()
-        for bb_id in blackboard_ids:
-            await self.communication_protocol.post_system_message(
-                int(bb_id), "context", {"message": layout_msg}
-            )
+        }
+
+    def _write_initial_seating(self) -> None:
+        log_dir = getattr(self.tool_logger, "log_dir", None)
+        if log_dir is None:
+            return
+        path = Path(log_dir) / "initial_seating.json"
+        path.write_text(json.dumps(self._initial_seating(), indent=2), encoding="utf-8")
 
 
     def _layout_dimensions(self) -> Tuple[int, int]:
@@ -272,9 +282,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                     "preferred_neighbors": preferred_neighbors,
                     "avoided_neighbors": avoided_neighbors,
                     "prefer_isolation": self.rng.random() < 0.3,
-                    "hard_required_role": preferred_roles[0] if preferred_roles and self.rng.random() < 0.2 else None,
-                    "hard_required_neighbor": preferred_neighbors[0] if preferred_neighbors and self.rng.random() < 0.15 else None,
-                    "hard_avoid_neighbor": avoided_neighbors[0] if avoided_neighbors and self.rng.random() < 0.2 else None,
                 },
                 "current_seat": None,
                 "satisfaction_score": 0.0,
@@ -367,16 +374,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
         for avoided_neighbor in profile.get("avoided_neighbors", []):
             if avoided_neighbor in neighbor_ids:
                 penalties += 1.0
-
-        hard_required_role = profile.get("hard_required_role")
-        if hard_required_role and seat.role != hard_required_role:
-            penalties += 1.0
-        hard_required_neighbor = profile.get("hard_required_neighbor")
-        if hard_required_neighbor and hard_required_neighbor not in neighbor_ids:
-            penalties += 1.0
-        hard_avoid_neighbor = profile.get("hard_avoid_neighbor")
-        if hard_avoid_neighbor and hard_avoid_neighbor in neighbor_ids:
-            penalties += 1.0
 
         tolerance = self._agent_effective_tolerance(agent_name)
         for neighbor in neighbors:

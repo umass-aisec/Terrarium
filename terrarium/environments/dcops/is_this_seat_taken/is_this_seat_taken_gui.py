@@ -204,11 +204,25 @@ def parse_log(path):
         i = j
     return events
 
-def infer_positions(events):
-    pos = {}
+def _load_initial_seating(log_path):
+    """Starting positions from initial_seating.json next to the blackboard log.
+
+    Returns None for runs recorded before the environment wrote that file; those
+    carried the layout as an "Initial seating:" chat message instead.
+    """
+    path = Path(log_path).parent / "initial_seating.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+def infer_positions(events, initial=None):
+    pos = dict(initial or {})
     settled = set()
     for e in events:
-        if e.etype == "context" and "Initial seating:" in e.content:
+        if initial is None and e.etype == "context" and "Initial seating:" in e.content:
             for part in e.content.replace("Initial seating:", "").split(","):
                 part = part.strip()
                 if "\u2192" in part:
@@ -252,8 +266,8 @@ sse_lock = threading.Lock()
 _last_mtime = -1.0
 _sim_start_time = time.time()
 
-def rebuild(events):
-    pos, settled = infer_positions(events)
+def rebuild(events, initial=None):
+    pos, settled = infer_positions(events, initial)
     moves = sum(1 for e in events if e.etype == "action_executed"
                 and e.moved_to and e.result_status == "success")
     last_moved = None
@@ -275,7 +289,8 @@ def watch_log():
             if mtime != _last_mtime:
                 _last_mtime = mtime
                 events = parse_log(args.log)
-                pos, settled, moves, last_moved = rebuild(events)
+                initial = _load_initial_seating(args.log)
+                pos, settled, moves, last_moved = rebuild(events, initial)
                 with state_lock:
                     state.events = events
                     state.positions = pos

@@ -90,7 +90,7 @@ class IsThisSeatTakenTools:
                     "name": "settle",
                     "description": (
                         "Declare you are satisfied with your current seat. "
-                        "The simulation ends when every agent has settled. "
+                        "The run ends once everyone has settled and nothing is still changing, or when time runs out. "
                         "Use when your seat is good enough, especially under time pressure."
                     ),
                     "parameters": {"type": "object", "properties": {}, "required": []},

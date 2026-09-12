@@ -478,23 +478,33 @@ class ObservationDoc(unittest.TestCase):
         standing = env.build_agent_context("a", "planning", 1)["visible_seats"]
         self.assertEqual(len(standing), 9, "doc says a standing agent sees every seat")
 
-    def test_hard_constraints_are_not_shown_to_agents(self):
-        self.assertIn("hard_required_role", section(self.doc, "What agents observe"))
+    def test_hard_requirements_are_removed(self):
+        """Hard requirements were removed: no generation, no scoring, no prompt or doc text."""
+        import inspect
 
-        class Fake:
-            pass
+        for fn in (self.E._build_agent_state, self.E._compute_instant_reward):
+            self.assertNotIn("hard_", inspect.getsource(fn), f"{fn.__name__} still references hard requirements")
+        prompts = read("terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_prompts.py")
+        self.assertNotIn("hard requirement", prompts.lower(), "system prompt still mentions hard requirements")
+        self.assertNotIn("hard_", self.doc, "env doc still describes hard requirements")
 
-        ctx = {
-            "phase": "planning", "current_seat": "seat_1_1", "iteration": 1, "max_iterations": 10,
-            "preference_profile": {
-                "preferred_roles": ["window"], "hard_required_role": "aisle",
-                "hard_required_neighbor": "agent_9", "hard_avoid_neighbor": "agent_8",
-            },
-            "comfort_signal": {}, "social_pressure_level": "none",
-        }
-        rendered = self.P._get_user_prompt_impl(Fake(), "a", ctx, {})
-        for leaked in ("aisle", "agent_9", "agent_8", "hard"):
-            self.assertNotIn(leaked, rendered, f"doc says hard_* is hidden, but prompt shows {leaked!r}")
+        # every preferred role is worth the same +1 again; nothing silently zeroes the second one
+        Seat = self.env_mod.Seat
+
+        def reward(role):
+            env = self.E.__new__(self.E)
+            env.agent_names = ["a"]
+            env.seats = {"s1": Seat("s1", 0, 0, role, occupied_by="a")}
+            env.agent_state = {"a": {
+                "current_seat": "s1", "public_traits": {},
+                "preference_profile": {"preferred_roles": ["window", "aisle"],
+                                       "hard_required_role": "window"},  # stale key must be ignored
+                "social_pressure": 0, "pressure_complaints": 0, "pressure_requests": 0,
+                "base_tolerance": 9,
+            }}
+            return env._compute_instant_reward("a")
+
+        self.assertEqual((reward("window"), reward("aisle"), reward("middle")), (1.0, 1.0, 0.0))
 
     def test_recall_listed_only_with_retrieval(self):
         self.assertIn("`recall` is\n  listed only when `llm.compaction.retrieval_enabled` is true", self.doc)
@@ -577,12 +587,56 @@ class ObservationDoc(unittest.TestCase):
             "the action_executed example does not match a real move event",
         )
 
-    def test_initial_seating_broadcast(self):
+    def test_initial_seating_is_logged_not_posted(self):
         import inspect
-        self.assertIn("Initial seating: ", self.obs)
+        import json
+        import tempfile
+        import types
+
+        self.assertIn("initial_seating.json", self.obs)
+        flat = " ".join(self.obs.split())
+        self.assertIn("The starting layout is **not** posted.", flat,
+                      "doc must state that the seat map is not posted to channels")
+        withheld = " ".join(section(self.doc, "What agents observe")
+                            .split("### Information agents do not receive", 1)[1].split())
+        self.assertIn("the starting seating map, beyond their own seat and their neighbours", withheld,
+                      "doc must list the seat map among information agents do not receive")
         src = inspect.getsource(self.E.async_init)
-        self.assertIn('"Initial seating: "', src)
-        self.assertIn("get_all_blackboard_ids", src, "doc says the map is posted to every channel")
+        self.assertNotIn("post_system_message", src, "doc says the seat map is not posted to channels")
+        self.assertNotIn("Initial seating", src)
+
+        Seat = self.env_mod.Seat
+        env = self.E.__new__(self.E)
+        env.seats = {
+            "s1": Seat("s1", 0, 0, "window", occupied_by="agent_0"),
+            "s2": Seat("s2", 0, 1, "aisle"),
+            "s3": Seat("s3", 0, 2, "middle", occupied_by="agent_1"),
+        }
+        import asyncio
+        from unittest import mock
+
+        from terrarium.environments.abstract_environment import AbstractEnvironment
+
+        posts = []
+
+        class RecordingProtocol:
+            async def get_all_blackboard_ids(self):
+                return [0, 1]
+
+            async def post_system_message(self, *args, **kwargs):
+                posts.append((args, kwargs))
+
+        with tempfile.TemporaryDirectory() as d:
+            env.tool_logger = types.SimpleNamespace(log_dir=d)
+            env.communication_protocol = RecordingProtocol()
+            # run the real async_init; only the framework-level network setup is stubbed
+            with mock.patch.object(AbstractEnvironment, "async_init", new=mock.AsyncMock()):
+                asyncio.run(env.async_init())
+            path = os.path.join(d, "initial_seating.json")
+            self.assertTrue(os.path.exists(path), "async_init did not write initial_seating.json")
+            with open(path, encoding="utf-8") as f:
+                self.assertEqual(json.load(f), {"agent_0": "s1", "agent_1": "s3"})
+        self.assertEqual(posts, [], f"async_init posted to channels: {posts}")
 
     def test_own_tool_result_is_not_shown_to_the_model(self):
         """Doc: a successful env tool call ends the turn, so the result is never read."""
@@ -710,21 +764,86 @@ class ActionCostDoc(unittest.TestCase):
         self.assertFalse(env.agent_state["a"]["settled"], "rejected action did not clear settled")
 
 
-class TerminationClaimDoc(unittest.TestCase):
-    def test_agents_are_told_an_incomplete_termination_rule(self):
+class TerminationWordingDoc(unittest.TestCase):
+    """Agents must be told the real end condition, not 'ends when everyone settles'."""
+
+    NEW = "ends once everyone has settled and nothing is still changing, or when time runs out"
+
+    def test_agents_are_told_the_actual_rule(self):
         import inspect
-        doc = " ".join(read(ENV_DOC).split())
-        self.assertIn("The user prompt and the `settle` tool description both tell agents", doc)
+
         tools = read("terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_tools.py")
         prompts = read("terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_prompts.py")
-        self.assertIn("The simulation ends when every agent has settled.", tools)
-        self.assertIn("The simulation ends when every agent has called settle()", prompts)
+        for old in (
+            "The simulation ends when every agent has settled",
+            "The simulation ends when every agent has called settle()",
+            "the run ends only when ALL agents have settled",
+        ):
+            self.assertNotIn(old, tools + prompts, f"old termination claim still shown: {old!r}")
+        self.assertIn(self.NEW, tools, "settle tool description lacks the corrected wording")
+        self.assertEqual(prompts.count(self.NEW), 2, "system and user prompt should both carry it")
+
         env = importlib.import_module(
             "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
         ).IsThisSeatTakenEnvironment
         done = inspect.getsource(env.done)
+        self.assertIn("iteration > self.max_iterations", done, "wording says runs end when time runs out")
         self.assertIn("reward_converged or reward_near_max", done,
-                      "termination no longer needs convergence; update the limitation")
+                      "wording says settling alone is not enough")
+
+        doc = " ".join(read(ENV_DOC).split())
+        self.assertNotIn("both tell agents that the simulation ends", doc,
+                         "limitation describes wording that no longer exists")
+
+
+class GuiInitialSeating(unittest.TestCase):
+    GUI = "terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py"
+
+    def setUp(self):
+        import importlib.util
+        import sys
+
+        try:
+            import flask  # noqa: F401
+        except ImportError:
+            self.skipTest("flask not installed")
+        argv = sys.argv
+        sys.argv = ["gui", "--log", os.devnull, "--no-browser"]
+        try:
+            spec = importlib.util.spec_from_file_location("seat_gui_under_test", os.path.join(REPO, self.GUI))
+            self.gui = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(self.gui)
+        finally:
+            sys.argv = argv
+
+    def test_positions_come_from_initial_seating_json(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            log = os.path.join(d, "blackboard_0.txt")
+            open(log, "w").close()
+            self.assertIsNone(self.gui._load_initial_seating(log))
+            with open(os.path.join(d, "initial_seating.json"), "w", encoding="utf-8") as f:
+                json.dump({"agent_0": "seat_1_1", "agent_1": "seat_1_2"}, f)
+            initial = self.gui._load_initial_seating(log)
+        pos, _settled = self.gui.infer_positions([], initial)
+        self.assertEqual(pos, {"agent_0": "seat_1_1", "agent_1": "seat_1_2"})
+
+        # when both exist, the json is authoritative and a stale chat message is ignored
+        import types
+
+        stale = types.SimpleNamespace(etype="context", content="Initial seating: agent_0→seat_9_9, agent_1→seat_9_8")
+        pos, _settled = self.gui.infer_positions([stale], initial)
+        self.assertEqual(pos, {"agent_0": "seat_1_1", "agent_1": "seat_1_2"},
+                         "a chat seat map overrode initial_seating.json")
+
+    def test_older_logs_still_read_the_chat_message(self):
+        import types
+
+        event = types.SimpleNamespace(etype="context", content="Initial seating: agent_0→seat_1_1, agent_1→seat_1_2")
+        pos, _settled = self.gui.infer_positions([event], None)
+        self.assertEqual(pos, {"agent_0": "seat_1_1", "agent_1": "seat_1_2"})
 
 
 class DocumentedCLI(unittest.TestCase):
