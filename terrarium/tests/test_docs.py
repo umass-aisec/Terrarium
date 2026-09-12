@@ -436,32 +436,6 @@ class ObservationDoc(unittest.TestCase):
             got = env.build_agent_context("a", "planning", fraction * 10)["comfort_signal"]["time_pressure"]
             self.assertEqual(got, label, f"progress {fraction}: code {got!r}, doc {label!r}")
 
-    def test_felt_satisfaction_noise_and_clamp(self):
-        m = re.search(r"uniform\((-?[\d.]+),\s*([\d.]+)\)", self.obs)
-        c = re.search(r"clamped\s+to\s+`\[(-?\d+),\s*(-?\d+)\]`", self.obs)
-        self.assertIsNotNone(m, "doc no longer states the felt_satisfaction noise")
-        self.assertIsNotNone(c, "doc no longer states the felt_satisfaction clamp")
-        amp, lo, hi = float(m.group(2)), int(c.group(1)), int(c.group(2))
-
-        for true_score, expected in ((1000.0, hi), (-1000.0, lo)):
-            env = self._bare_env(satisfaction_score=true_score)
-            got = env.build_agent_context("a", "planning", 1)["felt_satisfaction"]
-            self.assertEqual(got, expected, f"clamp: score {true_score} -> {got}, doc [{lo}, {hi}]")
-        env = self._bare_env(satisfaction_score=0.0)
-        worst = max(abs(env.build_agent_context("a", "planning", 1)["felt_satisfaction"]) for _ in range(500))
-        self.assertLessEqual(worst, amp + 0.005, f"noise exceeded documented ±{amp}: {worst}")
-        self.assertGreaterEqual(worst, amp * 0.9,
-                                f"noise never reached the documented ±{amp} (max seen {worst})")
-
-    def test_perception_noise_is_documented_correctly(self):
-        m = re.search(r"gauss\(0,\s*([\d.]+)\)", self.obs)
-        self.assertIsNotNone(m, "doc no longer states the perception noise")
-        import inspect
-        src = inspect.getsource(self.E._occupied_neighbors)
-        self.assertIn(f"gauss(0, {m.group(1)})", src, "perception noise sigma drifted from the doc")
-        self.assertIn("noisy=True", inspect.getsource(self.E.build_agent_context),
-                      "doc says agents see perceived (noisy) traits")
-
     def test_visible_seat_radius(self):
         m = re.search(r"Manhattan distance (\d+)", self.obs)
         self.assertIsNotNone(m, "doc no longer states the visibility radius")
@@ -532,9 +506,9 @@ class ObservationDoc(unittest.TestCase):
                                    "preferred_neighbors": ["agent_3"]},
             "comfort_signal": {"label": "uncomfortable", "tolerance_description": "moderate",
                                "time_pressure": "low"},
-            "felt_satisfaction": -1.17, "social_pressure_level": "mild", "pending_reaction": True,
+            "social_pressure_level": "mild", "pending_reaction": True,
             "neighbor_observations": [{"agent_id": "agent_1", "seat_id": "seat_1_1",
-                                       "perceived_traits": {"loudness": 0.82, "talkativeness": 0.4,
+                                       "public_traits": {"loudness": 0.82, "talkativeness": 0.4,
                                                             "scent": 0.11}}],
             "visible_seats": [{"seat_id": "seat_1_2", "occupied": True},
                               {"seat_id": "seat_2_2", "occupied": False},
@@ -844,6 +818,226 @@ class GuiInitialSeating(unittest.TestCase):
         event = types.SimpleNamespace(etype="context", content="Initial seating: agent_0→seat_1_1, agent_1→seat_1_2")
         pos, _settled = self.gui.infer_positions([event], None)
         self.assertEqual(pos, {"agent_0": "seat_1_1", "agent_1": "seat_1_2"})
+
+
+class TraitCutoffDoc(unittest.TestCase):
+    """Section 7: a neighbour's trait costs -1 above effective_tolerance / MAX_BASE_TOLERANCE."""
+
+    def setUp(self):
+        self.doc = read(ENV_DOC)
+        self.mod = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
+        )
+        self.E, self.Seat = self.mod.IsThisSeatTakenEnvironment, self.mod.Seat
+        m = re.search(r"trait_cutoff = effective / ([\d.]+)", self.doc)
+        self.assertIsNotNone(m, "doc no longer states the trait cutoff formula")
+        self.divisor = float(m.group(1))
+
+    def _reward(self, tolerance, trait, pressure=0.0, complaints=0):
+        env = self.E.__new__(self.E)
+        env.agent_names = ["a", "b"]
+        env.seats = {
+            "s1": self.Seat("s1", 0, 0, "middle", neighbors=["s2"], occupied_by="a"),
+            "s2": self.Seat("s2", 0, 1, "middle", neighbors=["s1"], occupied_by="b"),
+        }
+
+        def state(seat, tol, traits):
+            return {"current_seat": seat, "preference_profile": {}, "public_traits": traits,
+                    "base_tolerance": tol, "social_pressure": pressure if seat == "s1" else 0.0,
+                    "pressure_complaints": complaints if seat == "s1" else 0,
+                    "pressure_requests": 0}
+
+        quiet = {"loudness": 0.0, "scent": 0.0, "talkativeness": 0.0}
+        env.agent_state = {"a": state("s1", tolerance, quiet),
+                           "b": state("s2", 9.0, dict(quiet, loudness=trait))}
+        return env._compute_instant_reward("a")
+
+    def test_divisor_matches_code_and_tolerance_range(self):
+        import inspect
+        self.assertEqual(self.divisor, self.mod.MAX_BASE_TOLERANCE)
+        self.assertIn("uniform(1.0, MAX_BASE_TOLERANCE)", inspect.getsource(self.E._build_agent_state),
+                      "base_tolerance's upper bound must be the same constant as the divisor")
+        self.assertIn(f"uniform(1.0, {self.divisor:g})", self.doc)
+
+    def test_penalty_fires_just_above_the_cutoff_only(self):
+        flat = " ".join(self.doc.split())
+        self.assertIn("A neighbour's trait costs the agent `-1` when it is above `trait_cutoff`.", flat,
+                      "doc no longer states the trait penalty rule")
+        cutoff = 1.75 / self.divisor
+        self.assertEqual(self._reward(1.75, cutoff + 0.01), -1.0, "trait above cutoff did not cost")
+        self.assertEqual(self._reward(1.75, cutoff - 0.01), 0.0, "trait below cutoff cost anyway")
+
+    def test_pressure_lowers_the_cutoff(self):
+        tol, pressure, complaints = 1.75, 0.9, 1
+        degraded = tol - pressure * 0.15 - complaints * 0.05
+        trait = (degraded / self.divisor + tol / self.divisor) / 2  # between the two cutoffs
+        self.assertEqual(self._reward(tol, trait), 0.0, "should not cost without pressure")
+        self.assertEqual(self._reward(tol, trait, pressure, complaints), -1.0,
+                         "pressure did not lower the cutoff")
+
+    def test_tolerance_words_point_the_right_way(self):
+        """The tolerance words shown to agents must match the neighbour mechanics:
+        the 'easily bothered' band has the lower trait cutoff."""
+        env = self.E.__new__(self.E)
+        env.max_iterations, env.scenario_type, env.seats = 10, "airplane", {}
+
+        def described(tol):
+            env.agent_state = {"a": {"satisfaction_score": 0.0, "last_instant_reward": 0.0,
+                                     "base_tolerance": tol, "social_pressure": 0.0,
+                                     "pressure_requests": 0, "pressure_complaints": 0,
+                                     "current_seat": None, "settled": False,
+                                     "pending_reaction": False, "preference_profile": {}}}
+            return env.build_agent_context("a", "planning", 1)["comfort_signal"]["tolerance_description"]
+
+        low, high = described(1.05), described(2.45)
+        self.assertIn("bother you easily", low)
+        self.assertIn("rarely bother you", high)
+        self.assertLess(1.05 / self.divisor, 2.45 / self.divisor)
+        # the easily-bothered agent really does pay more trait penalties for the same neighbour
+        trait = (1.05 / self.divisor + 2.45 / self.divisor) / 2
+        self.assertEqual(self._reward(1.05, trait), -1.0)
+        self.assertEqual(self._reward(2.45, trait), 0.0)
+        for stale in ("picky", "settle easily"):
+            self.assertNotIn(stale, low + high)
+
+    def test_cutoff_range_stated_in_doc(self):
+        flat = " ".join(self.doc.split())
+        m = re.search(r"cutoff runs from ([\d.]+) for the least tolerant agent to ([\d.]+)", flat)
+        self.assertIsNotNone(m, "doc no longer states the cutoff range")
+        self.assertAlmostEqual(float(m.group(1)), 1.0 / self.divisor)
+        self.assertAlmostEqual(float(m.group(2)), self.mod.MAX_BASE_TOLERANCE / self.divisor)
+
+
+class WordsOnlyDoc(unittest.TestCase):
+    """Agents see their comfort and neighbours' traits as words: no numbers, no noise."""
+
+    def setUp(self):
+        self.doc = read(ENV_DOC)
+        self.obs = section(self.doc, "What agents observe")
+        env_mod = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
+        )
+        self.E, self.Seat = env_mod.IsThisSeatTakenEnvironment, env_mod.Seat
+        self.prompts = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_prompts"
+        )
+
+    def test_no_noise_in_what_agents_see(self):
+        import inspect
+        for fn in (self.E.build_agent_context, self.E._occupied_neighbors):
+            self.assertNotIn("self.rng", inspect.getsource(fn), f"{fn.__name__} still adds random noise")
+        self.assertNotIn("felt_satisfaction", inspect.getsource(self.E.build_agent_context))
+        for stale in ("noisy", "gauss(", "uniform(-0.3", "rough score", "perceived"):
+            self.assertNotIn(stale, self.obs, f"section 6 still mentions {stale!r}")
+        flat = " ".join(self.obs.split())
+        self.assertIn("No noise is added, and exact values are never shown.", flat,
+                      "doc must state that trait words carry no noise")
+        self.assertEqual(flat.lower().count("noise"), 1, "section 6 mentions noise somewhere else")
+
+    def test_trait_words_match_the_doc(self):
+        flat = " ".join(self.obs.split())
+        m = re.search(r"Loudness reads, from lowest to highest, (.*?); talkativeness", flat)
+        self.assertIsNotNone(m, "doc no longer lists the loudness words")
+        documented = tuple(re.findall(r"`([^`]+)`", m.group(1)))
+        self.assertEqual(documented, self.prompts._TRAIT_WORDS["loudness"])
+        n = len(documented)
+        self.assertIn("using five equal bands", flat)
+        self.assertEqual(n, 5, "doc says five bands")
+        for level, word in enumerate(documented):
+            lo, hi = level / n, (level + 1) / n
+            self.assertEqual(self.prompts.describe_trait("loudness", lo + 0.001), word)
+            self.assertEqual(self.prompts.describe_trait("loudness", hi - 0.001), word)
+        self.assertEqual(self.prompts.describe_trait("loudness", 1.0), documented[-1])
+        for trait in ("talkativeness", "scent"):
+            self.assertEqual(len(self.prompts._TRAIT_WORDS[trait]), n, f"{trait} should use the same steps")
+
+    def test_rendered_prompt_shows_no_numbers_for_comfort_or_traits(self):
+        Seat = self.Seat
+        env = self.E.__new__(self.E)  # no rng: any leftover noise draw fails here
+        env.max_iterations, env.scenario_type = 10, "airplane"
+        env.seats = {
+            "seat_1_1": Seat("seat_1_1", 0, 0, "window", neighbors=["seat_1_2"], occupied_by="a"),
+            "seat_1_2": Seat("seat_1_2", 0, 1, "middle", neighbors=["seat_1_1"], occupied_by="b"),
+        }
+
+        def state(seat, traits):
+            return {"satisfaction_score": -1.37, "last_instant_reward": -1.0, "base_tolerance": 1.6,
+                    "social_pressure": 0.0, "pressure_requests": 0, "pressure_complaints": 0,
+                    "current_seat": seat, "settled": False, "pending_reaction": False,
+                    "preference_profile": {"preferred_roles": ["aisle"]}, "public_traits": traits}
+
+        env.agent_state = {
+            "a": state("seat_1_1", {"loudness": 0.1, "scent": 0.1, "talkativeness": 0.1}),
+            "b": state("seat_1_2", {"loudness": 0.93, "scent": 0.07, "talkativeness": 0.55}),
+        }
+        ctx = env.build_agent_context("a", "planning", 1)
+
+        class Fake:
+            pass
+
+        prompt = self.prompts.IsThisSeatTakenPrompts._get_user_prompt_impl(Fake(), "a", ctx, {})
+        feel = next(l for l in prompt.splitlines() if l.startswith("**How you feel:**"))
+        self.assertIsNone(re.search(r"\d", feel), f"comfort line shows a number: {feel}")
+        neighbour = next(l for l in prompt.splitlines() if "b at seat_1_2" in l)
+        self.assertIsNone(re.search(r"\d", neighbour.split("—", 1)[1]), f"trait line shows numbers: {neighbour}")
+        for words in ("very loud", "somewhat talkative", "barely noticeable scent"):
+            self.assertIn(words, neighbour)
+
+
+class IsolationPrecedenceDoc(unittest.TestCase):
+    """An agent that prefers isolation gets no credit for, and is not shown, a preferred neighbour."""
+
+    def setUp(self):
+        self.doc = read(ENV_DOC)
+        mod = importlib.import_module("terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env")
+        self.E, self.Seat = mod.IsThisSeatTakenEnvironment, mod.Seat
+        self.P = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_prompts"
+        ).IsThisSeatTakenPrompts
+
+    def _reward(self, profile, neighbour_present):
+        env = self.E.__new__(self.E)
+        env.agent_names = ["a", "b"]
+        env.seats = {
+            "s1": self.Seat("s1", 0, 0, "middle", neighbors=["s2"], occupied_by="a"),
+            "s2": self.Seat("s2", 0, 1, "middle", neighbors=["s1"], occupied_by="b" if neighbour_present else None),
+        }
+        quiet = {"loudness": 0.0, "scent": 0.0, "talkativeness": 0.0}
+        base = {"social_pressure": 0, "pressure_complaints": 0, "pressure_requests": 0, "base_tolerance": 2.5}
+        env.agent_state = {
+            "a": dict(base, current_seat="s1", public_traits=quiet, preference_profile=profile),
+            "b": dict(base, current_seat="s2" if neighbour_present else None, public_traits=quiet,
+                      preference_profile={}),
+        }
+        return env._compute_instant_reward("a")
+
+    def test_doc_states_the_rule(self):
+        flat = " ".join(self.doc.split())
+        self.assertIn("isolation takes precedence: the preferred neighbour is neither scored nor shown "
+                      "to the agent.", flat)
+        self.assertIn("a `preferred_neighbor` is adjacent, unless the agent prefers isolation", flat)
+
+    def test_isolation_wins_in_the_reward(self):
+        both = {"prefer_isolation": True, "preferred_neighbors": ["b"]}
+        self.assertEqual(self._reward(both, neighbour_present=True), -1.0,
+                         "preferred neighbour should not offset the isolation penalty")
+        self.assertEqual(self._reward(both, neighbour_present=False), 1.0)
+        self.assertEqual(self._reward({"preferred_neighbors": ["b"]}, neighbour_present=True), 1.0,
+                         "without isolation the preferred neighbour still counts")
+
+    def test_preferred_neighbour_hidden_from_prompt_when_isolated(self):
+        class Fake:
+            pass
+
+        def rendered(profile):
+            ctx = {"phase": "planning", "current_seat": "s1", "preference_profile": profile,
+                   "comfort_signal": {}, "social_pressure_level": "none"}
+            return self.P._get_user_prompt_impl(Fake(), "a", ctx, {})
+
+        isolated = rendered({"prefer_isolation": True, "preferred_neighbors": ["agent_9"]})
+        self.assertNotIn("agent_9", isolated)
+        self.assertIn("you prefer having empty seats around you", isolated)
+        self.assertIn("you'd rather sit near agent_9", rendered({"preferred_neighbors": ["agent_9"]}))
 
 
 class DocumentedCLI(unittest.TestCase):

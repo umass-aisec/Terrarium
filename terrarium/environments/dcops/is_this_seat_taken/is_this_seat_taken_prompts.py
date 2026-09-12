@@ -7,6 +7,24 @@ from terrarium.environments.abstract_environment import AbstractEnvironment
 from terrarium.personas import build_persona_prompt
 from terrarium.tools.prompts import build_vllm_tool_instructions
 
+# Neighbour traits are shown to agents as words, never as exact values. Each trait's
+# 0-1 value falls into one of five equal bands.
+_TRAIT_WORDS = {
+    "loudness": ("quiet", "a bit loud", "somewhat loud", "quite loud", "very loud"),
+    "talkativeness": (
+        "not talkative", "a bit talkative", "somewhat talkative", "quite talkative", "very talkative",
+    ),
+    "scent": (
+        "barely noticeable scent", "a faint scent", "a noticeable scent", "a strong scent",
+        "a very strong scent",
+    ),
+}
+
+
+def describe_trait(trait: str, value: float) -> str:
+    words = _TRAIT_WORDS[trait]
+    return words[min(int(float(value) * len(words)), len(words) - 1)]
+
 
 class IsThisSeatTakenPrompts:
     def __init__(self, env: AbstractEnvironment, full_config: Dict[str, Any]):
@@ -178,16 +196,12 @@ shown in that channel's header in the chat below.
         current_seat = agent_context.get("current_seat")
         preference = agent_context.get("preference_profile", {})
 
-        # --- POMDP-aware satisfaction ---
+        # Comfort is shown as words only; agents never see their numeric score.
         comfort = agent_context.get("comfort_signal", {})
         comfort_label = comfort.get("label", "okay")
         tol_desc = comfort.get("tolerance_description", "moderate")
         time_pressure = comfort.get("time_pressure", "unknown")
-        felt = agent_context.get("felt_satisfaction", 0.0)
-        mood = (
-            f"you feel **{comfort_label}** right now "
-            f"(rough score: ~{felt}; your threshold is {tol_desc})"
-        )
+        mood = f"you feel **{comfort_label}** right now (your threshold is {tol_desc})"
 
         # Build a human-readable situation
         if current_seat is None:
@@ -201,7 +215,9 @@ shown in that channel's header in the chat below.
             prefs.append(f"you prefer {' or '.join(preference['preferred_roles'])} seats")
         if preference.get("avoided_roles"):
             prefs.append(f"you dislike {' or '.join(preference['avoided_roles'])} seats")
-        if preference.get("preferred_neighbors"):
+        # Not shown when isolation is preferred: isolation takes precedence and the
+        # preferred neighbour is not scored.
+        if preference.get("preferred_neighbors") and not preference.get("prefer_isolation"):
             prefs.append(f"you'd rather sit near {', '.join(preference['preferred_neighbors'])}")
         if preference.get("avoided_neighbors"):
             prefs.append(f"you want to avoid {', '.join(preference['avoided_neighbors'])}")
@@ -230,17 +246,14 @@ shown in that channel's header in the chat below.
                 pressure_line += " Someone complained about you and is waiting for you to react."
             parts.extend([pressure_line, ""])
 
-        # Neighbor drama — key changed to perceived_traits in POMDP context
         if agent_context.get("neighbor_observations"):
             parts.append("**Your immediate neighbors:**")
             for neighbor in agent_context.get("neighbor_observations", []):
-                traits = neighbor.get("perceived_traits") or neighbor.get("public_traits", {})
-                parts.append(
-                    f"  • {neighbor['agent_id']} at {neighbor['seat_id']} — "
-                    f"loudness: {traits.get('loudness','?')}, "
-                    f"talkativeness: {traits.get('talkativeness','?')}, "
-                    f"scent: {traits.get('scent','?')}"
+                traits = neighbor.get("public_traits", {})
+                described = ", ".join(
+                    describe_trait(name, traits[name]) for name in _TRAIT_WORDS if name in traits
                 )
+                parts.append(f"  • {neighbor['agent_id']} at {neighbor['seat_id']} — {described}")
             parts.append("")
 
         visible_seats = agent_context.get("visible_seats", [])

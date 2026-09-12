@@ -15,6 +15,10 @@ from .is_this_seat_taken_prompts import IsThisSeatTakenPrompts
 
 logger = logging.getLogger(__name__)
 
+# Upper bound of base_tolerance. Traits are on a 0-1 scale, so tolerance is divided
+# by this before it is compared with a neighbour's traits.
+MAX_BASE_TOLERANCE = 2.5
+
 
 @dataclass
 class Seat:
@@ -286,7 +290,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
                 "current_seat": None,
                 "satisfaction_score": 0.0,
                 "last_instant_reward": 0.0,
-                "base_tolerance": round(self.rng.uniform(1.0, 2.5), 3),
+                "base_tolerance": round(self.rng.uniform(1.0, MAX_BASE_TOLERANCE), 3),
                 "settled": False,
                 "social_pressure": 0.0,
                 "pending_reaction": False,
@@ -304,7 +308,7 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             self.seats[seat_id].occupied_by = agent
             self.agent_state[agent]["current_seat"] = seat_id
 
-    def _occupied_neighbors(self, agent_name: str, *, noisy: bool = False) -> List[Dict[str, Any]]:
+    def _occupied_neighbors(self, agent_name: str) -> List[Dict[str, Any]]:
         seat_id = self.agent_state[agent_name]["current_seat"]
         if seat_id is None:
             return []
@@ -315,21 +319,12 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             if neighbor.occupied_by is None:
                 continue
             neighbor_agent = neighbor.occupied_by
-            traits = dict(self.agent_state[neighbor_agent]["public_traits"])
-            if noisy:
-                traits = {
-                    trait: round(max(0.0, min(1.0, value + self.rng.gauss(0, 0.15))), 3)
-                    for trait, value in traits.items()
-                }
-                trait_key = "perceived_traits"
-            else:
-                trait_key = "public_traits"
             observations.append(
                 {
                     "seat_id": neighbor_id,
                     "agent_id": neighbor_agent,
                     "role": neighbor.role,
-                    trait_key: traits,
+                    "public_traits": dict(self.agent_state[neighbor_agent]["public_traits"]),
                 }
             )
         return observations
@@ -368,21 +363,26 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             else:
                 reward += 1.0
 
-        for preferred_neighbor in profile.get("preferred_neighbors", []):
-            if preferred_neighbor in neighbor_ids:
-                reward += 1.0
+        # Isolation takes precedence: an agent that wants empty seats around it gets no
+        # credit for a preferred neighbour, which would otherwise always cancel out.
+        if not profile.get("prefer_isolation"):
+            for preferred_neighbor in profile.get("preferred_neighbors", []):
+                if preferred_neighbor in neighbor_ids:
+                    reward += 1.0
         for avoided_neighbor in profile.get("avoided_neighbors", []):
             if avoided_neighbor in neighbor_ids:
                 penalties += 1.0
 
-        tolerance = self._agent_effective_tolerance(agent_name)
+        # Without mapping onto the trait scale, no trait (max 1.0) could exceed a
+        # tolerance (min 1.0) unless pressure had already worn it down.
+        trait_cutoff = self._agent_effective_tolerance(agent_name) / MAX_BASE_TOLERANCE
         for neighbor in neighbors:
-            traits = neighbor.get("public_traits", neighbor.get("perceived_traits", {}))
-            if float(traits.get("loudness", 0.0)) > tolerance:
+            traits = neighbor["public_traits"]
+            if float(traits.get("loudness", 0.0)) > trait_cutoff:
                 penalties += 1.0
-            if float(traits.get("scent", 0.0)) > tolerance:
+            if float(traits.get("scent", 0.0)) > trait_cutoff:
                 penalties += 1.0
-            if float(traits.get("talkativeness", 0.0)) > tolerance:
+            if float(traits.get("talkativeness", 0.0)) > trait_cutoff:
                 penalties += 1.0
 
         return reward - penalties
@@ -609,11 +609,11 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             comfort_label = "miserable"
 
         if true_tolerance < 1.2:
-            tol_description = "low (you settle easily)"
+            tol_description = "low (neighbours bother you easily)"
         elif true_tolerance < 1.8:
             tol_description = "moderate"
         else:
-            tol_description = "high (you're picky)"
+            tol_description = "high (neighbours rarely bother you)"
 
         context = {
             "agent_name": agent_name,
@@ -622,15 +622,12 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             "max_iterations": self.max_iterations,
             "scenario_type": self.scenario_type,
             "visible_seats": self._get_visible_seats(agent_name, radius=1),
-            "neighbor_observations": self._occupied_neighbors(agent_name, noisy=True),
+            "neighbor_observations": self._occupied_neighbors(agent_name),
             "current_seat": state["current_seat"],
             "settled": bool(state["settled"]),
             "pending_reaction": bool(state["pending_reaction"]),
             "preference_profile": dict(state["preference_profile"]),
             "legal_actions": self._legal_actions_for(agent_name, phase=phase),
-            "felt_satisfaction": round(
-                max(-5, min(10, true_satisfaction + self.rng.uniform(-0.3, 0.3))), 2
-            ),
             "comfort_signal": {
                 "label": comfort_label,
                 "tolerance_description": tol_description,

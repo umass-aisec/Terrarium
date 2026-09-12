@@ -19,8 +19,8 @@ shared space and negotiate over which seat each one ends up in.
 - There are `m` agents and `m + empty_seat_buffer` seats.
 - Each agent has a **private** preference profile (seat roles it wants, agents
   it wants to sit near or away from).
-- Each agent sees noisy estimates of its neighbours' **public traits**
-  (loudness, scent, talkativeness) but never their preferences.
+- Each agent sees its neighbours' **public traits** (loudness, scent,
+  talkativeness) described in words, but never their preferences.
 - Agents apply social pressure to each other during planning, and move, settle
   or stand during execution.
 
@@ -53,8 +53,8 @@ move to.
 Agent count comes from `communication_network.num_agents`. Each agent has **private state**:
 
 - `preference_profile`: the private goal (see section 4)
-- `base_tolerance`: drawn from `uniform(1.0, 2.5)`; the threshold above which a
-  neighbour's traits become a penalty
+- `base_tolerance`: drawn from `uniform(1.0, 2.5)`; sets how much of a
+  neighbour's traits the agent puts up with (see section 7)
 - `satisfaction_score`: per-agent reward (see section 7)
 - `last_instant_reward`: previous turn's seat reward, used to compute deltas
 - `social_pressure`, `pressure_requests`, `pressure_complaints`: accumulated
@@ -66,7 +66,8 @@ and **public state**:
 - `public_traits`: `loudness`, `scent`, `talkativeness`, each in `[0, 1]`
 
 `public_traits` is the only agent attribute other agents can observe, and only
-as a noisy estimate. What else each agent is told is covered in section 6.
+as words, never exact values. What else each agent is told is covered in
+section 6.
 
 ## 3) Scenario layouts and seat roles
 
@@ -101,6 +102,10 @@ Each agent's profile is drawn from the seeded RNG:
 - `preferred_neighbors`: one other agent, with probability 0.45
 - `avoided_neighbors`: one other agent, with probability 0.35
 - `prefer_isolation`: true with probability 0.30
+
+If an agent draws both `prefer_isolation` and a preferred neighbour, isolation
+takes precedence: the preferred neighbour is neither scored nor shown to the
+agent.
 
 ## 5) Actions, tools, and phases
 
@@ -156,7 +161,7 @@ scratch. There is no memory across turns beyond what these two prompts contain.
 Built by `IsThisSeatTakenPrompts.get_system_prompt(agent_name)`. It is the same
 every turn for a given agent and contains:
 
-- a scenario introduction (specific text for `airplane` and `cinema`, generic
+- a scenario introduction (currently has specific text for `airplane` and `cinema`, generic
   otherwise)
 - a `WHAT YOU KNOW` list and the available tools for each phase; `recall` is
   listed only when `llm.compaction.retrieval_enabled` is true
@@ -175,14 +180,14 @@ Built each turn by `_get_user_prompt_impl()` from `build_agent_context()`. It
 contains, in order:
 
 - **Your situation**: current seat, or standing
-- **How you feel**: a comfort label, a noisy score, and a tolerance description
+- **How you feel**: a comfort label and a tolerance description
 - **What matters to you**: preferred and avoided seat roles, preferred and
   avoided neighbours, and isolation preference
 - **Time pressure**: `low`, `medium` or `high`
 - **Social pressure on you**: the pressure level, shown only when it is not
   `none` or the agent was complained at
-- **Your immediate neighbors**: each adjacent agent's id, seat and perceived
-  traits
+- **Your immediate neighbors**: each adjacent agent's id, seat, and traits
+  described in words
 - **Nearby empty seats**: empty seats in view
 - **Progress**: current iteration out of `max_iterations`
 - **What people are saying in the chat**: the channel transcripts, possibly
@@ -193,7 +198,7 @@ Example (planning phase):
 
 ```
 **Your situation:** You're sitting at seat_1_2.
-**How you feel:** you feel **uncomfortable** right now (rough score: ~-1.17; your threshold is moderate).
+**How you feel:** you feel **uncomfortable** right now (your threshold is moderate).
 **What matters to you:** you prefer window seats • you dislike middle seats • you'd rather sit near agent_3.
 
 **Time pressure:** low.
@@ -201,29 +206,29 @@ Example (planning phase):
 **Social pressure on you:** mild. Someone complained about you and is waiting for you to react.
 
 **Your immediate neighbors:**
-  • agent_1 at seat_1_1 — loudness: 0.82, talkativeness: 0.4, scent: 0.11
+  • agent_1 at seat_1_1 — very loud, somewhat talkative, barely noticeable scent
 
 **Nearby empty seats (use exact ID when calling move):** seat_1_3, seat_2_2.
 ```
 
 ### Derived signals
 
-The environment converts internal state into coarse or noisy signals before it
-reaches the prompt:
+The environment converts internal state into coarse signals before it reaches
+the prompt:
 
-- `felt_satisfaction`: `satisfaction_score` plus `uniform(-0.3, 0.3)` noise,
-  clamped to `[-5, 10]`
 - `comfort_signal.label`: `great`, `comfortable`, `uncomfortable` or
   `miserable`, from the gap between satisfaction and effective tolerance and
   from the current instant reward
 - `comfort_signal.tolerance_description`: from effective tolerance —
-  `< 1.2` is `low (you settle easily)`, `< 1.8` is `moderate`, otherwise
-  `high (you're picky)`
+  `< 1.2` is `low (neighbours bother you easily)`, `< 1.8` is `moderate`, otherwise
+  `high (neighbours rarely bother you)`
 - `comfort_signal.time_pressure`: from `iteration / max_iterations` —
   `>= 0.8` is `high`, `>= 0.5` is `medium`, otherwise `low`
 - `social_pressure_level`: the four levels in section 5
-- `perceived_traits`: each neighbour trait plus `gauss(0, 0.15)` noise, clamped
-  to `[0, 1]`, resampled every turn
+- neighbour traits: shown as words, using five equal bands of the 0-1 value.
+  Loudness reads, from lowest to highest, `quiet`, `a bit loud`, `somewhat loud`,
+  `quite loud`, `very loud`; talkativeness and scent use the same five steps. No
+  noise is added, and exact values are never shown.
 - `visible_seats`: seats within Manhattan distance 1 of the agent's seat, or
   every seat when the agent is standing
 
@@ -257,9 +262,9 @@ not its neighbour.
 
 - other agents' preference profiles, satisfaction or tolerance
 - the starting seating map, beyond their own seat and their neighbours
-- neighbours' true trait values (only noisy estimates)
+- neighbours' exact trait values (only the words above)
 - their own exact `satisfaction_score`, `base_tolerance`, effective tolerance
-  or `social_pressure` (only the noisy score and the labels above)
+  or `social_pressure` (only the labels above)
 - the reward formula and its weights, the joint reward, or the termination rule
 - the result of their own `request_move` or `complain`: a successful
   environment tool call ends the agent's turn, so the returned
@@ -277,13 +282,13 @@ agent scores 0.
 Rewards:
 - seat role is in `preferred_roles`
 - `prefer_isolation` is set and the agent has no neighbours
-- a `preferred_neighbor` is adjacent
+- a `preferred_neighbor` is adjacent, unless the agent prefers isolation
 
 Penalties:
 - seat role is in `avoided_roles`
 - `prefer_isolation` is set and the agent has any neighbour
 - an `avoided_neighbor` is adjacent
-- each neighbour trait above effective tolerance
+- each neighbour trait above the agent's trait cutoff
 
 The last penalty is applied per trait per neighbour, so a single neighbour can
 contribute up to `-3`.
@@ -299,6 +304,20 @@ effective = base_tolerance
 
 floored at 0. Pressure therefore reduces an agent's ability to tolerate its
 neighbours, so being pressured makes the current seat score worse.
+
+### Trait cutoff
+
+Traits are on a 0-1 scale while tolerance runs from 1.0 to 2.5, so effective
+tolerance is mapped onto the trait scale before the comparison:
+
+```
+trait_cutoff = effective / 2.5
+```
+
+A neighbour's trait costs the agent `-1` when it is above `trait_cutoff`. With no
+pressure the cutoff runs from 0.4 for the least tolerant agent to 1.0, at which
+no trait counts. The divisor is `MAX_BASE_TOLERANCE`, the upper bound of the
+`base_tolerance` draw.
 
 ### satisfaction_score
 
@@ -404,8 +423,6 @@ python examples/base_main.py \
 
 - The system prompt lists "What seats are empty" under `WHAT YOU KNOW`, but a
   seated agent is shown only empty seats within distance 1.
-- Perception noise is resampled every turn, so the same neighbour's perceived
-  traits change between turns without the neighbour changing.
 - `compute_max_joint_reward()` is an **upper bound**, not a solved optimum, by
   design (no solver dependency). The 90%-of-maximum termination branch is
   therefore heuristic.
