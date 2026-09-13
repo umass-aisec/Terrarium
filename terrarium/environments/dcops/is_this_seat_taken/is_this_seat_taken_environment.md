@@ -338,8 +338,9 @@ satisfaction_score = instant_reward(current seat)
 joint_reward = sum(satisfaction_score) - group_move_penalty * total_moves
 ```
 
-Moves are charged twice by design: once to the acting agent through
-`move_cost`, and once to the group through `group_move_penalty`.
+A successful move is charged twice: once to the acting agent through
+`move_cost`, and once to the group through `group_move_penalty`. A failed move
+into an occupied seat is charged only `move_cost`, and `stand` is free.
 
 ## 8) Termination
 
@@ -349,6 +350,10 @@ Moves are charged twice by design: once to the acting agent through
 2. all agents are `settled` **and** either the last `convergence_window` joint
    rewards span no more than `reward_convergence_threshold`, or the current
    joint reward is at least 90% of `compute_max_joint_reward()`.
+
+`log_iteration()` records the joint reward at the end of each iteration, and
+`done()` reads that history at the start of the next. A run can therefore stop
+early no sooner than the start of iteration `convergence_window + 1`.
 
 ## 9) Personas
 
@@ -423,9 +428,9 @@ python examples/base_main.py \
 
 - The system prompt lists "What seats are empty" under `WHAT YOU KNOW`, but a
   seated agent is shown only empty seats within distance 1.
-- `compute_max_joint_reward()` is an **upper bound**, not a solved optimum, by
-  design (no solver dependency). The 90%-of-maximum termination branch is
-  therefore heuristic.
+- `compute_max_joint_reward()` is an **upper bound**, not a solved optimum. It is
+  far above any reachable joint reward, so the 90%-of-maximum termination branch
+  never fires; runs stop early only through convergence.
 - `satisfaction_score` accumulates action costs but not seat quality; its seat
   term is the current instant reward (see section 7).
 - Seat adjacency is orthogonal only. Diagonal seats are not neighbours, which

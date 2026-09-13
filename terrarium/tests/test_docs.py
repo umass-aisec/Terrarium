@@ -1040,6 +1040,61 @@ class IsolationPrecedenceDoc(unittest.TestCase):
         self.assertIn("you'd rather sit near agent_9", rendered({"preferred_neighbors": ["agent_9"]}))
 
 
+class EarlyStopDoc(unittest.TestCase):
+    """Section 8: joint reward is recorded per iteration, so settled, stable runs stop early."""
+
+    def setUp(self):
+        self.doc = read(ENV_DOC)
+        self.E = importlib.import_module(
+            "terrarium.environments.dcops.is_this_seat_taken.is_this_seat_taken_env"
+        ).IsThisSeatTakenEnvironment
+
+    def _env(self):
+        env = self.E.__new__(self.E)
+        env.agent_names = ["a", "b"]
+        env.agent_state = {x: {"settled": True, "satisfaction_score": 1.0, "social_pressure": 0.0,
+                               "pressure_complaints": 0, "pressure_requests": 0} for x in env.agent_names}
+        env.total_moves, env.group_move_penalty, env.time_step = 0, 0.1, 0
+        env.max_iterations, env.scenario_type = 10, "airplane"
+        env.convergence_window, env.reward_convergence_threshold = 3, 0.05
+        env.joint_reward_history, env.max_joint_reward = [], 100.0
+        return env
+
+    def _run(self, env, change_each_iteration=0.0):
+        """Mirror base_main: done() at the start of each iteration, log_iteration() at the end."""
+        for iteration in range(1, env.max_iterations + 1):
+            if env.done(iteration):
+                return iteration
+            env.agent_state["a"]["satisfaction_score"] += change_each_iteration
+            env.log_iteration(iteration)
+        return None
+
+    def test_joint_reward_is_pure(self):
+        env = self._env()
+        env.joint_reward({})
+        env.joint_reward({})
+        self.assertEqual(env.joint_reward_history, [], "joint_reward() must not write to the history")
+
+    def test_settled_stable_run_stops_at_window_plus_one(self):
+        env = self._env()
+        self.assertEqual(self._run(env), env.convergence_window + 1)
+
+    def test_changing_reward_does_not_stop_early(self):
+        env = self._env()
+        self.assertIsNone(self._run(env, change_each_iteration=0.5), "run stopped while reward was changing")
+
+    def test_unsettled_agents_do_not_stop_early(self):
+        env = self._env()
+        env.agent_state["b"]["settled"] = False
+        self.assertIsNone(self._run(env), "run stopped while an agent was unsettled")
+
+    def test_doc_states_recording_and_earliest_stop(self):
+        flat = " ".join(section(self.doc, "Termination").split())
+        self.assertIn("`log_iteration()` records the joint reward at the end of each iteration", flat)
+        self.assertIn("no sooner than the start of iteration `convergence_window + 1`", flat)
+        self.assertNotIn("by design", self.doc, "doc makes an unsupported design-intent claim")
+
+
 class DocumentedCLI(unittest.TestCase):
     def test_documented_flags_exist(self):
         flags = set()

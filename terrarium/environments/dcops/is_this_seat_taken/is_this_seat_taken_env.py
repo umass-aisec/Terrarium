@@ -734,7 +734,6 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
     def joint_reward(self, actions: Mapping[str, Any]) -> float:
         reward = sum(float(self.agent_state[agent]["satisfaction_score"]) for agent in self.agent_names)
         reward -= self.group_move_penalty * float(self.total_moves)
-        self.joint_reward_history.append(float(reward))
         return float(reward)
 
     def agent_reward(self, agent_name: str, action: Any) -> float:
@@ -787,6 +786,9 @@ class IsThisSeatTakenEnvironment(AbstractEnvironment):
             state["pressure_requests"] = max(0.0, float(state.get("pressure_requests", 0)) * factor)
 
     def log_iteration(self, iteration: int) -> None:
+        # Record the joint reward once per iteration. done() reads this history to stop
+        # a run early once every agent has settled and the reward has stopped changing.
+        self.joint_reward_history.append(self.joint_reward({}))
         self._decay_social_pressure()
         logger.info("=== %s State - Iteration %s ===", self.__class__.__name__, iteration)
         logger.info(
