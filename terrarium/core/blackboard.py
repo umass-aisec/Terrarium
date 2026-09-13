@@ -513,12 +513,12 @@ class Megaboard:
                 blackboard_id = arguments.get("blackboard_id")
                 message = arguments.get("message", "")
 
-                # Use the agent's first blackboard if none specified
+                # Use first available blackboard if none specified
                 if blackboard_id is None:
-                    agent_blackboards = self.get_agent_blackboards(agent_name)
-                    if not agent_blackboards:
+                    if len(self.blackboards) > 0:
+                        blackboard_id = 0  # Use first blackboard
+                    else:
                         return {"error": "No blackboards available for communication"}
-                    blackboard_id = int(agent_blackboards[0])
                 else:
                     # Convert to int to handle float values from LLM responses (e.g., Gemini UltraThink)
                     blackboard_id = int(blackboard_id)

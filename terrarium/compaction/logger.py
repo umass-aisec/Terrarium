@@ -9,11 +9,9 @@ from terrarium.utils import build_log_dir, get_run_timestamp, get_tag_model_subd
 
 class CompactionLogger:
     """
-    Persists every compaction decision (skipped or triggered) to disk, per run.
-
-    This exists so paired-trajectory comparisons (oracle vs. compacted run) can
-    diff the *exact* prompt text an agent saw, rather than reconstructing it —
-    needed for failure-driven compaction-prompt tuning (ACON-style iteration).
+    Persists every compaction decision (skipped or triggered) to disk, per run,
+    so you can see exactly what an agent's channel history looked like before
+    and after compaction.
     """
 
     def __init__(self, config: Dict[str, Any], run_timestamp: Optional[str] = None):

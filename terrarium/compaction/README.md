@@ -133,19 +133,6 @@ directory:
 `pre_text` and `post_text` make it possible to reconstruct exactly what an
 agent would have seen without compaction and what it saw with it, for any turn.
 
-`examples/acon_harness.py` uses these records to run a scenario twice per seed,
-once with compaction effectively disabled (`token_threshold` set very high) and
-once with a mechanism active, and to report whether the two runs diverge on
-joint reward and settled state:
-
-```bash
-python examples/acon_harness.py \
-    --config examples/configs/is_this_seat_taken.yaml \
-    --seeds 7,21,42 \
-    --mechanism anchored --pin --retrieval \
-    --run-tag anchored_pinned_retrieval
-```
-
 ## 7) Configuration reference (llm.compaction section)
 
 ```yaml

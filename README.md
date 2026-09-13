@@ -20,7 +20,7 @@ This repo is under active development :gear:, so please raise an issue for new f
   - MeetingScheduling - A calendar agent is tasked with assigning meetings with other agents, trying to satisfy preferences and constraints with respect to other agents schedules (Uses real-world locations)
   - PersonalAssistant - An assistant agent chooses outfits for a human while meeting social norm preferences, the preferences of the human, and constrained outfit selection (Uses fully synthetic data)
 - **Social-Coordination Environment**: [IsThisSeatTaken](terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_environment.md) - agents negotiate over seats with private preferences and social pressure. Generated in-process; no CoLLAB dependency.
-- **Blackboard Compaction**: [Six interchangeable strategies](terrarium/compaction/README.md) for compressing channel history into the prompt, with paired oracle-vs-compacted evaluation. Opt-in per run.
+- **Blackboard Compaction**: [Six interchangeable strategies](terrarium/compaction/README.md) for compressing channel history into the prompt. Opt-in per run.
 - **Personas**: [Big Five trait shaping](terrarium/personas/README.md) applied purely through prompting, following Jiang et al.
 
 ## Documentation 

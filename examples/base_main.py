@@ -34,7 +34,7 @@ import asyncio
 from terrarium.core.logger import ToolCallLogger, AgentTrajectoryLogger
 from dotenv import load_dotenv
 
-async def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
+async def run_simulation(config: Dict[str, Any]) -> bool:
     vllm_runtime = None
     try:
         seed = config["simulation"]["seed"]
@@ -121,28 +121,17 @@ async def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
                         pbar.update(1)
 
                     environment.log_iteration_summary(current_iteration)
-                final_summary = environment.generate_final_summary()
+                environment.generate_final_summary()
         finally:
             if provider == "vllm" and vllm_runtime:
                 vllm_runtime.shutdown()
 
-        return {
-            "success": True,
-            "final_summary": final_summary,
-            "log_dir": str(tool_logger.log_dir),
-            "run_timestamp": run_timestamp,
-        }
+        return True
 
     except Exception as e:
         print(f"Simulation failed: {e}")
         traceback.print_exc()
-        return {
-            "success": False,
-            "final_summary": {},
-            "log_dir": None,
-            "run_timestamp": None,
-            "error": str(e),
-        }
+        return False
 
 # Agent-tier model presets. The compaction tier is deliberately left alone: it
 # stays on a cheap model whatever the agents run on.

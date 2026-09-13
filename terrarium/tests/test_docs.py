@@ -1105,7 +1105,6 @@ class DocumentedCLI(unittest.TestCase):
         known = set()
         for entry in (
             "examples/base_main.py",
-            "examples/acon_harness.py",
             "terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py",
         ):
             known |= set(re.findall(r'add_argument\(\s*"(--[a-z-]+)"', read(entry)))

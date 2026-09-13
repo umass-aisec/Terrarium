@@ -251,7 +251,13 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         return contexts
 
     def _label_channel(self, bb_id_str: str, bb_id_int: int, agent_name: str, body: str) -> str:
-        """Label a channel so agents can address a specific blackboard_id."""
+        """Label a channel so agents can address a specific blackboard_id.
+
+        Only environments that let agents open private channels need the label;
+        other environments keep their channel history exactly as before.
+        """
+        if not getattr(self.environment_tools, "supports_private_channels", False):
+            return body
         blackboard = self.megaboard.blackboards[bb_id_int]
         kind = (
             "PRIVATE channel"

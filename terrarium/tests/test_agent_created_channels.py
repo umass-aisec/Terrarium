@@ -40,20 +40,29 @@ class TestAgentCreatedChannels(unittest.TestCase):
         self.assertIn("error", self._create("A", agent_ids=["A"]))
         self.assertIn("error", self._create("A", agent_ids=[]))
 
-    def test_post_message_defaults_to_the_agents_own_channel(self):
-        private = self._create("A", agent_ids=["B"])["blackboard_id"]
-        solo = self.board.add_blackboard(["D", "E"])
+    def test_channel_label_only_in_private_channel_environments(self):
+        from terrarium.communication_protocols.sequential import (
+            SequentialCommunicationProtocol,
+        )
 
-        # An agent outside blackboard 0 posts to its own channel, not to 0.
-        self.board.handle_tool_call("post_message", "D", {"message": "hi"})
-        self.assertEqual(len(self.board.get(solo, "D")), 1)
-        self.assertEqual(len(self.board.get(self.public, "A")), 0)
+        protocol = SequentialCommunicationProtocol.__new__(SequentialCommunicationProtocol)
+        protocol.megaboard = self.board
+        body = "[1] A: hi"
 
-        # An agent in several channels defaults to its first (public) one.
-        self.board.handle_tool_call("post_message", "A", {"message": "hello all"})
-        self.assertEqual(len(self.board.get(self.public, "A")), 1)
+        class WithoutChannels:
+            pass
+
+        class WithChannels:
+            supports_private_channels = True
+
+        protocol.environment_tools = WithoutChannels()
         self.assertEqual(
-            [e["kind"] for e in self.board.get(private, "A")], ["context"]
+            protocol._label_channel(str(self.public), self.public, "A", body), body
+        )
+        protocol.environment_tools = WithChannels()
+        self.assertEqual(
+            protocol._label_channel(str(self.public), self.public, "A", body),
+            f"[channel {self.public} — with B, C]\n{body}",
         )
 
     def test_tool_exposure_is_opt_in_per_environment(self):
