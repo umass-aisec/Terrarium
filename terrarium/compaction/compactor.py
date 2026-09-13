@@ -30,6 +30,7 @@ _EXTRACTIVE_MARKERS: Tuple[str, ...] = (
 
 
 def _count_tokens(text: str) -> int:
+    # Cheap heuristic instead of using a full tokenizer
     return len(text) // 4
 
 

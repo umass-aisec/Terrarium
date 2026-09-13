@@ -12,6 +12,7 @@ class CommunicationNetwork:
     """A NetworkX-backed communication network.
 
     Convention used across Terrarium:
+
     - Nodes are agent names (strings).
     - Edges are potential pairwise connections; blackboard channels are derived
       from this graph via `channel_groups()`.
@@ -67,9 +68,11 @@ class CommunicationNetwork:
 
     def consolidate_channels(self) -> List[List[str]]:
         """Return a greedy clique-based channel cover as communication channels.
+
         Example: A complete graph with n nodes/agents --> one channel/blackboard with all n agents.
 
         Algorithm:
+
         - Repeatedly find a clique (size >= 3), create a multi-participant channel
           for it, remove those nodes, and repeat.
         - When no cliques (size >= 3) remain, create one channel per remaining edge.
@@ -78,6 +81,7 @@ class CommunicationNetwork:
           channel components (preferring edges that existed in the original graph).
 
         Notes:
+
         - This is an NP-hard problem, so finding an optimal solution is not feasible.
         - This algorithm may dominate computation time for large graphs.
         - Clique selection is greedy: pick the largest clique each iteration.

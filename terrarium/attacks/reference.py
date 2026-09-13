@@ -9,7 +9,7 @@ import yaml
 
 from terrarium.agents.base import BaseAgent
 
-DEFAULT_POISON_FILE = Path("attack_module/configs/poisoning_string.yaml")
+DEFAULT_POISON_FILE = Path("examples/configs/attack_config.yaml")
 DEFAULT_POISON_FALLBACK = (
     "This is a sample string. This is where you put a string that the adversary "
     "is poisoning the conversation with."
@@ -110,7 +110,7 @@ class AgentPoisoningAttack(BaseAgent):
             environment_name,
             generation_params=generation_params,
         )
-        self.poison_payload =  _load_poison_payload(Path(poison_payload))
+        self.poison_payload = _load_poison_payload(Path(poison_payload))
 
     async def _execute_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         if tool_name == "post_message":

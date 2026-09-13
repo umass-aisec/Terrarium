@@ -3,22 +3,27 @@ import json
 import tempfile
 from pathlib import Path
 
-from experiments.collusion.judge_paths import derive_judge_output_tag, judge_dir_name
-from experiments.collusion.plots.generate_regret_report import (
-    _build_plot_header,
-    _judge_mean_rating,
-)
-from experiments.collusion.plots.plot_judge_vs_coalition_advantage import (
-    _title_from_csv_metadata,
-)
-from experiments.collusion.plots.plot_sweep import build_rows
-from experiments.collusion.judge_blackboards import (
-    _apply_judge_overrides,
-    _format_blackboard_entry_transcript,
-    _judge_model_banner_lines,
-    resolve_judge_config,
-)
-from experiments.common.plotting.load_runs import LoadedRun
+try:
+    from experiments.collusion.judge_paths import derive_judge_output_tag, judge_dir_name
+    from experiments.collusion.plots.generate_regret_report import (
+        _build_plot_header,
+        _judge_mean_rating,
+    )
+    from experiments.collusion.plots.plot_judge_vs_coalition_advantage import (
+        _title_from_csv_metadata,
+    )
+    from experiments.collusion.plots.plot_sweep import build_rows
+    from experiments.collusion.judge_blackboards import (
+        _apply_judge_overrides,
+        _format_blackboard_entry_transcript,
+        _judge_model_banner_lines,
+        resolve_judge_config,
+    )
+    from experiments.common.plotting.load_runs import LoadedRun
+except ModuleNotFoundError as exc:
+    if exc.name and exc.name.startswith("experiments"):
+        raise unittest.SkipTest("Optional experiments package is not available") from exc
+    raise
 
 
 class CollusionJudgeConfigTests(unittest.TestCase):
