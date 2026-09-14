@@ -17,7 +17,7 @@ All notable changes to this project are documented in this file.
 - `examples/base_main.py` flags `--seed`, `--persona`, `--personas`, `--model` and `--compaction-model`, which override the loaded config.
 
 ### Changed
-- Reworked the compaction utilities added in v0.2.0 into six interchangeable mechanisms (`baseline`, `anchored`, `eviction`, `extractive`, `query_conditioned`, `structured`) with optional context-event pinning and a `CompactionLogger`. See `terrarium/compaction/README.md`.
+- Reworked the compaction utilities added in v0.2.0 into six interchangeable mechanisms (`baseline`, `anchored`, `eviction`, `extractive`, `query_conditioned`, `structured`) with optional context-event pinning and a `CompactionLogger`. Summary requests use the `params` from the `llm.compaction` provider block, with `max_tokens` defaulting to 500. See `terrarium/compaction/README.md`.
 - `SequentialCommunicationProtocol` compacts blackboard history only when `llm.compaction` is configured; without it, prompts are unchanged. In environments that support private channels, each channel's history is prefixed with `[channel <id> — with <participants>]` so agents can address a channel by id.
 - `ToolsetDiscovery.get_blackboard_tool_names()` and `get_tools_for_blackboard()` take optional `environment_name` and `retrieval_enabled` arguments. Calls without them return the same tools as before.
 - `BaseAgent` accepts `retrieval_enabled` (default `False`); `build_agents` sets it from `llm.compaction.retrieval_enabled`.

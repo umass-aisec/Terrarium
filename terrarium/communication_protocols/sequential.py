@@ -13,7 +13,7 @@ from terrarium.tools.environment import (
 )
 from terrarium.core.logger import BlackboardLogger
 from terrarium.compaction import compact_events, CompactionLogger
-from terrarium.utils import get_client_instance, get_model_name
+from terrarium.utils import get_client_instance, get_generation_params, get_model_name
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,7 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         self._environment_tools_name: Optional[str] = None
         self._compaction_client = None
         self._compaction_model_name: Optional[str] = None
+        self._compaction_params: Dict[str, Any] = {}
 
     def _get_compaction_client_and_model(self):
         llm_config = self.config.get("llm") or {}
@@ -94,6 +95,9 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         try:
             self._compaction_client = get_client_instance(compaction_config)
             self._compaction_model_name = get_model_name(compaction_provider, compaction_config)
+            self._compaction_params = get_generation_params(
+                {**compaction_config, "provider": compaction_provider}
+            )
         except Exception as exc:
             logger.warning(
                 "Compaction client initialization failed; falling back to main agent client: %s",
@@ -101,6 +105,7 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
             )
             self._compaction_client = None
             self._compaction_model_name = None
+            self._compaction_params = {}
             return None, None
 
         return self._compaction_client, self._compaction_model_name
@@ -224,10 +229,12 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
 
             compaction_client = llm_client
             compaction_model_name = model_name
+            compaction_params = None
             override_client, override_model = self._get_compaction_client_and_model()
             if override_client is not None and override_model is not None:
                 compaction_client = override_client
                 compaction_model_name = override_model
+                compaction_params = self._compaction_params
 
             body = compact_events(
                 events if isinstance(events, list) else [],
@@ -245,6 +252,7 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
                 blackboard_id=bb_id_int,
                 phase=phase,
                 iteration=iteration,
+                params=compaction_params,
             )
             contexts[bb_id_str] = self._label_channel(bb_id_str, bb_id_int, agent_name, body)
 

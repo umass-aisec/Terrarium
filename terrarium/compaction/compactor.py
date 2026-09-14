@@ -71,6 +71,7 @@ def compact_events(
     blackboard_id: Any = None,
     phase: Optional[str] = None,
     iteration: Optional[int] = None,
+    params: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Compact a blackboard's event history into prompt text.
@@ -88,6 +89,9 @@ def compact_events(
     blackboard) used by mechanism="anchored" to carry its running summary
     across calls instead of re-summarizing the whole history every turn.
     Ignored by every other mechanism.
+
+    `params` are generation params for the summarizer request, such as
+    `max_tokens` and `temperature`. `max_tokens` defaults to 500.
     """
     if mechanism not in MECHANISMS:
         raise ValueError(f"Unknown compaction mechanism '{mechanism}'. Known: {MECHANISMS}")
@@ -121,24 +125,25 @@ def compact_events(
 
     recent = compactable[-keep_recent:] if keep_recent else []
     recent_text = format_blackboard_events_for_prompt(recent)
+    request = _summary_request(model_name, params)
 
     extractive_text = ""
     if mechanism == "baseline":
-        summary = _summarize(format_blackboard_events_for_prompt(old), llm_client, model_name)
+        summary = _summarize(format_blackboard_events_for_prompt(old), llm_client, request)
     elif mechanism == "anchored":
-        summary = _summarize_anchored(old, cache, llm_client, model_name)
+        summary = _summarize_anchored(old, cache, llm_client, request)
     elif mechanism == "eviction":
         kinds = evict_kinds if evict_kinds is not None else DEFAULT_EVICT_KINDS
         kept = [e for e in old if not (isinstance(e, dict) and e.get("kind") in kinds)]
-        summary = _summarize(format_blackboard_events_for_prompt(kept), llm_client, model_name)
+        summary = _summarize(format_blackboard_events_for_prompt(kept), llm_client, request)
     elif mechanism == "extractive":
-        summary, extractive_text = _summarize_extractive(old, llm_client, model_name, extract_limit)
+        summary, extractive_text = _summarize_extractive(old, llm_client, request, extract_limit)
     elif mechanism == "query_conditioned":
         summary = _summarize_query_conditioned(
-            format_blackboard_events_for_prompt(old), llm_client, model_name, agent_name, phase
+            format_blackboard_events_for_prompt(old), llm_client, request, agent_name, phase
         )
     elif mechanism == "structured":
-        summary = _summarize_structured(format_blackboard_events_for_prompt(old), llm_client, model_name)
+        summary = _summarize_structured(format_blackboard_events_for_prompt(old), llm_client, request)
 
     sections = []
     if pinned_text:
@@ -181,7 +186,22 @@ _BULLET_RULES = (
 )
 
 
-def _ask(llm_client, model_name: str, system_prompt: str, user_prompt: str) -> str:
+def _summary_request(model_name: str, params: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Request params for the summarizer. Like BaseAgent, the token limit is sent
+    under every key the clients read, since each client reads a different one."""
+    configured = {k: v for k, v in (params or {}).items() if v is not None and k != "model"}
+    max_tokens = configured.get("max_tokens", _MAX_SUMMARY_TOKENS)
+    request = {
+        "max_completion_tokens": max_tokens,
+        "max_output_tokens": max_tokens,
+        "max_tokens": max_tokens,
+    }
+    request.update(configured)
+    request["model"] = model_name
+    return request
+
+
+def _ask(llm_client, request: Dict[str, Any], system_prompt: str, user_prompt: str) -> str:
     """Single place every mechanism goes through to call the summarizer model."""
     context = llm_client.init_context(
         system_prompt=system_prompt,
@@ -189,20 +209,20 @@ def _ask(llm_client, model_name: str, system_prompt: str, user_prompt: str) -> s
     )
     _, summary = llm_client.generate_response(
         input=context,
-        params={"max_tokens": _MAX_SUMMARY_TOKENS, "model": model_name},
+        params=dict(request),
     )
     return summary
 
 
-def _summarize(text: str, llm_client, model_name: str) -> str:
+def _summarize(text: str, llm_client, request: Dict[str, Any]) -> str:
     return _ask(
-        llm_client, model_name,
+        llm_client, request,
         "You are a helpful assistant that summarizes agent conversations concisely.",
         f"{_BULLET_RULES}{text}",
     )
 
 
-def _summarize_incremental(previous_summary: str, new_text: str, llm_client, model_name: str) -> str:
+def _summarize_incremental(previous_summary: str, new_text: str, llm_client, request: Dict[str, Any]) -> str:
     """Fold new events into an existing summary instead of re-summarizing everything."""
     prompt = (
         "You maintain a running summary of an ongoing agent conversation. "
@@ -214,13 +234,13 @@ def _summarize_incremental(previous_summary: str, new_text: str, llm_client, mod
         f"EXISTING SUMMARY:\n{previous_summary}\n\nNEW MESSAGES:\n{new_text}"
     )
     return _ask(
-        llm_client, model_name,
+        llm_client, request,
         "You are a helpful assistant that maintains a running summary of an agent conversation.",
         prompt,
     )
 
 
-def _summarize_anchored(old_events: List[Any], cache: Optional[Dict[str, Any]], llm_client, model_name: str) -> str:
+def _summarize_anchored(old_events: List[Any], cache: Optional[Dict[str, Any]], llm_client, request: Dict[str, Any]) -> str:
     """
     Incremental/anchored summarization: reuse the cached summary and fold in
     only events that arrived since the last compaction call for this
@@ -229,7 +249,7 @@ def _summarize_anchored(old_events: List[Any], cache: Optional[Dict[str, Any]], 
     that doesn't maintain per-blackboard state), or on the first call.
     """
     if cache is None:
-        return _summarize(format_blackboard_events_for_prompt(old_events), llm_client, model_name)
+        return _summarize(format_blackboard_events_for_prompt(old_events), llm_client, request)
 
     previous_summary = cache.get("summary")
     summarized_count = int(cache.get("summarized_count", 0))
@@ -239,9 +259,9 @@ def _summarize_anchored(old_events: List[Any], cache: Optional[Dict[str, Any]], 
         if not new_events:
             return previous_summary
         new_text = format_blackboard_events_for_prompt(new_events)
-        summary = _summarize_incremental(previous_summary, new_text, llm_client, model_name)
+        summary = _summarize_incremental(previous_summary, new_text, llm_client, request)
     else:
-        summary = _summarize(format_blackboard_events_for_prompt(old_events), llm_client, model_name)
+        summary = _summarize(format_blackboard_events_for_prompt(old_events), llm_client, request)
 
     cache["summary"] = summary
     cache["summarized_count"] = len(old_events)
@@ -249,7 +269,7 @@ def _summarize_anchored(old_events: List[Any], cache: Optional[Dict[str, Any]], 
 
 
 def _summarize_extractive(
-    old_events: List[Any], llm_client, model_name: str, extract_limit: int
+    old_events: List[Any], llm_client, request: Dict[str, Any], extract_limit: int
 ) -> Tuple[str, str]:
     """
     Extractive-then-abstractive: keep events that look like commitments or
@@ -264,14 +284,14 @@ def _summarize_extractive(
 
     extractive_text = format_blackboard_events_for_prompt(high_signal) if high_signal else ""
     if residue:
-        summary = _summarize(format_blackboard_events_for_prompt(residue), llm_client, model_name)
+        summary = _summarize(format_blackboard_events_for_prompt(residue), llm_client, request)
     else:
         summary = "No decisions made."
     return summary, extractive_text
 
 
 def _summarize_query_conditioned(
-    text: str, llm_client, model_name: str, agent_name: Optional[str], phase: Optional[str]
+    text: str, llm_client, request: Dict[str, Any], agent_name: Optional[str], phase: Optional[str]
 ) -> str:
     """Condition the summary on who's about to read it, so the compressor
     isn't blind to what the summary will actually be used for."""
@@ -286,13 +306,13 @@ def _summarize_query_conditioned(
             "facts that only concern other agents.\n\n"
         )
     return _ask(
-        llm_client, model_name,
+        llm_client, request,
         "You are a helpful assistant that summarizes agent conversations concisely for a specific reader.",
         f"{reader_note}{_BULLET_RULES}{text}",
     )
 
 
-def _summarize_structured(text: str, llm_client, model_name: str) -> str:
+def _summarize_structured(text: str, llm_client, request: Dict[str, Any]) -> str:
     """Force the summary into labeled slots instead of free-text bullets, so
     numeric/temporal facts (identifiers, time steps) have a dedicated place to
     survive rather than getting paraphrased away."""
@@ -307,7 +327,7 @@ def _summarize_structured(text: str, llm_client, model_name: str) -> str:
         f"{text}"
     )
     return _ask(
-        llm_client, model_name,
+        llm_client, request,
         "You are a helpful assistant that summarizes agent conversations into a fixed structured format.",
         prompt,
     )

@@ -5,6 +5,7 @@ Implementation:
 - Logger: `terrarium/compaction/logger.py`
 - Call site: `terrarium/communication_protocols/sequential.py`
 - Retrieval tool: `terrarium/core/blackboard.py` (`Megaboard.recall`), registered in `terrarium/tools/discovery.py`
+- Tests: `terrarium/tests/test_compaction.py`
 
 Agents read their channel history as text injected into the prompt each turn.
 That history grows without bound, so long runs eventually exceed the context
@@ -38,20 +39,22 @@ text = compact_events(
     mechanism="baseline",
     pin_context_events=False,
     cache=per_blackboard_dict,
+    params={"max_tokens": 128, "temperature": 0.0},
 )
 ```
 
 `SequentialCommunicationProtocol` calls this once per agent, per channel, per
-turn. Passing `llm_client=None` or `model_name=None` disables compaction for
-that call.
+turn, passing the `params` from the `llm.compaction` provider block. Passing
+`llm_client=None` or `model_name=None` disables compaction for that call.
 
 ## 3) Pipeline
 
 1. If `pin_context_events` is set, events with `kind == "context"` are held
    aside as pinned; everything else is compactable.
 2. Token count is estimated as `len(text) // 4` over the compactable text.
-3. If the count is at or below `token_threshold`, the raw transcript is
-   returned unchanged and a `triggered=false` record is logged.
+3. If the count is at or below `token_threshold`, or no events are older than
+   the last `keep_recent`, the raw transcript is returned unchanged and a
+   `triggered=false` record is logged.
 4. Otherwise the compactable events are split into `old` (everything but the
    last `keep_recent`) and `recent`.
 5. `old` is compressed according to `mechanism`.
@@ -96,8 +99,11 @@ as high-signal when its `payload.content` contains a digit or one of `agree`,
 `deal`, `promise`, `commit`, `accept`, `confirm`, `will `; it reads only that
 field, so events without message content are never kept verbatim.
 
-All mechanisms issue their model call through `_ask()`, so `max_tokens` (500)
-and the shared bullet instructions are defined in one place.
+All mechanisms issue their model call through `_ask()` with the same request
+params: the `params` passed to `compact_events`, with `max_tokens` defaulting
+to 500. The token limit is sent as `max_tokens`, `max_output_tokens` and
+`max_completion_tokens`, since clients read different keys. The OpenAI and
+Foundry clients drop `temperature` for models that do not accept it.
 
 ## 5) Modifiers
 
@@ -167,20 +173,24 @@ Key fields in `llm.compaction:` (defaults shown where relevant):
 - `evict_kinds` (default `["action_executed"]`): event kinds `eviction` drops
 - `provider` and its provider block: the summarizer model; falls back to
   `llm.provider` when omitted
+- `params` in the provider block: request params for every summary, such as
+  `max_tokens` (default `500`) and `temperature`
 
 The compaction client is resolved once and cached. If it cannot be constructed,
-a warning is logged and compaction falls back to the agent's own client, so a
-misconfigured compaction block affects cost rather than correctness.
+a warning is logged and compaction falls back to the agent's own client with the
+default request params, so a misconfigured compaction block affects cost rather
+than correctness.
 
 ## 8) Notes / limitations
 
 - The trigger compares total history size against `token_threshold`, not the
   amount of new content. Once a channel crosses the threshold it does not fall
-  back under, so every later turn on that channel issues a fresh summarization.
-- Summaries are not memoized. When no new events arrive between turns, the same
-  input is summarized again. For `baseline`, `eviction`, `extractive` and
-  `structured` the output is a pure function of the input, so these calls are
-  avoidable; `anchored` already short-circuits.
+  back under, so every later turn on that channel compacts again.
+- Cost depends on the mechanism. Every mechanism except `anchored` summarizes
+  the full `old` history on each of those turns, one summarizer call per agent,
+  per channel, per turn, even when no new events arrived. `anchored` folds in
+  only new events and reuses its summary when there are none, at the cost of
+  carrying earlier summary errors forward.
 - Skipped compactions are logged in full. `pre_text` and `post_text` are
   identical on a skip, and both are written, so log volume grows quickly on runs
   where compaction rarely triggers.
@@ -188,5 +198,3 @@ misconfigured compaction block affects cost rather than correctness.
   trigger and is not comparable to provider token counts.
 - `recall` is registered for the planning phase only, while compaction runs in
   both phases, so it is unavailable to an agent acting during execution.
-- The mechanisms have no unit tests; they are currently exercised only through
-  full runs.

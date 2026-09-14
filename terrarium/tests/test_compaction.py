@@ -336,15 +336,40 @@ class ReaderAndStructure(unittest.TestCase):
             self.assertIn(label, client.calls[0]["user"])
 
 
+def token_keys(limit):
+    """The token limit under every key the clients read."""
+    return {"max_completion_tokens": limit, "max_output_tokens": limit, "max_tokens": limit}
+
+
 class SummaryRequest(unittest.TestCase):
-    def test_request_sends_only_model_and_fixed_token_cap(self):
-        """Current behaviour: configured compaction params are not passed through.
-        The fix plan changes this (item 2); update this test when it does."""
-        for mechanism in ("baseline", "anchored", "eviction", "extractive", "query_conditioned", "structured"):
+    def test_request_defaults_to_fixed_token_cap(self):
+        for mechanism in MECHANISMS:
             with self.subTest(mechanism=mechanism):
                 client = FakeClient()
                 run(chat("old alpha", "new charlie"), client, mechanism=mechanism, keep_recent=1, cache={})
-                self.assertEqual(client.calls[0]["params"], {"max_tokens": _MAX_SUMMARY_TOKENS, "model": MODEL})
+                self.assertEqual(client.calls[0]["params"], {"model": MODEL, **token_keys(_MAX_SUMMARY_TOKENS)})
+
+    def test_request_uses_configured_params(self):
+        params = {"max_tokens": 128, "temperature": 0.0}
+        for mechanism in MECHANISMS:
+            with self.subTest(mechanism=mechanism):
+                client = FakeClient()
+                run(chat("old alpha", "new charlie"), client, mechanism=mechanism, keep_recent=1, cache={}, params=params)
+                self.assertEqual(client.calls[0]["params"], {"model": MODEL, "temperature": 0.0, **token_keys(128)})
+
+    def test_anchored_update_uses_configured_params(self):
+        client, cache = FakeClient(), {}
+        params = {"max_tokens": 128}
+        run(chat("old alpha", "new charlie"), client, mechanism="anchored", keep_recent=1, cache=cache, params=params)
+        run(chat("old alpha", "new charlie", "newer delta"), client, mechanism="anchored", keep_recent=1, cache=cache, params=params)
+        self.assertEqual(len(client.calls), 2)
+        self.assertIn("EXISTING SUMMARY", client.calls[1]["user"])
+        self.assertEqual(client.calls[1]["params"], {"model": MODEL, **token_keys(128)})
+
+    def test_configured_params_cannot_change_model_or_send_none(self):
+        client = FakeClient()
+        run(chat("old alpha", "new charlie"), client, keep_recent=1, params={"model": "other", "temperature": None})
+        self.assertEqual(client.calls[0]["params"], {"model": MODEL, **token_keys(_MAX_SUMMARY_TOKENS)})
 
 
 class Logging(unittest.TestCase):
