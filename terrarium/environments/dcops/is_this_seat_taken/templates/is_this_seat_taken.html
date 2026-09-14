@@ -414,7 +414,7 @@ header{
   <span class="hdr-sep">·</span>
   <span class="badge bn" id="hdr-phase">—</span>
   <span style="color:var(--text3);font-size:12px">iter <b id="hdr-iter" style="color:var(--text);font-family:'JetBrains Mono',monospace">—</b></span>
-  <span class="hdr-log" id="hdr-log">{{ log }}</span>
+  <span class="hdr-log">{{ log }}</span>
   <div class="drawer-toggles">
     <button class="toggle-btn" id="btn-chat" onclick="toggleDrawer('chat')">💬 Chat <span class="ph-count" id="chat-count">0</span></button>
     <button class="toggle-btn" id="btn-actions" onclick="toggleDrawer('actions')">⚡ Actions <span class="ph-count" id="act-count">0</span></button>
@@ -593,7 +593,7 @@ function renderStanding(agents){
 }
 
 /* ── Speech bubbles ── */
-let lastChatIdx = -1, bubblesInitialized = false;
+let lastChatIdx = -1, bubblesInitialized = false, bubbleLog = null;
 const bubbleTimers = {};
 
 function ensureBubbleLayer(){
@@ -639,7 +639,12 @@ function showBubble(agentId, text){
   }, 5000);
 }
 
-function processChats(chats){
+function processChats(chats, log){
+  // Event numbers restart in each run's log, so start fresh when the GUI switches runs.
+  if(log !== bubbleLog){
+    bubbleLog = log;
+    bubblesInitialized = false;
+  }
   if(!bubblesInitialized){
     lastChatIdx = chats.reduce((m,c)=>Math.max(m,c.idx), -1);
     bubblesInitialized = true;
@@ -746,7 +751,7 @@ function apply(d){
   ph.className='badge '+(d.phase==='planning'?'bp':d.phase==='execution'?'be':'bn');
   renderGrid(d.seats,d.cols);
   renderStanding(d.standing_agents||[]);
-  processChats(d.chats||[]);
+  processChats(d.chats||[], d.log);
   renderChats(d.chats);
   renderActions();
 }

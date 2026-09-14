@@ -346,6 +346,7 @@ def build_payload():
                 "reason": e.reason or "",
             })
         return {
+            "log": args.log,
             "seats": seats, "chats": chats, "actions": actions,
             "total_moves": state.total_moves, "iter": state.current_iter,
             "phase": state.current_phase, "total_events": len(state.events),
