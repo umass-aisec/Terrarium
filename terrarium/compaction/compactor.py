@@ -101,7 +101,8 @@ def compact_events(
     compactable_formatted = format_blackboard_events_for_prompt(compactable)
     token_count = _count_tokens(compactable_formatted)
 
-    if llm_client is None or model_name is None or token_count <= token_threshold:
+    old = compactable[:-keep_recent] if keep_recent else compactable
+    if llm_client is None or model_name is None or token_count <= token_threshold or not old:
         logger.info(f"Compaction skipped: {token_count} tokens (threshold={token_threshold})")
         logger.debug("[NON-COMPACTED PROMPT]\n%s", formatted)
         # Non-compacted path already contains pinned events in natural order,
@@ -115,18 +116,8 @@ def compact_events(
         )
         return formatted
 
-    logger.info(f"Compaction triggered: {token_count} tokens exceeds {token_threshold}, summarizing {len(compactable) - keep_recent} events (mechanism={mechanism})")
+    logger.info(f"Compaction triggered: {token_count} tokens exceeds {token_threshold}, summarizing {len(old)} events (mechanism={mechanism})")
     logger.debug("[PRE-COMPACTION PROMPT]\n%s", formatted)
-
-    old = compactable[:-keep_recent] if keep_recent else compactable
-    if not old:
-        _log(
-            compaction_logger, agent_name=agent_name, blackboard_id=blackboard_id,
-            phase=phase, iteration=iteration, technique=technique, triggered=False,
-            token_count=token_count, token_threshold=token_threshold,
-            pre_text=formatted, post_text=formatted, pinned_text=pinned_text,
-        )
-        return formatted
 
     recent = compactable[-keep_recent:] if keep_recent else []
     recent_text = format_blackboard_events_for_prompt(recent)
