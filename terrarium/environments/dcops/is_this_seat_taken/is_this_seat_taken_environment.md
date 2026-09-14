@@ -383,12 +383,23 @@ GUI reads it to place agents before anyone moves.
 `settled`, an `agent_summaries` map (seat, settled, satisfaction per agent),
 and the final `layout`.
 
-To watch a run live:
+To watch a run live, start the GUI, then start the run:
 
 ```bash
 python terrarium/environments/dcops/is_this_seat_taken/is_this_seat_taken_gui.py \
-    --log logs/IsThisSeatTakenEnvironment/<tag_model>/seed_<seed>/blackboard_0.txt
+    --config examples/configs/is_this_seat_taken.yaml
 ```
+
+The GUI reads `rows`, `cols` and `num_agents` from `--config`. Without it, the
+GUI uses the first YAML config it finds whose path contains `seat`, or else the
+first YAML config it finds. `rows` and `cols` default to 2 and 4 when the config
+does not set them. Without `--log` it follows the
+newest `logs/**/blackboard_0.txt`, and switches to a run's log once one is
+written after the GUI starts. A
+run's logs are under
+`logs/IsThisSeatTakenEnvironment/<tag_model>/<run_timestamp>/seed_<seed>/`. The
+GUI reads only `blackboard_0.txt`, so messages in other channels, including
+private channels, are not shown.
 
 ## 11) Configuration reference (environment section)
 
