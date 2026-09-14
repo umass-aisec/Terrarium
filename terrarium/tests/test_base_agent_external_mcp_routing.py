@@ -12,10 +12,14 @@ class _DummyToolsetDiscovery:
     def get_env_tool_names(self, environment_name: str) -> Set[str]:
         return set()
 
-    def get_blackboard_tool_names(self) -> Set[str]:
+    def get_blackboard_tool_names(
+        self, environment_name: str = "", retrieval_enabled: bool = False
+    ) -> Set[str]:
         return set()
 
-    def get_tools_for_blackboard(self, phase: str) -> List[Dict[str, Any]]:
+    def get_tools_for_blackboard(
+        self, phase: str, environment_name: str = "", retrieval_enabled: bool = False
+    ) -> List[Dict[str, Any]]:
         return []
 
 

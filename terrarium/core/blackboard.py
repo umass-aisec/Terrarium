@@ -134,6 +134,101 @@ class Megaboard:
         self.blackboards.append(blackboard)
         return len(self.blackboards) - 1
 
+    def is_private_channel(self, blackboard_id: Any) -> bool:
+        """Whether a blackboard is an agent-created private channel."""
+        blackboard = self.get_blackboard_by_string_id(str(blackboard_id))
+        return bool(blackboard and blackboard.template.get("private_channel"))
+
+    def _reachable_agents(self, agent: str) -> Set[str]:
+        """Agents that already share at least one channel with `agent`."""
+        peers: Set[str] = set()
+        for blackboard in self.blackboards:
+            if agent in blackboard.agents:
+                peers |= blackboard.agents
+        peers.discard(agent)
+        return peers
+
+    def create_channel(
+        self,
+        agent_name: str,
+        participants: List[str],
+        message: str = "",
+        phase: Optional[str] = None,
+        iteration: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Open a private channel between the caller and the given agents.
+
+        The channel is a normal blackboard, so only its participants can read or
+        post to it. Reuses an existing private channel with the same membership.
+        """
+        invited = {str(a).strip() for a in participants if str(a).strip()}
+        invited.discard(agent_name)
+        if not invited:
+            return {"error": "create_channel requires at least one other agent in agent_ids"}
+
+        unreachable = sorted(invited - self._reachable_agents(agent_name))
+        if unreachable:
+            return {
+                "error": (
+                    f"Cannot open a channel with {', '.join(unreachable)}: "
+                    "you share no existing channel with them."
+                )
+            }
+
+        members = sorted(invited | {agent_name})
+        blackboard_id = next(
+            (
+                i
+                for i, bb in enumerate(self.blackboards)
+                if bb.template.get("private_channel") and bb.agents == set(members)
+            ),
+            None,
+        )
+        created = blackboard_id is None
+        if created:
+            blackboard_id = self.add_blackboard(
+                members,
+                # allow_duplicate so a private channel can coexist with a public
+                # channel over the same set of agents.
+                template={
+                    "private_channel": True,
+                    "created_by": agent_name,
+                    "allow_duplicate": True,
+                },
+            )
+            self.post_system_message(
+                blackboard_id,
+                "context",
+                {
+                    "message": (
+                        f"Private channel opened by {agent_name}. "
+                        f"Participants: {', '.join(members)}. "
+                        "Only these agents can see what is posted here."
+                    )
+                },
+                phase=phase,
+                iteration=iteration,
+            )
+
+        if message:
+            self.post(
+                blackboard_id,
+                agent_name,
+                "communication",
+                {"content": message},
+                phase=phase,
+                iteration=iteration,
+            )
+
+        return {
+            "status": "success",
+            "blackboard_id": blackboard_id,
+            "participants": members,
+            "created": created,
+            "note": "Post here with post_message(message, blackboard_id).",
+        }
+
     def post(
         self,
         blackboard_id: int,
@@ -268,6 +363,33 @@ class Megaboard:
                 result.append(str(i))
         return result
 
+    def recall(
+        self, blackboard_id: int, agent: str, query: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search the FULL, uncompacted event log for a blackboard for events
+        matching `query` — the retrieval-backed compaction technique. The
+        underlying `blackboard.logs` list is never pruned by compaction (only
+        the prompt string built from it is lossy), so this recovers detail a
+        compacted summary may have dropped, scoped to a keyword query rather
+        than dumping the entire history back.
+
+        Matching is a simple case-insensitive substring match against each
+        event's formatted text, keeping the most recent matches.
+        """
+        events = self.get(blackboard_id, agent, limit=None)
+        terms = [t for t in query.lower().split() if t]
+        if not terms:
+            return []
+
+        matches: List[Dict[str, Any]] = []
+        for event in events:
+            text = format_blackboard_events_for_prompt([event]).lower()
+            if any(term in text for term in terms):
+                matches.append(event)
+
+        return matches[-limit:] if limit else matches
+
     def get_agent_blackboard_contexts(self, agent_name: str) -> Dict[str, str]:
         """
         Get context summaries for all blackboards that an agent participates in. This is used as context in agent prompts.
@@ -362,6 +484,30 @@ class Megaboard:
                 result = self.get(blackboard_id, agent_name, limit=None)
                 return {"events": result}
 
+            elif tool_name == "recall":
+                query = str(arguments.get("query", "")).strip()
+                if not query:
+                    return {"error": "query is required for recall"}
+
+                blackboard_id = arguments.get("blackboard_id")
+                if blackboard_id is None:
+                    agent_blackboards = self.get_agent_blackboards(agent_name)
+                    if not agent_blackboards:
+                        return {"error": "No blackboards available to recall from"}
+                    blackboard_id = int(agent_blackboards[0])
+                else:
+                    blackboard_id = int(blackboard_id)
+
+                limit = arguments.get("limit")
+                limit = int(limit) if limit else 5
+                matches = self.recall(blackboard_id, agent_name, query, limit=limit)
+                if not matches:
+                    return {"result": "No matching events found in the full archive."}
+                return {
+                    "events": matches,
+                    "result": format_blackboard_events_for_prompt(matches),
+                }
+
             elif tool_name == "post_message":
                 # Handle post_message as a special case of post_event
                 blackboard_id = arguments.get("blackboard_id")
@@ -388,6 +534,18 @@ class Megaboard:
                     iteration=iteration,
                 )
                 return {"event_id": result}
+
+            elif tool_name == "create_channel":
+                agent_ids = arguments.get("agent_ids") or arguments.get("agent_id") or []
+                if isinstance(agent_ids, str):
+                    agent_ids = [a for a in agent_ids.split(",")]
+                return self.create_channel(
+                    agent_name,
+                    list(agent_ids),
+                    message=str(arguments.get("message") or "").strip(),
+                    phase=phase,
+                    iteration=iteration,
+                )
 
             else:
                 return {"error": f"Unknown blackboard tool: {tool_name}"}

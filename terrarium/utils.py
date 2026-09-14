@@ -676,6 +676,9 @@ def _get_environment_registry():
     )
     from terrarium.environments.dcops.hospital import HospitalEnvironment
     from terrarium.environments.dcops.jira_ticket import JiraTicketEnvironment
+    from terrarium.environments.dcops.is_this_seat_taken import (
+        IsThisSeatTakenEnvironment,
+    )
 
     return {
         MeetingSchedulingEnvironment.__name__: MeetingSchedulingEnvironment,
@@ -683,6 +686,7 @@ def _get_environment_registry():
         SmartGridEnvironment.__name__: SmartGridEnvironment,
         HospitalEnvironment.__name__: HospitalEnvironment,
         JiraTicketEnvironment.__name__: JiraTicketEnvironment,
+        IsThisSeatTakenEnvironment.__name__: IsThisSeatTakenEnvironment,
     }
 
 

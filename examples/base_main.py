@@ -28,6 +28,7 @@ from terrarium.utils import (
     get_model_name,
     build_vllm_runtime,
     get_generation_params,
+    prepare_simulation_config,
 )
 import asyncio
 from terrarium.core.logger import ToolCallLogger, AgentTrajectoryLogger
@@ -132,6 +133,70 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
         traceback.print_exc()
         return False
 
+# Agent-tier model presets. The compaction tier is deliberately left alone: it
+# stays on a cheap model whatever the agents run on.
+MODEL_PRESETS: Dict[str, Dict[str, Any]] = {
+    "gpt-5.4-nano": {"max_tokens": 256, "temperature": 0.2},
+    # Reasoning-tier: spends part of the budget on hidden reasoning before
+    # emitting the tool call, so 256 silently truncates. Also rejects a
+    # non-default temperature -- see restricted_models in
+    # terrarium/llm/clients/openai_client.py -- hence no temperature key.
+    "gpt-5.5": {"max_tokens": 1500},
+}
+
+
+def apply_cli_overrides(config: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
+    """Layer --seed/--persona/--personas/--model onto a loaded config."""
+    if args.seed is not None:
+        config = prepare_simulation_config(config, args.seed)
+    if args.note:
+        config.setdefault("simulation", {})["note"] = args.note
+
+    env = config.setdefault("environment", {})
+    if args.persona:
+        env["persona"] = args.persona
+        env.pop("personas", None)
+    elif args.personas:
+        env["personas"] = {
+            k.strip(): v.strip()
+            for k, v in (p.split("=", 1) for p in args.personas.split(",") if p.strip())
+        }
+        env.pop("persona", None)
+
+    if args.model:
+        provider = str(config.get("llm", {}).get("provider", "foundry"))
+        block = config.setdefault("llm", {}).setdefault(provider, {})
+        block["model"] = args.model
+        # Replace params wholesale so a restricted model does not inherit a
+        # temperature the previous model allowed.
+        if args.model in MODEL_PRESETS:
+            block["params"] = dict(MODEL_PRESETS[args.model])
+
+    # The compaction tier follows --model unless pinned separately.
+    compaction_model = args.compaction_model or args.model
+    if compaction_model:
+        compaction = config.setdefault("llm", {}).setdefault("compaction", {})
+        provider = str(compaction.get("provider", "foundry"))
+        block = compaction.setdefault(provider, {})
+        block["model"] = compaction_model
+        if compaction_model in MODEL_PRESETS:
+            params = dict(block.get("params") or {})
+            # Restricted models reject an explicit temperature.
+            if "temperature" not in MODEL_PRESETS[compaction_model]:
+                params.pop("temperature", None)
+            block["params"] = params
+
+    # tags[0] names the log subdirectory (see get_tag_model_subdir), so derive
+    # them deterministically whenever an arm is selected on the command line.
+    if args.persona or args.personas or args.model:
+        persona_tag = "persona_mixed" if args.personas else f"persona_{args.persona or 'none'}"
+        model_slug = (args.model or "").replace(".", "").replace("-", "")
+        config.setdefault("simulation", {})["tags"] = (
+            [persona_tag] + ([f"model_{model_slug}"] if args.model else [])
+        )
+    return config
+
+
 if __name__ == "__main__":
     configure_logging()
     # Load API keys and other environment variables from .env file
@@ -141,10 +206,20 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--note", type=str, default=None,
                         help="Optional experiment note to record alongside logs")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Override simulation.seed")
+    parser.add_argument("--persona", type=str, default=None,
+                        help="Apply one persona to every agent, e.g. diplomat")
+    parser.add_argument("--personas", type=str, default=None,
+                        help="Per-agent personas, e.g. agent_0=territorial,agent_1=diplomat")
+    parser.add_argument("--model", type=str, default=None,
+                        help=f"Override the agent model. Presets: {', '.join(MODEL_PRESETS)}")
+    parser.add_argument("--compaction-model", type=str, default=None,
+                        help="Pin the compaction model (defaults to following --model)")
 
     args = parser.parse_args()
-    config = load_config(args.config)
-    if args.note:
-        config.setdefault("simulation", {})["note"] = args.note
+    if args.persona and args.personas:
+        parser.error("--persona and --personas are mutually exclusive")
+    config = apply_cli_overrides(load_config(args.config), args)
     # For running a single simulation
     asyncio.run(run_simulation(config))
