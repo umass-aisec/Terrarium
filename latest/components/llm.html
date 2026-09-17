@@ -296,8 +296,8 @@
 <p>The base runner then extracts the model and generation parameters:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_generation_params</span><span class="p">,</span> <span class="n">get_model_name</span>
 
-<span class="n">llm_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;llm&quot;</span><span class="p">]</span>
-<span class="n">provider</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">,</span> <span class="s2">&quot;openai&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+<span class="n">llm_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"llm"</span><span class="p">]</span>
+<span class="n">provider</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"provider"</span><span class="p">,</span> <span class="s2">"openai"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
 <span class="n">model_name</span> <span class="o">=</span> <span class="n">get_model_name</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span>
 <span class="n">generation_params</span> <span class="o">=</span> <span class="n">get_generation_params</span><span class="p">(</span><span class="n">llm_config</span><span class="p">)</span>
 </pre></div>
@@ -315,8 +315,8 @@
 <p>For local inference, Terrarium can build a vLLM runtime and give each agent a client pointed at the right local server.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_vllm_runtime</span>
 
-<span class="n">vllm_runtime</span> <span class="o">=</span> <span class="n">build_vllm_runtime</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;llm&quot;</span><span class="p">])</span>
-<span class="n">client</span><span class="p">,</span> <span class="n">model_name</span> <span class="o">=</span> <span class="n">vllm_runtime</span><span class="o">.</span><span class="n">create_client</span><span class="p">(</span><span class="s2">&quot;agent_0&quot;</span><span class="p">)</span>
+<span class="n">vllm_runtime</span> <span class="o">=</span> <span class="n">build_vllm_runtime</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">"llm"</span><span class="p">])</span>
+<span class="n">client</span><span class="p">,</span> <span class="n">model_name</span> <span class="o">=</span> <span class="n">vllm_runtime</span><span class="o">.</span><span class="n">create_client</span><span class="p">(</span><span class="s2">"agent_0"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">llm</span><span class="p">:</span>

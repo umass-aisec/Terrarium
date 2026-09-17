@@ -270,7 +270,7 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.attacks.reference</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Attack primitives used by the Terrarium attack framework.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Attack primitives used by the Terrarium attack framework."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -281,18 +281,18 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.agents.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAgent</span>
 
-<span class="n">DEFAULT_POISON_FILE</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;examples/configs/attack_config.yaml&quot;</span><span class="p">)</span>
+<span class="n">DEFAULT_POISON_FILE</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"examples/configs/attack_config.yaml"</span><span class="p">)</span>
 <span class="n">DEFAULT_POISON_FALLBACK</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="s2">&quot;This is a sample string. This is where you put a string that the adversary &quot;</span>
-    <span class="s2">&quot;is poisoning the conversation with.&quot;</span>
+    <span class="s2">"This is a sample string. This is where you put a string that the adversary "</span>
+    <span class="s2">"is poisoning the conversation with."</span>
 <span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_load_poison_payload</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">DEFAULT_POISON_FILE</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;poisoning_string&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the default poisoning payload from disk (with fallback).&quot;&quot;&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_poison_payload</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">DEFAULT_POISON_FILE</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">"poisoning_string"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Load the default poisoning payload from disk (with fallback)."""</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">"r"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
             <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">DEFAULT_POISON_FALLBACK</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
@@ -300,7 +300,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_clone_arguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a shallow copy of the tool call arguments for safe mutation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return a shallow copy of the tool call arguments for safe mutation."""</span>
 
     <span class="k">if</span> <span class="n">arguments</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">{}</span>
@@ -315,7 +315,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_blackboard_id</span><span class="p">(</span><span class="n">arguments</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
-    <span class="n">blackboard_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;blackboard_id&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">arguments</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">blackboard_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blackboard_id"</span><span class="p">)</span> <span class="k">if</span> <span class="n">arguments</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">blackboard_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="k">return</span> <span class="n">_coerce_blackboard_value</span><span class="p">(</span><span class="n">blackboard_id</span><span class="p">)</span>
@@ -323,9 +323,9 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_preview</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">""</span>
     <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">text</span><span class="p">[:</span><span class="n">limit</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;…&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">limit</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">text</span><span class="p">[:</span><span class="n">limit</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="s2">"…"</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">limit</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_log_agent_event</span><span class="p">(</span>
@@ -337,22 +337,22 @@
     <span class="n">target</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">target_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="n">attack_logger</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">&quot;attack_logger&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">attack_logger</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">"attack_logger"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">attack_logger</span><span class="p">:</span>
         <span class="k">return</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span>
-    <span class="n">attack_label</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">&quot;attack_metadata&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">attack_label</span> <span class="ow">and</span> <span class="s2">&quot;label&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
-        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">attack_label</span>
+    <span class="n">attack_label</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">"attack_metadata"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"label"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">attack_label</span> <span class="ow">and</span> <span class="s2">"label"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">"label"</span><span class="p">]</span> <span class="o">=</span> <span class="n">attack_label</span>
     <span class="n">attack_logger</span><span class="o">.</span><span class="n">log_agent_attack</span><span class="p">(</span>
         <span class="n">attack_type</span><span class="o">=</span><span class="n">attack_type</span><span class="p">,</span>
         <span class="n">attacker</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
         <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
         <span class="n">target_type</span><span class="o">=</span><span class="n">target_type</span><span class="p">,</span>
         <span class="n">success</span><span class="o">=</span><span class="n">success</span><span class="p">,</span>
-        <span class="n">phase</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">&quot;current_phase&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
-        <span class="n">iteration</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">&quot;current_iteration&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
-        <span class="n">round_num</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">&quot;current_round&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">phase</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">"current_phase"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">iteration</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">"current_iteration"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">round_num</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s2">"current_round"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
         <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
     <span class="p">)</span>
 
@@ -360,7 +360,7 @@
 <div class="viewcode-block" id="AgentPoisoningAttack">
 <a class="viewcode-back" href="../../../api/attacks.html#terrarium.attacks.reference.AgentPoisoningAttack">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AgentPoisoningAttack</span><span class="p">(</span><span class="n">BaseAgent</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Replaces any outgoing blackboard posts with a fixed poisoning payload.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Replaces any outgoing blackboard posts with a fixed poisoning payload."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -387,24 +387,24 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span> <span class="o">=</span> <span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">))</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_execute_tool_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;post_message&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"post_message"</span><span class="p">:</span>
             <span class="n">new_args</span> <span class="o">=</span> <span class="n">_clone_arguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span>
-            <span class="n">new_args</span><span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span>
+            <span class="n">new_args</span><span class="p">[</span><span class="s2">"message"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span>
             <span class="n">target</span> <span class="o">=</span> <span class="n">_normalize_blackboard_id</span><span class="p">(</span><span class="n">new_args</span><span class="p">)</span>
             <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;payload_chars&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
-                <span class="s2">&quot;payload_preview&quot;</span><span class="p">:</span> <span class="n">_preview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span><span class="p">),</span>
-                <span class="s2">&quot;original_chars&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))),</span>
-                <span class="s2">&quot;original_preview&quot;</span><span class="p">:</span> <span class="n">_preview</span><span class="p">(</span><span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">)),</span>
-                <span class="s2">&quot;blackboard_id&quot;</span><span class="p">:</span> <span class="n">target</span><span class="p">,</span>
+                <span class="s2">"payload_chars"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="s2">"payload_preview"</span><span class="p">:</span> <span class="n">_preview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span><span class="p">),</span>
+                <span class="s2">"original_chars"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"message"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))),</span>
+                <span class="s2">"original_preview"</span><span class="p">:</span> <span class="n">_preview</span><span class="p">(</span><span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"message"</span><span class="p">)),</span>
+                <span class="s2">"blackboard_id"</span><span class="p">:</span> <span class="n">target</span><span class="p">,</span>
             <span class="p">}</span>
             <span class="n">_log_agent_event</span><span class="p">(</span>
                 <span class="bp">self</span><span class="p">,</span>
-                <span class="s2">&quot;agent_poisoning&quot;</span><span class="p">,</span>
+                <span class="s2">"agent_poisoning"</span><span class="p">,</span>
                 <span class="n">success</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poison_payload</span><span class="p">),</span>
                 <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
                 <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
-                <span class="n">target_type</span><span class="o">=</span><span class="s2">&quot;blackboard&quot;</span><span class="p">,</span>
+                <span class="n">target_type</span><span class="o">=</span><span class="s2">"blackboard"</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_execute_tool_call</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">new_args</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_execute_tool_call</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span></div>
@@ -414,7 +414,7 @@
 <div class="viewcode-block" id="ContextOverflowAttack">
 <a class="viewcode-back" href="../../../api/attacks.html#terrarium.attacks.reference.ContextOverflowAttack">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ContextOverflowAttack</span><span class="p">(</span><span class="n">BaseAgent</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Appends a large filler sequence to overwhelm downstream context windows.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Appends a large filler sequence to overwhelm downstream context windows."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -427,12 +427,12 @@
         <span class="n">environment_name</span><span class="p">,</span>
         <span class="n">poison_payload</span><span class="p">,</span>
         <span class="n">generation_params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="c1"># filler_token: str = &quot;ATTACK&quot;,</span>
+        <span class="c1"># filler_token: str = "ATTACK",</span>
         <span class="c1"># repeat: int = 2048,</span>
         <span class="c1"># max_chars: Optional[int] = 16000,</span>
-        <span class="c1"># header: Optional[str] = &quot;FILLER PAYLOAD&quot;,</span>
+        <span class="c1"># header: Optional[str] = "FILLER PAYLOAD",</span>
         <span class="c1"># max_chars: Optional[int] = 16000,</span>
-        <span class="c1"># header: Optional[str] = &quot;FILLER PAYLOAD&quot;,</span>
+        <span class="c1"># header: Optional[str] = "FILLER PAYLOAD",</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">client</span><span class="p">,</span>
@@ -445,41 +445,41 @@
             <span class="n">generation_params</span><span class="o">=</span><span class="n">generation_params</span><span class="p">,</span>
         <span class="p">)</span>
         
-        <span class="bp">self</span><span class="o">.</span><span class="n">filler_token</span> <span class="o">=</span> <span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">&quot;filler_token&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">&quot;repeat&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filler_token</span> <span class="o">=</span> <span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">"filler_token"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">"repeat"</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_chars</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">&quot;max_chars&quot;</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">header</span> <span class="o">=</span> <span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">&quot;header&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_chars</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">"max_chars"</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">header</span> <span class="o">=</span> <span class="n">_load_poison_payload</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">poison_payload</span><span class="p">),</span> <span class="s2">"header"</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_overflow</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">chunk</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filler_token</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filler_token</span> <span class="o">+</span> <span class="s2">" "</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span>
         <span class="n">chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_chars</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">chunk</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_chars</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">chunk</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_execute_tool_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;post_message&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"post_message"</span><span class="p">:</span>
             <span class="n">new_args</span> <span class="o">=</span> <span class="n">_clone_arguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span>
-            <span class="n">original</span> <span class="o">=</span> <span class="n">new_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">original</span> <span class="o">=</span> <span class="n">new_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"message"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
             <span class="n">overflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_overflow</span><span class="p">()</span>
             <span class="n">sections</span> <span class="o">=</span> <span class="p">[</span><span class="n">part</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">original</span><span class="p">,</span> <span class="n">overflow</span><span class="p">]</span> <span class="k">if</span> <span class="n">part</span><span class="p">]</span>
-            <span class="n">new_args</span><span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sections</span><span class="p">)</span>
+            <span class="n">new_args</span><span class="p">[</span><span class="s2">"message"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sections</span><span class="p">)</span>
             <span class="n">target</span> <span class="o">=</span> <span class="n">_normalize_blackboard_id</span><span class="p">(</span><span class="n">new_args</span><span class="p">)</span>
             <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;overflow_chars&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">overflow</span><span class="p">),</span>
-                <span class="s2">&quot;original_chars&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">original</span><span class="p">)),</span>
-                <span class="s2">&quot;repeat&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="p">,</span>
-                <span class="s2">&quot;max_chars&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_chars</span><span class="p">,</span>
-                <span class="s2">&quot;blackboard_id&quot;</span><span class="p">:</span> <span class="n">target</span><span class="p">,</span>
+                <span class="s2">"overflow_chars"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">overflow</span><span class="p">),</span>
+                <span class="s2">"original_chars"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">original</span><span class="p">)),</span>
+                <span class="s2">"repeat"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="p">,</span>
+                <span class="s2">"max_chars"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_chars</span><span class="p">,</span>
+                <span class="s2">"blackboard_id"</span><span class="p">:</span> <span class="n">target</span><span class="p">,</span>
             <span class="p">}</span>
             <span class="n">_log_agent_event</span><span class="p">(</span>
                 <span class="bp">self</span><span class="p">,</span>
-                <span class="s2">&quot;context_overflow&quot;</span><span class="p">,</span>
+                <span class="s2">"context_overflow"</span><span class="p">,</span>
                 <span class="n">success</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">overflow</span><span class="p">),</span>
                 <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
                 <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
-                <span class="n">target_type</span><span class="o">=</span><span class="s2">&quot;blackboard&quot;</span><span class="p">,</span>
+                <span class="n">target_type</span><span class="o">=</span><span class="s2">"blackboard"</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_execute_tool_call</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">new_args</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_execute_tool_call</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span></div>
@@ -489,13 +489,13 @@
 <div class="viewcode-block" id="CommunicationProtocolPoisoningAttack">
 <a class="viewcode-back" href="../../../api/attacks.html#terrarium.attacks.reference.CommunicationProtocolPoisoningAttack">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CommunicationProtocolPoisoningAttack</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Injects system messages into every blackboard via the communication proxy.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Injects system messages into every blackboard via the communication proxy."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">payload</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">attack_logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">attacker_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYSTEM&quot;</span><span class="p">,</span>
+        <span class="n">attacker_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"SYSTEM"</span><span class="p">,</span>
         <span class="n">poison_payload</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">payload</span> <span class="o">=</span> <span class="n">payload</span> <span class="ow">or</span> <span class="n">_load_poison_payload</span><span class="p">()</span>
@@ -504,9 +504,9 @@
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">inject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">communication_protocol</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">get_all_blackboard_ids</span><span class="p">()</span>
-        <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">payload</span><span class="p">}</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"content"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">payload</span><span class="p">}</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_log_event</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;no_blackboards&quot;</span><span class="p">})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_event</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="p">{</span><span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"no_blackboards"</span><span class="p">})</span>
             <span class="k">return</span>
         <span class="k">for</span> <span class="n">blackboard_id</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
             <span class="n">normalized</span> <span class="o">=</span> <span class="n">_coerce_blackboard_value</span><span class="p">(</span><span class="n">blackboard_id</span><span class="p">)</span>
@@ -516,13 +516,13 @@
                 <span class="n">numeric_id</span> <span class="o">=</span> <span class="n">blackboard_id</span>
             <span class="k">await</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">post_system_message</span><span class="p">(</span>
                 <span class="n">numeric_id</span><span class="p">,</span>
-                <span class="s2">&quot;initialization&quot;</span><span class="p">,</span>
+                <span class="s2">"initialization"</span><span class="p">,</span>
                 <span class="n">payload</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;payload_chars&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">payload</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
-                <span class="s2">&quot;payload_preview&quot;</span><span class="p">:</span> <span class="n">_preview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">payload</span><span class="p">),</span>
-                <span class="s2">&quot;blackboard_id&quot;</span><span class="p">:</span> <span class="n">normalized</span><span class="p">,</span>
+                <span class="s2">"payload_chars"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">payload</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="s2">"payload_preview"</span><span class="p">:</span> <span class="n">_preview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">payload</span><span class="p">),</span>
+                <span class="s2">"blackboard_id"</span><span class="p">:</span> <span class="n">normalized</span><span class="p">,</span>
             <span class="p">}</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_log_event</span><span class="p">(</span><span class="n">normalized</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
 
@@ -537,14 +537,14 @@
             <span class="k">return</span>
         <span class="n">context</span> <span class="o">=</span> <span class="n">context</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">attack_logger</span><span class="o">.</span><span class="n">log_protocol_attack</span><span class="p">(</span>
-            <span class="n">attack_type</span><span class="o">=</span><span class="s2">&quot;communication_poisoning&quot;</span><span class="p">,</span>
+            <span class="n">attack_type</span><span class="o">=</span><span class="s2">"communication_poisoning"</span><span class="p">,</span>
             <span class="n">attacker</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attacker_label</span><span class="p">,</span>
             <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
             <span class="n">success</span><span class="o">=</span><span class="n">success</span><span class="p">,</span>
-            <span class="n">trigger</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trigger&quot;</span><span class="p">),</span>
-            <span class="n">iteration</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iteration&quot;</span><span class="p">),</span>
-            <span class="n">phase</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">),</span>
-            <span class="n">round_num</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;round&quot;</span><span class="p">),</span>
+            <span class="n">trigger</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"trigger"</span><span class="p">),</span>
+            <span class="n">iteration</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"iteration"</span><span class="p">),</span>
+            <span class="n">phase</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phase"</span><span class="p">),</span>
+            <span class="n">round_num</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"round"</span><span class="p">),</span>
             <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{},</span>
         <span class="p">)</span></div>
 

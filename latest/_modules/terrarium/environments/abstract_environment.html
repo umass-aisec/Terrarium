@@ -270,13 +270,13 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.environments.abstract_environment</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Abstract base class for environments.</span>
 
 <span class="sd">This module defines the interface that all environments must implement to work</span>
 <span class="sd">with the CommunicationProtocol. It separates environment-specific logic from</span>
 <span class="sd">the generic communication and phase management.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -292,7 +292,7 @@
 <div class="viewcode-block" id="AbstractEnvironment">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AbstractEnvironment</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Abstract base class for environments that can be used with CommunicationProtocol.</span>
 
 <span class="sd">    This interface defines the minimal set of methods that any environment must</span>
@@ -307,12 +307,12 @@
 <span class="sd">        prompt_logger: Optional logger for tracking agent prompts (system and user).</span>
 <span class="sd">            Environments should initialize this in their initialize() method if they</span>
 <span class="sd">            want prompt logging. Set to None to disable logging.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">UNASSIGNED_VARIABLE_FALLBACK_NOTE</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;NOTE: If environment.assignment_filling=true and an agent fails to assign a variable, &quot;</span>
-        <span class="s2">&quot;the environment will fill any remaining unassigned variables with a uniform-random allowed assignment &quot;</span>
-        <span class="s2">&quot;when producing final results.&quot;</span>
+        <span class="s2">"NOTE: If environment.assignment_filling=true and an agent fails to assign a variable, "</span>
+        <span class="s2">"the environment will fill any remaining unassigned variables with a uniform-random allowed assignment "</span>
+        <span class="s2">"when producing final results."</span>
     <span class="p">)</span>
 
     <span class="c1"># Standard attributes - environments should initialize these in __init__()</span>
@@ -325,33 +325,33 @@
 <div class="viewcode-block" id="AbstractEnvironment.set_communication_network">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.set_communication_network">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_communication_network</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">communication_network</span><span class="p">:</span> <span class="n">CommunicationNetwork</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attach a pre-built communication network to this environment.</span>
+<span class="w">        </span><span class="sd">"""Attach a pre-built communication network to this environment.</span>
 
 <span class="sd">        The network is expected to be NetworkX graph and expose:</span>
 <span class="sd">        - `agent_names: List[str]`</span>
 <span class="sd">        - `validate_agents(agent_names: Sequence[str])`</span>
 <span class="sd">        - `channel_groups() -&gt; List[List[str]]`</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span> <span class="o">=</span> <span class="n">communication_network</span></div>
 
 
 <div class="viewcode-block" id="AbstractEnvironment.assignment_filling_enabled">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.assignment_filling_enabled">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">assignment_filling_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return whether the environment should fill unassigned decisions in summaries.</span>
+<span class="w">        </span><span class="sd">"""Return whether the environment should fill unassigned decisions in summaries.</span>
 
 <span class="sd">        Controlled by `environment.assignment_filling` in the run config (default: True).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">env_config</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;env_config&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="n">env_config</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"env_config"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">env_config</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">True</span>
 
-        <span class="n">raw_value</span> <span class="o">=</span> <span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;assignment_filling&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">raw_value</span> <span class="o">=</span> <span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"assignment_filling"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="n">normalized</span> <span class="o">=</span> <span class="n">raw_value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">normalized</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;on&quot;</span><span class="p">}:</span>
+            <span class="k">if</span> <span class="n">normalized</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"1"</span><span class="p">,</span> <span class="s2">"true"</span><span class="p">,</span> <span class="s2">"yes"</span><span class="p">,</span> <span class="s2">"y"</span><span class="p">,</span> <span class="s2">"on"</span><span class="p">}:</span>
                 <span class="k">return</span> <span class="kc">True</span>
-            <span class="k">if</span> <span class="n">normalized</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;off&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">}:</span>
+            <span class="k">if</span> <span class="n">normalized</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"0"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">,</span> <span class="s2">"no"</span><span class="p">,</span> <span class="s2">"n"</span><span class="p">,</span> <span class="s2">"off"</span><span class="p">,</span> <span class="s2">""</span><span class="p">}:</span>
                 <span class="k">return</span> <span class="kc">False</span>
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">raw_value</span><span class="p">)</span></div>
 
@@ -359,79 +359,79 @@
 <div class="viewcode-block" id="AbstractEnvironment.get_network_context">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.get_network_context">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_network_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the base context message to seed every communication blackboard.&quot;&quot;&quot;</span>
-        <span class="n">problem</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;problem&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">description</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">problem</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="w">        </span><span class="sd">"""Return the base context message to seed every communication blackboard."""</span>
+        <span class="n">problem</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"problem"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">problem</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">description</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">description</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
             <span class="n">base_context</span> <span class="o">=</span> <span class="n">description</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="n">note</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;UNASSIGNED_VARIABLE_FALLBACK_NOTE&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">note</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"UNASSIGNED_VARIABLE_FALLBACK_NOTE"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">note</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">assignment_filling_enabled</span><span class="p">():</span>
-                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_context</span><span class="si">}</span><span class="se">\n\n</span><span class="si">{</span><span class="n">note</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_context</span><span class="si">}</span><span class="se">\n\n</span><span class="si">{</span><span class="n">note</span><span class="si">}</span><span class="s2">"</span>
             <span class="k">return</span> <span class="n">base_context</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No description found in problem definition for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> environment.&quot;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"No description found in problem definition for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> environment."</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AbstractEnvironment.format_blackboard_context">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.format_blackboard_context">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">format_blackboard_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">participants</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">base_context</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Format the initial blackboard context for a given channel.&quot;&quot;&quot;</span>
-        <span class="n">participants_str</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">participants</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">"""Format the initial blackboard context for a given channel."""</span>
+        <span class="n">participants_str</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">participants</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_context</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;This blackboard is a private communication channel.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Participants: </span><span class="si">{</span><span class="n">participants_str</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_context</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">"</span>
+            <span class="sa">f</span><span class="s2">"This blackboard is a private communication channel.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="sa">f</span><span class="s2">"Participants: </span><span class="si">{</span><span class="n">participants_str</span><span class="si">}</span><span class="s2">"</span>
         <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AbstractEnvironment.async_init">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.async_init">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">async_init</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Async initialization hook (default: create blackboards from the supplied network).&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Async initialization hook (default: create blackboards from the supplied network)."""</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize_communication_network</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="AbstractEnvironment.initialize_communication_network">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.initialize_communication_network">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">initialize_communication_network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create blackboards for the supplied communication network&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Create blackboards for the supplied communication network"""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> requires a communication_network. &quot;</span>
-                <span class="s2">&quot;Set it via environment.set_communication_network(...) before async_init().&quot;</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> requires a communication_network. "</span>
+                <span class="s2">"Set it via environment.set_communication_network(...) before async_init()."</span>
             <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Initializing communication network: </span><span class="si">%s</span><span class="s2"> (nodes=</span><span class="si">%s</span><span class="s2">, edges=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+            <span class="s2">"Initializing communication network: </span><span class="si">%s</span><span class="s2"> (nodes=</span><span class="si">%s</span><span class="s2">, edges=</span><span class="si">%s</span><span class="s2">)"</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">(),</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">(),</span>
         <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Consolidate channels enabled: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">"Consolidate channels enabled: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span><span class="o">.</span><span class="n">consolidate_channels_enabled</span><span class="p">,</span>
         <span class="p">)</span>
 
-        <span class="n">protocol</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;communication_protocol&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">protocol</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"communication_protocol"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">protocol</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> requires communication_protocol to initialize networks.&quot;</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> requires communication_protocol to initialize networks."</span>
             <span class="p">)</span>
 
         <span class="n">agent_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_agent_names</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span><span class="o">.</span><span class="n">validate_agents</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span>
 
         <span class="c1"># Save a visualization of the communication graph alongside other run logs.</span>
-        <span class="n">tool_logger</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;tool_logger&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">log_dir</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tool_logger</span><span class="p">,</span> <span class="s2">&quot;log_dir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">tool_logger</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"tool_logger"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">log_dir</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tool_logger</span><span class="p">,</span> <span class="s2">"log_dir"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">log_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">seed</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;current_seed&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">seed</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"current_seed"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
                 <span class="n">seed_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span> <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">communication_network</span><span class="o">.</span><span class="n">save_plot</span><span class="p">(</span>
-                    <span class="n">Path</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;communication_network.png&quot;</span><span class="p">,</span>
+                    <span class="n">Path</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"communication_network.png"</span><span class="p">,</span>
                     <span class="n">seed</span><span class="o">=</span><span class="n">seed_int</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to save communication_network plot: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Failed to save communication_network plot: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
 
         <span class="c1"># Generate the communication network on the in-process blackboard runtime.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">network_blackboards</span> <span class="o">=</span> <span class="p">{}</span>
@@ -444,29 +444,29 @@
             <span class="n">blackboard_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">protocol</span><span class="o">.</span><span class="n">generate_comm_network</span><span class="p">(</span><span class="n">participants</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">network_blackboards</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">(</span><span class="n">participants</span><span class="p">)]</span> <span class="o">=</span> <span class="n">blackboard_id</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;Created comm channel blackboard </span><span class="si">%s</span><span class="s2"> for participants={</span><span class="si">%s</span><span class="s2">}&quot;</span><span class="p">,</span>
+                <span class="s2">"Created comm channel blackboard </span><span class="si">%s</span><span class="s2"> for participants={</span><span class="si">%s</span><span class="s2">}"</span><span class="p">,</span>
                 <span class="n">blackboard_id</span><span class="p">,</span>
-                <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">participants</span><span class="p">),</span>
+                <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">participants</span><span class="p">),</span>
             <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AbstractEnvironment.get_agent_names">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.get_agent_names">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_agent_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Get the list of all agent names in this environment.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List of agent name strings</span>
 
 <span class="sd">        This is used by the protocol to iterate through agents during phases.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># Agent names should be set by the environment subclass in __init__()</span>
-        <span class="n">agent_names</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;agent_names&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">agent_names</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"agent_names"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">agent_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span>
 
-        <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> must set `self.agent_names` or override get_agent_names()&quot;</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> must set `self.agent_names` or override get_agent_names()"</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></div>
 
@@ -474,12 +474,12 @@
 <div class="viewcode-block" id="AbstractEnvironment.set_agent_clients">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.set_agent_clients">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_agent_clients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Set the instantiated agent clients for the environment.</span>
 
 <span class="sd">        The protocol typically calls this after constructing the LLM-backed agents.</span>
 <span class="sd">        Environments can override if they need additional bookkeeping.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">agents</span> <span class="o">=</span> <span class="n">agents</span></div>
 
 
@@ -487,12 +487,12 @@
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.build_agent_context">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">build_agent_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Build environment-specific context for an agent&#39;s turn.</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build environment-specific context for an agent's turn.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            agent_name: Name of the agent</span>
-<span class="sd">            phase: Current phase (&quot;planning&quot; or &quot;execution&quot;)</span>
+<span class="sd">            phase: Current phase ("planning" or "execution")</span>
 <span class="sd">            iteration: Current iteration number</span>
 <span class="sd">            **kwargs: Additional context (planning_round, etc.)</span>
 
@@ -505,7 +505,7 @@
 
 <span class="sd">        The protocol will pass this context to get_user_prompt along with</span>
 <span class="sd">        blackboard contexts and available tools.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">pass</span></div>
 
 
@@ -513,7 +513,7 @@
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.done">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Check if the simulation is complete.</span>
 
 <span class="sd">        Args:</span>
@@ -521,7 +521,7 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            True if the simulation should stop, False to continue.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">pass</span></div>
 
 
@@ -529,12 +529,12 @@
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.compute_max_joint_reward">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_max_joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Compute the maximum joint reward achievable in this environment.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Optimal joint reward as a float</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">pass</span></div>
 
 
@@ -542,13 +542,13 @@
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.joint_reward">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Compute a joint reward given agent actions.</span>
-<span class="sd">        Can be a function of all agents&#39; individual rewards using agent_reward().</span>
+<span class="sd">        Can be a function of all agents' individual rewards using agent_reward().</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            actions: A mapping from agent names to their actions</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">pass</span></div>
 
 
@@ -556,21 +556,21 @@
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.agent_reward">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">agent_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Compute the reward for a single agent given its action.</span>
 <span class="sd">        Allows credit assignment of agent actions to joint reward.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            agent_name: Name of the agent</span>
 <span class="sd">            action: The action taken by the agent</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">pass</span></div>
 
 
 <div class="viewcode-block" id="AbstractEnvironment.get_final_summary">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.get_final_summary">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_final_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Get a final summary of the entire simulation.</span>
 
 <span class="sd">        Returns:</span>
@@ -578,33 +578,33 @@
 
 <span class="sd">        Default implementation returns empty summary. Environments can override</span>
 <span class="sd">        to provide meaningful final statistics and results.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="p">{}</span></div>
 
 
 <div class="viewcode-block" id="AbstractEnvironment.generate_final_summary">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.generate_final_summary">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">generate_final_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Log and return a final summary of the simulation.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Log and return a final summary of the simulation."""</span>
         <span class="n">env_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="p">)</span>
-        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SIMULATION COMPLETE - FINAL SUMMARY&quot;</span><span class="p">)</span>
-        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"SIMULATION COMPLETE - FINAL SUMMARY"</span><span class="p">)</span>
+        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
 
         <span class="n">final_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_final_summary</span><span class="p">()</span>
 
-        <span class="n">current_iteration</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;current_iteration&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">current_iteration</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"current_iteration"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">current_iteration</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Total iterations: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">current_iteration</span><span class="p">)</span>
+            <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Total iterations: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">current_iteration</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">final_summary</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">final_summary</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                    <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">:&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                    <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">:"</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
                     <span class="k">for</span> <span class="n">sub_key</span><span class="p">,</span> <span class="n">sub_value</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">sub_key</span><span class="p">,</span> <span class="n">sub_value</span><span class="p">)</span>
+                        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"  </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">sub_key</span><span class="p">,</span> <span class="n">sub_value</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                    <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">final_summary</span></div>
 
@@ -612,12 +612,12 @@
 <div class="viewcode-block" id="AbstractEnvironment.log_iteration_summary">
 <a class="viewcode-back" href="../../../api/environments.html#terrarium.environments.abstract_environment.AbstractEnvironment.log_iteration_summary">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">log_iteration_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Log a summary header for an iteration then delegate to log_iteration().&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Log a summary header for an iteration then delegate to log_iteration()."""</span>
         <span class="n">env_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="p">)</span>
-        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;--- ITERATION </span><span class="si">%s</span><span class="s2"> SUMMARY ---&quot;</span><span class="p">,</span> <span class="n">iteration</span><span class="p">)</span>
-        <span class="n">log_iteration</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;log_iteration&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">env_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"--- ITERATION </span><span class="si">%s</span><span class="s2"> SUMMARY ---"</span><span class="p">,</span> <span class="n">iteration</span><span class="p">)</span>
+        <span class="n">log_iteration</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"log_iteration"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">log_iteration</span><span class="p">):</span>
-            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> must implement log_iteration() or override log_iteration_summary()&quot;</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> must implement log_iteration() or override log_iteration_summary()"</span>
             <span class="n">env_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
         <span class="n">log_iteration</span><span class="p">(</span><span class="n">iteration</span><span class="p">)</span></div>

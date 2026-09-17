@@ -270,12 +270,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.llm.clients.anthropic_client</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Anthropic Claude client implementation.</span>
 
-<span class="sd">This module provides a client for using Anthropic&#39;s Claude models via their Messages API.</span>
+<span class="sd">This module provides a client for using Anthropic's Claude models via their Messages API.</span>
 <span class="sd">Supports tool use, extended thinking, and multi-turn conversations.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
@@ -286,29 +286,29 @@
 <div class="viewcode-block" id="AnthropicClient">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.anthropic_client.AnthropicClient">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AnthropicClient</span><span class="p">(</span><span class="n">AbstractClient</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Client for using Anthropic Claude API for LLM agents.</span>
 
-<span class="sd">    Provides the same interface as other clients but uses Anthropic&#39;s Messages API.</span>
+<span class="sd">    Provides the same interface as other clients but uses Anthropic's Messages API.</span>
 <span class="sd">    Supports Claude models including claude-3-5-sonnet, claude-opus-4, etc.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the Anthropic client.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Initialize the Anthropic client."""</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">anthropic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Anthropic</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
         <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-                <span class="s2">&quot;Anthropic client requires &#39;anthropic&#39; package. &quot;</span>
-                <span class="s2">&quot;Install with: pip install anthropic&quot;</span>
+                <span class="s2">"Anthropic client requires 'anthropic' package. "</span>
+                <span class="s2">"Install with: pip install anthropic"</span>
             <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
 
         <span class="n">load_dotenv</span><span class="p">(</span><span class="n">override</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ANTHROPIC_API_KEY&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"ANTHROPIC_API_KEY"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Anthropic API key not found. Set ANTHROPIC_API_KEY in .env file&quot;</span>
+                <span class="s2">"Anthropic API key not found. Set ANTHROPIC_API_KEY in .env file"</span>
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">Anthropic</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">)</span>
@@ -323,7 +323,7 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">round_num</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Set metadata context for logging purposes.</span>
 
 <span class="sd">        Args:</span>
@@ -331,12 +331,12 @@
 <span class="sd">            phase: Current simulation phase</span>
 <span class="sd">            iteration: Current iteration number</span>
 <span class="sd">            round_num: Current round number</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_meta_context</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;agent_name&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-            <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span>
-            <span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
-            <span class="s2">&quot;round_num&quot;</span><span class="p">:</span> <span class="n">round_num</span>
+            <span class="s2">"agent_name"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+            <span class="s2">"phase"</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span>
+            <span class="s2">"iteration"</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
+            <span class="s2">"round_num"</span><span class="p">:</span> <span class="n">round_num</span>
         <span class="p">}</span></div>
 
 
@@ -344,12 +344,12 @@
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.anthropic_client.AnthropicClient.get_usage">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_usage</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">current_usage</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accumulate usage statistics from response.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">&#39;usage&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">usage</span><span class="p">:</span>
-            <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">usage</span><span class="p">,</span> <span class="s1">&#39;input_tokens&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">usage</span><span class="p">,</span> <span class="s1">&#39;output_tokens&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">]</span>
+<span class="w">        </span><span class="sd">"""Accumulate usage statistics from response."""</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">'usage'</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">usage</span><span class="p">:</span>
+            <span class="n">current_usage</span><span class="p">[</span><span class="s2">"prompt_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">usage</span><span class="p">,</span> <span class="s1">'input_tokens'</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">current_usage</span><span class="p">[</span><span class="s2">"completion_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">usage</span><span class="p">,</span> <span class="s1">'output_tokens'</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">current_usage</span><span class="p">[</span><span class="s2">"total_tokens"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">current_usage</span><span class="p">[</span><span class="s2">"prompt_tokens"</span><span class="p">]</span> <span class="o">+</span> <span class="n">current_usage</span><span class="p">[</span><span class="s2">"completion_tokens"</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">current_usage</span></div>
 
@@ -358,12 +358,12 @@
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.anthropic_client.AnthropicClient.init_context">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">init_context</span><span class="p">(</span><span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Initialize context for Anthropic Messages API.</span>
 
 <span class="sd">        Note: Anthropic handles system instructions separately via the API parameter,</span>
 <span class="sd">        not as part of the message history. The system prompt should be passed</span>
-<span class="sd">        in params[&quot;system&quot;] when calling generate_response.</span>
+<span class="sd">        in params["system"] when calling generate_response.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            system_prompt: System instructions (stored in first message metadata)</span>
@@ -371,14 +371,14 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List of message dictionaries in Anthropic format</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># Store system prompt in first message metadata (like Gemini does)</span>
         <span class="c1"># It will be extracted and used as API parameter in generate_response</span>
         <span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">{</span>
-                <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">user_prompt</span><span class="p">,</span>
-                <span class="s2">&quot;_system_prompt&quot;</span><span class="p">:</span> <span class="n">system_prompt</span>  <span class="c1"># Store for later use</span>
+                <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
+                <span class="s2">"content"</span><span class="p">:</span> <span class="n">user_prompt</span><span class="p">,</span>
+                <span class="s2">"_system_prompt"</span><span class="p">:</span> <span class="n">system_prompt</span>  <span class="c1"># Store for later use</span>
             <span class="p">}</span>
         <span class="p">]</span>
         <span class="k">return</span> <span class="n">messages</span></div>
@@ -386,35 +386,35 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_extract_message_content</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Extract text content from Anthropic response.</span>
 
 <span class="sd">        Anthropic responses have structure: response.content (list of content blocks)</span>
-<span class="sd">        Each block can have type &#39;text&#39;, &#39;tool_use&#39;, or &#39;thinking&#39;.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+<span class="sd">        Each block can have type 'text', 'tool_use', or 'thinking'.</span>
+<span class="sd">        """</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">'content'</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
                 <span class="c1"># Extract text blocks (skip tool_use and thinking blocks)</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;text&#39;</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;text&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'text'</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'text'</span><span class="p">):</span>
                         <span class="n">content</span> <span class="o">+=</span> <span class="n">block</span><span class="o">.</span><span class="n">text</span>
         <span class="k">return</span> <span class="n">content</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_extract_thinking_content</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Extract thinking content from Anthropic response (for extended thinking mode).</span>
 
 <span class="sd">        Returns thinking blocks as separate content for logging/debugging.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">thinking</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+<span class="sd">        """</span>
+        <span class="n">thinking</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">'content'</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
                 <span class="c1"># Extract thinking blocks</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;thinking&#39;</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;thinking&#39;</span><span class="p">):</span>
-                        <span class="n">thinking</span> <span class="o">+=</span> <span class="n">block</span><span class="o">.</span><span class="n">thinking</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'thinking'</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'thinking'</span><span class="p">):</span>
+                        <span class="n">thinking</span> <span class="o">+=</span> <span class="n">block</span><span class="o">.</span><span class="n">thinking</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
         <span class="k">return</span> <span class="n">thinking</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
 
 <div class="viewcode-block" id="AnthropicClient.generate_response">
@@ -424,8 +424,8 @@
         <span class="nb">input</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Generate a response using Anthropic&#39;s Messages API.</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Generate a response using Anthropic's Messages API.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            input: List of message dictionaries in Anthropic format.</span>
@@ -435,30 +435,30 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Tuple of (response_object, response_text)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># Extract parameters</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;claude-sonnet-4-5&quot;</span><span class="p">)</span>
-        <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_output_tokens&quot;</span><span class="p">,</span> <span class="mi">4000</span><span class="p">)</span>
-        <span class="n">temperature</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
-        <span class="n">tools</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tools&quot;</span><span class="p">,</span> <span class="p">[])</span>
-        <span class="n">thinking</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thinking&quot;</span><span class="p">)</span>  <span class="c1"># Optional extended thinking config</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"claude-sonnet-4-5"</span><span class="p">)</span>
+        <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_tokens"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_output_tokens"</span><span class="p">,</span> <span class="mi">4000</span><span class="p">)</span>
+        <span class="n">temperature</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"temperature"</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
+        <span class="n">tools</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tools"</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">thinking</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"thinking"</span><span class="p">)</span>  <span class="c1"># Optional extended thinking config</span>
 
         <span class="c1"># Extract system prompt - check params first, then first message metadata</span>
-        <span class="n">system_prompt</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">system_prompt</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"system"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">system_prompt</span> <span class="ow">and</span> <span class="nb">input</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="n">system_prompt</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_system_prompt&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">system_prompt</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"_system_prompt"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
 
         <span class="c1"># Convert tools from OpenAI format to Anthropic format</span>
         <span class="n">anthropic_tools</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">tools</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;function&quot;</span><span class="p">:</span>
-                    <span class="n">func_def</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">,</span> <span class="p">{})</span>
-                    <span class="c1"># Anthropic uses &quot;input_schema&quot; instead of &quot;parameters&quot;</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"function"</span><span class="p">:</span>
+                    <span class="n">func_def</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function"</span><span class="p">,</span> <span class="p">{})</span>
+                    <span class="c1"># Anthropic uses "input_schema" instead of "parameters"</span>
                     <span class="n">anthropic_tools</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
-                        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">),</span>
-                        <span class="s2">&quot;input_schema&quot;</span><span class="p">:</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parameters&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                        <span class="s2">"name"</span><span class="p">:</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">),</span>
+                        <span class="s2">"description"</span><span class="p">:</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"description"</span><span class="p">),</span>
+                        <span class="s2">"input_schema"</span><span class="p">:</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"parameters"</span><span class="p">,</span> <span class="p">{})</span>
                     <span class="p">})</span>
 
         <span class="c1"># Prepare messages - filter out metadata (keys starting with _)</span>
@@ -466,8 +466,8 @@
         <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="nb">input</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="n">clean_msg</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">),</span>
-                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+                    <span class="s2">"role"</span><span class="p">:</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">),</span>
+                    <span class="s2">"content"</span><span class="p">:</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span>
                 <span class="p">}</span>
                 <span class="n">clean_messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">clean_msg</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
@@ -476,21 +476,21 @@
 
         <span class="c1"># Prepare API call parameters</span>
         <span class="n">api_params</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">model</span><span class="p">,</span>
-            <span class="s2">&quot;max_tokens&quot;</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">clean_messages</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="n">model</span><span class="p">,</span>
+            <span class="s2">"max_tokens"</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
+            <span class="s2">"messages"</span><span class="p">:</span> <span class="n">clean_messages</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="c1"># Add optional parameters</span>
         <span class="k">if</span> <span class="n">system_prompt</span><span class="p">:</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;system&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">system_prompt</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"system"</span><span class="p">]</span> <span class="o">=</span> <span class="n">system_prompt</span>
         <span class="k">if</span> <span class="n">temperature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;temperature&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">temperature</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"temperature"</span><span class="p">]</span> <span class="o">=</span> <span class="n">temperature</span>
         <span class="k">if</span> <span class="n">anthropic_tools</span><span class="p">:</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;tools&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">anthropic_tools</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"tools"</span><span class="p">]</span> <span class="o">=</span> <span class="n">anthropic_tools</span>
         <span class="k">if</span> <span class="n">thinking</span><span class="p">:</span>
             <span class="c1"># Extended thinking support for Claude 4 models</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;thinking&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">thinking</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"thinking"</span><span class="p">]</span> <span class="o">=</span> <span class="n">thinking</span>
 
         <span class="c1"># Make API call</span>
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">messages</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="o">**</span><span class="n">api_params</span><span class="p">)</span>
@@ -509,7 +509,7 @@
         <span class="n">context</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">execute_tool_callback</span><span class="p">:</span> <span class="n">Any</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Process tool calls from Anthropic response.</span>
 
 <span class="sd">        Parses response.content for tool_use blocks, executes them via callback,</span>
@@ -522,18 +522,18 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Tuple of (tools_executed_count, updated_context, tool_names_list)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">tool_calls_executed</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">step_tools</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># Check if response has content</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s1">'content'</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">tool_calls_executed</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">step_tools</span>
 
-        <span class="c1"># First, append the assistant&#39;s response to context (includes both text and tool_use blocks)</span>
+        <span class="c1"># First, append the assistant's response to context (includes both text and tool_use blocks)</span>
         <span class="n">assistant_message</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span>
+            <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"assistant"</span><span class="p">,</span>
+            <span class="s2">"content"</span><span class="p">:</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span>
         <span class="p">}</span>
         <span class="n">context</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">assistant_message</span><span class="p">)</span>
 
@@ -542,26 +542,26 @@
 
         <span class="c1"># Process each content block looking for tool_use</span>
         <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;tool_use&#39;</span><span class="p">:</span>
-                <span class="n">tool_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
-                <span class="n">tool_use_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">)</span> <span class="ow">and</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'tool_use'</span><span class="p">:</span>
+                <span class="n">tool_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'name'</span><span class="p">,</span> <span class="s1">'unknown'</span><span class="p">)</span>
+                <span class="n">tool_use_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'id'</span><span class="p">,</span> <span class="s1">'unknown'</span><span class="p">)</span>
 
                 <span class="c1"># Extract arguments (already a dict in Anthropic)</span>
-                <span class="n">args</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">&#39;input&#39;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="n">args</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s1">'input'</span><span class="p">,</span> <span class="p">{})</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                     <span class="n">args</span> <span class="o">=</span> <span class="p">{}</span>
 
                 <span class="c1"># Track tool call for trajectory</span>
-                <span class="n">step_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> -- </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">step_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> -- </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
                 <span class="c1"># Execute the tool</span>
                 <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">execute_tool_callback</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
 
                 <span class="c1"># Create tool_result block for this execution</span>
                 <span class="n">tool_result_block</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;tool_result&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;tool_use_id&quot;</span><span class="p">:</span> <span class="n">tool_use_id</span><span class="p">,</span>
-                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tool_result"</span><span class="p">,</span>
+                    <span class="s2">"tool_use_id"</span><span class="p">:</span> <span class="n">tool_use_id</span><span class="p">,</span>
+                    <span class="s2">"content"</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
                 <span class="p">}</span>
                 <span class="n">tool_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tool_result_block</span><span class="p">)</span>
 
@@ -570,8 +570,8 @@
         <span class="c1"># If any tools were executed, add a user message with all tool results</span>
         <span class="k">if</span> <span class="n">tool_results</span><span class="p">:</span>
             <span class="n">user_message</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">tool_results</span>
+                <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
+                <span class="s2">"content"</span><span class="p">:</span> <span class="n">tool_results</span>
             <span class="p">}</span>
             <span class="n">context</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">user_message</span><span class="p">)</span>
 

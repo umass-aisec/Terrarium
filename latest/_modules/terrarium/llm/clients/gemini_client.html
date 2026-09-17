@@ -270,12 +270,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.llm.clients.gemini_client</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Google Gemini client implementation.</span>
 
-<span class="sd">This module provides a client for using Google&#39;s Gemini models via the `google-genai` SDK.</span>
+<span class="sd">This module provides a client for using Google's Gemini models via the `google-genai` SDK.</span>
 <span class="sd">Supports tool use, multi-turn conversations, and various Gemini models.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
@@ -287,18 +287,18 @@
 <div class="viewcode-block" id="GeminiClient">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.gemini_client.GeminiClient">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GeminiClient</span><span class="p">(</span><span class="n">AbstractClient</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Client for using Google Gemini API for LLM agents.</span>
 
-<span class="sd">    Provides the same interface as other clients but uses Google&#39;s Generative AI API.</span>
+<span class="sd">    Provides the same interface as other clients but uses Google's Generative AI API.</span>
 <span class="sd">    Supports Gemini models including gemini-2.0-flash-exp, gemini-1.5-pro, etc.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the Gemini client.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Initialize the Gemini client."""</span>
         <span class="c1"># `google-genai` emits a noisy warning if both GOOGLE_API_KEY and GEMINI_API_KEY</span>
         <span class="c1"># are present in the environment, even when an explicit api_key is provided.</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;google_genai._api_client&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"google_genai._api_client"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">google</span><span class="w"> </span><span class="kn">import</span> <span class="n">genai</span>
@@ -306,60 +306,60 @@
             <span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
         <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-                <span class="s2">&quot;Gemini client requires &#39;google-genai&#39; package. &quot;</span>
-                <span class="s2">&quot;Install with: uv add google-genai (or pip install google-genai)&quot;</span>
+                <span class="s2">"Gemini client requires 'google-genai' package. "</span>
+                <span class="s2">"Install with: uv add google-genai (or pip install google-genai)"</span>
             <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
 
         <span class="n">load_dotenv</span><span class="p">(</span><span class="n">override</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">api_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GOOGLE_API_KEY&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GEMINI_API_KEY&quot;</span><span class="p">)</span>
+        <span class="n">api_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GOOGLE_API_KEY"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GEMINI_API_KEY"</span><span class="p">)</span>
 
         <span class="n">use_vertexai</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GOOGLE_GENAI_USE_VERTEXAI&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GOOGLE_GENAI_USE_VERTEXAI"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
             <span class="ow">in</span> <span class="p">{</span>
-                <span class="s2">&quot;1&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;yes&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;y&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;on&quot;</span><span class="p">,</span>
+                <span class="s2">"1"</span><span class="p">,</span>
+                <span class="s2">"true"</span><span class="p">,</span>
+                <span class="s2">"yes"</span><span class="p">,</span>
+                <span class="s2">"y"</span><span class="p">,</span>
+                <span class="s2">"on"</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">use_vertexai</span><span class="p">:</span>
-            <span class="n">project</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GOOGLE_CLOUD_PROJECT&quot;</span><span class="p">)</span>
-            <span class="n">location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GOOGLE_CLOUD_LOCATION&quot;</span><span class="p">)</span>
+            <span class="n">project</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GOOGLE_CLOUD_PROJECT"</span><span class="p">)</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GOOGLE_CLOUD_LOCATION"</span><span class="p">)</span>
             <span class="n">client_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;vertexai&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;http_options&quot;</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">HttpOptions</span><span class="p">(</span>
-                    <span class="n">api_version</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GOOGLE_GENAI_API_VERSION&quot;</span><span class="p">,</span> <span class="s2">&quot;v1&quot;</span><span class="p">)</span>
+                <span class="s2">"vertexai"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">"http_options"</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">HttpOptions</span><span class="p">(</span>
+                    <span class="n">api_version</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GOOGLE_GENAI_API_VERSION"</span><span class="p">,</span> <span class="s2">"v1"</span><span class="p">)</span>
                 <span class="p">),</span>
             <span class="p">}</span>
             <span class="k">if</span> <span class="n">project</span> <span class="ow">and</span> <span class="n">location</span><span class="p">:</span>
                 <span class="c1"># Full Vertex AI mode: project/location and API key are mutually</span>
                 <span class="c1"># exclusive in google-genai, so do not pass GOOGLE_API_KEY here.</span>
-                <span class="n">client_kwargs</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">project</span>
-                <span class="n">client_kwargs</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">location</span>
+                <span class="n">client_kwargs</span><span class="p">[</span><span class="s2">"project"</span><span class="p">]</span> <span class="o">=</span> <span class="n">project</span>
+                <span class="n">client_kwargs</span><span class="p">[</span><span class="s2">"location"</span><span class="p">]</span> <span class="o">=</span> <span class="n">location</span>
             <span class="k">elif</span> <span class="n">api_key</span><span class="p">:</span>
                 <span class="c1"># Vertex AI Express mode.</span>
-                <span class="n">client_kwargs</span><span class="p">[</span><span class="s2">&quot;api_key&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">api_key</span>
+                <span class="n">client_kwargs</span><span class="p">[</span><span class="s2">"api_key"</span><span class="p">]</span> <span class="o">=</span> <span class="n">api_key</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;Gemini Vertex AI is enabled. Set GOOGLE_CLOUD_PROJECT and &quot;</span>
-                    <span class="s2">&quot;GOOGLE_CLOUD_LOCATION, or provide GOOGLE_API_KEY for &quot;</span>
-                    <span class="s2">&quot;Vertex AI Express mode.&quot;</span>
+                    <span class="s2">"Gemini Vertex AI is enabled. Set GOOGLE_CLOUD_PROJECT and "</span>
+                    <span class="s2">"GOOGLE_CLOUD_LOCATION, or provide GOOGLE_API_KEY for "</span>
+                    <span class="s2">"Vertex AI Express mode."</span>
                 <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="o">**</span><span class="n">client_kwargs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;Gemini API key not found. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY in .env file&quot;</span>
+                    <span class="s2">"Gemini API key not found. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY in .env file"</span>
                 <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_using_vertexai</span> <span class="o">=</span> <span class="n">use_vertexai</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_google_cloud_project</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GOOGLE_CLOUD_PROJECT&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">use_vertexai</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GOOGLE_CLOUD_PROJECT"</span><span class="p">)</span> <span class="k">if</span> <span class="n">use_vertexai</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_google_cloud_location</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GOOGLE_CLOUD_LOCATION&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">use_vertexai</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GOOGLE_CLOUD_LOCATION"</span><span class="p">)</span> <span class="k">if</span> <span class="n">use_vertexai</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_meta_context</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># For logging metadata</span>
 
@@ -372,7 +372,7 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">round_num</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Set metadata context for logging purposes.</span>
 
 <span class="sd">        Args:</span>
@@ -380,12 +380,12 @@
 <span class="sd">            phase: Current simulation phase</span>
 <span class="sd">            iteration: Current iteration number</span>
 <span class="sd">            round_num: Current round number</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_meta_context</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;agent_name&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-            <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span>
-            <span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
-            <span class="s2">&quot;round_num&quot;</span><span class="p">:</span> <span class="n">round_num</span><span class="p">,</span>
+            <span class="s2">"agent_name"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+            <span class="s2">"phase"</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span>
+            <span class="s2">"iteration"</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
+            <span class="s2">"round_num"</span><span class="p">:</span> <span class="n">round_num</span><span class="p">,</span>
         <span class="p">}</span></div>
 
 
@@ -393,19 +393,19 @@
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.gemini_client.GeminiClient.get_usage">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_usage</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">current_usage</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accumulate usage statistics from response.&quot;&quot;&quot;</span>
-        <span class="n">usage</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;usage_metadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">"""Accumulate usage statistics from response."""</span>
+        <span class="n">usage</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"usage_metadata"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">usage</span><span class="p">:</span>
-            <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">usage</span><span class="p">,</span> <span class="s2">&quot;prompt_token_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span>
-                <span class="nb">getattr</span><span class="p">(</span><span class="n">usage</span><span class="p">,</span> <span class="s2">&quot;candidates_token_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+            <span class="n">current_usage</span><span class="p">[</span><span class="s2">"prompt_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">usage</span><span class="p">,</span> <span class="s2">"prompt_token_count"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">current_usage</span><span class="p">[</span><span class="s2">"completion_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">getattr</span><span class="p">(</span><span class="n">usage</span><span class="p">,</span> <span class="s2">"candidates_token_count"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
             <span class="p">)</span>
-            <span class="n">total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">usage</span><span class="p">,</span> <span class="s2">&quot;total_token_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">usage</span><span class="p">,</span> <span class="s2">"total_token_count"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">total</span><span class="p">:</span>
-                <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">total</span>
+                <span class="n">current_usage</span><span class="p">[</span><span class="s2">"total_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="n">total</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">]</span>
+                <span class="n">current_usage</span><span class="p">[</span><span class="s2">"total_tokens"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">current_usage</span><span class="p">[</span><span class="s2">"prompt_tokens"</span><span class="p">]</span> <span class="o">+</span> <span class="n">current_usage</span><span class="p">[</span><span class="s2">"completion_tokens"</span><span class="p">]</span>
                 <span class="p">)</span>
         <span class="k">return</span> <span class="n">current_usage</span></div>
 
@@ -414,12 +414,12 @@
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.gemini_client.GeminiClient.init_context">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">init_context</span><span class="p">(</span><span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Initialize context for Gemini API.</span>
 
 <span class="sd">        Note: Gemini handles system instructions separately via model initialization,</span>
 <span class="sd">        not as part of the message history. The system prompt should be passed</span>
-<span class="sd">        in params[&quot;system&quot;] when calling generate_response.</span>
+<span class="sd">        in params["system"] when calling generate_response.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            system_prompt: System instructions (will be included in first message for reference)</span>
@@ -427,14 +427,14 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List of message dictionaries in Gemini format</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Gemini doesn&#39;t include system prompt in messages - it goes in model config</span>
-        <span class="c1"># But we&#39;ll store it in the first message&#39;s metadata for consistency</span>
+<span class="sd">        """</span>
+        <span class="c1"># Gemini doesn't include system prompt in messages - it goes in model config</span>
+        <span class="c1"># But we'll store it in the first message's metadata for consistency</span>
         <span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">{</span>
-                <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;parts&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">user_prompt</span><span class="p">}],</span>
-                <span class="s2">&quot;_system_prompt&quot;</span><span class="p">:</span> <span class="n">system_prompt</span>  <span class="c1"># Store for later use</span>
+                <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
+                <span class="s2">"parts"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"text"</span><span class="p">:</span> <span class="n">user_prompt</span><span class="p">}],</span>
+                <span class="s2">"_system_prompt"</span><span class="p">:</span> <span class="n">system_prompt</span>  <span class="c1"># Store for later use</span>
             <span class="p">}</span>
         <span class="p">]</span>
         <span class="k">return</span> <span class="n">messages</span></div>
@@ -442,19 +442,19 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_extract_message_content</span><span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Extract text content from Gemini response.</span>
 
 <span class="sd">        Gemini responses have structure: response.candidates[0].content.parts[].</span>
 <span class="sd">        Each part can have either text or a function call.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;candidates&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">candidates</span><span class="p">:</span>
+<span class="sd">        """</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"candidates"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">candidates</span><span class="p">:</span>
             <span class="n">candidate</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">candidate</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="s2">&quot;parts&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">candidate</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="s2">"parts"</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
                 <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">candidate</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">parts</span><span class="p">:</span>
                     <span class="c1"># Only extract text parts, skip function_call parts</span>
-                    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
                         <span class="n">content</span> <span class="o">+=</span> <span class="n">part</span><span class="o">.</span><span class="n">text</span>
         <span class="k">return</span> <span class="n">content</span>
 
@@ -466,26 +466,26 @@
             <span class="k">return</span> <span class="n">part</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="k">if</span> <span class="s2">&quot;text&quot;</span> <span class="ow">in</span> <span class="n">part</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">types</span><span class="o">.</span><span class="n">Part</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">part</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="s2">"text"</span> <span class="ow">in</span> <span class="n">part</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">types</span><span class="o">.</span><span class="n">Part</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">part</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"text"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">))</span>
 
-            <span class="n">function_call</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function_call&quot;</span><span class="p">)</span>
+            <span class="n">function_call</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function_call"</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">function_call</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">types</span><span class="o">.</span><span class="n">Part</span><span class="p">(</span>
                     <span class="n">function_call</span><span class="o">=</span><span class="n">types</span><span class="o">.</span><span class="n">FunctionCall</span><span class="p">(</span>
-                        <span class="nb">id</span><span class="o">=</span><span class="n">function_call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span>
-                        <span class="n">name</span><span class="o">=</span><span class="n">function_call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
-                        <span class="n">args</span><span class="o">=</span><span class="n">function_call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;args&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{},</span>
+                        <span class="nb">id</span><span class="o">=</span><span class="n">function_call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">),</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">function_call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">),</span>
+                        <span class="n">args</span><span class="o">=</span><span class="n">function_call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"args"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{},</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
 
-            <span class="n">function_response</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function_response&quot;</span><span class="p">)</span>
+            <span class="n">function_response</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function_response"</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">function_response</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">types</span><span class="o">.</span><span class="n">Part</span><span class="p">(</span>
                     <span class="n">function_response</span><span class="o">=</span><span class="n">types</span><span class="o">.</span><span class="n">FunctionResponse</span><span class="p">(</span>
-                        <span class="nb">id</span><span class="o">=</span><span class="n">function_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span>
-                        <span class="n">name</span><span class="o">=</span><span class="n">function_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
-                        <span class="n">response</span><span class="o">=</span><span class="n">function_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;response&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{},</span>
+                        <span class="nb">id</span><span class="o">=</span><span class="n">function_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">),</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">function_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">),</span>
+                        <span class="n">response</span><span class="o">=</span><span class="n">function_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"response"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{},</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
 
@@ -499,8 +499,8 @@
             <span class="k">return</span> <span class="n">msg</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="n">role</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">)</span>
-            <span class="n">raw_parts</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parts&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+            <span class="n">role</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">)</span>
+            <span class="n">raw_parts</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"parts"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
             <span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">raw_part</span> <span class="ow">in</span> <span class="n">raw_parts</span><span class="p">:</span>
                 <span class="n">part</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_to_part</span><span class="p">(</span><span class="n">raw_part</span><span class="p">)</span>
@@ -520,28 +520,28 @@
         <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">tools</span> <span class="ow">or</span> <span class="p">[]:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="k">continue</span>
-            <span class="k">if</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;function&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"function"</span><span class="p">:</span>
                 <span class="k">continue</span>
 
-            <span class="n">func_def</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-            <span class="n">func_name</span> <span class="o">=</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+            <span class="n">func_def</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="n">func_name</span> <span class="o">=</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">func_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">func_name</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
                 <span class="k">continue</span>
 
             <span class="n">allowed_function_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">func_name</span><span class="p">)</span>
 
-            <span class="n">raw_parameters</span> <span class="o">=</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parameters&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">raw_parameters</span> <span class="o">=</span> <span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"parameters"</span><span class="p">,</span> <span class="p">{})</span>
             <span class="n">parameters</span> <span class="o">=</span> <span class="n">raw_parameters</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_parameters</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="n">parameters</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">raw_parameters</span><span class="p">)</span>
                 <span class="c1"># Gemini can hard-fail with MALFORMED_FUNCTION_CALL when required</span>
                 <span class="c1"># arguments are omitted. Validate ourselves instead of crashing.</span>
-                <span class="n">parameters</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;required&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">parameters</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"required"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
             <span class="n">function_declarations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="n">types</span><span class="o">.</span><span class="n">FunctionDeclaration</span><span class="p">(</span>
                     <span class="n">name</span><span class="o">=</span><span class="n">func_name</span><span class="p">,</span>
-                    <span class="n">description</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="n">description</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">func_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"description"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
                     <span class="n">parameters_json_schema</span><span class="o">=</span><span class="n">parameters</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="p">)</span>
@@ -558,13 +558,13 @@
         <span class="nb">input</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Generate a response using Google&#39;s Gemini API.</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Generate a response using Google's Gemini API.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            input: List of message dictionaries in Gemini format</span>
 <span class="sd">            params: Generation parameters including:</span>
-<span class="sd">                - model: Model name (e.g., &quot;gemini-2.0-flash-exp&quot;)</span>
+<span class="sd">                - model: Model name (e.g., "gemini-2.0-flash-exp")</span>
 <span class="sd">                - max_tokens: Maximum tokens to generate (max_output_tokens in Gemini)</span>
 <span class="sd">                - temperature: Sampling temperature</span>
 <span class="sd">                - tools: List of tool definitions</span>
@@ -572,23 +572,23 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Tuple of (response_object, response_text)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span>
 
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;gemini-2.0-flash-exp&quot;</span><span class="p">)</span>
-        <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_output_tokens&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
-        <span class="n">temperature</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"gemini-2.0-flash-exp"</span><span class="p">)</span>
+        <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_tokens"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_output_tokens"</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">temperature</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"temperature"</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
 
-        <span class="n">system_instruction</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">system_instruction</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"system"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">system_instruction</span> <span class="ow">and</span> <span class="nb">input</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="n">system_instruction</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_system_prompt&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">system_instruction</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"_system_prompt"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
 
-        <span class="n">converted_tools</span><span class="p">,</span> <span class="n">allowed_function_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_tools</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tools&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="n">converted_tools</span><span class="p">,</span> <span class="n">allowed_function_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_tools</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tools"</span><span class="p">,</span> <span class="p">[]))</span>
 
         <span class="n">tool_config</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">converted_tools</span> <span class="ow">and</span> <span class="n">allowed_function_names</span><span class="p">:</span>
             <span class="n">has_non_blackboard_tool</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
-                <span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;post_message&quot;</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">allowed_function_names</span>
+                <span class="n">name</span> <span class="o">!=</span> <span class="s2">"post_message"</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">allowed_function_names</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">has_non_blackboard_tool</span><span class="p">:</span>
                 <span class="n">tool_config</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">ToolConfig</span><span class="p">(</span>
@@ -611,8 +611,8 @@
             <span class="n">tools</span><span class="o">=</span><span class="n">converted_tools</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">tool_config</span><span class="o">=</span><span class="n">tool_config</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">thinking_config</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thinking_config&quot;</span><span class="p">)</span>
-        <span class="n">thinking_level</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thinking_level&quot;</span><span class="p">)</span>
+        <span class="n">thinking_config</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"thinking_config"</span><span class="p">)</span>
+        <span class="n">thinking_level</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"thinking_level"</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">thinking_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="n">generation_config</span><span class="o">.</span><span class="n">thinking_config</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">ThinkingConfig</span><span class="p">(</span><span class="o">**</span><span class="n">thinking_config</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">thinking_config</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">ThinkingConfig</span><span class="p">):</span>
@@ -635,7 +635,7 @@
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="p">(</span>
-            <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;candidates&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"candidates"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">finish_reason</span> <span class="o">==</span> <span class="n">types</span><span class="o">.</span><span class="n">FinishReason</span><span class="o">.</span><span class="n">MALFORMED_FUNCTION_CALL</span>
         <span class="p">):</span>
             <span class="c1"># Retry once without tool calling so we can still get a text response.</span>
@@ -662,7 +662,7 @@
         <span class="n">context</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">execute_tool_callback</span><span class="p">:</span> <span class="n">Any</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Process tool calls from Gemini response.</span>
 
 <span class="sd">        Parses response.candidates[0].content.parts for function_call items,</span>
@@ -675,18 +675,18 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Tuple of (tools_executed_count, updated_context, tool_names_list)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span>
 
         <span class="n">tool_calls_executed</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">step_tools</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;candidates&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"candidates"</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">tool_calls_executed</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">step_tools</span>
 
         <span class="n">candidate</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">candidate_content</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">candidate_content</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">candidate_content</span><span class="p">,</span> <span class="s2">&quot;parts&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">candidate_content</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">candidate_content</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">candidate_content</span><span class="p">,</span> <span class="s2">"parts"</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">tool_calls_executed</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">step_tools</span>
 
         <span class="c1"># Append the model response (includes both text and function calls).</span>
@@ -694,21 +694,21 @@
 
         <span class="n">function_response_parts</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">candidate_content</span><span class="o">.</span><span class="n">parts</span><span class="p">:</span>
-            <span class="n">function_call</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="s2">&quot;function_call&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">function_call</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="s2">"function_call"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">function_call</span><span class="p">:</span>
                 <span class="k">continue</span>
 
             <span class="n">tool_name</span> <span class="o">=</span> <span class="n">function_call</span><span class="o">.</span><span class="n">name</span>
             <span class="n">args</span> <span class="o">=</span> <span class="n">function_call</span><span class="o">.</span><span class="n">args</span> <span class="ow">or</span> <span class="p">{}</span>
 
-            <span class="n">step_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> -- </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">step_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> -- </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
             <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">execute_tool_callback</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
 
             <span class="n">function_response</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionResponse</span><span class="p">(</span>
                 <span class="nb">id</span><span class="o">=</span><span class="n">function_call</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
                 <span class="n">name</span><span class="o">=</span><span class="n">tool_name</span><span class="p">,</span>
-                <span class="n">response</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">},</span>
+                <span class="n">response</span><span class="o">=</span><span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">},</span>
             <span class="p">)</span>
 
             <span class="n">function_response_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">Part</span><span class="p">(</span><span class="n">function_response</span><span class="o">=</span><span class="n">function_response</span><span class="p">))</span>
@@ -716,7 +716,7 @@
             <span class="n">tool_calls_executed</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">if</span> <span class="n">function_response_parts</span><span class="p">:</span>
-            <span class="n">context</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">Content</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">parts</span><span class="o">=</span><span class="n">function_response_parts</span><span class="p">))</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">Content</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s2">"user"</span><span class="p">,</span> <span class="n">parts</span><span class="o">=</span><span class="n">function_response_parts</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">tool_calls_executed</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">step_tools</span></div>
 </div>

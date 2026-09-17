@@ -270,10 +270,11 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.communication_protocols.sequential</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Communication protocol for managing multi-agent interactions and phases.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.core.blackboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">Megaboard</span><span class="p">,</span> <span class="n">format_blackboard_events_for_prompt</span>
@@ -283,7 +284,10 @@
     <span class="n">instantiate_environment_tools</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.core.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">BlackboardLogger</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.compaction</span><span class="w"> </span><span class="kn">import</span> <span class="n">compact_events</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.compaction</span><span class="w"> </span><span class="kn">import</span> <span class="n">compact_events</span><span class="p">,</span> <span class="n">CompactionLogger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_client_instance</span><span class="p">,</span> <span class="n">get_generation_params</span><span class="p">,</span> <span class="n">get_model_name</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.agents.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAgent</span>
@@ -292,13 +296,13 @@
 <div class="viewcode-block" id="SequentialCommunicationProtocol">
 <a class="viewcode-back" href="../../../api/communication.html#terrarium.communication_protocols.sequential.SequentialCommunicationProtocol">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SequentialCommunicationProtocol</span><span class="p">(</span><span class="n">BaseCommunicationProtocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Manages the overall communication protocol.</span>
 
 <span class="sd">    This class is environment-agnostic and handles:</span>
 <span class="sd">    - Phase management (planning, execution)</span>
 <span class="sd">    - Agent turn ordering and iteration</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -307,7 +311,7 @@
         <span class="n">run_timestamp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"simulation"</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tool_logger</span> <span class="o">=</span> <span class="n">tool_logger</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_timestamp</span> <span class="o">=</span> <span class="n">run_timestamp</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_logger</span> <span class="o">=</span> <span class="n">BlackboardLogger</span><span class="p">(</span>
@@ -315,19 +319,79 @@
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_logger</span><span class="o">.</span><span class="n">clear_blackboard_logs</span><span class="p">()</span>
 
+        <span class="n">_compaction_config</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"llm"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"compaction"</span><span class="p">)</span>
+        <span class="n">_compaction_config</span> <span class="o">=</span> <span class="n">_compaction_config</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_compaction_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="c1"># Compaction is opt-in: with no llm.compaction block the agent sees the raw</span>
+        <span class="c1"># transcript, as it did before compaction existed. Without this, every</span>
+        <span class="c1"># environment that never configured compaction silently got lossy,</span>
+        <span class="c1"># LLM-summarized prompts once a transcript passed the default threshold.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compaction_enabled</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">_compaction_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compaction_logger</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compaction_enabled</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compaction_logger</span> <span class="o">=</span> <span class="n">CompactionLogger</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">run_timestamp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">run_timestamp</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compaction_logger</span><span class="o">.</span><span class="n">reset_log</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_pin_context</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">_compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"pin_context_events"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_token_threshold</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"token_threshold"</span><span class="p">,</span> <span class="mi">3000</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_keep_recent</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"keep_recent"</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_mechanism</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">_compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"mechanism"</span><span class="p">,</span> <span class="s2">"baseline"</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_extract_limit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"extract_limit"</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+        <span class="n">_evict_kinds</span> <span class="o">=</span> <span class="n">_compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"evict_kinds"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_evict_kinds</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">_evict_kinds</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_evict_kinds</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="c1"># Per-blackboard mutable state for mechanism="anchored" — carries the</span>
+        <span class="c1"># running summary across turns instead of re-summarizing everything.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_caches</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">megaboard</span> <span class="o">=</span> <span class="n">Megaboard</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment_tools</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_environment_tools_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_client</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_model_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_compaction_client_and_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">llm_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"llm"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">compaction_config</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"compaction"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">compaction_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">compaction_config</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_client</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_model_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_client</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_model_name</span>
+
+        <span class="n">compaction_provider</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="n">compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"provider"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"provider"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">compaction_provider</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_client</span> <span class="o">=</span> <span class="n">get_client_instance</span><span class="p">(</span><span class="n">compaction_config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_model_name</span> <span class="o">=</span> <span class="n">get_model_name</span><span class="p">(</span><span class="n">compaction_provider</span><span class="p">,</span> <span class="n">compaction_config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_params</span> <span class="o">=</span> <span class="n">get_generation_params</span><span class="p">(</span>
+                <span class="p">{</span><span class="o">**</span><span class="n">compaction_config</span><span class="p">,</span> <span class="s2">"provider"</span><span class="p">:</span> <span class="n">compaction_provider</span><span class="p">}</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">"Compaction client initialization failed; falling back to main agent client: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">exc</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_client</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_model_name</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_client</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_model_name</span>
 
 <div class="viewcode-block" id="SequentialCommunicationProtocol.bind_environment">
 <a class="viewcode-back" href="../../../api/communication.html#terrarium.communication_protocols.sequential.SequentialCommunicationProtocol.bind_environment">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">bind_environment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Bind a concrete environment instance and initialize its tool handlers.</span>
 
 <span class="sd">        This resets blackboards so each simulation run starts clean.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="n">environment</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">clear_blackboards</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment_tools</span> <span class="o">=</span> <span class="kc">None</span>
@@ -337,7 +401,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_environment_tools_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Environment must be set before using environment tools.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Environment must be set before using environment tools."</span><span class="p">)</span>
 
         <span class="n">env_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
         <span class="k">if</span> <span class="p">(</span>
@@ -383,7 +447,7 @@
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_tools</span><span class="o">.</span><span class="n">handle_tool_call</span><span class="p">(</span>
             <span class="n">tool_name</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">response</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">response</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">response</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">response</span><span class="p">}</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">blackboard_handle_tool_call</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -396,7 +460,7 @@
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">handle_tool_call</span><span class="p">(</span>
             <span class="n">tool_name</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">response</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">response</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">response</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">response</span><span class="p">}</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_all_blackboard_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">get_blackboard_string_ids</span><span class="p">()</span>
@@ -433,31 +497,78 @@
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="k">continue</span>
 
-            <span class="n">contexts</span><span class="p">[</span><span class="n">bb_id_str</span><span class="p">]</span> <span class="o">=</span> <span class="n">compact_events</span><span class="p">(</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">compaction_enabled</span><span class="p">:</span>
+                <span class="n">body</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span>
+                    <span class="n">events</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+                <span class="p">)</span>
+                <span class="n">contexts</span><span class="p">[</span><span class="n">bb_id_str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label_channel</span><span class="p">(</span><span class="n">bb_id_str</span><span class="p">,</span> <span class="n">bb_id_int</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">compaction_client</span> <span class="o">=</span> <span class="n">llm_client</span>
+            <span class="n">compaction_model_name</span> <span class="o">=</span> <span class="n">model_name</span>
+            <span class="n">compaction_params</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">override_client</span><span class="p">,</span> <span class="n">override_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_compaction_client_and_model</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">override_client</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">override_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">compaction_client</span> <span class="o">=</span> <span class="n">override_client</span>
+                <span class="n">compaction_model_name</span> <span class="o">=</span> <span class="n">override_model</span>
+                <span class="n">compaction_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compaction_params</span>
+
+            <span class="n">body</span> <span class="o">=</span> <span class="n">compact_events</span><span class="p">(</span>
                 <span class="n">events</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[],</span>
-                <span class="n">llm_client</span><span class="o">=</span><span class="n">llm_client</span><span class="p">,</span>
-                <span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span>
+                <span class="n">llm_client</span><span class="o">=</span><span class="n">compaction_client</span><span class="p">,</span>
+                <span class="n">model_name</span><span class="o">=</span><span class="n">compaction_model_name</span><span class="p">,</span>
+                <span class="n">token_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_compaction_token_threshold</span><span class="p">,</span>
+                <span class="n">keep_recent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_compaction_keep_recent</span><span class="p">,</span>
+                <span class="n">mechanism</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_compaction_mechanism</span><span class="p">,</span>
+                <span class="n">pin_context_events</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_compaction_pin_context</span><span class="p">,</span>
+                <span class="n">cache</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_compaction_caches</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">bb_id_int</span><span class="p">,</span> <span class="p">{}),</span>
+                <span class="n">evict_kinds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_compaction_evict_kinds</span><span class="p">,</span>
+                <span class="n">extract_limit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_compaction_extract_limit</span><span class="p">,</span>
+                <span class="n">compaction_logger</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compaction_logger</span><span class="p">,</span>
+                <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span>
+                <span class="n">blackboard_id</span><span class="o">=</span><span class="n">bb_id_int</span><span class="p">,</span>
+                <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">,</span>
+                <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
+                <span class="n">params</span><span class="o">=</span><span class="n">compaction_params</span><span class="p">,</span>
             <span class="p">)</span>
+            <span class="n">contexts</span><span class="p">[</span><span class="n">bb_id_str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label_channel</span><span class="p">(</span><span class="n">bb_id_str</span><span class="p">,</span> <span class="n">bb_id_int</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">contexts</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_label_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bb_id_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">bb_id_int</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Label a channel so agents can address a specific blackboard_id.</span>
+
+<span class="sd">        Only environments that let agents open private channels need the label;</span>
+<span class="sd">        other environments keep their channel history exactly as before.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_tools</span><span class="p">,</span> <span class="s2">"supports_private_channels"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">body</span>
+        <span class="n">blackboard</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">blackboards</span><span class="p">[</span><span class="n">bb_id_int</span><span class="p">]</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">"PRIVATE channel"</span>
+            <span class="k">if</span> <span class="n">blackboard</span><span class="o">.</span><span class="n">template</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"private_channel"</span><span class="p">)</span>
+            <span class="k">else</span> <span class="s2">"channel"</span>
+        <span class="p">)</span>
+        <span class="n">others</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">blackboard</span><span class="o">.</span><span class="n">agents</span> <span class="k">if</span> <span class="n">a</span> <span class="o">!=</span> <span class="n">agent_name</span><span class="p">))</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">bb_id_str</span><span class="si">}</span><span class="s2"> — with </span><span class="si">{</span><span class="n">others</span><span class="si">}</span><span class="s2">]</span><span class="se">\n</span><span class="si">{</span><span class="n">body</span><span class="si">}</span><span class="s2">"</span>
 
 <div class="viewcode-block" id="SequentialCommunicationProtocol.agent_planning_turn">
 <a class="viewcode-back" href="../../../api/communication.html#terrarium.communication_protocols.sequential.SequentialCommunicationProtocol.agent_planning_turn">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">agent_planning_turn</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">agent</span><span class="p">:</span> <span class="s2">&quot;BaseAgent&quot;</span><span class="p">,</span>
+        <span class="n">agent</span><span class="p">:</span> <span class="s2">"BaseAgent"</span><span class="p">,</span>
         <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">agent_context</span><span class="p">,</span>
         <span class="n">environment</span><span class="p">,</span>
         <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">planning_round</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle a single agent&#39;s planning turn.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Handle a single agent's planning turn."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="n">environment</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_environment_tools_initialized</span><span class="p">()</span>
         <span class="n">blackboard_contexts</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prefetch_blackboard_events</span><span class="p">(</span>
             <span class="n">agent_name</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">"planning"</span><span class="p">,</span>
             <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
             <span class="n">llm_client</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">client</span><span class="p">,</span>
             <span class="n">model_name</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
@@ -470,14 +581,14 @@
             <span class="n">blackboard_context</span><span class="o">=</span><span class="n">blackboard_contexts</span><span class="p">,</span>
             <span class="n">communication_protocol</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
             <span class="n">prompts</span><span class="o">=</span><span class="n">prompts</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">"planning"</span><span class="p">,</span>
             <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
             <span class="n">round_num</span><span class="o">=</span><span class="n">planning_round</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_blackboard_states</span><span class="p">(</span>
             <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">"planning"</span><span class="p">,</span>
             <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span>
             <span class="n">planning_round</span><span class="o">=</span><span class="n">planning_round</span><span class="p">,</span>
         <span class="p">)</span></div>
@@ -488,21 +599,21 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate_comm_network</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">participants</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Create a new blackboard and seed it with an initial context message.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            participants: List of agent names that can access this blackboard.</span>
-<span class="sd">            context: Initial context message to post as a system &quot;context&quot; event.</span>
+<span class="sd">            context: Initial context message to post as a system "context" event.</span>
 <span class="sd">            template: Optional blackboard template.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">blackboard_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">add_blackboard</span><span class="p">(</span>
             <span class="nb">list</span><span class="p">(</span><span class="n">participants</span><span class="p">),</span> <span class="n">template</span><span class="o">=</span><span class="n">template</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">post_system_message</span><span class="p">(</span>
             <span class="n">blackboard_id</span><span class="p">,</span>
-            <span class="s2">&quot;context&quot;</span><span class="p">,</span>
-            <span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">context</span><span class="p">},</span>
+            <span class="s2">"context"</span><span class="p">,</span>
+            <span class="p">{</span><span class="s2">"message"</span><span class="p">:</span> <span class="n">context</span><span class="p">},</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">blackboard_id</span></div>
 
@@ -511,20 +622,20 @@
 <a class="viewcode-back" href="../../../api/communication.html#terrarium.communication_protocols.sequential.SequentialCommunicationProtocol.agent_execution_turn">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">agent_execution_turn</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">agent</span><span class="p">:</span> <span class="s2">&quot;BaseAgent&quot;</span><span class="p">,</span>
+        <span class="n">agent</span><span class="p">:</span> <span class="s2">"BaseAgent"</span><span class="p">,</span>
         <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">agent_context</span><span class="p">,</span>
         <span class="n">environment</span><span class="p">,</span>
         <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle a single agent&#39;s execution turn with retry logic.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Handle a single agent's execution turn with retry logic.</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="n">environment</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_environment_tools_initialized</span><span class="p">()</span>
         <span class="n">blackboard_contexts</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prefetch_blackboard_events</span><span class="p">(</span>
             <span class="n">agent_name</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;execution&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">"execution"</span><span class="p">,</span>
             <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
             <span class="n">llm_client</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">client</span><span class="p">,</span>
             <span class="n">model_name</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
@@ -536,13 +647,13 @@
             <span class="n">blackboard_context</span><span class="o">=</span><span class="n">blackboard_contexts</span><span class="p">,</span>
             <span class="n">communication_protocol</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
             <span class="n">prompts</span><span class="o">=</span><span class="n">prompts</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;execution&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">"execution"</span><span class="p">,</span>
             <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_blackboard_states</span><span class="p">(</span>
             <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;execution&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">"execution"</span><span class="p">,</span>
             <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span>
         <span class="p">)</span></div>
 </div>

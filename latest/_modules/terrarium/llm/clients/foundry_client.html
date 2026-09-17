@@ -285,48 +285,48 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.openai_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAIClient</span>
 
-<span class="n">_DEFAULT_SCOPE</span> <span class="o">=</span> <span class="s2">&quot;https://ai.azure.com/.default&quot;</span>
+<span class="n">_DEFAULT_SCOPE</span> <span class="o">=</span> <span class="s2">"https://ai.azure.com/.default"</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_api_style</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">normalized</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+    <span class="n">normalized</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"-"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">)</span>
     <span class="n">aliases</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;chat&quot;</span><span class="p">:</span> <span class="s2">&quot;chat_completions&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;chat_completion&quot;</span><span class="p">:</span> <span class="s2">&quot;chat_completions&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;chat_completions&quot;</span><span class="p">:</span> <span class="s2">&quot;chat_completions&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;responses&quot;</span><span class="p">:</span> <span class="s2">&quot;responses&quot;</span><span class="p">,</span>
+        <span class="s2">"chat"</span><span class="p">:</span> <span class="s2">"chat_completions"</span><span class="p">,</span>
+        <span class="s2">"chat_completion"</span><span class="p">:</span> <span class="s2">"chat_completions"</span><span class="p">,</span>
+        <span class="s2">"chat_completions"</span><span class="p">:</span> <span class="s2">"chat_completions"</span><span class="p">,</span>
+        <span class="s2">"responses"</span><span class="p">:</span> <span class="s2">"responses"</span><span class="p">,</span>
     <span class="p">}</span>
-    <span class="n">resolved</span> <span class="o">=</span> <span class="n">aliases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">normalized</span> <span class="ow">or</span> <span class="s2">&quot;responses&quot;</span><span class="p">)</span>
+    <span class="n">resolved</span> <span class="o">=</span> <span class="n">aliases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">normalized</span> <span class="ow">or</span> <span class="s2">"responses"</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">resolved</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Invalid Foundry api_style. Expected one of: responses, chat_completions&quot;</span>
+            <span class="s2">"Invalid Foundry api_style. Expected one of: responses, chat_completions"</span>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">resolved</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_foundry_base_url_and_query</span><span class="p">(</span><span class="n">endpoint</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize Foundry endpoint styles supported by the OpenAI SDK client.&quot;&quot;&quot;</span>
-    <span class="n">raw</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">endpoint</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">"""Normalize Foundry endpoint styles supported by the OpenAI SDK client."""</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">endpoint</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
     <span class="n">parsed</span> <span class="o">=</span> <span class="n">urlsplit</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
     <span class="n">query</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">parse_qsl</span><span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">query</span><span class="p">,</span> <span class="n">keep_blank_values</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
-    <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">path</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">path</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;/models/chat/completions&quot;</span><span class="p">):</span>
-        <span class="n">base_path</span> <span class="o">=</span> <span class="n">path</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="s2">&quot;/chat/completions&quot;</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"/models/chat/completions"</span><span class="p">):</span>
+        <span class="n">base_path</span> <span class="o">=</span> <span class="n">path</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="s2">"/chat/completions"</span><span class="p">)]</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="n">urlunsplit</span><span class="p">((</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">base_path</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)),</span>
+            <span class="n">urlunsplit</span><span class="p">((</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">base_path</span> <span class="o">+</span> <span class="s2">"/"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
             <span class="n">query</span><span class="p">,</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;/models&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"/models"</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="n">urlunsplit</span><span class="p">((</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">path</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)),</span>
+            <span class="n">urlunsplit</span><span class="p">((</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">path</span> <span class="o">+</span> <span class="s2">"/"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
             <span class="n">query</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="p">(</span>
         <span class="n">normalize_openai_v1_base_url</span><span class="p">(</span>
-            <span class="n">urlunsplit</span><span class="p">((</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)),</span>
-            <span class="n">setting_name</span><span class="o">=</span><span class="s2">&quot;llm.foundry.project_endpoint&quot;</span><span class="p">,</span>
+            <span class="n">urlunsplit</span><span class="p">((</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span>
+            <span class="n">setting_name</span><span class="o">=</span><span class="s2">"llm.foundry.project_endpoint"</span><span class="p">,</span>
         <span class="p">),</span>
         <span class="n">query</span><span class="p">,</span>
     <span class="p">)</span>
@@ -341,16 +341,16 @@
     <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">continue</span>
-        <span class="k">if</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;function&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"function"</span><span class="p">:</span>
             <span class="k">continue</span>
-        <span class="n">func</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="n">normalized</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="p">{</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
-                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
-                    <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parameters&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">),</span>
+                    <span class="s2">"description"</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"description"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+                    <span class="s2">"parameters"</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"parameters"</span><span class="p">,</span> <span class="p">{}),</span>
                 <span class="p">},</span>
             <span class="p">}</span>
         <span class="p">)</span>
@@ -360,13 +360,13 @@
 <div class="viewcode-block" id="FoundryClient">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.foundry_client.FoundryClient">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FoundryClient</span><span class="p">(</span><span class="n">OpenAIClient</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Microsoft Foundry Models client via project endpoint + OpenAI SDK.</span>
 
 <span class="sd">    Supports:</span>
 <span class="sd">    - API key auth</span>
 <span class="sd">    - Microsoft Entra token auth (azure-identity)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -381,50 +381,50 @@
     <span class="p">):</span>
         <span class="n">load_dotenv</span><span class="p">(</span><span class="n">override</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="n">resolved_endpoint</span> <span class="o">=</span> <span class="n">project_endpoint</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AI_FOUNDRY_PROJECT_ENDPOINT&quot;</span><span class="p">)</span>
+        <span class="n">resolved_endpoint</span> <span class="o">=</span> <span class="n">project_endpoint</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"AI_FOUNDRY_PROJECT_ENDPOINT"</span><span class="p">)</span>
         <span class="n">base_url</span><span class="p">,</span> <span class="n">default_query</span> <span class="o">=</span> <span class="n">_normalize_foundry_base_url_and_query</span><span class="p">(</span>
             <span class="n">resolved_endpoint</span>
         <span class="p">)</span>
 
         <span class="n">resolved_mode</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">auth_mode</span>
-            <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AI_FOUNDRY_AUTH_MODE&quot;</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="p">(</span><span class="s2">&quot;api_key&quot;</span> <span class="k">if</span> <span class="p">(</span><span class="n">api_key</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AI_FOUNDRY_API_KEY&quot;</span><span class="p">))</span> <span class="k">else</span> <span class="s2">&quot;entra&quot;</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"AI_FOUNDRY_AUTH_MODE"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="s2">"api_key"</span> <span class="k">if</span> <span class="p">(</span><span class="n">api_key</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"AI_FOUNDRY_API_KEY"</span><span class="p">))</span> <span class="k">else</span> <span class="s2">"entra"</span><span class="p">)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="n">resolved_mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;api_key&quot;</span><span class="p">,</span> <span class="s2">&quot;entra&quot;</span><span class="p">}:</span>
+        <span class="k">if</span> <span class="n">resolved_mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"api_key"</span><span class="p">,</span> <span class="s2">"entra"</span><span class="p">}:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Invalid Foundry auth mode. Expected one of: api_key, entra&quot;</span>
+                <span class="s2">"Invalid Foundry auth mode. Expected one of: api_key, entra"</span>
             <span class="p">)</span>
 
         <span class="n">resolved_api_key</span><span class="p">:</span> <span class="n">Any</span>
-        <span class="k">if</span> <span class="n">resolved_mode</span> <span class="o">==</span> <span class="s2">&quot;entra&quot;</span><span class="p">:</span>
-            <span class="n">scope</span> <span class="o">=</span> <span class="p">(</span><span class="n">entra_scope</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AI_FOUNDRY_ENTRA_SCOPE&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_DEFAULT_SCOPE</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">resolved_mode</span> <span class="o">==</span> <span class="s2">"entra"</span><span class="p">:</span>
+            <span class="n">scope</span> <span class="o">=</span> <span class="p">(</span><span class="n">entra_scope</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"AI_FOUNDRY_ENTRA_SCOPE"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_DEFAULT_SCOPE</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
             <span class="n">resolved_api_key</span> <span class="o">=</span> <span class="n">build_entra_token_provider</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">resolved_api_key</span> <span class="o">=</span> <span class="n">api_key</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AI_FOUNDRY_API_KEY&quot;</span><span class="p">)</span>
+            <span class="n">resolved_api_key</span> <span class="o">=</span> <span class="n">api_key</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"AI_FOUNDRY_API_KEY"</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">=</span> <span class="n">_normalize_api_style</span><span class="p">(</span>
-            <span class="n">api_style</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AI_FOUNDRY_API_STYLE&quot;</span><span class="p">)</span>
+            <span class="n">api_style</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"AI_FOUNDRY_API_STYLE"</span><span class="p">)</span>
         <span class="p">)</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">api_key</span><span class="o">=</span><span class="n">resolved_api_key</span><span class="p">,</span>
-            <span class="n">api_key_env_var</span><span class="o">=</span><span class="s2">&quot;AI_FOUNDRY_API_KEY&quot;</span><span class="p">,</span>
+            <span class="n">api_key_env_var</span><span class="o">=</span><span class="s2">"AI_FOUNDRY_API_KEY"</span><span class="p">,</span>
             <span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span>
             <span class="n">default_query</span><span class="o">=</span><span class="n">default_query</span><span class="p">,</span>
             <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="s2">&quot;Microsoft Foundry&quot;</span><span class="p">,</span>
+            <span class="n">provider_name</span><span class="o">=</span><span class="s2">"Microsoft Foundry"</span><span class="p">,</span>
             <span class="n">capability_model</span><span class="o">=</span><span class="n">base_model</span><span class="p">,</span>
         <span class="p">)</span>
 
 <div class="viewcode-block" id="FoundryClient.init_context">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.foundry_client.FoundryClient.init_context">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">init_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">==</span> <span class="s2">&quot;chat_completions&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">==</span> <span class="s2">"chat_completions"</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span>
-                <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">system_prompt</span><span class="p">},</span>
-                <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">user_prompt</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"system"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="n">system_prompt</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="n">user_prompt</span><span class="p">},</span>
             <span class="p">]</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">init_context</span><span class="p">(</span><span class="n">system_prompt</span><span class="p">,</span> <span class="n">user_prompt</span><span class="p">)</span></div>
 
@@ -432,34 +432,34 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_usage</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">current_usage</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">!=</span> <span class="s2">&quot;chat_completions&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">!=</span> <span class="s2">"chat_completions"</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_usage</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">current_usage</span><span class="p">)</span>
 
-        <span class="n">usage</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;usage&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-        <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span>
-            <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">usage</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"usage"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">current_usage</span><span class="p">[</span><span class="s2">"prompt_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"prompt_tokens"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">current_usage</span><span class="p">[</span><span class="s2">"completion_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span>
+            <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"completion_tokens"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
         <span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;total_tokens&quot;</span> <span class="ow">in</span> <span class="n">usage</span><span class="p">:</span>
-            <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">"total_tokens"</span> <span class="ow">in</span> <span class="n">usage</span><span class="p">:</span>
+            <span class="n">current_usage</span><span class="p">[</span><span class="s2">"total_tokens"</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"total_tokens"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">current_usage</span><span class="p">[</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">]</span>
+            <span class="n">current_usage</span><span class="p">[</span><span class="s2">"total_tokens"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">current_usage</span><span class="p">[</span><span class="s2">"prompt_tokens"</span><span class="p">]</span> <span class="o">+</span> <span class="n">current_usage</span><span class="p">[</span><span class="s2">"completion_tokens"</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">current_usage</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_extract_chat_message_content</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">content</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">content</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
             <span class="n">parts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span>
-                    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
-            <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
-        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"text"</span><span class="p">:</span>
+                    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"text"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+            <span class="k">return</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">""</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_sanitize_chat_tool_call</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">call</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
@@ -467,31 +467,31 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">call_dict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="n">function_block</span> <span class="o">=</span> <span class="n">call_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">function_block</span> <span class="o">=</span> <span class="n">call_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">function_block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="n">tool_name</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="n">tool_name</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">tool_name</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="n">arguments</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;arguments&quot;</span><span class="p">)</span>
+        <span class="n">arguments</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"arguments"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arguments</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">arguments</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">arguments</span> <span class="k">if</span> <span class="n">arguments</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{})</span>
             <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-                <span class="n">arguments</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span>
+                <span class="n">arguments</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{}</span><span class="s2">"</span>
 
         <span class="n">sanitized</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">tool_name</span><span class="p">,</span>
-                <span class="s2">&quot;arguments&quot;</span><span class="p">:</span> <span class="n">arguments</span><span class="p">,</span>
+            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+            <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="n">tool_name</span><span class="p">,</span>
+                <span class="s2">"arguments"</span><span class="p">:</span> <span class="n">arguments</span><span class="p">,</span>
             <span class="p">},</span>
         <span class="p">}</span>
-        <span class="n">call_id</span> <span class="o">=</span> <span class="n">call_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+        <span class="n">call_id</span> <span class="o">=</span> <span class="n">call_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">call_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">call_id</span><span class="p">:</span>
-            <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">call_id</span>
+            <span class="n">sanitized</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">call_id</span>
         <span class="k">return</span> <span class="n">sanitized</span>
 
     <span class="nd">@classmethod</span>
@@ -500,43 +500,43 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message_dict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="n">role</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">)</span>
+        <span class="n">role</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">role</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="n">content</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_normalize_structured_value</span><span class="p">(</span><span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">))</span>
-        <span class="n">sanitized</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="n">role</span><span class="p">}</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_normalize_structured_value</span><span class="p">(</span><span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">))</span>
+        <span class="n">sanitized</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"role"</span><span class="p">:</span> <span class="n">role</span><span class="p">}</span>
 
-        <span class="k">if</span> <span class="n">role</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;developer&quot;</span><span class="p">}:</span>
-            <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">content</span> <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">role</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"system"</span><span class="p">,</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"developer"</span><span class="p">}:</span>
+            <span class="n">sanitized</span><span class="p">[</span><span class="s2">"content"</span><span class="p">]</span> <span class="o">=</span> <span class="n">content</span> <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name</span><span class="p">:</span>
-                <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+                <span class="n">sanitized</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
             <span class="k">return</span> <span class="n">sanitized</span>
 
-        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">&quot;assistant&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">"assistant"</span><span class="p">:</span>
             <span class="n">tool_calls</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+            <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_calls"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
                 <span class="n">sanitized_call</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_sanitize_chat_tool_call</span><span class="p">(</span><span class="n">call</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">sanitized_call</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">tool_calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sanitized_call</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">tool_calls</span><span class="p">:</span>
-                <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">content</span> <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                <span class="n">sanitized</span><span class="p">[</span><span class="s2">"content"</span><span class="p">]</span> <span class="o">=</span> <span class="n">content</span> <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span>
             <span class="k">if</span> <span class="n">tool_calls</span><span class="p">:</span>
-                <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tool_calls</span>
+                <span class="n">sanitized</span><span class="p">[</span><span class="s2">"tool_calls"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tool_calls</span>
 
-            <span class="n">name</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name</span><span class="p">:</span>
-                <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+                <span class="n">sanitized</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
             <span class="k">return</span> <span class="n">sanitized</span>
 
-        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">&quot;tool&quot;</span><span class="p">:</span>
-            <span class="n">tool_call_id</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_call_id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">"tool"</span><span class="p">:</span>
+            <span class="n">tool_call_id</span> <span class="o">=</span> <span class="n">message_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_call_id"</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tool_call_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">tool_call_id</span><span class="p">:</span>
                 <span class="k">return</span> <span class="kc">None</span>
-            <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;tool_call_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tool_call_id</span>
-            <span class="n">sanitized</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">content</span> <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">sanitized</span><span class="p">[</span><span class="s2">"tool_call_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tool_call_id</span>
+            <span class="n">sanitized</span><span class="p">[</span><span class="s2">"content"</span><span class="p">]</span> <span class="o">=</span> <span class="n">content</span> <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span>
             <span class="k">return</span> <span class="n">sanitized</span>
 
         <span class="k">return</span> <span class="kc">None</span>
@@ -566,7 +566,7 @@
                 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
                 <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="s2">&quot;Foundry chat request failed (attempt </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">, status=</span><span class="si">%s</span><span class="s2">): </span><span class="si">%s</span><span class="s2">; backing off and retrying&quot;</span><span class="p">,</span>
+                    <span class="s2">"Foundry chat request failed (attempt </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">, status=</span><span class="si">%s</span><span class="s2">): </span><span class="si">%s</span><span class="s2">; backing off and retrying"</span><span class="p">,</span>
                     <span class="n">attempt</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_max_retries</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
                     <span class="n">status</span><span class="p">,</span>
@@ -574,7 +574,7 @@
                 <span class="p">)</span>
         <span class="k">if</span> <span class="n">last_exc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
             <span class="k">raise</span> <span class="n">last_exc</span>
-        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Foundry chat retries exhausted without exception&quot;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">"Foundry chat retries exhausted without exception"</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
 
 <div class="viewcode-block" id="FoundryClient.generate_response">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.foundry_client.FoundryClient.generate_response">[docs]</a>
@@ -583,50 +583,50 @@
         <span class="nb">input</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">!=</span> <span class="s2">&quot;chat_completions&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">!=</span> <span class="s2">"chat_completions"</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">generate_response</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
 
         <span class="n">capability_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_capability_model</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
         <span class="n">sanitized_messages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sanitize_chat_messages</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
         <span class="n">api_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">),</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">sanitized_messages</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">),</span>
+            <span class="s2">"messages"</span><span class="p">:</span> <span class="n">sanitized_messages</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_completion_tokens&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;max_output_tokens&quot;</span>
-        <span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
+        <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_completion_tokens"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"max_output_tokens"</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_tokens"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">max_tokens</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="s2">&quot;gpt-5&quot;</span> <span class="ow">in</span> <span class="n">capability_model</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-                <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;max_completion_tokens&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_tokens</span>
+            <span class="k">if</span> <span class="s2">"gpt-5"</span> <span class="ow">in</span> <span class="n">capability_model</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="n">api_params</span><span class="p">[</span><span class="s2">"max_completion_tokens"</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_tokens</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_tokens</span>
+                <span class="n">api_params</span><span class="p">[</span><span class="s2">"max_tokens"</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_tokens</span>
 
-        <span class="n">temperature</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">)</span>
+        <span class="n">temperature</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"temperature"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">temperature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_is_reasoning_model</span><span class="p">(</span><span class="n">capability_model</span><span class="p">)</span>
             <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_temperature_restrictions</span><span class="p">(</span><span class="n">capability_model</span><span class="p">)</span>
         <span class="p">):</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;temperature&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">temperature</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"temperature"</span><span class="p">]</span> <span class="o">=</span> <span class="n">temperature</span>
 
-        <span class="n">converted_tools</span> <span class="o">=</span> <span class="n">_convert_tools_for_chat</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tools&quot;</span><span class="p">))</span>
+        <span class="n">converted_tools</span> <span class="o">=</span> <span class="n">_convert_tools_for_chat</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tools"</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">converted_tools</span><span class="p">:</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;tools&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">converted_tools</span>
-        <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_choice&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;tool_choice&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_choice&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parallel_tool_calls&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">api_params</span><span class="p">[</span><span class="s2">&quot;parallel_tool_calls&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parallel_tool_calls&quot;</span><span class="p">)</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"tools"</span><span class="p">]</span> <span class="o">=</span> <span class="n">converted_tools</span>
+        <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_choice"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"tool_choice"</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_choice"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"parallel_tool_calls"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">api_params</span><span class="p">[</span><span class="s2">"parallel_tool_calls"</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"parallel_tool_calls"</span><span class="p">)</span>
 
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_chat_completions_create_with_retries</span><span class="p">(</span><span class="n">api_params</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;model_dump&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"model_dump"</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
                 <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">response_dict</span> <span class="o">=</span> <span class="n">response</span>
-        <span class="n">choices</span> <span class="o">=</span> <span class="n">response_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;choices&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
-        <span class="n">first_message</span> <span class="o">=</span> <span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">choices</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">}</span>
+        <span class="n">choices</span> <span class="o">=</span> <span class="n">response_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"choices"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+        <span class="n">first_message</span> <span class="o">=</span> <span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"message"</span><span class="p">)</span> <span class="k">if</span> <span class="n">choices</span> <span class="k">else</span> <span class="p">{</span><span class="s2">"content"</span><span class="p">:</span> <span class="s2">""</span><span class="p">}</span>
         <span class="n">response_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_chat_message_content</span><span class="p">(</span><span class="n">first_message</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">response_dict</span><span class="p">,</span> <span class="n">response_str</span></div>
 
@@ -639,40 +639,40 @@
         <span class="n">context</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">execute_tool_callback</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">!=</span> <span class="s2">&quot;chat_completions&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_api_style</span> <span class="o">!=</span> <span class="s2">"chat_completions"</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">process_tool_calls</span><span class="p">(</span>
                 <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
                 <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
                 <span class="n">execute_tool_callback</span><span class="o">=</span><span class="n">execute_tool_callback</span><span class="p">,</span>
             <span class="p">)</span>
 
-        <span class="n">choices</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;choices&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+        <span class="n">choices</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"choices"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">choices</span><span class="p">:</span>
             <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="p">[]</span>
 
-        <span class="n">message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sanitize_chat_message</span><span class="p">(</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sanitize_chat_message</span><span class="p">(</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"message"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span>
         <span class="k">if</span> <span class="n">message</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">}</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"assistant"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">""</span><span class="p">}</span>
         <span class="n">context</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-        <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+        <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_calls"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
         <span class="n">tool_calls_executed</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">step_tools</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">tool_calls</span><span class="p">:</span>
-            <span class="n">function_block</span> <span class="o">=</span> <span class="n">call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-            <span class="n">tool_name</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown_tool&quot;</span><span class="p">)</span>
-            <span class="n">arguments_raw</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;arguments&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span>
+            <span class="n">function_block</span> <span class="o">=</span> <span class="n">call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="n">tool_name</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"unknown_tool"</span><span class="p">)</span>
+            <span class="n">arguments_raw</span> <span class="o">=</span> <span class="n">function_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"arguments"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"</span><span class="si">{}</span><span class="s2">"</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">arguments</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">arguments_raw</span><span class="p">)</span>
             <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
                 <span class="n">arguments</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="n">step_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> -- </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">step_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> -- </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">execute_tool_callback</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span>
             <span class="n">context</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;tool_call_id&quot;</span><span class="p">:</span> <span class="n">call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span>
-                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">),</span>
+                    <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"tool"</span><span class="p">,</span>
+                    <span class="s2">"tool_call_id"</span><span class="p">:</span> <span class="n">call</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">),</span>
+                    <span class="s2">"content"</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">),</span>
                 <span class="p">}</span>
             <span class="p">)</span>
             <span class="n">tool_calls_executed</span> <span class="o">+=</span> <span class="mi">1</span>

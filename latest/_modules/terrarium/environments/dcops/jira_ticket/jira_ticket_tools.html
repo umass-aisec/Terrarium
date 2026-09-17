@@ -276,7 +276,7 @@
 <div class="viewcode-block" id="JiraTicketTools">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.jira_ticket.jira_ticket_tools.JiraTicketTools">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">JiraTicketTools</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tools for JiraTicket task assignment.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Tools for JiraTicket task assignment."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blackboard_manager</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span> <span class="o">=</span> <span class="n">blackboard_manager</span>
@@ -285,29 +285,29 @@
 <div class="viewcode-block" id="JiraTicketTools.get_tool_names">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.jira_ticket.jira_ticket_tools.JiraTicketTools.get_tool_names">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tool_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;assign_task&quot;</span><span class="p">}</span></div>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"assign_task"</span><span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="JiraTicketTools.get_tools">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.jira_ticket.jira_ticket_tools.JiraTicketTools.get_tools">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tools</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">!=</span> <span class="s2">&quot;execution&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">!=</span> <span class="s2">"execution"</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="p">{</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;assign_task&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Claim a task id (or use &#39;skip&#39; to skip).&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
-                                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Task id from your task list (or &#39;skip&#39;).&quot;</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"assign_task"</span><span class="p">,</span>
+                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Claim a task id (or use 'skip' to skip)."</span><span class="p">,</span>
+                    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                        <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"task_id"</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span>
+                                <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Task id from your task list (or 'skip')."</span><span class="p">,</span>
                             <span class="p">}</span>
                         <span class="p">},</span>
-                        <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">],</span>
+                        <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"task_id"</span><span class="p">],</span>
                     <span class="p">},</span>
                 <span class="p">},</span>
             <span class="p">}</span>
@@ -325,61 +325,61 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Environment not initialized for tools&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"Environment not initialized for tools"</span><span class="p">}</span>
 
         <span class="n">tasks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">tasks</span>
         <span class="n">assignment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span>
         <span class="n">agent_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">agent_names</span>
 
         <span class="k">if</span> <span class="n">agent_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">agent_names</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">}</span>
 
-        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;assign_task&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Unknown action type: </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;action&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"action"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"assign_task"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Unknown action type: </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'action'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
 
         <span class="k">if</span> <span class="n">agent_name</span> <span class="ow">in</span> <span class="n">assignment</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> already assigned&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> already assigned"</span><span class="p">}</span>
 
-        <span class="n">task_id</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">)</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"task_id"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;task_id is required&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"task_id is required"</span><span class="p">}</span>
 
         <span class="n">task_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">task_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;idle&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">}:</span>
+        <span class="k">if</span> <span class="n">task_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"idle"</span><span class="p">,</span> <span class="s2">"none"</span><span class="p">}:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Use task_id=&#39;skip&#39; to skip (only &#39;skip&#39; and valid task ids are accepted).&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;suggestions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Use task_id=&#39;skip&#39; or choose a task_id from your TASKS list.&quot;</span><span class="p">],</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span>
+                <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"Use task_id='skip' to skip (only 'skip' and valid task ids are accepted)."</span><span class="p">,</span>
+                <span class="s2">"suggestions"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"Use task_id='skip' or choose a task_id from your TASKS list."</span><span class="p">],</span>
             <span class="p">}</span>
-        <span class="k">if</span> <span class="n">task_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;skip&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">task_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"skip"</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;agent&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-                <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;skip&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;total_assigned&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-                <span class="s2">&quot;remaining_agents&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-                <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+                <span class="s2">"agent"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+                <span class="s2">"task_id"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"skip"</span><span class="p">,</span>
+                <span class="s2">"total_assigned"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+                <span class="s2">"remaining_agents"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+                <span class="s2">"joint_reward"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
             <span class="p">}</span>
-            <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
+            <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">task_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
                 <span class="k">return</span> <span class="p">{</span>
-                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Unknown task_id </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;suggestions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Choose a task_id from your TASKS list or use &#39;skip&#39;.&quot;</span><span class="p">],</span>
+                    <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span>
+                    <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Unknown task_id </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="s2">"suggestions"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"Choose a task_id from your TASKS list or use 'skip'."</span><span class="p">],</span>
                 <span class="p">}</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_id</span>
             <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;agent&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-                <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
-                <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">tasks</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">{}),</span>
-                <span class="s2">&quot;total_assigned&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-                <span class="s2">&quot;remaining_agents&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-                <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+                <span class="s2">"agent"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+                <span class="s2">"task_id"</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
+                <span class="s2">"task"</span><span class="p">:</span> <span class="n">tasks</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">{}),</span>
+                <span class="s2">"total_assigned"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+                <span class="s2">"remaining_agents"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+                <span class="s2">"joint_reward"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
             <span class="p">}</span>
-            <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
+            <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
 
         <span class="k">if</span> <span class="n">log_to_blackboards</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span><span class="o">.</span><span class="n">log_action_to_blackboards</span><span class="p">(</span>
@@ -399,14 +399,14 @@
         <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">!=</span> <span class="s2">&quot;assign_task&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;JiraTicket environment does not support tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">!=</span> <span class="s2">"assign_task"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"JiraTicket environment does not support tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
 
-        <span class="n">task_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">)</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"task_id"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;task_id is required for assign_task&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"task_id is required for assign_task"</span><span class="p">}</span>
 
-        <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;assign_task&quot;</span><span class="p">,</span> <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">}</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"assign_task"</span><span class="p">,</span> <span class="s2">"task_id"</span><span class="p">:</span> <span class="n">task_id</span><span class="p">}</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span>
             <span class="n">agent_name</span><span class="p">,</span>
             <span class="n">action</span><span class="p">,</span>

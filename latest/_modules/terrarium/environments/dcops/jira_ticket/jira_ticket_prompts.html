@@ -280,7 +280,7 @@
 <div class="viewcode-block" id="JiraTicketPrompts">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.jira_ticket.jira_ticket_prompts.JiraTicketPrompts">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">JiraTicketPrompts</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prompt builder for the JiraTicket DCOP environment.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Prompt builder for the JiraTicket DCOP environment."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">AbstractEnvironment</span><span class="p">,</span> <span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prompt_logger</span> <span class="o">=</span> <span class="n">PromptLogger</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">env</span><span class="o">.</span><span class="n">current_seed</span><span class="p">,</span> <span class="n">full_config</span><span class="p">)</span>
@@ -289,40 +289,40 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">tool_instruction_data</span> <span class="o">=</span> <span class="n">build_vllm_tool_instructions</span><span class="p">(</span>
             <span class="n">full_config</span><span class="p">,</span>
             <span class="n">execution_tool_lines</span><span class="o">=</span><span class="p">[</span>
-                <span class="s2">&quot;- assign_task(task_id: str): Claim a task id (or use &#39;skip&#39; to skip).&quot;</span><span class="p">,</span>
+                <span class="s2">"- assign_task(task_id: str): Claim a task id (or use 'skip' to skip)."</span><span class="p">,</span>
             <span class="p">],</span>
-            <span class="n">planning_header</span><span class="o">=</span><span class="s2">&quot;Planning phase tools (coordination only):&quot;</span><span class="p">,</span>
-            <span class="n">execution_header</span><span class="o">=</span><span class="s2">&quot;Execution phase tools (blackboards + task selection):&quot;</span><span class="p">,</span>
+            <span class="n">planning_header</span><span class="o">=</span><span class="s2">"Planning phase tools (coordination only):"</span><span class="p">,</span>
+            <span class="n">execution_header</span><span class="o">=</span><span class="s2">"Execution phase tools (blackboards + task selection):"</span><span class="p">,</span>
             <span class="n">system_note</span><span class="o">=</span><span class="p">(</span>
-                <span class="s2">&quot;Planning: Use post_message() to communicate with other agents.</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="s2">&quot;Execution: assign_task becomes available in addition to blackboard tools.&quot;</span>
+                <span class="s2">"Planning: Use post_message() to communicate with other agents.</span><span class="se">\n</span><span class="s2">"</span>
+                <span class="s2">"Execution: assign_task becomes available in addition to blackboard tools."</span>
             <span class="p">),</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_system_prompt</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="n">base_prompt</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="s2">&quot;You are coordinating sprint task assignments (JIRA-like tickets).</span><span class="se">\n\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;PHASES:</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- Planning Phase: use post_message() to communicate with other agents; do not commit assignments yet. &quot;</span>
-            <span class="s2">&quot;Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- Execution Phase: commit your final task choice using assign_task. You MUST call assign_task during execution.</span><span class="se">\n\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;RULES:</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- Each agent chooses at most one task (or &#39;skip&#39;).</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- No two agents should pick the same task.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- Higher-priority tasks are worth more reward when completed.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- Objective: maximize tasks completed, then prefer higher-priority tasks, then minimize total cost.</span><span class="se">\n\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;SCORING (joint score; higher is better):</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- joint_score = tasks_done_bonus * tasks_done + priority_bonus * priority_sum - total_cost - violation_penalty * violations.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- tasks_done_bonus / priority_bonus / violation_penalty are fixed weights.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- tasks_done: number of agents who claim a feasible task (not &#39;skip&#39;).</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- priority_sum: sum of priority weights for claimed tasks (low=0.25, medium=0.5, high=0.75, critical=1.0).</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- total_cost: sum of each agent&#39;s private cost for their claimed task; costs increase with task effort and overload beyond your availability, and decrease with better skill match on the task&#39;s tags.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;- violations: duplicate task claims and infeasible claims.&quot;</span>
+            <span class="s2">"You are coordinating sprint task assignments (JIRA-like tickets).</span><span class="se">\n\n</span><span class="s2">"</span>
+            <span class="s2">"PHASES:</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- Planning Phase: use post_message() to communicate with other agents; do not commit assignments yet. "</span>
+            <span class="s2">"Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- Execution Phase: commit your final task choice using assign_task. You MUST call assign_task during execution.</span><span class="se">\n\n</span><span class="s2">"</span>
+            <span class="s2">"RULES:</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- Each agent chooses at most one task (or 'skip').</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- No two agents should pick the same task.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- Higher-priority tasks are worth more reward when completed.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- Objective: maximize tasks completed, then prefer higher-priority tasks, then minimize total cost.</span><span class="se">\n\n</span><span class="s2">"</span>
+            <span class="s2">"SCORING (joint score; higher is better):</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- joint_score = tasks_done_bonus * tasks_done + priority_bonus * priority_sum - total_cost - violation_penalty * violations.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- tasks_done_bonus / priority_bonus / violation_penalty are fixed weights.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- tasks_done: number of agents who claim a feasible task (not 'skip').</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- priority_sum: sum of priority weights for claimed tasks (low=0.25, medium=0.5, high=0.75, critical=1.0).</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- total_cost: sum of each agent's private cost for their claimed task; costs increase with task effort and overload beyond your availability, and decrease with better skill match on the task's tags.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"- violations: duplicate task claims and infeasible claims."</span>
         <span class="p">)</span>
 
-        <span class="n">system_text</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tool_instruction_data</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">)</span>
+        <span class="n">system_text</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tool_instruction_data</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"system"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">system_text</span><span class="p">:</span>
-            <span class="n">base_prompt</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">TOOL CALLING REQUIREMENTS:</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">system_text</span>
+            <span class="n">base_prompt</span> <span class="o">+=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">TOOL CALLING REQUIREMENTS:</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">system_text</span>
         <span class="k">return</span> <span class="n">base_prompt</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_user_prompt</span><span class="p">(</span>
@@ -339,9 +339,9 @@
                 <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span>
                 <span class="n">system_prompt</span><span class="o">=</span><span class="n">system_prompt</span><span class="p">,</span>
                 <span class="n">user_prompt</span><span class="o">=</span><span class="n">user_prompt</span><span class="p">,</span>
-                <span class="n">phase</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
-                <span class="n">iteration</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iteration&quot;</span><span class="p">),</span>
-                <span class="n">round_num</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;planning_round&quot;</span><span class="p">),</span>
+                <span class="n">phase</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phase"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">),</span>
+                <span class="n">iteration</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"iteration"</span><span class="p">),</span>
+                <span class="n">round_num</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"planning_round"</span><span class="p">),</span>
             <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">user_prompt</span>
@@ -352,79 +352,79 @@
         <span class="n">agent_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
         <span class="n">blackboard_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-        <span class="n">iteration</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iteration&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phase"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+        <span class="n">iteration</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"iteration"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
         <span class="n">context_parts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;=== TURN INFORMATION ===&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;Phase: </span><span class="si">{</span><span class="n">phase</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;Iteration: </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;You are agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="s2">"=== TURN INFORMATION ==="</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"Phase: </span><span class="si">{</span><span class="n">phase</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"Iteration: </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"You are agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="s2">""</span><span class="p">,</span>
         <span class="p">]</span>
 
-        <span class="n">private_state</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;private_state&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">private_state</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"private_state"</span><span class="p">,</span> <span class="p">{})</span>
         <span class="k">if</span> <span class="n">private_state</span><span class="p">:</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== YOUR PRIVATE STATE ===&quot;</span><span class="p">)</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Availability (hours): </span><span class="si">{</span><span class="n">private_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;availability&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">top_skills</span> <span class="o">=</span> <span class="n">private_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;top_skills&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== YOUR PRIVATE STATE ==="</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Availability (hours): </span><span class="si">{</span><span class="n">private_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'availability'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">top_skills</span> <span class="o">=</span> <span class="n">private_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"top_skills"</span><span class="p">,</span> <span class="p">[])</span>
             <span class="k">if</span> <span class="n">top_skills</span><span class="p">:</span>
-                <span class="n">formatted</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">top_skills</span><span class="p">)</span>
-                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top skills: </span><span class="si">{</span><span class="n">formatted</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">formatted</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">top_skills</span><span class="p">)</span>
+                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Top skills: </span><span class="si">{</span><span class="n">formatted</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
-        <span class="n">tasks</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[])</span>
-        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== TASKS (PUBLIC) ===&quot;</span><span class="p">)</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tasks"</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== TASKS (PUBLIC) ==="</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
-            <span class="n">tags</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">,</span> <span class="p">[]))</span> <span class="ow">or</span> <span class="s2">&quot;-&quot;</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tags"</span><span class="p">,</span> <span class="p">[]))</span> <span class="ow">or</span> <span class="s2">"-"</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;title&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> | type=</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;work_type&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> | &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;effort=</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;effort&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> | priority=</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;priority&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> | &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;tags=[</span><span class="si">{</span><span class="n">tags</span><span class="si">}</span><span class="s2">]&quot;</span>
+                <span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'id'</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'title'</span><span class="p">)</span><span class="si">}</span><span class="s2"> | type=</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'work_type'</span><span class="p">)</span><span class="si">}</span><span class="s2"> | "</span>
+                <span class="sa">f</span><span class="s2">"effort=</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'effort'</span><span class="p">)</span><span class="si">}</span><span class="s2"> | priority=</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'priority'</span><span class="p">)</span><span class="si">}</span><span class="s2"> | "</span>
+                <span class="sa">f</span><span class="s2">"tags=[</span><span class="si">{</span><span class="n">tags</span><span class="si">}</span><span class="s2">]"</span>
             <span class="p">)</span>
-        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
-        <span class="n">cost_table</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost_table&quot;</span><span class="p">,</span> <span class="p">[])</span>
-        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== YOUR COSTS (PRIVATE) ===&quot;</span><span class="p">)</span>
+        <span class="n">cost_table</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cost_table"</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== YOUR COSTS (PRIVATE) ==="</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">cost_table</span><span class="p">:</span>
-            <span class="n">task_id</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">)</span>
-            <span class="n">cost_val</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feasible&quot;</span><span class="p">):</span>
-                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">: cost=</span><span class="si">{</span><span class="n">cost_val</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">task_id</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"task_id"</span><span class="p">)</span>
+            <span class="n">cost_val</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cost"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"feasible"</span><span class="p">):</span>
+                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">: cost=</span><span class="si">{</span><span class="n">cost_val</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">: INFEASIBLE&quot;</span><span class="p">)</span>
-        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">: INFEASIBLE"</span><span class="p">)</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
-        <span class="n">assignments</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;joint_assignment&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">assignments</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"joint_assignment"</span><span class="p">,</span> <span class="p">{})</span>
         <span class="k">if</span> <span class="n">assignments</span><span class="p">:</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== CURRENT ASSIGNMENTS ===&quot;</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== CURRENT ASSIGNMENTS ==="</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">agent</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">assignments</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">agent</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">agent</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">blackboard_context</span><span class="p">:</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== BLACKBOARD COMMUNICATIONS ===&quot;</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== BLACKBOARD COMMUNICATIONS ==="</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">bb_id</span><span class="p">,</span> <span class="n">content</span> <span class="ow">in</span> <span class="n">blackboard_context</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">content</span> <span class="ow">and</span> <span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
-                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Blackboard </span><span class="si">{</span><span class="n">bb_id</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Blackboard </span><span class="si">{</span><span class="n">bb_id</span><span class="si">}</span><span class="s2">:"</span><span class="p">)</span>
                     <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
-                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;planning&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"planning"</span><span class="p">:</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="s2">&quot;=== CURRENT PHASE: PLANNING ===&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;Coordinate via blackboards. Decide which tasks to claim in execution.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="s2">"=== CURRENT PHASE: PLANNING ==="</span><span class="p">,</span>
+                    <span class="s2">"Coordinate via blackboards. Decide which tasks to claim in execution."</span><span class="p">,</span>
+                    <span class="s2">""</span><span class="p">,</span>
                 <span class="p">]</span>
             <span class="p">)</span>
-        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;execution&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"execution"</span><span class="p">:</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="s2">&quot;=== CURRENT PHASE: EXECUTION ===&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;Commit your task using assign_task(task_id). You MUST call assign_task during execution.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;Use task_id=&#39;skip&#39; if you cannot take any task.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="s2">"=== CURRENT PHASE: EXECUTION ==="</span><span class="p">,</span>
+                    <span class="s2">"Commit your task using assign_task(task_id). You MUST call assign_task during execution."</span><span class="p">,</span>
+                    <span class="s2">"Use task_id='skip' if you cannot take any task."</span><span class="p">,</span>
+                    <span class="s2">""</span><span class="p">,</span>
                 <span class="p">]</span>
             <span class="p">)</span>
 
@@ -432,13 +432,13 @@
         <span class="k">if</span> <span class="n">phase_instructions</span><span class="p">:</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="s2">&quot;=== TOOL CALLING FORMAT ===&quot;</span><span class="p">,</span>
+                    <span class="s2">"=== TOOL CALLING FORMAT ==="</span><span class="p">,</span>
                     <span class="n">phase_instructions</span><span class="p">,</span>
-                    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="s2">""</span><span class="p">,</span>
                 <span class="p">]</span>
             <span class="p">)</span>
 
-        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">context_parts</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">context_parts</span><span class="p">)</span></div>
 
 </pre></div>
         </article>

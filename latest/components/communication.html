@@ -294,7 +294,7 @@
 
 <span class="n">environment</span> <span class="o">=</span> <span class="n">create_environment</span><span class="p">(</span>
     <span class="n">communication_protocol</span><span class="p">,</span>
-    <span class="n">config</span><span class="p">[</span><span class="s2">&quot;environment&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+    <span class="n">config</span><span class="p">[</span><span class="s2">"environment"</span><span class="p">][</span><span class="s2">"name"</span><span class="p">],</span>
     <span class="n">config</span><span class="p">,</span>
     <span class="n">tool_logger</span><span class="p">,</span>
 <span class="p">)</span>
@@ -309,7 +309,7 @@
     <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">environment</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span>
         <span class="n">agent_context</span> <span class="o">=</span> <span class="n">environment</span><span class="o">.</span><span class="n">build_agent_context</span><span class="p">(</span>
             <span class="n">agent</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">"planning"</span><span class="p">,</span>
             <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
             <span class="n">planning_round</span><span class="o">=</span><span class="n">planning_round</span><span class="p">,</span>
         <span class="p">)</span>
@@ -325,7 +325,7 @@
 <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">environment</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span>
     <span class="n">agent_context</span> <span class="o">=</span> <span class="n">environment</span><span class="o">.</span><span class="n">build_agent_context</span><span class="p">(</span>
         <span class="n">agent</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-        <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;execution&quot;</span><span class="p">,</span>
+        <span class="n">phase</span><span class="o">=</span><span class="s2">"execution"</span><span class="p">,</span>
         <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">await</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">agent_execution_turn</span><span class="p">(</span>
@@ -343,29 +343,29 @@
 <h2>Blackboards<a class="headerlink" href="#blackboards" title="Link to this heading">¶</a></h2>
 <p>Terrarium uses blackboards as append-only communication channels. A blackboard has a participant list, and only those participants can read or write normal messages. The protocol creates these channels from the communication network during environment initialization.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">blackboard_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">generate_comm_network</span><span class="p">(</span>
-    <span class="n">participants</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;agent_0&quot;</span><span class="p">,</span> <span class="s2">&quot;agent_1&quot;</span><span class="p">],</span>
-    <span class="n">context</span><span class="o">=</span><span class="s2">&quot;Coordinate on task A. Only these agents can see this channel.&quot;</span><span class="p">,</span>
+    <span class="n">participants</span><span class="o">=</span><span class="p">[</span><span class="s2">"agent_0"</span><span class="p">,</span> <span class="s2">"agent_1"</span><span class="p">],</span>
+    <span class="n">context</span><span class="o">=</span><span class="s2">"Coordinate on task A. Only these agents can see this channel."</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="k">await</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">blackboard_handle_tool_call</span><span class="p">(</span>
-    <span class="s2">&quot;post_message&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;agent_0&quot;</span><span class="p">,</span>
+    <span class="s2">"post_message"</span><span class="p">,</span>
+    <span class="s2">"agent_0"</span><span class="p">,</span>
     <span class="p">{</span>
-        <span class="s2">&quot;blackboard_id&quot;</span><span class="p">:</span> <span class="n">blackboard_id</span><span class="p">,</span>
-        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;I can take the morning slot if you cover the afternoon.&quot;</span><span class="p">,</span>
+        <span class="s2">"blackboard_id"</span><span class="p">:</span> <span class="n">blackboard_id</span><span class="p">,</span>
+        <span class="s2">"message"</span><span class="p">:</span> <span class="s2">"I can take the morning slot if you cover the afternoon."</span><span class="p">,</span>
     <span class="p">},</span>
-    <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+    <span class="n">phase</span><span class="o">=</span><span class="s2">"planning"</span><span class="p">,</span>
     <span class="n">iteration</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="n">events</span> <span class="o">=</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">blackboard_id</span><span class="p">,</span> <span class="s2">&quot;agent_1&quot;</span><span class="p">)</span>
+<span class="n">events</span> <span class="o">=</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">megaboard</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">blackboard_id</span><span class="p">,</span> <span class="s2">"agent_1"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>System messages can seed or modify blackboards without pretending to be an agent. That is useful for environment context and for protocol-level attack experiments.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">post_system_message</span><span class="p">(</span>
     <span class="n">blackboard_id</span><span class="p">,</span>
-    <span class="s2">&quot;context&quot;</span><span class="p">,</span>
-    <span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;The channel contains scheduling constraints for task A.&quot;</span><span class="p">},</span>
+    <span class="s2">"context"</span><span class="p">,</span>
+    <span class="p">{</span><span class="s2">"message"</span><span class="p">:</span> <span class="s2">"The channel contains scheduling constraints for task A."</span><span class="p">},</span>
 <span class="p">)</span>
 </pre></div>
 </div>

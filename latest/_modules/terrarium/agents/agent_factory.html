@@ -270,11 +270,11 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.agents.agent_factory</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Agent factory to build agents based on provider configuration.</span>
 
 <span class="sd">Centralises agent construction for runner scripts.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -306,29 +306,34 @@
     <span class="n">vllm_runtime</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">BaseAgent</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a list of Agents (or Agent subclasses) given agent names and provider config.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Build a list of Agents (or Agent subclasses) given agent names and provider config."""</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">agent_cls</span><span class="p">,</span> <span class="n">BaseAgent</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;agent_cls must be a subclass of BaseAgent, got: </span><span class="si">{</span><span class="n">agent_cls</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"agent_cls must be a subclass of BaseAgent, got: </span><span class="si">{</span><span class="n">agent_cls</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">environment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;environment is required&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"environment is required"</span><span class="p">)</span>
     <span class="n">environment_name</span> <span class="o">=</span> <span class="n">environment</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
 
     <span class="n">init_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">agent_kwargs</span> <span class="ow">or</span> <span class="p">{})</span>
-    <span class="n">init_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;generation_params&quot;</span><span class="p">,</span> <span class="n">generation_params</span><span class="p">)</span>
+    <span class="n">init_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"generation_params"</span><span class="p">,</span> <span class="n">generation_params</span><span class="p">)</span>
+    <span class="n">compaction_config</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"compaction"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">compaction_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">init_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+            <span class="s2">"retrieval_enabled"</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">compaction_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"retrieval_enabled"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+        <span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;Agent factory using agent_cls=</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">"Agent factory using agent_cls=</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
         <span class="n">agent_cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
-        <span class="nb">getattr</span><span class="p">(</span><span class="n">agent_cls</span><span class="p">,</span> <span class="s2">&quot;__qualname__&quot;</span><span class="p">,</span> <span class="n">agent_cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">),</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">agent_cls</span><span class="p">,</span> <span class="s2">"__qualname__"</span><span class="p">,</span> <span class="n">agent_cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Agent factory using environment=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Agent factory using environment=</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">)</span>
 
     <span class="n">agents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">BaseAgent</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">agent_names</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;vllm&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"vllm"</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">vllm_runtime</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;vllm_runtime is required when provider == &#39;vllm&#39;&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"vllm_runtime is required when provider == 'vllm'"</span><span class="p">)</span>
             <span class="n">client</span><span class="p">,</span> <span class="n">agent_model_name</span> <span class="o">=</span> <span class="n">vllm_runtime</span><span class="o">.</span><span class="n">create_client</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure_client_external_mcp</span>
 
@@ -350,7 +355,7 @@
             <span class="o">**</span><span class="n">init_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Initialized </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> with </span><span class="si">%s</span><span class="s2"> - </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">"Initialized </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> with </span><span class="si">%s</span><span class="s2"> - </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
             <span class="n">agent</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="n">name</span><span class="p">,</span>
             <span class="n">provider_label</span><span class="p">,</span>

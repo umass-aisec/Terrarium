@@ -279,30 +279,30 @@
 <div class="viewcode-block" id="normalize_openai_v1_base_url">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.azure_common.normalize_openai_v1_base_url">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">normalize_openai_v1_base_url</span><span class="p">(</span><span class="n">endpoint</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">setting_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Normalize a Microsoft-hosted OpenAI-compatible endpoint into an OpenAI v1 base URL.</span>
 
 <span class="sd">    Accepts either:</span>
 <span class="sd">    - project endpoint (e.g. https://...services.ai.azure.com/api/projects/&lt;project&gt;)</span>
 <span class="sd">    - full OpenAI v1 endpoint (e.g. https://.../openai/v1/)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">raw</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">endpoint</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">endpoint</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">setting_name</span><span class="si">}</span><span class="s2"> is required.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">setting_name</span><span class="si">}</span><span class="s2"> is required."</span><span class="p">)</span>
 
     <span class="n">parsed</span> <span class="o">=</span> <span class="n">urlsplit</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">setting_name</span><span class="si">}</span><span class="s2"> must be an absolute URL, got: </span><span class="si">{</span><span class="n">raw</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">setting_name</span><span class="si">}</span><span class="s2"> must be an absolute URL, got: </span><span class="si">{</span><span class="n">raw</span><span class="si">!r}</span><span class="s2">"</span>
         <span class="p">)</span>
 
-    <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">path</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-    <span class="n">normalized_path</span> <span class="o">=</span> <span class="n">path</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">normalized_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;/openai/v1&quot;</span><span class="p">):</span>
-        <span class="n">normalized_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">normalized_path</span><span class="si">}</span><span class="s2">/openai/v1&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">path</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
+    <span class="n">normalized_path</span> <span class="o">=</span> <span class="n">path</span> <span class="ow">or</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">normalized_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"/openai/v1"</span><span class="p">):</span>
+        <span class="n">normalized_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">normalized_path</span><span class="si">}</span><span class="s2">/openai/v1"</span>
 
     <span class="k">return</span> <span class="n">urlunsplit</span><span class="p">(</span>
-        <span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">normalized_path</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">normalized_path</span> <span class="o">+</span> <span class="s2">"/"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
     <span class="p">)</span></div>
 
 
@@ -310,13 +310,13 @@
 <div class="viewcode-block" id="build_entra_token_provider">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.azure_common.build_entra_token_provider">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">build_entra_token_provider</span><span class="p">(</span><span class="n">scope</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a token provider callable for OpenAI SDK `api_key` parameter.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Create a token provider callable for OpenAI SDK `api_key` parameter."""</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">azure.identity</span><span class="w"> </span><span class="kn">import</span> <span class="n">DefaultAzureCredential</span><span class="p">,</span> <span class="n">get_bearer_token_provider</span>
     <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover - import behavior is tested with mocks</span>
         <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-            <span class="s2">&quot;Microsoft Entra authentication requires &#39;azure-identity&#39;. &quot;</span>
-            <span class="s2">&quot;Install with: pip install azure-identity&quot;</span>
+            <span class="s2">"Microsoft Entra authentication requires 'azure-identity'. "</span>
+            <span class="s2">"Install with: pip install azure-identity"</span>
         <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
     <span class="n">credential</span> <span class="o">=</span> <span class="n">DefaultAzureCredential</span><span class="p">()</span>

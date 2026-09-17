@@ -280,7 +280,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_system_prompt</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;&quot;&quot;You are a Hospital Agent in a distributed simulation.</span>
+        <span class="k">return</span> <span class="s2">"""You are a Hospital Agent in a distributed simulation.</span>
 
 <span class="s2">ROLES:</span>
 <span class="s2">1. **Department Scheduler**: You manage a specific department (e.g., Surgery, Triage).</span>
@@ -288,14 +288,14 @@
 
 <span class="s2">CORE RULES:</span>
 <span class="s2">1. **Scope**: You can ONLY schedule for YOUR specific department. </span>
-<span class="s2">   - If you are &#39;Surgery&#39;, you CANNOT schedule &#39;Radiology&#39; steps.</span>
-<span class="s2">   - If you are &#39;Surgery&#39;, ignore patients who do not need surgery.</span>
+<span class="s2">   - If you are 'Surgery', you CANNOT schedule 'Radiology' steps.</span>
+<span class="s2">   - If you are 'Surgery', ignore patients who do not need surgery.</span>
 <span class="s2">2. **Source of Truth**: </span>
 <span class="s2">   - The **JOB QUEUE** is your ONLY source of tasks. </span>
 <span class="s2">   - The **BLACKBOARD** is for context only. NEVER schedule a patient just because you saw them on the Blackboard.</span>
 <span class="s2">3. **Execution**: </span>
 <span class="s2">   - Schedule strictly based on the `step_index` in your Job Queue.</span>
-<span class="s2">   - Do not &quot;guess&quot; step indices.</span>
+<span class="s2">   - Do not "guess" step indices.</span>
 <span class="s2">4. **Tool Usage (Provisioner)**:</span>
 <span class="s2">   - `broadcast_message` is for TALKING.</span>
 <span class="s2">   - `transfer_resources` is for SENDING.</span>
@@ -311,62 +311,62 @@
 <span class="s2">- Per-agent rewards are an additive decomposition of the joint reward: **sum(agent_rewards) == joint_reward** (up to float rounding).</span>
 <span class="s2">- Attribution rules (equal-split where applicable):</span>
 <span class="s2">  - Patient base credit: each patient contributes +1000 total, split evenly across its pathway steps and credited to the agent that executes each step.</span>
-<span class="s2">  - Flow-time / missed-step penalty: the patient&#39;s flow penalty (including missed-step penalties) is split evenly across that patient&#39;s pathway steps and charged to the step agents.</span>
+<span class="s2">  - Flow-time / missed-step penalty: the patient's flow penalty (including missed-step penalties) is split evenly across that patient's pathway steps and charged to the step agents.</span>
 <span class="s2">  - Resource failures: -300 per missing resource item, charged to the agent where the failure occurs.</span>
-<span class="s2">  - Holding cost: -10 per leftover inventory unit in a hospital, shared uniformly across that hospital&#39;s department agents.</span>
+<span class="s2">  - Holding cost: -10 per leftover inventory unit in a hospital, shared uniformly across that hospital's department agents.</span>
 <span class="s2">  - Transfer rewards: +15/unit credited to the agent who executes a rewarded hospital→hospital transfer (if present).</span>
 
-<span class="s2">*Priority: Complete the schedule efficiently.*&quot;&quot;&quot;</span>
+<span class="s2">*Priority: Complete the schedule efficiently.*"""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_user_prompt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">blackboard_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         
         <span class="c1"># --- DYNAMIC BLACKBOARD ID DETECTION ---</span>
         <span class="n">available_boards</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">blackboard_context</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-        <span class="n">main_board_id</span> <span class="o">=</span> <span class="n">available_boards</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">available_boards</span> <span class="k">else</span> <span class="s2">&quot;0&quot;</span>
+        <span class="n">main_board_id</span> <span class="o">=</span> <span class="n">available_boards</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">available_boards</span> <span class="k">else</span> <span class="s2">"0"</span>
         
         <span class="c1"># --- Provisioner Logic ---</span>
-        <span class="k">if</span> <span class="n">agent_name</span> <span class="o">==</span> <span class="s2">&quot;Resource_Provisioner&quot;</span><span class="p">:</span>
-            <span class="n">inv</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;inventory_snapshot&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">agent_name</span> <span class="o">==</span> <span class="s2">"Resource_Provisioner"</span><span class="p">:</span>
+            <span class="n">inv</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"inventory_snapshot"</span><span class="p">,</span> <span class="p">{})</span>
             <span class="c1"># --- NEW: Consume granular failure map ---</span>
-            <span class="n">failures</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;failures_by_hospital&quot;</span><span class="p">,</span> <span class="p">{})</span>
-            <span class="n">cost_table</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost_table&quot;</span><span class="p">,</span> <span class="p">[])</span>
-            <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">failures</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"failures_by_hospital"</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">cost_table</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cost_table"</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">""</span>
             
-            <span class="n">inv_str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">inv_str</span> <span class="o">=</span> <span class="s2">""</span>
             <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">items</span> <span class="ow">in</span> <span class="n">inv</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">inv_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;   - </span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2">: &quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">items</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="n">inv_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">"   - </span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2">: "</span> <span class="o">+</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">items</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
             
             <span class="c1"># --- NEW: Construct Critical Alerts ---</span>
-            <span class="n">alert_str</span> <span class="o">=</span> <span class="s2">&quot;None&quot;</span>
+            <span class="n">alert_str</span> <span class="o">=</span> <span class="s2">"None"</span>
             <span class="k">if</span> <span class="n">failures</span><span class="p">:</span>
-                <span class="n">alert_str</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;   !!! ALERT: </span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2"> needs </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">failures</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+                <span class="n">alert_str</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">"   !!! ALERT: </span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2"> needs </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">h</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">failures</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
 
-            <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;phase&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+            <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'phase'</span><span class="p">,</span> <span class="s1">'unknown'</span><span class="p">)</span>
             
-            <span class="n">instruction</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-            <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s1">&#39;planning&#39;</span><span class="p">:</span>
+            <span class="n">instruction</span> <span class="o">=</span> <span class="s2">""</span>
+            <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s1">'planning'</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">cost_table</span><span class="p">:</span>
                     <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
                     <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">cost_table</span><span class="p">[:</span><span class="mi">25</span><span class="p">]:</span>
-                        <span class="n">amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;amount&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
-                        <span class="n">requested</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;requested&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
-                        <span class="n">available</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;available&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
-                        <span class="n">cost_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)</span>
-                        <span class="n">feasible</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feasible&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+                        <span class="n">amount</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"amount"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">requested</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"requested"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">available</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"available"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">cost_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cost"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)</span>
+                        <span class="n">feasible</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"feasible"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
                         <span class="n">line</span> <span class="o">=</span> <span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;to_hospital&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;resource_type&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> | &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;requested=</span><span class="si">{</span><span class="n">requested</span><span class="si">}</span><span class="s2"> | available=</span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2"> | send=</span><span class="si">{</span><span class="n">amount</span><span class="si">}</span><span class="s2"> | cost=</span><span class="si">{</span><span class="n">cost_val</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'to_hospital'</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'resource_type'</span><span class="p">)</span><span class="si">}</span><span class="s2"> | "</span>
+                            <span class="sa">f</span><span class="s2">"requested=</span><span class="si">{</span><span class="n">requested</span><span class="si">}</span><span class="s2"> | available=</span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2"> | send=</span><span class="si">{</span><span class="n">amount</span><span class="si">}</span><span class="s2"> | cost=</span><span class="si">{</span><span class="n">cost_val</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span>
                         <span class="p">)</span>
                         <span class="k">if</span> <span class="ow">not</span> <span class="n">feasible</span><span class="p">:</span>
-                            <span class="n">line</span> <span class="o">+=</span> <span class="s2">&quot; | INFEASIBLE (no stock)&quot;</span>
-                        <span class="n">reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                            <span class="n">line</span> <span class="o">+=</span> <span class="s2">" | INFEASIBLE (no stock)"</span>
+                        <span class="n">reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"reason"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
                         <span class="k">if</span> <span class="n">reason</span><span class="p">:</span>
-                            <span class="n">line</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; | </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="n">line</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">" | </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span>
                         <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">lines</span><span class="p">:</span>
-                        <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">&quot;=== TRANSFER COSTS / PRIORITIES (LOCAL HEURISTIC) ===</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+                        <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">"=== TRANSFER COSTS / PRIORITIES (LOCAL HEURISTIC) ===</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
 
-                <span class="n">instruction</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+                <span class="n">instruction</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"""</span>
 <span class="s2">[PHASE: PLANNING]</span>
 <span class="s2">You are the LOGISTICS MANAGER.</span>
 <span class="s2">Inventory Overview:</span>
@@ -382,7 +382,7 @@
 
 <span class="s2">ACTION REQUIRED:</span>
 <span class="s2">1. **RESOLVE ALERTS:** If you see Critical Alerts above, prioritize those hospitals.</span>
-<span class="s2">2. Check the Blackboard for &quot;URGENT&quot; or &quot;DEFICIT&quot; requests.</span>
+<span class="s2">2. Check the Blackboard for "URGENT" or "DEFICIT" requests.</span>
 <span class="s2">   - If a hospital asks for X, send X **immediately** using `transfer_resources`.</span>
 <span class="s2">3. Scan for CRITICAL shortages (&lt; 2).</span>
 <span class="s2">   - Send small top-ups (3-5 units).</span>
@@ -390,95 +390,95 @@
 <span class="s2">   - If Hospital A &gt; 10 and Hospital B = 0, transfer A -&gt; B.</span>
 <span class="s2">   </span>
 <span class="s2">Your Goal: Zero Failures, Zero Waste, Maximize Rewards.</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">instruction</span> <span class="o">=</span> <span class="s2">&quot;[PHASE: EXECUTION] Stand by. Monitoring scheduling process.&quot;</span>
+                <span class="n">instruction</span> <span class="o">=</span> <span class="s2">"[PHASE: EXECUTION] Stand by. Monitoring scheduling process."</span>
 
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">"""</span>
 <span class="s2">=== AGENT STATUS: </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span>
 <span class="s2">Role: Logistics Provisioner</span>
 <span class="si">{</span><span class="n">cost_table_str</span><span class="si">}</span>
 <span class="si">{</span><span class="n">instruction</span><span class="si">}</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
         <span class="c1"># --- Department Logic ---</span>
-        <span class="n">dept_info</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dept_info&#39;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="n">capacity</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;capacity&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">job_queue</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;job_queue&#39;</span><span class="p">,</span> <span class="p">[])</span>
-        <span class="n">hospital</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hospital&#39;</span><span class="p">,</span> <span class="s1">&#39;Unknown&#39;</span><span class="p">)</span>
-        <span class="n">local_inv</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;local_inventory&#39;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="n">my_costs</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;procedure_costs&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">dept_info</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'dept_info'</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">capacity</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'capacity'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">job_queue</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'job_queue'</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">hospital</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'hospital'</span><span class="p">,</span> <span class="s1">'Unknown'</span><span class="p">)</span>
+        <span class="n">local_inv</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'local_inventory'</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">my_costs</span> <span class="o">=</span> <span class="n">dept_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'procedure_costs'</span><span class="p">,</span> <span class="p">{})</span>
         
-        <span class="n">inv_str</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">local_inv</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
-        <span class="n">cost_str</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: -</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">my_costs</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+        <span class="n">inv_str</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">local_inv</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+        <span class="n">cost_str</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: -</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">my_costs</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
 
         <span class="c1"># --- CONTEXT FIREWALL: VISUAL SEPARATION ---</span>
-        <span class="n">queue_str</span> <span class="o">=</span> <span class="s2">&quot;JOB QUEUE: [EMPTY] - Do NOT Schedule Anything.&quot;</span>
+        <span class="n">queue_str</span> <span class="o">=</span> <span class="s2">"JOB QUEUE: [EMPTY] - Do NOT Schedule Anything."</span>
         <span class="k">if</span> <span class="n">job_queue</span><span class="p">:</span>
-            <span class="n">queue_str</span> <span class="o">=</span> <span class="s2">&quot;=== YOUR MANDATORY TASK LIST (JOB QUEUE) ===</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="n">queue_str</span> <span class="o">+=</span> <span class="s2">&quot;INSTRUCTIONS: You MUST schedule ONLY these specific steps.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="n">queue_str</span> <span class="o">=</span> <span class="s2">"=== YOUR MANDATORY TASK LIST (JOB QUEUE) ===</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="n">queue_str</span> <span class="o">+=</span> <span class="s2">"INSTRUCTIONS: You MUST schedule ONLY these specific steps.</span><span class="se">\n</span><span class="s2">"</span>
             <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">job_queue</span><span class="p">:</span>
                 <span class="n">queue_str</span> <span class="o">+=</span> <span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;   [ ] Patient: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">&#39;patient_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> | REQUIRED STEP: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">&#39;step_index&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;       Duration: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">h | Earliest Start: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">&#39;earliest_start_time&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">"   [ ] Patient: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">'patient_id'</span><span class="p">]</span><span class="si">}</span><span class="s2"> | REQUIRED STEP: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">'step_index'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span>
+                    <span class="sa">f</span><span class="s2">"       Duration: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">'duration'</span><span class="p">]</span><span class="si">}</span><span class="s2">h | Earliest Start: </span><span class="si">{</span><span class="n">job</span><span class="p">[</span><span class="s1">'earliest_start_time'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span>
                 <span class="p">)</span>
-            <span class="n">queue_str</span> <span class="o">+=</span> <span class="s2">&quot;==============================================</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="n">queue_str</span> <span class="o">+=</span> <span class="s2">"==============================================</span><span class="se">\n</span><span class="s2">"</span>
 
-        <span class="n">bb_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;=== BLACKBOARD (ID: </span><span class="si">{</span><span class="n">main_board_id</span><span class="si">}</span><span class="s2">) ===</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">bb_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"=== BLACKBOARD (ID: </span><span class="si">{</span><span class="n">main_board_id</span><span class="si">}</span><span class="s2">) ===</span><span class="se">\n</span><span class="s2">"</span>
         <span class="k">if</span> <span class="n">blackboard_context</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">ch</span><span class="p">,</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">blackboard_context</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">bb_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">]</span><span class="se">\n</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="n">bb_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">]</span><span class="se">\n</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">bb_str</span> <span class="o">+=</span> <span class="s2">&quot;(No new messages)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="n">bb_str</span> <span class="o">+=</span> <span class="s2">"(No new messages)</span><span class="se">\n</span><span class="s2">"</span>
 
-        <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;phase&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
-        <span class="n">iteration</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;iteration&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">cost_table</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost_table&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'phase'</span><span class="p">,</span> <span class="s1">'unknown'</span><span class="p">)</span>
+        <span class="n">iteration</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'iteration'</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">cost_table</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cost_table"</span><span class="p">,</span> <span class="p">[])</span>
 
-        <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;planning&quot;</span> <span class="ow">and</span> <span class="n">cost_table</span><span class="p">:</span>
+        <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"planning"</span> <span class="ow">and</span> <span class="n">cost_table</span><span class="p">:</span>
             <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">cost_table</span><span class="p">:</span>
-                <span class="n">cost_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)</span>
-                <span class="n">line</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;job_id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">: cost=</span><span class="si">{</span><span class="n">cost_val</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feasible&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-                    <span class="n">missing</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;missing&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+                <span class="n">cost_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cost"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'job_id'</span><span class="p">)</span><span class="si">}</span><span class="s2">: cost=</span><span class="si">{</span><span class="n">cost_val</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"feasible"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="n">missing</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"missing"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
                     <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
-                        <span class="n">missing_str</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">missing</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
-                        <span class="n">line</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; | MISSING: </span><span class="si">{</span><span class="n">missing_str</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="n">missing_str</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">)"</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">missing</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+                        <span class="n">line</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">" | MISSING: </span><span class="si">{</span><span class="n">missing_str</span><span class="si">}</span><span class="s2">"</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="n">line</span> <span class="o">+=</span> <span class="s2">&quot; | INFEASIBLE&quot;</span>
+                        <span class="n">line</span> <span class="o">+=</span> <span class="s2">" | INFEASIBLE"</span>
                 <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-            <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">&quot;=== ESTIMATED JOB COSTS (LOCAL HEURISTIC) ===</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="n">cost_table_str</span> <span class="o">=</span> <span class="s2">"=== ESTIMATED JOB COSTS (LOCAL HEURISTIC) ===</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
         
-        <span class="n">instruction</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s1">&#39;planning&#39;</span><span class="p">:</span>
-            <span class="n">instruction</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+        <span class="n">instruction</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s1">'planning'</span><span class="p">:</span>
+            <span class="n">instruction</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"""</span>
 <span class="s2">[PHASE: PLANNING]</span>
 <span class="s2">Inventory: [</span><span class="si">{</span><span class="n">inv_str</span><span class="si">}</span><span class="s2">]</span>
 <span class="s2">Costs per Patient: [</span><span class="si">{</span><span class="n">cost_str</span><span class="si">}</span><span class="s2">]</span>
 
-<span class="s2">1. Review your &quot;MANDATORY TASK LIST&quot; above.</span>
+<span class="s2">1. Review your "MANDATORY TASK LIST" above.</span>
 <span class="s2">2. Calculate Need: (Queue Size * Cost) vs Inventory.</span>
-<span class="s2">3. If Short: Post &quot;URGENT: Need [Resource] at </span><span class="si">{</span><span class="n">hospital</span><span class="si">}</span><span class="s2">&quot; to Blackboard ID &#39;</span><span class="si">{</span><span class="n">main_board_id</span><span class="si">}</span><span class="s2">&#39;.</span>
+<span class="s2">3. If Short: Post "URGENT: Need [Resource] at </span><span class="si">{</span><span class="n">hospital</span><span class="si">}</span><span class="s2">" to Blackboard ID '</span><span class="si">{</span><span class="n">main_board_id</span><span class="si">}</span><span class="s2">'.</span>
 <span class="s2">4. **HAVE SURPLUS?** If you have &gt;5 excess units, offer to transfer them to other hospitals for a reward.</span>
 
 <span class="s2">**COMMUNICATION PROTOCOL:**</span>
-<span class="s2">- **Surplus (&gt;5 units):** Broadcast &#39;SURPLUS [Resource]&#39; so others know they can request it.</span>
-<span class="s2">- **Deficit (0 units):** Broadcast &#39;DEFICIT [Resource]&#39; to signal urgent need.</span>
-<span class="s2">&quot;&quot;&quot;</span>
-        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s1">&#39;execution&#39;</span><span class="p">:</span>
-            <span class="n">instruction</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">- **Surplus (&gt;5 units):** Broadcast 'SURPLUS [Resource]' so others know they can request it.</span>
+<span class="s2">- **Deficit (0 units):** Broadcast 'DEFICIT [Resource]' to signal urgent need.</span>
+<span class="s2">"""</span>
+        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s1">'execution'</span><span class="p">:</span>
+            <span class="n">instruction</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"""</span>
 <span class="s2">[PHASE: EXECUTION - ACTION MODE]</span>
 <span class="s2">!!! CRITICAL: SCHEDULE PATIENTS FROM YOUR QUEUE !!!</span>
 
 <span class="s2">INSTRUCTIONS:</span>
-<span class="s2">1. FOCUS ONLY on the &quot;MANDATORY TASK LIST&quot; section above.</span>
+<span class="s2">1. FOCUS ONLY on the "MANDATORY TASK LIST" section above.</span>
 <span class="s2">   - Ignore patients mentioned on the Blackboard. They are handled by other agents.</span>
-<span class="s2">   - If a patient is NOT in your &quot;MANDATORY TASK LIST&quot;, do NOT schedule them.</span>
+<span class="s2">   - If a patient is NOT in your "MANDATORY TASK LIST", do NOT schedule them.</span>
 
 <span class="s2">2. EXECUTE: Call `schedule_patient` for every line item in your Task List.</span>
-<span class="s2">   - Use the EXACT `step_index` listed. (If list says &quot;Step: 2&quot;, use 2).</span>
+<span class="s2">   - Use the EXACT `step_index` listed. (If list says "Step: 2", use 2).</span>
 <span class="s2">   - Use the `Earliest Start` as your target start time.</span>
 <span class="s2">   - Do NOT wait. Do NOT hesitate.</span>
 
@@ -487,9 +487,9 @@
 <span class="s2">   - (Scheduling without resources costs -300, which is better than -500).</span>
 
 <span class="s2">DO NOT POST MESSAGES. USE TOOLS IMMEDIATELY.</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"""</span>
 <span class="s2">=== AGENT STATUS: </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">hospital</span><span class="si">}</span><span class="s2">) ===</span>
 <span class="s2">Capacity: </span><span class="si">{</span><span class="n">capacity</span><span class="si">}</span>
 <span class="s2">Iter: </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span>
@@ -501,7 +501,7 @@
 <span class="si">{</span><span class="n">cost_table_str</span><span class="si">}</span>
 
 <span class="si">{</span><span class="n">instruction</span><span class="si">}</span>
-<span class="s2">&quot;&quot;&quot;</span></div>
+<span class="s2">"""</span></div>
 
 </pre></div>
         </article>

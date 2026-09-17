@@ -278,9 +278,9 @@
 <div class="viewcode-block" id="HospitalTools">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.hospital.hospital_tools.HospitalTools">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HospitalTools</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Hospital Tools: Supports Provisioner Logic and expanded Resource types.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blackboard_manager</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span> <span class="o">=</span> <span class="n">blackboard_manager</span>
@@ -290,8 +290,8 @@
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.hospital.hospital_tools.HospitalTools.get_tool_names">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tool_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;schedule_patient&quot;</span><span class="p">,</span> <span class="s2">&quot;find_available_slots&quot;</span><span class="p">,</span> <span class="s2">&quot;get_job_queue&quot;</span><span class="p">,</span> 
-            <span class="s2">&quot;transfer_resources&quot;</span><span class="p">,</span> <span class="s2">&quot;broadcast_message&quot;</span>
+            <span class="s2">"schedule_patient"</span><span class="p">,</span> <span class="s2">"find_available_slots"</span><span class="p">,</span> <span class="s2">"get_job_queue"</span><span class="p">,</span> 
+            <span class="s2">"transfer_resources"</span><span class="p">,</span> <span class="s2">"broadcast_message"</span>
         <span class="p">}</span></div>
 
 
@@ -302,88 +302,88 @@
         
         <span class="c1"># Read-Only Tools</span>
         <span class="n">tools</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;find_available_slots&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Finds available time slots.&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-                        <span class="s2">&quot;min_start_time&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-                        <span class="s2">&quot;num_slots&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+            <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"find_available_slots"</span><span class="p">,</span>
+                <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Finds available time slots."</span><span class="p">,</span>
+                <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                    <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"duration"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+                        <span class="s2">"min_start_time"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+                        <span class="s2">"num_slots"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">,</span> <span class="s2">"default"</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
                     <span class="p">},</span>
-                    <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;duration&quot;</span><span class="p">,</span> <span class="s2">&quot;min_start_time&quot;</span><span class="p">],</span>
+                    <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"duration"</span><span class="p">,</span> <span class="s2">"min_start_time"</span><span class="p">],</span>
                 <span class="p">},</span>
             <span class="p">},</span>
         <span class="p">})</span>
 
         <span class="n">tools</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;get_job_queue&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Refreshes the job queue.&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{},</span> <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+            <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"get_job_queue"</span><span class="p">,</span>
+                <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Refreshes the job queue."</span><span class="p">,</span>
+                <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span> <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{},</span> <span class="s2">"required"</span><span class="p">:</span> <span class="p">[]},</span>
             <span class="p">},</span>
         <span class="p">})</span>
 
         <span class="c1"># Provisioner / Communication Tools</span>
         <span class="n">tools</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;transfer_resources&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Send supplies to a hospital.&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;to_hospital&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
-                            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Destination hospital name (e.g., &#39;General_Hospital&#39;, &#39;St_Marys_Center&#39;, &#39;Hospital_2&#39;, or &#39;Resource_Provisioner&#39;).&quot;</span><span class="p">,</span>
+            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+            <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"transfer_resources"</span><span class="p">,</span>
+                <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Send supplies to a hospital."</span><span class="p">,</span>
+                <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                    <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"to_hospital"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span>
+                            <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Destination hospital name (e.g., 'General_Hospital', 'St_Marys_Center', 'Hospital_2', or 'Resource_Provisioner')."</span><span class="p">,</span>
                         <span class="p">},</span>
-                        <span class="s2">&quot;resource_type&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span> 
-                            <span class="s2">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;IV_Kits&quot;</span><span class="p">,</span> <span class="s2">&quot;Anesthetics&quot;</span><span class="p">,</span> <span class="s2">&quot;Pain_Killers&quot;</span><span class="p">,</span> <span class="s2">&quot;Radio_Contrast&quot;</span><span class="p">,</span> <span class="s2">&quot;Oxygen_Tanks&quot;</span><span class="p">,</span> <span class="s2">&quot;Surgical_Packs&quot;</span><span class="p">,</span> <span class="s2">&quot;PPE_Sets&quot;</span><span class="p">]</span>
+                        <span class="s2">"resource_type"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span> 
+                            <span class="s2">"enum"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"IV_Kits"</span><span class="p">,</span> <span class="s2">"Anesthetics"</span><span class="p">,</span> <span class="s2">"Pain_Killers"</span><span class="p">,</span> <span class="s2">"Radio_Contrast"</span><span class="p">,</span> <span class="s2">"Oxygen_Tanks"</span><span class="p">,</span> <span class="s2">"Surgical_Packs"</span><span class="p">,</span> <span class="s2">"PPE_Sets"</span><span class="p">]</span>
                         <span class="p">},</span>
-                        <span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-                        <span class="s2">&quot;rationale&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Why are you moving these resources?&quot;</span><span class="p">}</span>
+                        <span class="s2">"amount"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+                        <span class="s2">"rationale"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Why are you moving these resources?"</span><span class="p">}</span>
                     <span class="p">},</span>
-                    <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;to_hospital&quot;</span><span class="p">,</span> <span class="s2">&quot;resource_type&quot;</span><span class="p">,</span> <span class="s2">&quot;amount&quot;</span><span class="p">,</span> <span class="s2">&quot;rationale&quot;</span><span class="p">],</span>
+                    <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"to_hospital"</span><span class="p">,</span> <span class="s2">"resource_type"</span><span class="p">,</span> <span class="s2">"amount"</span><span class="p">,</span> <span class="s2">"rationale"</span><span class="p">],</span>
                 <span class="p">},</span>
             <span class="p">},</span>
         <span class="p">})</span>
 
         <span class="n">tools</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;broadcast_message&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Send a free-form message to the entire network.&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The content of your announcement.&quot;</span><span class="p">},</span>
-                        <span class="s2">&quot;rationale&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Internal note on why you are saying this.&quot;</span><span class="p">}</span>
+            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+            <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"broadcast_message"</span><span class="p">,</span>
+                <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Send a free-form message to the entire network."</span><span class="p">,</span>
+                <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                    <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"message"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"The content of your announcement."</span><span class="p">},</span>
+                        <span class="s2">"rationale"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Internal note on why you are saying this."</span><span class="p">}</span>
                     <span class="p">},</span>
-                    <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="s2">&quot;rationale&quot;</span><span class="p">],</span>
+                    <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"message"</span><span class="p">,</span> <span class="s2">"rationale"</span><span class="p">],</span>
                 <span class="p">},</span>
             <span class="p">},</span>
         <span class="p">})</span>
 
         <span class="c1"># Execution Only</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;execution&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"execution"</span><span class="p">:</span>
             <span class="n">tools</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;schedule_patient&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Book a time slot. Consumes inventory.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;patient_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">},</span>
-                            <span class="s2">&quot;step_index&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-                            <span class="s2">&quot;start_time&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-                            <span class="s2">&quot;rationale&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Why are you scheduling this now?&quot;</span><span class="p">}</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"schedule_patient"</span><span class="p">,</span>
+                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Book a time slot. Consumes inventory."</span><span class="p">,</span>
+                    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                        <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"patient_id"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">},</span>
+                            <span class="s2">"step_index"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+                            <span class="s2">"start_time"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+                            <span class="s2">"rationale"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Why are you scheduling this now?"</span><span class="p">}</span>
                         <span class="p">},</span>
-                        <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;patient_id&quot;</span><span class="p">,</span> <span class="s2">&quot;step_index&quot;</span><span class="p">,</span> <span class="s2">&quot;start_time&quot;</span><span class="p">,</span> <span class="s2">&quot;rationale&quot;</span><span class="p">],</span>
+                        <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"patient_id"</span><span class="p">,</span> <span class="s2">"step_index"</span><span class="p">,</span> <span class="s2">"start_time"</span><span class="p">,</span> <span class="s2">"rationale"</span><span class="p">],</span>
                     <span class="p">},</span>
                 <span class="p">},</span>
             <span class="p">})</span>
@@ -402,26 +402,26 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Environment not initialized for tools.&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Environment not initialized for tools."</span><span class="p">}</span>
 
         <span class="c1"># Read Tools</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;get_job_queue&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="s2">&quot;Refer to prompt context.&quot;</span><span class="p">}</span>
-        <span class="k">elif</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;find_available_slots&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"get_job_queue"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="s2">"Refer to prompt context."</span><span class="p">}</span>
+        <span class="k">elif</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"find_available_slots"</span><span class="p">:</span>
             <span class="c1"># Simplified for brevity</span>
-            <span class="n">min_start</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_start_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Available slots found starting from </span><span class="si">{</span><span class="n">min_start</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">}</span> 
+            <span class="n">min_start</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"min_start_time"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Available slots found starting from </span><span class="si">{</span><span class="n">min_start</span><span class="si">}</span><span class="s2">."</span><span class="p">}</span> 
 
         <span class="c1"># Write Tools</span>
         <span class="n">action</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;schedule_patient&quot;</span><span class="p">:</span>
-            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">agent_name</span><span class="p">:</span> <span class="n">arguments</span><span class="p">}}</span>
-        <span class="k">elif</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;transfer_resources&quot;</span><span class="p">:</span>
-            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;transfers&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">agent_name</span><span class="p">:</span> <span class="n">arguments</span><span class="p">}}</span>
-        <span class="k">elif</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;broadcast_message&quot;</span><span class="p">:</span>
-            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;broadcast_message&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">agent_name</span><span class="p">:</span> <span class="n">arguments</span><span class="p">}}</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"schedule_patient"</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"schedule"</span><span class="p">:</span> <span class="p">{</span><span class="n">agent_name</span><span class="p">:</span> <span class="n">arguments</span><span class="p">}}</span>
+        <span class="k">elif</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"transfer_resources"</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"transfers"</span><span class="p">:</span> <span class="p">{</span><span class="n">agent_name</span><span class="p">:</span> <span class="n">arguments</span><span class="p">}}</span>
+        <span class="k">elif</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"broadcast_message"</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"broadcast_message"</span><span class="p">:</span> <span class="p">{</span><span class="n">agent_name</span><span class="p">:</span> <span class="n">arguments</span><span class="p">}}</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Tool </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> not found.&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Tool </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2"> not found."</span><span class="p">}</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">agent_name</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span><span class="p">)</span></div>
 
@@ -437,28 +437,28 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         
-        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Action Executed.&quot;</span>
-        <span class="k">if</span> <span class="s2">&quot;schedule&quot;</span> <span class="ow">in</span> <span class="n">action</span><span class="p">:</span>
-            <span class="n">args</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;schedule&quot;</span><span class="p">][</span><span class="n">agent_name</span><span class="p">]</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Scheduling </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;patient_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">. Rationale: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;rationale&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">"Action Executed."</span>
+        <span class="k">if</span> <span class="s2">"schedule"</span> <span class="ow">in</span> <span class="n">action</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">"schedule"</span><span class="p">][</span><span class="n">agent_name</span><span class="p">]</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Scheduling </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">'patient_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">. Rationale: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'rationale'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">_process_schedule_request</span><span class="p">(</span><span class="n">agent_name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Failed to schedule patient: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
-        <span class="k">elif</span> <span class="s2">&quot;transfers&quot;</span> <span class="ow">in</span> <span class="n">action</span><span class="p">:</span>
-            <span class="n">args</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;transfers&quot;</span><span class="p">][</span><span class="n">agent_name</span><span class="p">]</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Transferring </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;amount&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;resource_type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;to_hospital&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">. Rationale: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;rationale&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Failed to schedule patient: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
+        <span class="k">elif</span> <span class="s2">"transfers"</span> <span class="ow">in</span> <span class="n">action</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">"transfers"</span><span class="p">][</span><span class="n">agent_name</span><span class="p">]</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Transferring </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">'amount'</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">'resource_type'</span><span class="p">]</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">'to_hospital'</span><span class="p">]</span><span class="si">}</span><span class="s2">. Rationale: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'rationale'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">_process_transfer</span><span class="p">(</span><span class="n">agent_name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Failed to transfer resources: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
-        <span class="k">elif</span> <span class="s2">&quot;broadcast_message&quot;</span> <span class="ow">in</span> <span class="n">action</span><span class="p">:</span>
-            <span class="n">args</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;broadcast_message&quot;</span><span class="p">][</span><span class="n">agent_name</span><span class="p">]</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;BROADCAST: &#39;</span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;. (Internal Rationale: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;rationale&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Failed to transfer resources: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
+        <span class="k">elif</span> <span class="s2">"broadcast_message"</span> <span class="ow">in</span> <span class="n">action</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">"broadcast_message"</span><span class="p">][</span><span class="n">agent_name</span><span class="p">]</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"BROADCAST: '</span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="s1">'message'</span><span class="p">]</span><span class="si">}</span><span class="s2">'. (Internal Rationale: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'rationale'</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
 
         <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span> 
-            <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">,</span>
+            <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span> 
+            <span class="s2">"result"</span><span class="p">:</span> <span class="n">msg</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">if</span> <span class="n">log_to_blackboards</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span><span class="p">:</span>
@@ -467,7 +467,7 @@
                     <span class="n">agent_name</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">execution_result</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Blackboard log failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Blackboard log failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">execution_result</span></div>
 </div>

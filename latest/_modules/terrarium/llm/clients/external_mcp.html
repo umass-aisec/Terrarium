@@ -282,7 +282,7 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">_MAX_COMPAT_TOOL_NAME_LEN</span> <span class="o">=</span> <span class="mi">64</span>
-<span class="n">_SAFE_TOOL_NAME_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^A-Za-z0-9_]+&quot;</span><span class="p">)</span>
+<span class="n">_SAFE_TOOL_NAME_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[^A-Za-z0-9_]+"</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="ExternalMCPServerConfig">
@@ -291,7 +291,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">ExternalMCPServerConfig</span><span class="p">:</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">transport</span><span class="p">:</span> <span class="n">Any</span>
-    <span class="n">tool_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">tool_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
     <span class="n">include_tools</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">()</span>
     <span class="n">exclude_tools</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">()</span>
     <span class="n">timeout_seconds</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -307,52 +307,52 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_schema</span><span class="p">(</span><span class="n">raw_schema</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_schema</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span> <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{}}</span>
 
     <span class="n">schema</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">raw_schema</span><span class="p">)</span>
-    <span class="n">schema_type</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
+    <span class="n">schema_type</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">schema_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">schema</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;object&quot;</span>
-    <span class="k">if</span> <span class="n">schema</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;object&quot;</span> <span class="ow">and</span> <span class="s2">&quot;properties&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">schema</span><span class="p">:</span>
-        <span class="n">schema</span><span class="p">[</span><span class="s2">&quot;properties&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">schema</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"object"</span>
+    <span class="k">if</span> <span class="n">schema</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"object"</span> <span class="ow">and</span> <span class="s2">"properties"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">schema</span><span class="p">:</span>
+        <span class="n">schema</span><span class="p">[</span><span class="s2">"properties"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">return</span> <span class="n">schema</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_extract_content_text</span><span class="p">(</span><span class="n">content_blocks</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content_blocks</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">""</span>
 
     <span class="n">text_parts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">content_blocks</span><span class="p">:</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
             <span class="n">text_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
             <span class="k">continue</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="n">candidate</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"text"</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">candidate</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
                 <span class="n">text_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
-    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">text_parts</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">text_parts</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_tool_name_for_model_compat</span><span class="p">(</span><span class="n">raw_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Normalize a tool name to a conservative subset accepted by Anthropic/Gemini.</span>
 
 <span class="sd">    Result format: ^[A-Za-z_][A-Za-z0-9_]{0,63}$</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="n">_SAFE_TOOL_NAME_PATTERN</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">raw_name</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;_+&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">_SAFE_TOOL_NAME_PATTERN</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">"_"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">raw_name</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_+"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="p">:</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;mcp_tool&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">"mcp_tool"</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isalpha</span><span class="p">()</span> <span class="ow">or</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;_&quot;</span><span class="p">):</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;mcp_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isalpha</span><span class="p">()</span> <span class="ow">or</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"_"</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"mcp_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">_MAX_COMPAT_TOOL_NAME_LEN</span><span class="p">:</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[:</span><span class="n">_MAX_COMPAT_TOOL_NAME_LEN</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[:</span><span class="n">_MAX_COMPAT_TOOL_NAME_LEN</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="p">:</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;mcp_tool&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">"mcp_tool"</span>
     <span class="k">return</span> <span class="n">name</span>
 
 
@@ -362,42 +362,42 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">stable_seed</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a unique provider-safe tool name with deterministic suffixing.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return a unique provider-safe tool name with deterministic suffixing."""</span>
     <span class="k">if</span> <span class="n">preferred_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_names</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">preferred_name</span>
 
-    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">stable_seed</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">8</span><span class="p">]</span>
-    <span class="n">base_suffix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;_</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">stable_seed</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">8</span><span class="p">]</span>
+    <span class="n">base_suffix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"_</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">"</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_candidate</span><span class="p">(</span><span class="n">extra_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">suffix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_suffix</span><span class="si">}{</span><span class="n">extra_suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_candidate</span><span class="p">(</span><span class="n">extra_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_suffix</span><span class="si">}{</span><span class="n">extra_suffix</span><span class="si">}</span><span class="s2">"</span>
         <span class="n">max_base_len</span> <span class="o">=</span> <span class="n">_MAX_COMPAT_TOOL_NAME_LEN</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
-        <span class="n">base</span> <span class="o">=</span> <span class="n">preferred_name</span><span class="p">[:</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_base_len</span><span class="p">)]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">preferred_name</span><span class="p">[:</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_base_len</span><span class="p">)]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">base</span><span class="p">:</span>
-            <span class="n">base</span> <span class="o">=</span> <span class="s2">&quot;mcp_tool&quot;</span><span class="p">[:</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_base_len</span><span class="p">)]</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="s2">"mcp_tool"</span><span class="p">[:</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_base_len</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="n">candidate</span> <span class="o">=</span> <span class="n">_candidate</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">candidate</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_names</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">candidate</span>
 
     <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1000</span><span class="p">):</span>
-        <span class="n">candidate</span> <span class="o">=</span> <span class="n">_candidate</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="n">_candidate</span><span class="p">(</span><span class="sa">f</span><span class="s2">"_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">candidate</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_names</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">candidate</span>
 
-    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Unable to allocate unique external MCP tool name.&quot;</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">"Unable to allocate unique external MCP tool name."</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="ExternalMCPToolRegistry">
 <a class="viewcode-back" href="../../../../api/tools.html#terrarium.llm.clients.external_mcp.ExternalMCPToolRegistry">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ExternalMCPToolRegistry</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Lazy external MCP tool discovery/execution registry.</span>
 
 <span class="sd">    Converts discovered MCP tools into OpenAI-style function schemas so the</span>
 <span class="sd">    existing provider clients can expose them directly to models.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servers</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ExternalMCPServerConfig</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_servers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">servers</span><span class="p">)</span>
@@ -409,8 +409,8 @@
 <div class="viewcode-block" id="ExternalMCPToolRegistry.from_llm_config">
 <a class="viewcode-back" href="../../../../api/tools.html#terrarium.llm.clients.external_mcp.ExternalMCPToolRegistry.from_llm_config">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">from_llm_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;ExternalMCPToolRegistry&quot;</span><span class="p">:</span>
-        <span class="n">raw_servers</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;external_mcp_servers&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_llm_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">"ExternalMCPToolRegistry"</span><span class="p">:</span>
+        <span class="n">raw_servers</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"external_mcp_servers"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_servers</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">raw_servers</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">cls</span><span class="p">([])</span>
 
@@ -419,39 +419,39 @@
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="k">continue</span>
 
-            <span class="k">if</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"enabled"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
                 <span class="k">continue</span>
 
-            <span class="n">transport</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transport&quot;</span><span class="p">)</span>
+            <span class="n">transport</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"transport"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">transport</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">transport</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;url&quot;</span><span class="p">)</span>
+                <span class="n">transport</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"url"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">transport</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="s2">&quot;Skipping external MCP server config at index </span><span class="si">%s</span><span class="s2">: missing &#39;transport&#39; or &#39;url&#39;.&quot;</span><span class="p">,</span>
+                    <span class="s2">"Skipping external MCP server config at index </span><span class="si">%s</span><span class="s2">: missing 'transport' or 'url'."</span><span class="p">,</span>
                     <span class="n">idx</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="k">continue</span>
 
-            <span class="n">timeout_raw</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timeout_seconds&quot;</span><span class="p">)</span>
+            <span class="n">timeout_raw</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"timeout_seconds"</span><span class="p">)</span>
             <span class="n">timeout_seconds</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">if</span> <span class="n">timeout_raw</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">timeout_seconds</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">timeout_raw</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="s2">&quot;Invalid timeout_seconds=</span><span class="si">%r</span><span class="s2"> in external MCP server index </span><span class="si">%s</span><span class="s2">; ignoring.&quot;</span><span class="p">,</span>
+                        <span class="s2">"Invalid timeout_seconds=</span><span class="si">%r</span><span class="s2"> in external MCP server index </span><span class="si">%s</span><span class="s2">; ignoring."</span><span class="p">,</span>
                         <span class="n">timeout_raw</span><span class="p">,</span>
                         <span class="n">idx</span><span class="p">,</span>
                     <span class="p">)</span>
 
             <span class="n">server</span> <span class="o">=</span> <span class="n">ExternalMCPServerConfig</span><span class="p">(</span>
-                <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;external_mcp_</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">"external_mcp_</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">),</span>
                 <span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">,</span>
-                <span class="n">tool_prefix</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_prefix&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
-                <span class="n">include_tools</span><span class="o">=</span><span class="n">_to_string_set</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;include_tools&quot;</span><span class="p">)),</span>
-                <span class="n">exclude_tools</span><span class="o">=</span><span class="n">_to_string_set</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;exclude_tools&quot;</span><span class="p">)),</span>
+                <span class="n">tool_prefix</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_prefix"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span>
+                <span class="n">include_tools</span><span class="o">=</span><span class="n">_to_string_set</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"include_tools"</span><span class="p">)),</span>
+                <span class="n">exclude_tools</span><span class="o">=</span><span class="n">_to_string_set</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"exclude_tools"</span><span class="p">)),</span>
                 <span class="n">timeout_seconds</span><span class="o">=</span><span class="n">timeout_seconds</span><span class="p">,</span>
-                <span class="n">auth</span><span class="o">=</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auth&quot;</span><span class="p">))</span> <span class="k">if</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auth&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="n">auth</span><span class="o">=</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"auth"</span><span class="p">))</span> <span class="k">if</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"auth"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="n">servers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">server</span><span class="p">)</span>
 
@@ -488,14 +488,14 @@
                 <span class="n">tools</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">list_tools</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;Failed to discover tools from external MCP server &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">"Failed to discover tools from external MCP server '</span><span class="si">%s</span><span class="s2">': </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
                 <span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
                 <span class="n">exc</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span>
 
         <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">:</span>
-            <span class="n">remote_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">remote_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">remote_name</span><span class="p">:</span>
                 <span class="k">continue</span>
 
@@ -504,36 +504,36 @@
             <span class="k">if</span> <span class="n">remote_name</span> <span class="ow">in</span> <span class="n">server</span><span class="o">.</span><span class="n">exclude_tools</span><span class="p">:</span>
                 <span class="k">continue</span>
 
-            <span class="n">proposed_local_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">tool_prefix</span><span class="si">}{</span><span class="n">remote_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">proposed_local_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">tool_prefix</span><span class="si">}{</span><span class="n">remote_name</span><span class="si">}</span><span class="s2">"</span>
             <span class="n">normalized_local_name</span> <span class="o">=</span> <span class="n">_normalize_tool_name_for_model_compat</span><span class="p">(</span>
                 <span class="n">proposed_local_name</span>
             <span class="p">)</span>
             <span class="n">local_name</span> <span class="o">=</span> <span class="n">_build_unique_tool_name</span><span class="p">(</span>
                 <span class="n">normalized_local_name</span><span class="p">,</span>
                 <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tool_routes</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
-                <span class="n">stable_seed</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">remote_name</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">proposed_local_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">stable_seed</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">remote_name</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">proposed_local_name</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">local_name</span> <span class="o">!=</span> <span class="n">proposed_local_name</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;External MCP tool &#39;</span><span class="si">%s</span><span class="s2">&#39; from server &#39;</span><span class="si">%s</span><span class="s2">&#39; exposed as &#39;</span><span class="si">%s</span><span class="s2">&#39; for model compatibility.&quot;</span><span class="p">,</span>
+                    <span class="s2">"External MCP tool '</span><span class="si">%s</span><span class="s2">' from server '</span><span class="si">%s</span><span class="s2">' exposed as '</span><span class="si">%s</span><span class="s2">' for model compatibility."</span><span class="p">,</span>
                     <span class="n">proposed_local_name</span><span class="p">,</span>
                     <span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
                     <span class="n">local_name</span><span class="p">,</span>
                 <span class="p">)</span>
 
-            <span class="n">parameters</span> <span class="o">=</span> <span class="n">_normalize_schema</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="s2">&quot;inputSchema&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="n">parameters</span> <span class="o">=</span> <span class="n">_normalize_schema</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="s2">"inputSchema"</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
             <span class="n">description</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;External MCP tool &#39;</span><span class="si">{</span><span class="n">remote_name</span><span class="si">}</span><span class="s2">&#39; from server &#39;</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+                <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="ow">or</span> <span class="sa">f</span><span class="s2">"External MCP tool '</span><span class="si">{</span><span class="n">remote_name</span><span class="si">}</span><span class="s2">' from server '</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">'."</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_tool_defs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">local_name</span><span class="p">,</span>
-                        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">description</span><span class="p">,</span>
-                        <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="n">parameters</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                    <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"name"</span><span class="p">:</span> <span class="n">local_name</span><span class="p">,</span>
+                        <span class="s2">"description"</span><span class="p">:</span> <span class="n">description</span><span class="p">,</span>
+                        <span class="s2">"parameters"</span><span class="p">:</span> <span class="n">parameters</span><span class="p">,</span>
                     <span class="p">},</span>
                 <span class="p">}</span>
             <span class="p">)</span>
@@ -578,40 +578,40 @@
                 <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;External MCP tool &#39;</span><span class="si">{</span><span class="n">local_tool_name</span><span class="si">}</span><span class="s2">&#39; failed on server &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="s2">"error"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"External MCP tool '</span><span class="si">{</span><span class="n">local_tool_name</span><span class="si">}</span><span class="s2">' failed on server "</span>
+                    <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">': </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
             <span class="p">}</span>
 
-        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;is_error&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-            <span class="n">details</span> <span class="o">=</span> <span class="n">_extract_content_text</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">"is_error"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">details</span> <span class="o">=</span> <span class="n">_extract_content_text</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">details</span><span class="p">:</span>
-                <span class="n">details</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">&quot;Tool call returned an error.&quot;</span>
+                <span class="n">details</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">"data"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">"Tool call returned an error."</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;External MCP tool &#39;</span><span class="si">{</span><span class="n">local_tool_name</span><span class="si">}</span><span class="s2">&#39; failed on server &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">details</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="s2">"error"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"External MCP tool '</span><span class="si">{</span><span class="n">local_tool_name</span><span class="si">}</span><span class="s2">' failed on server "</span>
+                    <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">server</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">': </span><span class="si">{</span><span class="n">details</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
             <span class="p">}</span>
 
-        <span class="n">data</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">"data"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">data</span>
         <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
 
-        <span class="n">structured</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;structured_content&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">structured</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">"structured_content"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">structured</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">structured</span>
         <span class="k">if</span> <span class="n">structured</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">structured</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">structured</span><span class="p">}</span>
 
-        <span class="n">content_text</span> <span class="o">=</span> <span class="n">_extract_content_text</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+        <span class="n">content_text</span> <span class="o">=</span> <span class="n">_extract_content_text</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">content_text</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">content_text</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">content_text</span><span class="p">}</span>
 
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span></div>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span></div>
 </div>
 
 </pre></div>

@@ -282,7 +282,7 @@
 <div class="viewcode-block" id="WattsStrogatzNetwork">
 <a class="viewcode-back" href="../../../api/networks.html#terrarium.networks.watts_strogatz.WattsStrogatzNetwork">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">WattsStrogatzNetwork</span><span class="p">(</span><span class="n">CommunicationNetwork</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Watts-Strogatz small-world communication network.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Watts-Strogatz small-world communication network."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -304,17 +304,17 @@
             <span class="k">return</span>
 
         <span class="k">if</span> <span class="n">k_int</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;communication_network.k must be &gt;= 0&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"communication_network.k must be &gt;= 0"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">k_int</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;communication_network.k must be &lt; num_agents (k=</span><span class="si">{</span><span class="n">k_int</span><span class="si">}</span><span class="s2">, n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="sa">f</span><span class="s2">"communication_network.k must be &lt; num_agents (k=</span><span class="si">{</span><span class="n">k_int</span><span class="si">}</span><span class="s2">, n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">)"</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">k_int</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;communication_network.k must be even for Watts-Strogatz (k=</span><span class="si">{</span><span class="n">k_int</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="sa">f</span><span class="s2">"communication_network.k must be even for Watts-Strogatz (k=</span><span class="si">{</span><span class="n">k_int</span><span class="si">}</span><span class="s2">)"</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">p</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;communication_network.rewire_prob must be in [0.0, 1.0]&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"communication_network.rewire_prob must be in [0.0, 1.0]"</span><span class="p">)</span>
 
         <span class="n">g_idx</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">watts_strogatz_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">k_int</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
         <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">agents</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)}</span>

@@ -271,7 +271,7 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.environments.dcops.personal_assistant.personal_assistant_env</h1><div class="highlight"><pre>
 <span></span><span class="c1"># pyright: basic</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 <span class="sd">PersonalAssistant Environment Adaptor</span>
 
 <span class="sd">Adaptor to integrate the PersonalAssistant domain (outfit coordination)</span>
@@ -279,7 +279,7 @@
 
 <span class="sd">The PersonalAssistant environment involves agents coordinating to select outfits</span>
 <span class="sd">that satisfy personal preferences and inter-agent constraints (color matching).</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
@@ -312,20 +312,20 @@
 <div class="viewcode-block" id="PersonalAssistantEnvironment">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PersonalAssistantEnvironment</span><span class="p">(</span><span class="n">AbstractEnvironment</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    PersonalAssistant environment adaptor for outfit coordination tasks.</span>
 
 <span class="sd">    Agents coordinate to select outfits that satisfy personal preferences</span>
 <span class="sd">    and inter-agent constraints (color matching/avoiding).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">communication_protocol</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">tool_logger</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the PersonalAssistant environment.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Initialize the PersonalAssistant environment."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">full_config</span> <span class="o">=</span> <span class="n">config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;environment&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"environment"</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"simulation"</span><span class="p">]</span>
         <span class="c1"># Get the correct seed from simulation config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span><span class="p">[</span><span class="s2">&quot;seed&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span><span class="p">[</span><span class="s2">"seed"</span><span class="p">])</span>
 
         <span class="c1"># Instance management</span>
         <span class="c1"># Partial joint assignment: variable_name -&gt; chosen outfit number (1-based)</span>
@@ -337,9 +337,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">communication_protocol</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_timestamp</span> <span class="o">=</span> <span class="n">get_run_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_iteration</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_iterations"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_planning_rounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulation_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;max_planning_rounds&quot;</span><span class="p">,</span> <span class="kc">None</span>
+            <span class="s2">"max_planning_rounds"</span><span class="p">,</span> <span class="kc">None</span>
         <span class="p">)</span>
 
         <span class="c1"># Clear seed directories FIRST to ensure clean state for this run</span>
@@ -348,23 +348,23 @@
         <span class="p">)</span>
 
         <span class="c1"># ---- Build CoLLAB v2 instance -------------------------------------------------</span>
-        <span class="n">network_cfg</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;communication_network&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">network_cfg</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"communication_network"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="k">assert</span> <span class="n">network_cfg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">network_cfg</span> <span class="o">!=</span> <span class="p">{},</span> <span class="p">(</span>
-            <span class="s2">&quot;communication_network config must be specified&quot;</span>
+            <span class="s2">"communication_network config must be specified"</span>
         <span class="p">)</span>
-        <span class="n">num_agents</span> <span class="o">=</span> <span class="n">network_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_agents&quot;</span><span class="p">)</span>
+        <span class="n">num_agents</span> <span class="o">=</span> <span class="n">network_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"num_agents"</span><span class="p">)</span>
         <span class="k">assert</span> <span class="p">(</span>
             <span class="n">num_agents</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">num_agents</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
             <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">num_agents</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
-        <span class="p">),</span> <span class="s2">&quot;communication_network.num_agents in config must be specified as an integer&quot;</span>
+        <span class="p">),</span> <span class="s2">"communication_network.num_agents in config must be specified as an integer"</span>
 
-        <span class="n">min_outfits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_outfits_per_agent&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
-        <span class="n">max_outfits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_outfits_per_agent&quot;</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
-        <span class="n">density</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;density&quot;</span><span class="p">)</span>
+        <span class="n">min_outfits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"min_outfits_per_agent"</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">max_outfits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_outfits_per_agent"</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="n">density</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"density"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">density</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Back-compat: approximate density from max_degree if present</span>
-            <span class="n">max_degree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_degree&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="n">max_degree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_degree"</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">density</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">max_degree</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">num_agents</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
@@ -382,10 +382,10 @@
         <span class="n">dcops_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">instance_dir</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">dcops_root</span>
-            <span class="o">/</span> <span class="s2">&quot;outputs&quot;</span>
-            <span class="o">/</span> <span class="s2">&quot;collab_instances&quot;</span>
-            <span class="o">/</span> <span class="s2">&quot;personal_assistant&quot;</span>
-            <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;seed_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="o">/</span> <span class="s2">"outputs"</span>
+            <span class="o">/</span> <span class="s2">"collab_instances"</span>
+            <span class="o">/</span> <span class="s2">"personal_assistant"</span>
+            <span class="o">/</span> <span class="sa">f</span><span class="s2">"seed_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span><span class="si">}</span><span class="s2">"</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">instance</span> <span class="o">=</span> <span class="n">generate_instance</span><span class="p">(</span><span class="n">collab_cfg</span><span class="p">,</span> <span class="n">instance_dir</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">:</span> <span class="n">ProblemDefinition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">problem</span>
@@ -393,7 +393,7 @@
         <span class="c1"># Score tracking</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">joint_reward_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;BaseAgent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># Set this later in main.py in case agents get different clients or settings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="s2">"BaseAgent"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># Set this later in main.py in case agents get different clients or settings</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_max_joint_reward</span><span class="p">()</span>
 
         <span class="c1"># Initialize prompts (put this after all other instance variables)</span>
@@ -405,16 +405,16 @@
         <span class="p">}</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> initialized with </span><span class="si">%s</span><span class="s2"> agents&quot;</span><span class="p">,</span>
+            <span class="s2">"</span><span class="si">%s</span><span class="s2"> initialized with </span><span class="si">%s</span><span class="s2"> agents"</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
         <span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Agent Names: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Agent Names: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">))</span>
 
 <div class="viewcode-block" id="PersonalAssistantEnvironment.async_init">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment.async_init">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">async_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Async initialization - create communication blackboards from the supplied network.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Async initialization - create communication blackboards from the supplied network."""</span>
         <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">async_init</span><span class="p">()</span></div>
 
 
@@ -423,28 +423,28 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">build_agent_context</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Build environment-specific context for an agent&#39;s turn. This is used in the planning and execution phases</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build environment-specific context for an agent's turn. This is used in the planning and execution phases</span>
 <span class="sd">        in CommunicationProtocol.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            agent_name: Name of the agent</span>
-<span class="sd">            phase: Current phase (&quot;planning&quot; or &quot;execution&quot;)</span>
+<span class="sd">            phase: Current phase ("planning" or "execution")</span>
 <span class="sd">            iteration: Current iteration number</span>
 <span class="sd">            **kwargs: Additional context</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Dictionary with agent context</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Clear outfit selections at the start of each new iteration&#39;s planning phase</span>
+<span class="sd">        """</span>
+        <span class="c1"># Clear outfit selections at the start of each new iteration's planning phase</span>
         <span class="c1"># to allow agents to make new choices</span>
         <span class="k">if</span> <span class="p">(</span>
-            <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;planning&quot;</span>
+            <span class="n">phase</span> <span class="o">==</span> <span class="s2">"planning"</span>
             <span class="ow">and</span> <span class="n">iteration</span> <span class="o">&gt;</span> <span class="mi">1</span>
             <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">)</span>
         <span class="p">):</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: Clearing selections for iteration </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">"</span><span class="si">%s</span><span class="s2">: Clearing selections for iteration </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
                 <span class="n">iteration</span><span class="p">,</span>
             <span class="p">)</span>
@@ -452,21 +452,21 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">assignment</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Environment not initialized&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Environment not initialized"</span><span class="p">}</span>
 
         <span class="n">context</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;agent_name&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-            <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span>
-            <span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
-            <span class="s2">&quot;outfit_selections&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-            <span class="s2">&quot;total_agents&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
-            <span class="s2">&quot;selections_made&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">),</span>
-            <span class="s2">&quot;selections_remaining&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">),</span>
+            <span class="s2">"agent_name"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+            <span class="s2">"phase"</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span>
+            <span class="s2">"iteration"</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
+            <span class="s2">"outfit_selections"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="s2">"total_agents"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
+            <span class="s2">"selections_made"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">),</span>
+            <span class="s2">"selections_remaining"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">),</span>
         <span class="p">}</span>
 
         <span class="c1"># Add configuration info (consistent with other DCOP environments)</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Config not available&quot;</span>
-        <span class="n">context</span><span class="p">[</span><span class="s2">&quot;max_iterations&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"Config not available"</span>
+        <span class="n">context</span><span class="p">[</span><span class="s2">"max_iterations"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_iterations"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
         <span class="c1"># Add additional context from kwargs (like planning_round)</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -478,13 +478,13 @@
 <div class="viewcode-block" id="PersonalAssistantEnvironment.done">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment.done">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True when the environment is finished.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return True when the environment is finished."""</span>
         <span class="c1"># Check max iterations first (consistent with other DCOP environments)</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Config not available&quot;</span>
-        <span class="n">max_iterations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"Config not available"</span>
+        <span class="n">max_iterations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_iterations"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">iteration</span> <span class="o">&gt;</span> <span class="n">max_iterations</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;Reached max iterations (</span><span class="si">%s</span><span class="s2">) - stopping simulation&quot;</span><span class="p">,</span> <span class="n">max_iterations</span>
+                <span class="s2">"Reached max iterations (</span><span class="si">%s</span><span class="s2">) - stopping simulation"</span><span class="p">,</span> <span class="n">max_iterations</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="kc">True</span>
 
@@ -494,13 +494,13 @@
             <span class="n">joint_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="ow">and</span> <span class="n">joint_reward</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;All constraints satisfied (score: </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">) - simulation complete&quot;</span><span class="p">,</span>
+                    <span class="s2">"All constraints satisfied (score: </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">) - simulation complete"</span><span class="p">,</span>
                     <span class="n">joint_reward</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="k">return</span> <span class="kc">True</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;All agents selected but constraints not fully satisfied (score: </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">) - continuing&quot;</span><span class="p">,</span>
+                <span class="s2">"All agents selected but constraints not fully satisfied (score: </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">) - continuing"</span><span class="p">,</span>
                 <span class="n">joint_reward</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span><span class="p">,</span>
             <span class="p">)</span>
@@ -511,14 +511,14 @@
 <div class="viewcode-block" id="PersonalAssistantEnvironment.compute_max_joint_reward">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment.compute_max_joint_reward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_max_joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the optimal joint reward for the environment.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;max_utility&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span></div>
+<span class="w">        </span><span class="sd">"""Return the optimal joint reward for the environment."""</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="s2">"max_utility"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="PersonalAssistantEnvironment.joint_reward">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment.joint_reward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the (partial) joint reward for a joint assignment.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return the (partial) joint reward for a joint assignment."""</span>
         <span class="n">total_reward</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rewards</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">total_reward</span></div>
 
@@ -526,21 +526,21 @@
 <div class="viewcode-block" id="PersonalAssistantEnvironment.agent_reward">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment.agent_reward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">agent_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">agent</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the reward attributed to a single agent.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return the reward attributed to a single agent."""</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">local_rewards</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rewards</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>
-        <span class="k">assert</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">local_rewards</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent</span><span class="si">}</span><span class="s2"> not found in local rewards&quot;</span>
+        <span class="k">assert</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">local_rewards</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Agent </span><span class="si">{</span><span class="n">agent</span><span class="si">}</span><span class="s2"> not found in local rewards"</span>
         <span class="n">local_reward</span> <span class="o">=</span> <span class="n">local_rewards</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
-        <span class="k">assert</span> <span class="n">local_reward</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Local reward for agent </span><span class="si">{</span><span class="n">agent</span><span class="si">}</span><span class="s2"> is None&quot;</span>
+        <span class="k">assert</span> <span class="n">local_reward</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Local reward for agent </span><span class="si">{</span><span class="n">agent</span><span class="si">}</span><span class="s2"> is None"</span>
         <span class="k">return</span> <span class="n">local_reward</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_rewards</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Compute joint reward and per-agent rewards for a given joint assignment.</span>
 
 <span class="sd">        Factors whose full scope has been assigned contribute to the total reward.</span>
 <span class="sd">        Per-agent rewards are attributed evenly to variable owners in scope.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">total_reward</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="n">local_rewards</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">agent</span><span class="p">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">}</span>
 
@@ -568,36 +568,36 @@
 <div class="viewcode-block" id="PersonalAssistantEnvironment.log_iteration">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment.log_iteration">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">log_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Log the current state of the environment.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            iteration: Current iteration number</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;=== </span><span class="si">%s</span><span class="s2"> State - Iteration </span><span class="si">%s</span><span class="s2"> ===&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">iteration</span>
+            <span class="s2">"=== </span><span class="si">%s</span><span class="s2"> State - Iteration </span><span class="si">%s</span><span class="s2"> ==="</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">iteration</span>
         <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Agents: </span><span class="si">%s</span><span class="s2"> total, </span><span class="si">%s</span><span class="s2"> selected outfits&quot;</span><span class="p">,</span>
+            <span class="s2">"Agents: </span><span class="si">%s</span><span class="s2"> total, </span><span class="si">%s</span><span class="s2"> selected outfits"</span><span class="p">,</span>
             <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
             <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">),</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Current Selections:&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Current Selections:"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">agent</span><span class="p">,</span> <span class="n">outfit</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">outfit</span><span class="o">.</span><span class="n">article</span><span class="p">,</span> <span class="n">outfit</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"  </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">outfit</span><span class="o">.</span><span class="n">article</span><span class="p">,</span> <span class="n">outfit</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
 
         <span class="n">remaining</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">agent</span> <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span> <span class="k">if</span> <span class="n">agent</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span>
         <span class="p">]</span>
         <span class="k">if</span> <span class="n">remaining</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Remaining agents: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remaining</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Remaining agents: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remaining</span><span class="p">))</span>
 
         <span class="n">joint_reward</span><span class="p">,</span> <span class="n">agent_rewards</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rewards</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">)</span>
         <span class="n">ratio</span> <span class="o">=</span> <span class="n">joint_reward</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="k">else</span> <span class="mf">0.0</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Current Joint Reward: </span><span class="si">%.2f</span><span class="s2"> (ratio </span><span class="si">%.2f%%</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">joint_reward</span><span class="p">,</span> <span class="n">ratio</span> <span class="o">*</span> <span class="mf">100.0</span>
+            <span class="s2">"Current Joint Reward: </span><span class="si">%.2f</span><span class="s2"> (ratio </span><span class="si">%.2f%%</span><span class="s2">)"</span><span class="p">,</span> <span class="n">joint_reward</span><span class="p">,</span> <span class="n">ratio</span> <span class="o">*</span> <span class="mf">100.0</span>
         <span class="p">)</span>
 
         <span class="c1"># Track scores for every iteration</span>
@@ -607,7 +607,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_track_scores</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">joint_reward</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">agent_rewards</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Track scores and write logs.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Track scores and write logs."""</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 
@@ -627,40 +627,40 @@
 
         <span class="c1"># Log scores to JSON</span>
         <span class="n">score_entry</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;environment&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
-            <span class="s2">&quot;iteration&quot;</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
-            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
-            <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="n">joint_reward</span><span class="p">,</span>
-            <span class="s2">&quot;joint_reward_ratio&quot;</span><span class="p">:</span> <span class="n">joint_reward</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span><span class="p">,</span>
-            <span class="s2">&quot;max_joint_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span><span class="p">,</span>
-            <span class="s2">&quot;agent_rewards&quot;</span><span class="p">:</span> <span class="n">agent_rewards</span><span class="p">,</span>
-            <span class="s2">&quot;average_agent_reward&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">agent_rewards</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_rewards</span><span class="p">),</span>
-            <span class="s2">&quot;model_info&quot;</span><span class="p">:</span> <span class="n">extract_model_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">),</span>
-            <span class="s2">&quot;full_config&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">,</span>
-            <span class="s2">&quot;total_agents&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_rewards</span><span class="p">),</span>
-            <span class="s2">&quot;variables_assigned&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-            <span class="s2">&quot;total_variables&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="p">),</span>
+            <span class="s2">"environment"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s2">"iteration"</span><span class="p">:</span> <span class="n">iteration</span><span class="p">,</span>
+            <span class="s2">"timestamp"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">"joint_reward"</span><span class="p">:</span> <span class="n">joint_reward</span><span class="p">,</span>
+            <span class="s2">"joint_reward_ratio"</span><span class="p">:</span> <span class="n">joint_reward</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span><span class="p">,</span>
+            <span class="s2">"max_joint_reward"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span><span class="p">,</span>
+            <span class="s2">"agent_rewards"</span><span class="p">:</span> <span class="n">agent_rewards</span><span class="p">,</span>
+            <span class="s2">"average_agent_reward"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">agent_rewards</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_rewards</span><span class="p">),</span>
+            <span class="s2">"model_info"</span><span class="p">:</span> <span class="n">extract_model_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">),</span>
+            <span class="s2">"full_config"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_config</span><span class="p">,</span>
+            <span class="s2">"total_agents"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_rewards</span><span class="p">),</span>
+            <span class="s2">"variables_assigned"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+            <span class="s2">"total_variables"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="p">),</span>
         <span class="p">}</span>
 
-        <span class="n">data_file</span> <span class="o">=</span> <span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;data_iteration_</span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">.json&quot;</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">data_file</span> <span class="o">=</span> <span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"data_iteration_</span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">.json"</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">score_entry</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fill_random_unassigned_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assign uniform-random domain values to any missing/invalid variables.&quot;&quot;&quot;</span>
-        <span class="n">problem</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;problem&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">instance</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;instance&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">"""Assign uniform-random domain values to any missing/invalid variables."""</span>
+        <span class="n">problem</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"problem"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">instance</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"instance"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">problem</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="mi">0</span>
 
-        <span class="n">seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;current_seed&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"current_seed"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
         <span class="n">rng</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">seed</span> <span class="o">+</span> <span class="mi">99173</span><span class="p">)</span>
 
         <span class="n">filled</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">filled_assignment</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">var_name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="p">):</span>
             <span class="n">spec</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="n">var_name</span><span class="p">]</span>
-            <span class="n">domain</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">&quot;domain&quot;</span><span class="p">,</span> <span class="p">[])</span> <span class="ow">or</span> <span class="p">[])</span>
+            <span class="n">domain</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">"domain"</span><span class="p">,</span> <span class="p">[])</span> <span class="ow">or</span> <span class="p">[])</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">domain</span><span class="p">:</span>
                 <span class="k">continue</span>
 
@@ -683,7 +683,7 @@
 
         <span class="c1"># Keep the (agent -&gt; Outfit) view consistent with the filled assignment so</span>
         <span class="c1"># summaries include all agents even if some never acted.</span>
-        <span class="n">wardrobe</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;wardrobe&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">wardrobe</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">"wardrobe"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">wardrobe</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">wardrobe</span><span class="p">:</span>
             <span class="n">selections</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Outfit</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">for</span> <span class="n">var_name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="p">):</span>
@@ -705,7 +705,7 @@
 <div class="viewcode-block" id="PersonalAssistantEnvironment.get_final_summary">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.personal_assistant.personal_assistant_env.PersonalAssistantEnvironment.get_final_summary">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_final_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a final summary of the entire simulation.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Get a final summary of the entire simulation."""</span>
         <span class="n">total_vars</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="p">)</span>
         <span class="n">assignment_filling</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">assignment_filling_enabled</span><span class="p">()</span>
         <span class="n">random_fallback_fills</span> <span class="o">=</span> <span class="p">(</span>
@@ -716,37 +716,37 @@
         <span class="n">notes</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">UNASSIGNED_VARIABLE_FALLBACK_NOTE</span><span class="p">]</span> <span class="k">if</span> <span class="n">assignment_filling</span> <span class="k">else</span> <span class="p">[]</span>
 
         <span class="n">final_selections</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> agents&quot;</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> agents"</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">)</span> <span class="o">!=</span> <span class="n">total_vars</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;incomplete&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;variables_assigned&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-                <span class="s2">&quot;total_variables&quot;</span><span class="p">:</span> <span class="n">total_vars</span><span class="p">,</span>
-                <span class="s2">&quot;total_agents&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
-                <span class="s2">&quot;final_selections&quot;</span><span class="p">:</span> <span class="n">final_selections</span><span class="p">,</span>
-                <span class="s2">&quot;random_fallback_fills&quot;</span><span class="p">:</span> <span class="n">random_fallback_fills</span><span class="p">,</span>
-                <span class="s2">&quot;notes&quot;</span><span class="p">:</span> <span class="n">notes</span><span class="p">,</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"incomplete"</span><span class="p">,</span>
+                <span class="s2">"variables_assigned"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+                <span class="s2">"total_variables"</span><span class="p">:</span> <span class="n">total_vars</span><span class="p">,</span>
+                <span class="s2">"total_agents"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
+                <span class="s2">"final_selections"</span><span class="p">:</span> <span class="n">final_selections</span><span class="p">,</span>
+                <span class="s2">"random_fallback_fills"</span><span class="p">:</span> <span class="n">random_fallback_fills</span><span class="p">,</span>
+                <span class="s2">"notes"</span><span class="p">:</span> <span class="n">notes</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="n">joint_reward</span><span class="p">,</span> <span class="n">agent_rewards</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rewards</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;complete&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="n">joint_reward</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
-            <span class="s2">&quot;raw_joint_reward&quot;</span><span class="p">:</span> <span class="n">joint_reward</span><span class="p">,</span>
-            <span class="s2">&quot;average_agent_reward&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">agent_rewards</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_rewards</span><span class="p">)</span> <span class="k">if</span> <span class="n">agent_rewards</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
-            <span class="s2">&quot;agent_rewards&quot;</span><span class="p">:</span> <span class="n">agent_rewards</span><span class="p">,</span>
-            <span class="s2">&quot;outfit_selections&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="n">agent</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="n">outfit</span><span class="o">.</span><span class="n">article</span><span class="p">,</span> <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="n">outfit</span><span class="o">.</span><span class="n">color</span><span class="p">}</span>
+            <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"complete"</span><span class="p">,</span>
+            <span class="s2">"joint_reward"</span><span class="p">:</span> <span class="n">joint_reward</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_joint_reward</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">"raw_joint_reward"</span><span class="p">:</span> <span class="n">joint_reward</span><span class="p">,</span>
+            <span class="s2">"average_agent_reward"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">agent_rewards</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_rewards</span><span class="p">)</span> <span class="k">if</span> <span class="n">agent_rewards</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">"agent_rewards"</span><span class="p">:</span> <span class="n">agent_rewards</span><span class="p">,</span>
+            <span class="s2">"outfit_selections"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="n">agent</span><span class="p">:</span> <span class="p">{</span><span class="s2">"article"</span><span class="p">:</span> <span class="n">outfit</span><span class="o">.</span><span class="n">article</span><span class="p">,</span> <span class="s2">"color"</span><span class="p">:</span> <span class="n">outfit</span><span class="o">.</span><span class="n">color</span><span class="p">}</span>
                 <span class="k">for</span> <span class="n">agent</span><span class="p">,</span> <span class="n">outfit</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfit_selections</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
             <span class="p">},</span>
-            <span class="s2">&quot;total_variables&quot;</span><span class="p">:</span> <span class="n">total_vars</span><span class="p">,</span>
-            <span class="s2">&quot;variables_assigned&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-            <span class="s2">&quot;total_agents&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
-            <span class="s2">&quot;final_selections&quot;</span><span class="p">:</span> <span class="n">final_selections</span><span class="p">,</span>
-            <span class="s2">&quot;random_fallback_fills&quot;</span><span class="p">:</span> <span class="n">random_fallback_fills</span><span class="p">,</span>
-            <span class="s2">&quot;notes&quot;</span><span class="p">:</span> <span class="n">notes</span><span class="p">,</span>
+            <span class="s2">"total_variables"</span><span class="p">:</span> <span class="n">total_vars</span><span class="p">,</span>
+            <span class="s2">"variables_assigned"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+            <span class="s2">"total_agents"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_names</span><span class="p">),</span>
+            <span class="s2">"final_selections"</span><span class="p">:</span> <span class="n">final_selections</span><span class="p">,</span>
+            <span class="s2">"random_fallback_fills"</span><span class="p">:</span> <span class="n">random_fallback_fills</span><span class="p">,</span>
+            <span class="s2">"notes"</span><span class="p">:</span> <span class="n">notes</span><span class="p">,</span>
         <span class="p">}</span></div>
 </div>
 

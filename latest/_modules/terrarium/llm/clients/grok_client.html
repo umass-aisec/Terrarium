@@ -280,19 +280,19 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.openai_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAIClient</span>
 
 
-<span class="n">_DEFAULT_GROK_BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://api.x.ai/v1&quot;</span>
+<span class="n">_DEFAULT_GROK_BASE_URL</span> <span class="o">=</span> <span class="s2">"https://api.x.ai/v1"</span>
 
 
 <div class="viewcode-block" id="GrokClient">
 <a class="viewcode-back" href="../../../../api/llm.html#terrarium.llm.clients.grok_client.GrokClient">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GrokClient</span><span class="p">(</span><span class="n">OpenAIClient</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;First-party xAI Grok client using xAI&#39;s OpenAI-compatible Responses API.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""First-party xAI Grok client using xAI's OpenAI-compatible Responses API."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">api_key_env_var</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;GROK_API_KEY&quot;</span><span class="p">,</span>
+        <span class="n">api_key_env_var</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"GROK_API_KEY"</span><span class="p">,</span>
         <span class="n">base_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3600.0</span><span class="p">,</span>
         <span class="n">base_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -301,12 +301,12 @@
         <span class="n">resolved_api_key</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">api_key</span>
             <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="n">api_key_env_var</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GROK_API_KEY&quot;</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;XAI_API_KEY&quot;</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"GROK_API_KEY"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"XAI_API_KEY"</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">resolved_api_key</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;xAI Grok API key not found. Set GROK_API_KEY in .env file&quot;</span>
+                <span class="s2">"xAI Grok API key not found. Set GROK_API_KEY in .env file"</span>
             <span class="p">)</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
@@ -314,7 +314,7 @@
             <span class="n">api_key_env_var</span><span class="o">=</span><span class="n">api_key_env_var</span><span class="p">,</span>
             <span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span> <span class="ow">or</span> <span class="n">_DEFAULT_GROK_BASE_URL</span><span class="p">,</span>
             <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="s2">&quot;xAI Grok&quot;</span><span class="p">,</span>
+            <span class="n">provider_name</span><span class="o">=</span><span class="s2">"xAI Grok"</span><span class="p">,</span>
             <span class="n">capability_model</span><span class="o">=</span><span class="n">base_model</span><span class="p">,</span>
         <span class="p">)</span></div>
 

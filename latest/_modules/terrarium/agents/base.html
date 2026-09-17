@@ -287,22 +287,23 @@
 <div class="viewcode-block" id="BaseAgent">
 <a class="viewcode-back" href="../../../api/agents.html#terrarium.agents.base.BaseAgent">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseAgent</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Agent-dependent methods for LLM agents.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">client</span><span class="p">:</span> <span class="n">AbstractClient</span><span class="p">,</span>
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
         <span class="n">max_conversation_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
         <span class="n">tool_logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">trajectory_logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
         <span class="n">generation_params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">retrieval_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Initialize an Agent.</span>
 
 <span class="sd">        Args:</span>
@@ -314,7 +315,9 @@
 <span class="sd">            trajectory_logger: Logger for agent reasoning trajectories</span>
 <span class="sd">            environment_name: Environment name (prefer passing environment.__class__.__name__)</span>
 <span class="sd">            generation_params: Generation parameters specific to the provider/model (e.g., temperature, top_p)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">            retrieval_enabled: Whether this agent can call `recall()` to search the full,</span>
+<span class="sd">                uncompacted blackboard history — the retrieval-backed compaction modifier.</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span> <span class="o">=</span> <span class="n">model_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">generation_params</span> <span class="o">=</span> <span class="n">generation_params</span> <span class="ow">or</span> <span class="p">{}</span>
@@ -324,6 +327,7 @@
         <span class="c1"># Used for tool discovery and error messages; should be the class environment name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span> <span class="o">=</span> <span class="n">environment_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">toolset_discovery</span> <span class="o">=</span> <span class="n">ToolsetDiscovery</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">retrieval_enabled</span> <span class="o">=</span> <span class="n">retrieval_enabled</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
 
         <span class="c1"># Agent context for logging (set via set_meta_context)</span>
@@ -336,38 +340,38 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_response_diagnostics</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capture lightweight response metadata for debugging empty/failed turns.&quot;&quot;&quot;</span>
-        <span class="n">output_items</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+<span class="w">        </span><span class="sd">"""Capture lightweight response metadata for debugging empty/failed turns."""</span>
+        <span class="n">output_items</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"output"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
         <span class="n">output_types</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">output_items</span><span class="p">:</span>
-            <span class="n">item_type</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">item_type</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">"type"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">item_type</span><span class="p">:</span>
                 <span class="n">output_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item_type</span><span class="p">)</span>
 
         <span class="n">diagnostics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;response_status&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="s2">"response_status"</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
         <span class="p">}</span>
         <span class="k">if</span> <span class="n">output_types</span><span class="p">:</span>
-            <span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;response_output_types&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_types</span>
+            <span class="n">diagnostics</span><span class="p">[</span><span class="s2">"response_output_types"</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_types</span>
 
-        <span class="n">output_text</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">&quot;output_text&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">output_text</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="s2">"output_text"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_text</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">output_text</span><span class="p">:</span>
-            <span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;response_output_text&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_text</span>
+            <span class="n">diagnostics</span><span class="p">[</span><span class="s2">"response_output_text"</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_text</span>
 
         <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_generation_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Merge generic generation defaults with provider-specific params.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">max_tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generation_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="n">max_tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generation_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_tokens"</span><span class="p">)</span>
         <span class="n">base_params</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
             <span class="c1"># Supply all common token limit keys to support different clients</span>
-            <span class="s2">&quot;max_completion_tokens&quot;</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
-            <span class="s2">&quot;max_output_tokens&quot;</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
-            <span class="s2">&quot;max_tokens&quot;</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
-            <span class="s2">&quot;tools&quot;</span><span class="p">:</span> <span class="n">tool_set</span><span class="p">,</span>
+            <span class="s2">"max_completion_tokens"</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
+            <span class="s2">"max_output_tokens"</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
+            <span class="s2">"max_tokens"</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
+            <span class="s2">"tools"</span><span class="p">:</span> <span class="n">tool_set</span><span class="p">,</span>
         <span class="p">}</span>
         <span class="c1"># Drop None values</span>
         <span class="n">base_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">base_params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
@@ -386,13 +390,13 @@
         <span class="n">result</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
         <span class="n">start_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Helper to log tool calls.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Helper to log tool calls."""</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tool_logger</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_agent_name</span><span class="p">):</span>
             <span class="k">return</span>
         <span class="n">duration_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>  <span class="c1"># s -&gt; ms</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tool_logger</span><span class="o">.</span><span class="n">log_tool_call</span><span class="p">(</span>
             <span class="n">agent_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_agent_name</span><span class="p">,</span>
-            <span class="n">phase</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="ow">or</span> <span class="s2">"unknown"</span><span class="p">,</span>
             <span class="n">tool_name</span><span class="o">=</span><span class="n">tool_name</span><span class="p">,</span>
             <span class="n">parameters</span><span class="o">=</span><span class="n">arguments</span><span class="p">,</span>
             <span class="n">result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
@@ -402,12 +406,12 @@
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_log_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trajectory_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Helper to log agent trajectories.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Helper to log agent trajectories."""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_logger</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_agent_name</span> <span class="ow">and</span> <span class="n">trajectory_dict</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_logger</span><span class="o">.</span><span class="n">log_trajectory</span><span class="p">(</span>
                 <span class="n">agent_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_agent_name</span><span class="p">,</span>
                 <span class="n">iteration</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_iteration</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="n">phase</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span><span class="p">,</span>
+                <span class="n">phase</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="ow">or</span> <span class="s2">"unknown"</span><span class="p">,</span>
                 <span class="n">trajectory_dict</span><span class="o">=</span><span class="n">trajectory_dict</span><span class="p">,</span>
                 <span class="n">round_num</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_round</span><span class="p">,</span>
             <span class="p">)</span>
@@ -421,7 +425,7 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">round_num</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Set the current agent context for tool call logging.</span>
 
 <span class="sd">        Args:</span>
@@ -429,7 +433,7 @@
 <span class="sd">            phase: Current phase (planning, execution, etc.)</span>
 <span class="sd">            iteration: Current iteration number</span>
 <span class="sd">            round_num: Current round number</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_agent_name</span> <span class="o">=</span> <span class="n">agent_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="o">=</span> <span class="n">phase</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_iteration</span> <span class="o">=</span> <span class="n">iteration</span>
@@ -439,7 +443,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_execute_tool_call</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">tool_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">tool_arguments</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Execute a tool call by delegating to the appropriate tool handler.</span>
 
 <span class="sd">        Args:</span>
@@ -448,32 +452,34 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Tool execution result</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">communication_protocol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
-            <span class="s2">&quot;Communication protocol not set for agent&quot;</span>
+            <span class="s2">"Communication protocol not set for agent"</span>
         <span class="p">)</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_agent_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
-            <span class="s2">&quot;Agent context not set - call set_meta_context first&quot;</span>
+            <span class="s2">"Agent context not set - call set_meta_context first"</span>
         <span class="p">)</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
-            <span class="s2">&quot;Agent context not set - call set_meta_context first&quot;</span>
+            <span class="s2">"Agent context not set - call set_meta_context first"</span>
         <span class="p">)</span>
 
-        <span class="n">result</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Unknown error&quot;</span><span class="p">}</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Unknown error"</span><span class="p">}</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># NOTE: Depending on the communication protocol implementation, this logic may have to change.</span>
-            <span class="n">env_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">env_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span> <span class="ow">or</span> <span class="s2">""</span>
 
             <span class="n">available_env_tools</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+                <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">toolset_discovery</span><span class="o">.</span><span class="n">get_tools_for_environment</span><span class="p">(</span>
                     <span class="n">env_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span>
                 <span class="p">)</span>
             <span class="p">}</span>
             <span class="n">available_env_tools</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
             <span class="n">all_env_tools</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toolset_discovery</span><span class="o">.</span><span class="n">get_env_tool_names</span><span class="p">(</span><span class="n">env_name</span><span class="p">)</span>
-            <span class="n">blackboard_tool_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toolset_discovery</span><span class="o">.</span><span class="n">get_blackboard_tool_names</span><span class="p">()</span>
+            <span class="n">blackboard_tool_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toolset_discovery</span><span class="o">.</span><span class="n">get_blackboard_tool_names</span><span class="p">(</span>
+                <span class="n">env_name</span><span class="p">,</span> <span class="n">retrieval_enabled</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">retrieval_enabled</span>
+            <span class="p">)</span>
             <span class="n">external_tool_names</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_external_tool_names</span><span class="p">()</span>
 
             <span class="n">handler</span> <span class="o">=</span> <span class="kc">None</span>
@@ -483,7 +489,7 @@
                 <span class="n">handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">communication_protocol</span><span class="o">.</span><span class="n">environment_handle_tool_call</span>
             <span class="k">elif</span> <span class="n">tool_name</span> <span class="ow">in</span> <span class="n">all_env_tools</span><span class="p">:</span>
                 <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Tool &#39;</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">&#39; is not available during the </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="si">}</span><span class="s2"> phase.&quot;</span>
+                    <span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Tool '</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">' is not available during the </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="si">}</span><span class="s2"> phase."</span>
                 <span class="p">}</span>
             <span class="k">elif</span> <span class="n">tool_name</span> <span class="ow">in</span> <span class="n">external_tool_names</span><span class="p">:</span>
                 <span class="n">maybe_result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">execute_external_tool</span><span class="p">(</span>
@@ -493,11 +499,11 @@
                     <span class="n">result</span> <span class="o">=</span> <span class="n">maybe_result</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
-                        <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;External tool &#39;</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">&#39; could not be executed.&quot;</span>
+                        <span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"External tool '</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">' could not be executed."</span>
                     <span class="p">}</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Tool &#39;</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">&#39; is not recognized in environment &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+                    <span class="sa">f</span><span class="s2">"Tool '</span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">' is not recognized in environment '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span><span class="si">}</span><span class="s2">'."</span>
                 <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">handler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -514,12 +520,12 @@
                 <span class="ow">and</span> <span class="n">tool_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">blackboard_tool_names</span>
                 <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
             <span class="p">):</span>
-                <span class="n">status</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;success&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-                <span class="k">if</span> <span class="s2">&quot;error&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">result</span> <span class="ow">and</span> <span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;retry&quot;</span><span class="p">}:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"status"</span><span class="p">,</span> <span class="s2">"success"</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="k">if</span> <span class="s2">"error"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">result</span> <span class="ow">and</span> <span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">,</span> <span class="s2">"retry"</span><span class="p">}:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_env_state_committed</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Error executing </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">error_msg</span><span class="p">}</span>
+            <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Error executing </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="n">error_msg</span><span class="p">}</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_log_tool_call</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">tool_arguments</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">start_time</span><span class="p">)</span>
@@ -540,25 +546,25 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">round_num</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Generate a response for a specific agent with full context.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Dictionary containing agent&#39;s response.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">            Dictionary containing agent's response.</span>
+<span class="sd">        """</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">communication_protocol</span> <span class="o">=</span> <span class="n">communication_protocol</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">communication_protocol</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;communication_protocol must be set for tool-based execution&quot;</span>
+                    <span class="s2">"communication_protocol must be set for tool-based execution"</span>
                 <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">prompts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;prompts must be provided to generate a response&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"prompts must be provided to generate a response"</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;environment_name must be set when initializing the agent&quot;</span>
+                    <span class="s2">"environment_name must be set when initializing the agent"</span>
                 <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">set_meta_context</span><span class="p">(</span>
@@ -569,9 +575,9 @@
             <span class="p">)</span>
 
             <span class="n">system_prompt</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="n">get_system_prompt</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">prompts</span><span class="p">,</span> <span class="s2">&quot;get_system_prompt&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">get_system_prompt</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">prompts</span><span class="p">,</span> <span class="s2">"get_system_prompt"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">get_system_prompt</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;prompts.get_system_prompt must be callable&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"prompts.get_system_prompt must be callable"</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">get_system_prompt</span><span class="p">)</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
@@ -583,16 +589,16 @@
                 <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                     <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_KEYWORD</span><span class="p">:</span>
                         <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span>
-                            <span class="s2">&quot;agent_name&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-                            <span class="s2">&quot;agent_context&quot;</span><span class="p">:</span> <span class="n">agent_context</span><span class="p">,</span>
-                            <span class="s2">&quot;blackboard_context&quot;</span><span class="p">:</span> <span class="n">blackboard_context</span><span class="p">,</span>
+                            <span class="s2">"agent_name"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+                            <span class="s2">"agent_context"</span><span class="p">:</span> <span class="n">agent_context</span><span class="p">,</span>
+                            <span class="s2">"blackboard_context"</span><span class="p">:</span> <span class="n">blackboard_context</span><span class="p">,</span>
                         <span class="p">}</span>
                         <span class="k">break</span>
-                    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;agent_name&quot;</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">"agent_name"</span><span class="p">:</span>
                         <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_name</span>
-                    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;agent_context&quot;</span><span class="p">:</span>
+                    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">"agent_context"</span><span class="p">:</span>
                         <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_context</span>
-                    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;blackboard_context&quot;</span><span class="p">:</span>
+                    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">"blackboard_context"</span><span class="p">:</span>
                         <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">blackboard_context</span>
                 <span class="n">system_prompt</span> <span class="o">=</span> <span class="n">get_system_prompt</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="n">user_prompt</span> <span class="o">=</span> <span class="n">prompts</span><span class="o">.</span><span class="n">get_user_prompt</span><span class="p">(</span>
@@ -601,20 +607,20 @@
                 <span class="n">blackboard_context</span><span class="o">=</span><span class="n">blackboard_context</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">system_prompt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">user_prompt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Prompts returned empty system/user prompt&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Prompts returned empty system/user prompt"</span><span class="p">)</span>
 
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multi_step_response_generation</span><span class="p">(</span>
                 <span class="n">system_prompt</span><span class="o">=</span><span class="n">system_prompt</span><span class="p">,</span> <span class="n">user_prompt</span><span class="o">=</span><span class="n">user_prompt</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Can&#39;t get LLM response: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">"Can't get LLM response: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
             <span class="k">raise</span></div>
 
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_multi_step_response_generation</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_prompt</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Generate a response multi-step tool execution loop.</span>
 <span class="sd">        Example: Call Tool -&gt; Execute Tool (us) -&gt; Append output to context -&gt; Call Tool -&gt; ...</span>
 
@@ -624,24 +630,24 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Dict with keys: response, usage, model, has_tool_calls, etc.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># Get tools for this environment and phase.</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
-            <span class="s2">&quot;Agent context not set - call set_meta_context first&quot;</span>
+            <span class="s2">"Agent context not set - call set_meta_context first"</span>
         <span class="p">)</span>
         <span class="n">env_tools</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toolset_discovery</span><span class="o">.</span><span class="n">get_tools_for_environment</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">blackboard_tools</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toolset_discovery</span><span class="o">.</span><span class="n">get_tools_for_blackboard</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment_name</span><span class="p">,</span> <span class="n">retrieval_enabled</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">retrieval_enabled</span>
         <span class="p">)</span>
         <span class="n">external_tools</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_external_tools</span><span class="p">()</span>
         <span class="n">combined_tools</span> <span class="o">=</span> <span class="n">env_tools</span> <span class="o">+</span> <span class="n">blackboard_tools</span> <span class="o">+</span> <span class="n">external_tools</span>
         <span class="n">tool_set</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">seen_tool_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">combined_tools</span><span class="p">:</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"function"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">seen_tool_names</span><span class="p">:</span>
                 <span class="k">continue</span>
             <span class="n">seen_tool_names</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -651,7 +657,7 @@
         <span class="c1"># TODO: Add functions to abstract client class such as init_context()</span>
         <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">init_context</span><span class="p">(</span><span class="n">system_prompt</span><span class="p">,</span> <span class="n">user_prompt</span><span class="p">)</span>
         <span class="n">total_tools_executed</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">total_usage</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;completion_tokens&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;total_tokens&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="n">total_usage</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"prompt_tokens"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"completion_tokens"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"total_tokens"</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
         <span class="c1"># Get a response and update context for next conversation step</span>
         <span class="c1"># response object will have tool calls embedded inside and text response</span>
         <span class="k">try</span><span class="p">:</span>
@@ -661,9 +667,9 @@
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_log_trajectory</span><span class="p">(</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;step_1&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
-                        <span class="s2">&quot;exception_type&quot;</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                    <span class="s2">"step_1"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"error"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                        <span class="s2">"exception_type"</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
                     <span class="p">}</span>
                 <span class="p">}</span>
             <span class="p">)</span>
@@ -673,8 +679,8 @@
 
         <span class="n">trajectory_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">conversation_steps</span> <span class="o">=</span> <span class="mi">1</span>
-        <span class="n">trajectory_dict</span><span class="p">[</span><span class="s2">&quot;step_1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;reasoning&quot;</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
+        <span class="n">trajectory_dict</span><span class="p">[</span><span class="s2">"step_1"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"reasoning"</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
             <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_response_diagnostics</span><span class="p">(</span><span class="n">response</span><span class="p">),</span>
         <span class="p">}</span>
 
@@ -695,8 +701,8 @@
 
             <span class="k">if</span> <span class="n">step_tools</span><span class="p">:</span>
                 <span class="c1"># For logging purposes</span>
-                <span class="n">step_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;step_</span><span class="si">{</span><span class="n">step</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="n">trajectory_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">step_key</span><span class="p">,</span> <span class="p">{})[</span><span class="s2">&quot;tools&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">step_tools</span>
+                <span class="n">step_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"step_</span><span class="si">{</span><span class="n">step</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span>
+                <span class="n">trajectory_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">step_key</span><span class="p">,</span> <span class="p">{})[</span><span class="s2">"tools"</span><span class="p">]</span> <span class="o">=</span> <span class="n">step_tools</span>
 
             <span class="k">if</span> <span class="n">tool_calls_executed</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">break</span>
@@ -716,49 +722,49 @@
                 <span class="n">total_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_usage</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">total_usage</span><span class="p">)</span>
                 <span class="n">current_response</span> <span class="o">=</span> <span class="n">response</span>
                 <span class="n">conversation_steps</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="n">trajectory_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;step_</span><span class="si">{</span><span class="n">conversation_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s2">&quot;reasoning&quot;</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
+                <span class="n">trajectory_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">"step_</span><span class="si">{</span><span class="n">conversation_steps</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">"reasoning"</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
                     <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_response_diagnostics</span><span class="p">(</span><span class="n">response</span><span class="p">),</span>
                 <span class="p">}</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
-                    <span class="s2">&quot;Failed to continue conversation at step </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">e</span>
+                    <span class="s2">"Failed to continue conversation at step </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">e</span>
                 <span class="p">)</span>
-                <span class="n">trajectory_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step_</span><span class="si">{</span><span class="n">conversation_steps</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="n">trajectory_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="sa">f</span><span class="s2">"step_</span><span class="si">{</span><span class="n">conversation_steps</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
                     <span class="p">{</span>
-                        <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
-                        <span class="s2">&quot;exception_type&quot;</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                        <span class="s2">"error"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                        <span class="s2">"exception_type"</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
                     <span class="p">}</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_log_trajectory</span><span class="p">(</span><span class="n">trajectory_dict</span><span class="p">)</span>
 
                 <span class="k">return</span> <span class="p">{</span>
-                    <span class="s2">&quot;response&quot;</span><span class="p">:</span> <span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;[ERROR] Tool execution completed but failed to continue conversation at step </span><span class="si">{</span><span class="n">step</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="s2">"response"</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"[ERROR] Tool execution completed but failed to continue conversation at step </span><span class="si">{</span><span class="n">step</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
                     <span class="p">),</span>
-                    <span class="s2">&quot;full_content&quot;</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
-                    <span class="s2">&quot;usage&quot;</span><span class="p">:</span> <span class="n">total_usage</span><span class="p">,</span>
-                    <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current_response</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="s2">"full_content"</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
+                    <span class="s2">"usage"</span><span class="p">:</span> <span class="n">total_usage</span><span class="p">,</span>
+                    <span class="s2">"model"</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current_response</span><span class="p">,</span> <span class="s2">"model"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
                     <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
-                    <span class="s2">&quot;tool_calls&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-                    <span class="s2">&quot;has_tool_calls&quot;</span><span class="p">:</span> <span class="n">total_tools_executed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
-                    <span class="s2">&quot;manual_tool_execution&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                    <span class="s2">&quot;tools_executed&quot;</span><span class="p">:</span> <span class="n">total_tools_executed</span><span class="p">,</span>
-                    <span class="s2">&quot;conversation_steps&quot;</span><span class="p">:</span> <span class="n">conversation_steps</span><span class="p">,</span>
+                    <span class="s2">"tool_calls"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">"has_tool_calls"</span><span class="p">:</span> <span class="n">total_tools_executed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">"manual_tool_execution"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">"tools_executed"</span><span class="p">:</span> <span class="n">total_tools_executed</span><span class="p">,</span>
+                    <span class="s2">"conversation_steps"</span><span class="p">:</span> <span class="n">conversation_steps</span><span class="p">,</span>
                 <span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_trajectory</span><span class="p">(</span><span class="n">trajectory_dict</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;response&quot;</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
-            <span class="s2">&quot;full_content&quot;</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
-            <span class="s2">&quot;usage&quot;</span><span class="p">:</span> <span class="n">total_usage</span><span class="p">,</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current_response</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
-            <span class="s2">&quot;tool_calls&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="s2">&quot;has_tool_calls&quot;</span><span class="p">:</span> <span class="n">total_tools_executed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
-            <span class="s2">&quot;manual_tool_execution&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="s2">&quot;tools_executed&quot;</span><span class="p">:</span> <span class="n">total_tools_executed</span><span class="p">,</span>
-            <span class="s2">&quot;conversation_steps&quot;</span><span class="p">:</span> <span class="n">conversation_steps</span><span class="p">,</span>
+            <span class="s2">"response"</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
+            <span class="s2">"full_content"</span><span class="p">:</span> <span class="n">response_str</span><span class="p">,</span>
+            <span class="s2">"usage"</span><span class="p">:</span> <span class="n">total_usage</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current_response</span><span class="p">,</span> <span class="s2">"model"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
+            <span class="s2">"tool_calls"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">"has_tool_calls"</span><span class="p">:</span> <span class="n">total_tools_executed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">"manual_tool_execution"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">"tools_executed"</span><span class="p">:</span> <span class="n">total_tools_executed</span><span class="p">,</span>
+            <span class="s2">"conversation_steps"</span><span class="p">:</span> <span class="n">conversation_steps</span><span class="p">,</span>
         <span class="p">}</span></div>
 
 </pre></div>

@@ -278,20 +278,20 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">TypeVar</span>
 
-<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">"T"</span><span class="p">)</span>
 
-<span class="n">_DEFAULT_MAX_WORKERS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;TERRARIUM_BLOCKING_MAX_WORKERS&quot;</span><span class="p">,</span> <span class="s2">&quot;32&quot;</span><span class="p">))</span>
+<span class="n">_DEFAULT_MAX_WORKERS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"TERRARIUM_BLOCKING_MAX_WORKERS"</span><span class="p">,</span> <span class="s2">"32"</span><span class="p">))</span>
 <span class="n">_BLOCKING_EXECUTOR</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">_DEFAULT_MAX_WORKERS</span><span class="p">))</span>
 
 
 <div class="viewcode-block" id="run_blocking">
 <a class="viewcode-back" href="../../../api/core.html#terrarium.core.async_utils.run_blocking">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_blocking</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">T</span><span class="p">],</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Run a blocking function in a shared thread pool without blocking the asyncio loop.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">fut</span> <span class="o">=</span> <span class="n">_BLOCKING_EXECUTOR</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
-    <span class="n">poll_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;TERRARIUM_BLOCKING_POLL_S&quot;</span><span class="p">,</span> <span class="s2">&quot;0.01&quot;</span><span class="p">))</span>
+    <span class="n">poll_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"TERRARIUM_BLOCKING_POLL_S"</span><span class="p">,</span> <span class="s2">"0.01"</span><span class="p">))</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">while</span> <span class="ow">not</span> <span class="n">fut</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
             <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">poll_s</span><span class="p">)</span>

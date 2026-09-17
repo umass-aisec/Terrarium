@@ -282,38 +282,38 @@
 <div class="viewcode-block" id="PersonalAssistantTools.get_tool_names">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.personal_assistant.personal_assistant_tools.PersonalAssistantTools.get_tool_names">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tool_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return set of tool names this environment supports.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;choose_outfit&quot;</span><span class="p">}</span></div>
+<span class="w">        </span><span class="sd">"""Return set of tool names this environment supports."""</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"choose_outfit"</span><span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="PersonalAssistantTools.get_tools">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.personal_assistant.personal_assistant_tools.PersonalAssistantTools.get_tools">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tools</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Get environment-specific tools available for a phase.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            phase: Current phase (&quot;planning&quot; or &quot;execution&quot;)</span>
+<span class="sd">            phase: Current phase ("planning" or "execution")</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List of tool definitions</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;execution&quot;</span><span class="p">:</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"execution"</span><span class="p">:</span>
             <span class="c1"># During execution phase, provide the choose_outfit tool</span>
             <span class="k">return</span> <span class="p">[{</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;choose_outfit&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Choose your final outfit from your wardrobe options&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;outfit_number&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
-                                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The number of the outfit to choose (1-based index from your wardrobe)&quot;</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"choose_outfit"</span><span class="p">,</span>
+                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Choose your final outfit from your wardrobe options"</span><span class="p">,</span>
+                    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                        <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"outfit_number"</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">,</span>
+                                <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"The number of the outfit to choose (1-based index from your wardrobe)"</span>
                             <span class="p">}</span>
                         <span class="p">},</span>
-                        <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;outfit_number&quot;</span><span class="p">]</span>
+                        <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"outfit_number"</span><span class="p">]</span>
                     <span class="p">}</span>
                 <span class="p">}</span>
             <span class="p">}]</span>
@@ -332,7 +332,7 @@
         <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Execute an agent action (only choose_outfit supported).</span>
 
 <span class="sd">        Args:</span>
@@ -345,66 +345,66 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Dictionary with execution result, status, and state updates</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Environment not initialized for tools&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"Environment not initialized for tools"</span><span class="p">}</span>
 
         <span class="n">outfit_selections</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">outfit_selections</span>
         <span class="n">agent_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">agent_names</span>
         <span class="n">wardrobe_options</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">wardrobe</span> <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="p">,</span> <span class="s2">&quot;instance&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">wardrobe</span> <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="p">,</span> <span class="s2">"instance"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
         <span class="p">)</span>
         <span class="n">max_joint_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">max_joint_reward</span>
 
         <span class="k">if</span> <span class="n">agent_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">agent_names</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">}</span>
 
-        <span class="n">action_type</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">action_type</span> <span class="o">!=</span> <span class="s2">&quot;choose_outfit&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Unknown action type: </span><span class="si">{</span><span class="n">action_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="n">action_type</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"action"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">action_type</span> <span class="o">!=</span> <span class="s2">"choose_outfit"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Unknown action type: </span><span class="si">{</span><span class="n">action_type</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
 
         <span class="c1"># Check if agent already made a selection</span>
         <span class="k">if</span> <span class="n">agent_name</span> <span class="ow">in</span> <span class="n">outfit_selections</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> has already chosen an outfit&quot;</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span>
+                <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> has already chosen an outfit"</span>
             <span class="p">}</span>
 
         <span class="c1"># Get outfit number from action parameters</span>
-        <span class="n">outfit_number</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;outfit_number&quot;</span><span class="p">)</span>
+        <span class="n">outfit_number</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"outfit_number"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">outfit_number</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Missing outfit_number parameter&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;suggestions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Specify outfit_number as an integer (1-based index)&quot;</span><span class="p">]</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span>
+                <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"Missing outfit_number parameter"</span><span class="p">,</span>
+                <span class="s2">"suggestions"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"Specify outfit_number as an integer (1-based index)"</span><span class="p">]</span>
             <span class="p">}</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="n">outfit_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">outfit_number</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>  <span class="c1"># Convert to 0-based index</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;outfit_number must be an integer&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;suggestions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Use a valid integer for outfit_number&quot;</span><span class="p">]</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span>
+                <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"outfit_number must be an integer"</span><span class="p">,</span>
+                <span class="s2">"suggestions"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"Use a valid integer for outfit_number"</span><span class="p">]</span>
             <span class="p">}</span>
 
-        <span class="c1"># Get agent&#39;s wardrobe options</span>
+        <span class="c1"># Get agent's wardrobe options</span>
         <span class="k">if</span> <span class="n">agent_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wardrobe_options</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;No wardrobe found for agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"No wardrobe found for agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
 
         <span class="n">agent_wardrobe</span> <span class="o">=</span> <span class="n">wardrobe_options</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">outfit_idx</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">outfit_idx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_wardrobe</span><span class="p">):</span>
-            <span class="n">valid_options</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">opt</span><span class="o">.</span><span class="n">article</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">opt</span><span class="o">.</span><span class="n">color</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="n">valid_options</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">opt</span><span class="o">.</span><span class="n">article</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">opt</span><span class="o">.</span><span class="n">color</span><span class="si">}</span><span class="s2">)"</span>
                 <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">opt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">agent_wardrobe</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;outfit_number out of range (1-</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_wardrobe</span><span class="p">)</span><span class="si">}</span><span class="s2">). &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;Valid outfits: </span><span class="si">{</span><span class="n">valid_options</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span>
+                <span class="s2">"reason"</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"outfit_number out of range (1-</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_wardrobe</span><span class="p">)</span><span class="si">}</span><span class="s2">). "</span>
+                    <span class="sa">f</span><span class="s2">"Valid outfits: </span><span class="si">{</span><span class="n">valid_options</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'None'</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">),</span>
-                <span class="s2">&quot;suggestions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Choose a number between 1 and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_wardrobe</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+                <span class="s2">"suggestions"</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"Choose a number between 1 and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_wardrobe</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span>
             <span class="p">}</span>
 
         <span class="c1"># Commit selection directly to environment state</span>
@@ -418,26 +418,26 @@
 
         <span class="n">total_selections</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">outfit_selections</span><span class="p">)</span>
         <span class="n">result_dict</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;agent&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-            <span class="s2">&quot;outfit&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;number&quot;</span><span class="p">:</span> <span class="n">outfit_number</span><span class="p">,</span>
-                <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="n">selected_outfit</span><span class="o">.</span><span class="n">article</span><span class="p">,</span>
-                <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="n">selected_outfit</span><span class="o">.</span><span class="n">color</span><span class="p">,</span>
+            <span class="s2">"agent"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+            <span class="s2">"outfit"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"number"</span><span class="p">:</span> <span class="n">outfit_number</span><span class="p">,</span>
+                <span class="s2">"article"</span><span class="p">:</span> <span class="n">selected_outfit</span><span class="o">.</span><span class="n">article</span><span class="p">,</span>
+                <span class="s2">"color"</span><span class="p">:</span> <span class="n">selected_outfit</span><span class="o">.</span><span class="n">color</span><span class="p">,</span>
             <span class="p">},</span>
-            <span class="s2">&quot;total_selections&quot;</span><span class="p">:</span> <span class="n">total_selections</span><span class="p">,</span>
-            <span class="s2">&quot;remaining_agents&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="n">total_selections</span><span class="p">,</span>
-            <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
-            <span class="s2">&quot;max_joint_reward&quot;</span><span class="p">:</span> <span class="n">max_joint_reward</span><span class="p">,</span>
+            <span class="s2">"total_selections"</span><span class="p">:</span> <span class="n">total_selections</span><span class="p">,</span>
+            <span class="s2">"remaining_agents"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span> <span class="o">-</span> <span class="n">total_selections</span><span class="p">,</span>
+            <span class="s2">"joint_reward"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+            <span class="s2">"max_joint_reward"</span><span class="p">:</span> <span class="n">max_joint_reward</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result_dict</span>
+            <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span>
+            <span class="s2">"result"</span><span class="p">:</span> <span class="n">result_dict</span>
         <span class="p">}</span>
 
         <span class="c1"># Log action to blackboards if enabled and action type is in config</span>
         <span class="k">if</span> <span class="n">log_to_blackboards</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span><span class="p">:</span>
-            <span class="n">action_type</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span>
+            <span class="n">action_type</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"action"</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span><span class="o">.</span><span class="n">log_action_to_blackboards</span><span class="p">(</span>
                 <span class="n">agent_name</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">execution_result</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span>
             <span class="p">)</span>
@@ -455,7 +455,7 @@
         <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Handle tool calls by routing to execute_action.</span>
 
 <span class="sd">        Args:</span>
@@ -468,15 +468,15 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Dictionary with tool execution result.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># PersonalAssistant only has one tool that&#39;s actually an action</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">&quot;choose_outfit&quot;</span><span class="p">:</span>
-            <span class="n">outfit_number</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;outfit_number&quot;</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="c1"># PersonalAssistant only has one tool that's actually an action</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"choose_outfit"</span><span class="p">:</span>
+            <span class="n">outfit_number</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"outfit_number"</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">outfit_number</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;outfit_number is required for choose_outfit&quot;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"outfit_number is required for choose_outfit"</span><span class="p">}</span>
 
-            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;choose_outfit&quot;</span><span class="p">,</span> <span class="s2">&quot;outfit_number&quot;</span><span class="p">:</span> <span class="n">outfit_number</span><span class="p">}</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"choose_outfit"</span><span class="p">,</span> <span class="s2">"outfit_number"</span><span class="p">:</span> <span class="n">outfit_number</span><span class="p">}</span>
             <span class="n">env_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span>
                 <span class="n">agent_name</span><span class="p">,</span>
                 <span class="n">action</span><span class="p">,</span>
@@ -488,7 +488,7 @@
 
         <span class="c1"># All other tools are not supported by this environment</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;PersonalAssistant environment does not support tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span></div>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"PersonalAssistant environment does not support tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span></div>
 </div>
 
 </pre></div>

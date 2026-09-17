@@ -308,13 +308,13 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tools_for_environment</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Get the toolset for a specific environment.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__)</span>
-<span class="sd">            phase: Current phase (&quot;planning&quot; or &quot;execution&quot;)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">            phase: Current phase ("planning" or "execution")</span>
+<span class="sd">        """</span>
         <span class="n">tools</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_tools_instance</span><span class="p">(</span><span class="n">environment_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">tools</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
@@ -324,59 +324,143 @@
 <div class="viewcode-block" id="ToolsetDiscovery.get_env_tool_names">
 <a class="viewcode-back" href="../../../api/tools.html#terrarium.tools.discovery.ToolsetDiscovery.get_env_tool_names">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_env_tool_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Get the set of tool names that this environment supports.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            environment_name: Canonical environment identifier (prefer passing environment.__class__.__name__)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">tools</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_tools_instance</span><span class="p">(</span><span class="n">environment_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">tools</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">tools</span><span class="o">.</span><span class="n">get_tool_names</span><span class="p">()</span></div>
 
 
+<div class="viewcode-block" id="ToolsetDiscovery.supports_private_channels">
+<a class="viewcode-back" href="../../../api/tools.html#terrarium.tools.discovery.ToolsetDiscovery.supports_private_channels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">supports_private_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Whether an environment lets agents open their own private channels.</span>
+
+<span class="sd">        Environments opt in by setting `supports_private_channels = True` on</span>
+<span class="sd">        their Tools class; the channel machinery itself is environment-agnostic.</span>
+<span class="sd">        """</span>
+        <span class="n">tools</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_tools_instance</span><span class="p">(</span><span class="n">environment_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">tools</span><span class="p">,</span> <span class="s2">"supports_private_channels"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span></div>
+
+
 <div class="viewcode-block" id="ToolsetDiscovery.get_blackboard_tool_names">
 <a class="viewcode-back" href="../../../api/tools.html#terrarium.tools.discovery.ToolsetDiscovery.get_blackboard_tool_names">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_blackboard_tool_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_blackboard_tool_names</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">retrieval_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Get the set of tool names that this blackboard manager supports.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Set of supported tool names</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;post_message&quot;</span><span class="p">}</span></div>
+<span class="sd">        """</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"post_message"</span><span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">supports_private_channels</span><span class="p">(</span><span class="n">environment_name</span><span class="p">):</span>
+            <span class="n">names</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">"create_channel"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">retrieval_enabled</span><span class="p">:</span>
+            <span class="n">names</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">"recall"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">names</span></div>
 
 
 <div class="viewcode-block" id="ToolsetDiscovery.get_tools_for_blackboard">
 <a class="viewcode-back" href="../../../api/tools.html#terrarium.tools.discovery.ToolsetDiscovery.get_tools_for_blackboard">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_tools_for_blackboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get blackboard specific tools for the given phase. This is different from Environment tools.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_tools_for_blackboard</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">retrieval_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Get blackboard specific tools for the given phase. This is different from Environment tools."""</span>
         <span class="c1"># Add phase-specific tools</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;planning&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"planning"</span><span class="p">:</span>
             <span class="n">planning_tools</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;post_message&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Post a communication message to agents on the blackboard&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                            <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
-                                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The message to communicate to other agents&quot;</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                    <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"post_message"</span><span class="p">,</span>
+                        <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Post a communication message to agents on the blackboard"</span><span class="p">,</span>
+                        <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                            <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">"message"</span><span class="p">:</span> <span class="p">{</span>
+                                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span>
+                                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"The message to communicate to other agents"</span><span class="p">,</span>
                                 <span class="p">},</span>
-                                <span class="s2">&quot;blackboard_id&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
-                                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;ID of the blackboard you are posting to&quot;</span><span class="p">,</span>
+                                <span class="s2">"blackboard_id"</span><span class="p">:</span> <span class="p">{</span>
+                                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">,</span>
+                                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"ID of the blackboard you are posting to"</span><span class="p">,</span>
                                 <span class="p">},</span>
                             <span class="p">},</span>
-                            <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">],</span>
+                            <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"message"</span><span class="p">],</span>
                         <span class="p">},</span>
                     <span class="p">},</span>
                 <span class="p">},</span>
             <span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">supports_private_channels</span><span class="p">(</span><span class="n">environment_name</span><span class="p">):</span>
+                <span class="n">planning_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                        <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"create_channel"</span><span class="p">,</span>
+                            <span class="s2">"description"</span><span class="p">:</span> <span class="p">(</span>
+                                <span class="s2">"Open a private side channel with one or more other agents. "</span>
+                                <span class="s2">"Only the listed agents (and you) can read or post to it. "</span>
+                                <span class="s2">"Returns a blackboard_id to use with post_message."</span>
+                            <span class="p">),</span>
+                            <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                                <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                                    <span class="s2">"agent_ids"</span><span class="p">:</span> <span class="p">{</span>
+                                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"array"</span><span class="p">,</span>
+                                        <span class="s2">"items"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">},</span>
+                                        <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Agents to invite. You are added automatically."</span><span class="p">,</span>
+                                    <span class="p">},</span>
+                                    <span class="s2">"message"</span><span class="p">:</span> <span class="p">{</span>
+                                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span>
+                                        <span class="s2">"description"</span><span class="p">:</span> <span class="p">(</span>
+                                            <span class="s2">"Optional first message. Posted immediately — do NOT "</span>
+                                            <span class="s2">"call post_message again to repeat it."</span>
+                                        <span class="p">),</span>
+                                    <span class="p">},</span>
+                                <span class="p">},</span>
+                                <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"agent_ids"</span><span class="p">],</span>
+                            <span class="p">},</span>
+                        <span class="p">},</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">retrieval_enabled</span><span class="p">:</span>
+                <span class="n">planning_tools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                        <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"recall"</span><span class="p">,</span>
+                            <span class="s2">"description"</span><span class="p">:</span> <span class="p">(</span>
+                                <span class="s2">"Search the FULL, uncompacted history of a channel for "</span>
+                                <span class="s2">"something the summarized context may have dropped — a "</span>
+                                <span class="s2">"specific number, identifier, or commitment. Use this when you "</span>
+                                <span class="s2">"suspect you're missing a detail, not as a substitute for "</span>
+                                <span class="s2">"reading the chat normally."</span>
+                            <span class="p">),</span>
+                            <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                                <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                                    <span class="s2">"query"</span><span class="p">:</span> <span class="p">{</span>
+                                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span>
+                                        <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Keywords to search for, e.g. a specific identifier or 'Bob agreed'."</span><span class="p">,</span>
+                                    <span class="p">},</span>
+                                    <span class="s2">"blackboard_id"</span><span class="p">:</span> <span class="p">{</span>
+                                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">,</span>
+                                        <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Which channel to search. Defaults to your main channel."</span><span class="p">,</span>
+                                    <span class="p">},</span>
+                                <span class="p">},</span>
+                                <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"query"</span><span class="p">],</span>
+                            <span class="p">},</span>
+                        <span class="p">},</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
             <span class="k">return</span> <span class="n">planning_tools</span>
 
         <span class="k">return</span> <span class="p">[]</span></div>

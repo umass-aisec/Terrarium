@@ -282,11 +282,11 @@
 <div class="viewcode-block" id="BaseCommunicationProtocol">
 <a class="viewcode-back" href="../../../api/communication.html#terrarium.communication_protocols.base.BaseCommunicationProtocol">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseCommunicationProtocol</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract interface for communication protocols.</span>
+<span class="w">    </span><span class="sd">"""Abstract interface for communication protocols.</span>
 
 <span class="sd">    A protocol coordinates agent turns, manages environment tool calls, and</span>
 <span class="sd">    provides access to shared state (e.g., blackboards).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">environment</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -339,7 +339,7 @@
     <span class="nd">@abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">agent_planning_turn</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">agent</span><span class="p">:</span> <span class="s2">&quot;BaseAgent&quot;</span><span class="p">,</span>
+        <span class="n">agent</span><span class="p">:</span> <span class="s2">"BaseAgent"</span><span class="p">,</span>
         <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">agent_context</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">environment</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
@@ -351,7 +351,7 @@
     <span class="nd">@abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">agent_execution_turn</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">agent</span><span class="p">:</span> <span class="s2">&quot;BaseAgent&quot;</span><span class="p">,</span>
+        <span class="n">agent</span><span class="p">:</span> <span class="s2">"BaseAgent"</span><span class="p">,</span>
         <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">agent_context</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">environment</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>

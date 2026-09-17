@@ -270,12 +270,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.utils</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Utility functions for the communication protocol framework.</span>
 
 <span class="sd">This module provides shared utility functions used across different environments</span>
 <span class="sd">and components of the multi-agent communication protocol system.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
@@ -295,25 +295,25 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_provider_name</span><span class="p">(</span><span class="n">provider</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">normalized</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">provider</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">normalized</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">provider</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
     <span class="n">aliases</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;firework&quot;</span><span class="p">:</span> <span class="s2">&quot;fireworks&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;foundary&quot;</span><span class="p">:</span> <span class="s2">&quot;foundry&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;microsoft_foundry&quot;</span><span class="p">:</span> <span class="s2">&quot;foundry&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;azure_foundry&quot;</span><span class="p">:</span> <span class="s2">&quot;foundry&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;xai&quot;</span><span class="p">:</span> <span class="s2">&quot;grok&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;x_ai&quot;</span><span class="p">:</span> <span class="s2">&quot;grok&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;official_grok&quot;</span><span class="p">:</span> <span class="s2">&quot;grok&quot;</span><span class="p">,</span>
+        <span class="s2">"firework"</span><span class="p">:</span> <span class="s2">"fireworks"</span><span class="p">,</span>
+        <span class="s2">"foundary"</span><span class="p">:</span> <span class="s2">"foundry"</span><span class="p">,</span>
+        <span class="s2">"microsoft_foundry"</span><span class="p">:</span> <span class="s2">"foundry"</span><span class="p">,</span>
+        <span class="s2">"azure_foundry"</span><span class="p">:</span> <span class="s2">"foundry"</span><span class="p">,</span>
+        <span class="s2">"xai"</span><span class="p">:</span> <span class="s2">"grok"</span><span class="p">,</span>
+        <span class="s2">"x_ai"</span><span class="p">:</span> <span class="s2">"grok"</span><span class="p">,</span>
+        <span class="s2">"official_grok"</span><span class="p">:</span> <span class="s2">"grok"</span><span class="p">,</span>
     <span class="p">}</span>
     <span class="k">return</span> <span class="n">aliases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">normalized</span><span class="p">,</span> <span class="n">normalized</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_provider_block</span><span class="p">(</span><span class="n">provider</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the provider-specific config block, with Foundry as the only Microsoft path.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;foundry&quot;</span><span class="p">:</span>
-        <span class="n">block</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;foundry&quot;</span><span class="p">,</span> <span class="p">{})</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;grok&quot;</span><span class="p">:</span>
-        <span class="n">block</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;grok&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;xai&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+<span class="w">    </span><span class="sd">"""Return the provider-specific config block, with Foundry as the only Microsoft path."""</span>
+    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"foundry"</span><span class="p">:</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"foundry"</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"grok"</span><span class="p">:</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"grok"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"xai"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">block</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="p">{})</span> <span class="k">if</span> <span class="n">provider</span> <span class="k">else</span> <span class="p">{}</span>
     <span class="k">return</span> <span class="n">block</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
@@ -369,7 +369,7 @@
 <div class="viewcode-block" id="load_config">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.load_config">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Load and validate configuration from YAML file.</span>
 
 <span class="sd">    Args:</span>
@@ -381,36 +381,36 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        FileNotFoundError: If config file does not exist</span>
 <span class="sd">        ValueError: If config validation fails</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Resolve config path</span>
     <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
         <span class="k">if</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
             <span class="n">config_path</span> <span class="o">=</span> <span class="n">config_path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Try relative to script&#39;s parent directory</span>
+            <span class="c1"># Try relative to script's parent directory</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">__main__</span>
 
             <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">__main__</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">config_file</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Config file </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Config file </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">)</span>
 
     <span class="c1"># Load YAML config</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">"r"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;_config_path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">config_path</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">"_config_path"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">config_path</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
     <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;_config_path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">"_config_path"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span>
 
     <span class="c1"># Validate config structure</span>
     <span class="n">validate_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 
     <span class="c1"># Normalize simulation tag metadata to support multiple tags only</span>
-    <span class="n">simulation</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;simulation&quot;</span><span class="p">,</span> <span class="p">{})</span>
-    <span class="n">raw_tags</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">)</span>
+    <span class="n">simulation</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"simulation"</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">raw_tags</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tags"</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_tags</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">raw_tags</span><span class="p">]</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_tags</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
@@ -418,11 +418,11 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">tags</span> <span class="o">=</span> <span class="p">[]</span>
 
-    <span class="n">legacy_tag</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;tag&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">legacy_tag</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"tag"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">legacy_tag</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tags</span><span class="p">:</span>
         <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">legacy_tag</span><span class="p">]</span>
 
-    <span class="n">simulation</span><span class="p">[</span><span class="s2">&quot;tags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tags</span>
+    <span class="n">simulation</span><span class="p">[</span><span class="s2">"tags"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tags</span>
 
     <span class="k">return</span> <span class="n">config</span></div>
 
@@ -430,13 +430,13 @@
 
 <div class="viewcode-block" id="load_seeds">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.load_seeds">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_seeds</span><span class="p">(</span><span class="n">seeds_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;seeds.txt&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load simulation seeds from text file for reproducibility.&quot;&quot;&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_seeds</span><span class="p">(</span><span class="n">seeds_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"seeds.txt"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Load simulation seeds from text file for reproducibility."""</span>
     <span class="n">seeds_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">seeds_file</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">seeds_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Seeds file </span><span class="si">{</span><span class="n">seeds_path</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Seeds file </span><span class="si">{</span><span class="n">seeds_path</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">)</span>
 
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">seeds_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">seeds_path</span><span class="p">,</span> <span class="s2">"r"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
 
     <span class="k">return</span> <span class="n">seeds</span></div>
@@ -446,7 +446,7 @@
 <div class="viewcode-block" id="prepare_simulation_config">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.prepare_simulation_config">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">prepare_simulation_config</span><span class="p">(</span><span class="n">base_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Prepare a simulation config with the specified seed.</span>
 
 <span class="sd">    Creates a copy of the base config and injects the seed into the simulation section.</span>
@@ -458,12 +458,12 @@
 
 <span class="sd">    Returns:</span>
 <span class="sd">        New config dictionary with seed injected into simulation.seed</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
 
     <span class="c1"># Deep copy to avoid modifying the original config (important for parallel runs)</span>
     <span class="n">sim_config</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">base_config</span><span class="p">)</span>
-    <span class="n">sim_config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">][</span><span class="s2">&quot;seed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">seed</span>
+    <span class="n">sim_config</span><span class="p">[</span><span class="s2">"simulation"</span><span class="p">][</span><span class="s2">"seed"</span><span class="p">]</span> <span class="o">=</span> <span class="n">seed</span>
     <span class="k">return</span> <span class="n">sim_config</span></div>
 
 
@@ -471,7 +471,7 @@
 <div class="viewcode-block" id="validate_config">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.validate_config">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Validate configuration structure and required fields.</span>
 
 <span class="sd">    Args:</span>
@@ -479,107 +479,107 @@
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If config structure is invalid or missing required sections</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Validate required top-level sections</span>
-    <span class="n">required_sections</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">,</span> <span class="s2">&quot;environment&quot;</span><span class="p">,</span> <span class="s2">&quot;communication_network&quot;</span><span class="p">,</span> <span class="s2">&quot;llm&quot;</span><span class="p">]</span>
+    <span class="n">required_sections</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"simulation"</span><span class="p">,</span> <span class="s2">"environment"</span><span class="p">,</span> <span class="s2">"communication_network"</span><span class="p">,</span> <span class="s2">"llm"</span><span class="p">]</span>
     <span class="n">missing_sections</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">section</span> <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">required_sections</span> <span class="k">if</span> <span class="n">section</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span>
     <span class="p">]</span>
     <span class="k">if</span> <span class="n">missing_sections</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Config missing required sections: </span><span class="si">{</span><span class="n">missing_sections</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Config missing required sections: </span><span class="si">{</span><span class="n">missing_sections</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># Validate simulation section</span>
-    <span class="n">required_sim_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="s2">&quot;max_planning_rounds&quot;</span><span class="p">,</span> <span class="s2">&quot;seed&quot;</span><span class="p">]</span>
+    <span class="n">required_sim_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"max_iterations"</span><span class="p">,</span> <span class="s2">"max_planning_rounds"</span><span class="p">,</span> <span class="s2">"seed"</span><span class="p">]</span>
     <span class="n">missing_sim_keys</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_sim_keys</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">]</span>
+        <span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_sim_keys</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">"simulation"</span><span class="p">]</span>
     <span class="p">]</span>
     <span class="k">if</span> <span class="n">missing_sim_keys</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Simulation section missing required keys: </span><span class="si">{</span><span class="n">missing_sim_keys</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">"Simulation section missing required keys: </span><span class="si">{</span><span class="n">missing_sim_keys</span><span class="si">}</span><span class="s2">"</span>
         <span class="p">)</span>
 
     <span class="c1"># Validate communication_network section</span>
-    <span class="n">required_comm_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;topology&quot;</span><span class="p">,</span> <span class="s2">&quot;num_agents&quot;</span><span class="p">]</span>
+    <span class="n">required_comm_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"topology"</span><span class="p">,</span> <span class="s2">"num_agents"</span><span class="p">]</span>
     <span class="n">missing_comm_keys</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_comm_keys</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;communication_network&quot;</span><span class="p">]</span>
+        <span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_comm_keys</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">"communication_network"</span><span class="p">]</span>
     <span class="p">]</span>
     <span class="k">if</span> <span class="n">missing_comm_keys</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Communication network section missing required keys: </span><span class="si">{</span><span class="n">missing_comm_keys</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">"Communication network section missing required keys: </span><span class="si">{</span><span class="n">missing_comm_keys</span><span class="si">}</span><span class="s2">"</span>
         <span class="p">)</span>
 
     <span class="c1"># Validate LLM section</span>
-    <span class="k">if</span> <span class="s2">&quot;provider&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;llm&quot;</span><span class="p">]:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;LLM section missing required key: provider&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"provider"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">"llm"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"LLM section missing required key: provider"</span><span class="p">)</span>
 
     <span class="c1"># Validate environment section has name</span>
-    <span class="k">if</span> <span class="s2">&quot;name&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;environment&quot;</span><span class="p">]:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Environment section missing required key: name&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"name"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">"environment"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Environment section missing required key: name"</span><span class="p">)</span>
 
     <span class="c1"># Validate environment name points to an implemented environment class.</span>
-    <span class="n">env_name</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;environment&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+    <span class="n">env_name</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"environment"</span><span class="p">][</span><span class="s2">"name"</span><span class="p">]</span>
     <span class="n">implemented</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">get_implemented_environment_names</span><span class="p">())</span>
     <span class="k">if</span> <span class="n">env_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">implemented</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Unknown environment.name=</span><span class="si">{</span><span class="n">env_name</span><span class="si">!r}</span><span class="s2">. &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Expected one of: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">implemented</span><span class="p">)</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+            <span class="sa">f</span><span class="s2">"Unknown environment.name=</span><span class="si">{</span><span class="n">env_name</span><span class="si">!r}</span><span class="s2">. "</span>
+            <span class="sa">f</span><span class="s2">"Expected one of: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">implemented</span><span class="p">)</span><span class="si">!r}</span><span class="s2">."</span>
         <span class="p">)</span></div>
 
 
     <span class="c1"># Validate environments have exactly 1 iteration</span>
-    <span class="c1"># if config[&quot;simulation&quot;][&quot;max_iterations&quot;] != 1:</span>
+    <span class="c1"># if config["simulation"]["max_iterations"] != 1:</span>
     <span class="c1">#     raise ValueError(</span>
-    <span class="c1">#         f&quot;Environment &#39;{env_name}&#39; requires &quot;</span>
-    <span class="c1">#         &quot;max_iterations=1 in simulation config, but got &quot;</span>
-    <span class="c1">#         f&quot;{config[&#39;simulation&#39;][&#39;max_iterations&#39;]}&quot;</span>
+    <span class="c1">#         f"Environment '{env_name}' requires "</span>
+    <span class="c1">#         "max_iterations=1 in simulation config, but got "</span>
+    <span class="c1">#         f"{config['simulation']['max_iterations']}"</span>
     <span class="c1">#     )</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_sanitize_identifier</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
-    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^a-z0-9_]+&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">cleaned</span><span class="p">)</span>
-    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;_+&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">cleaned</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">cleaned</span> <span class="ow">or</span> <span class="s2">&quot;model&quot;</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"/"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"-"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">)</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[^a-z0-9_]+"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">,</span> <span class="n">cleaned</span><span class="p">)</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_+"</span><span class="p">,</span> <span class="s2">"_"</span><span class="p">,</span> <span class="n">cleaned</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cleaned</span> <span class="ow">or</span> <span class="s2">"model"</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_vllm_block</span><span class="p">(</span><span class="n">raw_vllm</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Normalize legacy vLLM config dictionaries into the new multi-model structure.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">raw_vllm</span> <span class="o">=</span> <span class="n">raw_vllm</span> <span class="ow">or</span> <span class="p">{}</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">),</span> <span class="nb">list</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"models"</span><span class="p">),</span> <span class="nb">list</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">raw_vllm</span>
 
     <span class="n">model_id</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_id&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;served_model_name&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="s2">&quot;model&quot;</span>
+        <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model_id"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"served_model_name"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model_name"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="s2">"model"</span>
     <span class="p">)</span>
     <span class="n">model_id</span> <span class="o">=</span> <span class="n">_sanitize_identifier</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">model_id</span><span class="p">))</span>
     <span class="n">model_entry</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">model_id</span><span class="p">,</span>
-        <span class="s2">&quot;checkpoint&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;served_model_name&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;served_model_name&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;base_url&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;base_url&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;host&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;host&quot;</span><span class="p">,</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;port&quot;</span><span class="p">,</span> <span class="mi">8000</span><span class="p">),</span>
-        <span class="s2">&quot;tensor_parallel_size&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tensor_parallel_size&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;trust_remote_code&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trust_remote_code&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
-        <span class="s2">&quot;max_model_len&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_model_len&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;dtype&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dtype&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;download_dir&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;download_dir&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;gpu_memory_utilization&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_memory_utilization&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;additional_args&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;additional_args&quot;</span><span class="p">,</span> <span class="p">[]),</span>
-        <span class="s2">&quot;env&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env&quot;</span><span class="p">,</span> <span class="p">{}),</span>
-        <span class="s2">&quot;request_timeout&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;connection_timeout&quot;</span><span class="p">,</span> <span class="mi">60</span><span class="p">),</span>
-        <span class="s2">&quot;api_key&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;launch_command&quot;</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;launch_command&quot;</span><span class="p">),</span>
+        <span class="s2">"id"</span><span class="p">:</span> <span class="n">model_id</span><span class="p">,</span>
+        <span class="s2">"checkpoint"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model_name"</span><span class="p">),</span>
+        <span class="s2">"served_model_name"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"served_model_name"</span><span class="p">),</span>
+        <span class="s2">"base_url"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"base_url"</span><span class="p">),</span>
+        <span class="s2">"host"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"host"</span><span class="p">,</span> <span class="s2">"127.0.0.1"</span><span class="p">),</span>
+        <span class="s2">"port"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"port"</span><span class="p">,</span> <span class="mi">8000</span><span class="p">),</span>
+        <span class="s2">"tensor_parallel_size"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tensor_parallel_size"</span><span class="p">),</span>
+        <span class="s2">"trust_remote_code"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"trust_remote_code"</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+        <span class="s2">"max_model_len"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_model_len"</span><span class="p">),</span>
+        <span class="s2">"dtype"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"dtype"</span><span class="p">),</span>
+        <span class="s2">"download_dir"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"download_dir"</span><span class="p">),</span>
+        <span class="s2">"gpu_memory_utilization"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"gpu_memory_utilization"</span><span class="p">),</span>
+        <span class="s2">"additional_args"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"additional_args"</span><span class="p">,</span> <span class="p">[]),</span>
+        <span class="s2">"env"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"env"</span><span class="p">,</span> <span class="p">{}),</span>
+        <span class="s2">"request_timeout"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"connection_timeout"</span><span class="p">,</span> <span class="mi">60</span><span class="p">),</span>
+        <span class="s2">"api_key"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"api_key"</span><span class="p">),</span>
+        <span class="s2">"launch_command"</span><span class="p">:</span> <span class="n">raw_vllm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"launch_command"</span><span class="p">),</span>
     <span class="p">}</span>
     <span class="n">normalized</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">raw_vllm</span><span class="p">)</span>
-    <span class="n">normalized</span><span class="p">[</span><span class="s2">&quot;models&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">model_entry</span><span class="p">]</span>
+    <span class="n">normalized</span><span class="p">[</span><span class="s2">"models"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">model_entry</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">normalized</span>
 
 
@@ -605,68 +605,68 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_apply_vllm_model_presets</span><span class="p">(</span><span class="n">vllm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inject model-specific defaults (tool parser, templates, etc.) when absent.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Inject model-specific defaults (tool parser, templates, etc.) when absent."""</span>
 
     <span class="n">model_presets</span> <span class="o">=</span> <span class="p">[</span>
         <span class="p">{</span>
-            <span class="s2">&quot;match&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;qwen&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">,</span>
-            <span class="s2">&quot;tool_call_parser&quot;</span><span class="p">:</span> <span class="s2">&quot;hermes&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;ensure_auto_tool_choice&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="s2">&quot;chat_template&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">"match"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">name</span><span class="p">:</span> <span class="s2">"qwen"</span> <span class="ow">in</span> <span class="n">name</span><span class="p">,</span>
+            <span class="s2">"tool_call_parser"</span><span class="p">:</span> <span class="s2">"hermes"</span><span class="p">,</span>
+            <span class="s2">"ensure_auto_tool_choice"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">"chat_template"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">]</span>
 
-    <span class="n">models</span> <span class="o">=</span> <span class="n">vllm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="n">models</span> <span class="o">=</span> <span class="n">vllm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"models"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">:</span>
         <span class="n">name</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;served_model_name&quot;</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"served_model_name"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"checkpoint"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="s2">""</span>
         <span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
 
-        <span class="n">args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;additional_args&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"additional_args"</span><span class="p">,</span> <span class="p">[]))</span>
         <span class="k">for</span> <span class="n">preset</span> <span class="ow">in</span> <span class="n">model_presets</span><span class="p">:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">preset</span><span class="p">[</span><span class="s2">&quot;match&quot;</span><span class="p">](</span><span class="n">name</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">preset</span><span class="p">[</span><span class="s2">"match"</span><span class="p">](</span><span class="n">name</span><span class="p">):</span>
                 <span class="k">continue</span>
-            <span class="k">if</span> <span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ensure_auto_tool_choice&quot;</span><span class="p">):</span>
-                <span class="n">_ensure_flag</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;--enable-auto-tool-choice&quot;</span><span class="p">)</span>
-            <span class="n">parser</span> <span class="o">=</span> <span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_call_parser&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ensure_auto_tool_choice"</span><span class="p">):</span>
+                <span class="n">_ensure_flag</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"--enable-auto-tool-choice"</span><span class="p">)</span>
+            <span class="n">parser</span> <span class="o">=</span> <span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_call_parser"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">parser</span><span class="p">:</span>
-                <span class="n">_ensure_flag_with_value</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;--tool-call-parser&quot;</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
-            <span class="n">template</span> <span class="o">=</span> <span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chat_template&quot;</span><span class="p">)</span>
+                <span class="n">_ensure_flag_with_value</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"--tool-call-parser"</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"chat_template"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">template</span><span class="p">:</span>
-                <span class="n">_ensure_flag_with_value</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;--chat-template&quot;</span><span class="p">,</span> <span class="n">template</span><span class="p">)</span>
+                <span class="n">_ensure_flag_with_value</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"--chat-template"</span><span class="p">,</span> <span class="n">template</span><span class="p">)</span>
             <span class="k">break</span>
 
-        <span class="n">model</span><span class="p">[</span><span class="s2">&quot;additional_args&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="n">model</span><span class="p">[</span><span class="s2">"additional_args"</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span>
 
     <span class="k">return</span> <span class="n">vllm_config</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_vllm_model_name</span><span class="p">(</span><span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">vllm_block</span> <span class="o">=</span> <span class="n">_normalize_vllm_block</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vllm&quot;</span><span class="p">))</span>
-    <span class="n">models</span> <span class="o">=</span> <span class="n">vllm_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="n">vllm_block</span> <span class="o">=</span> <span class="n">_normalize_vllm_block</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"vllm"</span><span class="p">))</span>
+    <span class="n">models</span> <span class="o">=</span> <span class="n">vllm_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"models"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">models</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;unknown-vllm-model&quot;</span>
+        <span class="k">return</span> <span class="s2">"unknown-vllm-model"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">return</span> <span class="p">(</span>
-        <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;served_model_name&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="s2">&quot;unknown-vllm-model&quot;</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"served_model_name"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"checkpoint"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="s2">"unknown-vllm-model"</span>
     <span class="p">)</span>
 
 
 <div class="viewcode-block" id="build_vllm_runtime">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.build_vllm_runtime">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">build_vllm_runtime</span><span class="p">(</span><span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a VLLMProviderRuntime from normalized configuration.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Construct a VLLMProviderRuntime from normalized configuration."""</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.vllm.runtime</span><span class="w"> </span><span class="kn">import</span> <span class="n">VLLMProviderRuntime</span>
 
-    <span class="n">normalized</span> <span class="o">=</span> <span class="n">_normalize_vllm_block</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vllm&quot;</span><span class="p">))</span>
+    <span class="n">normalized</span> <span class="o">=</span> <span class="n">_normalize_vllm_block</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"vllm"</span><span class="p">))</span>
     <span class="n">normalized</span> <span class="o">=</span> <span class="n">_apply_vllm_model_presets</span><span class="p">(</span><span class="n">normalized</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">VLLMProviderRuntime</span><span class="p">(</span><span class="n">normalized</span><span class="p">)</span></div>
 
@@ -675,42 +675,42 @@
 <div class="viewcode-block" id="extract_model_info">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.extract_model_info">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">extract_model_info</span><span class="p">(</span><span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Extract model name from full config for logging.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        full_config: Full configuration dictionary containing all simulation settings</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Model name string, or &quot;unknown&quot; if not found</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        Model name string, or "unknown" if not found</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">full_config</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="k">return</span> <span class="s2">"unknown"</span>
 
-    <span class="n">llm_config</span> <span class="o">=</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm&quot;</span><span class="p">,</span> <span class="p">{})</span>
-    <span class="n">provider</span> <span class="o">=</span> <span class="n">_normalize_provider_name</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">))</span>
+    <span class="n">llm_config</span> <span class="o">=</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"llm"</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">_normalize_provider_name</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"provider"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">))</span>
 
     <span class="c1"># Handle each provider using the new config format</span>
-    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;openai&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;openai&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;foundry&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">&quot;foundry&quot;</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span>
+    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"openai"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"openai"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"foundry"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">"foundry"</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown"</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;grok&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">&quot;grok&quot;</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;anthropic&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;anthropic&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;gemini&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gemini&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;together&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;together&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;fireworks&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fireworks&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;vllm&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"grok"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">"grok"</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"anthropic"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"anthropic"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"gemini"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"gemini"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"together"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"together"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"fireworks"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"fireworks"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"vllm"</span><span class="p">:</span>
         <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_vllm_model_name</span><span class="p">(</span><span class="n">llm_config</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="s2">"unknown"</span>
 
     <span class="k">return</span> <span class="n">model_name</span></div>
 
@@ -719,7 +719,7 @@
 <div class="viewcode-block" id="get_tag_model_subdir">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.get_tag_model_subdir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_tag_model_subdir</span><span class="p">(</span><span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Generate tag_model subdirectory name from configuration.</span>
 
 <span class="sd">    Args:</span>
@@ -727,25 +727,25 @@
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Formatted string: {tag}_{model_name}</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">full_config</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;unknown_unknown&quot;</span>
+        <span class="k">return</span> <span class="s2">"unknown_unknown"</span>
 
     <span class="c1"># Get tag from simulation config</span>
-    <span class="n">simulation</span> <span class="o">=</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;simulation&quot;</span><span class="p">,</span> <span class="p">{})</span>
-    <span class="n">tags</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">)</span>
+    <span class="n">simulation</span> <span class="o">=</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"simulation"</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tags"</span><span class="p">)</span>
     <span class="n">primary_tag</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tags</span><span class="p">:</span>
         <span class="n">primary_tag</span> <span class="o">=</span> <span class="n">tags</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">primary_tag</span> <span class="o">=</span> <span class="n">tags</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">primary_tag</span><span class="p">:</span>
-        <span class="n">primary_tag</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="n">primary_tag</span> <span class="o">=</span> <span class="s2">"unknown"</span>
 
     <span class="c1"># Get model name using existing function</span>
     <span class="n">model_name</span> <span class="o">=</span> <span class="n">extract_model_info</span><span class="p">(</span><span class="n">full_config</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">primary_tag</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span></div>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">primary_tag</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">"</span></div>
 
 
 
@@ -754,18 +754,18 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">get_run_timestamp</span><span class="p">(</span>
     <span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">default</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the run timestamp stored in the simulation config, if any.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return the run timestamp stored in the simulation config, if any."""</span>
 
-    <span class="k">return</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;simulation&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_timestamp&quot;</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"simulation"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"run_timestamp"</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="get_log_root_dir">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.get_log_root_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_log_root_dir</span><span class="p">(</span>
-    <span class="n">full_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;logs&quot;</span>
+    <span class="n">full_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"logs"</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Resolve the base directory used for writing run log artifacts.</span>
 
 <span class="sd">    By default, logs are written under the repo-root `logs/` folder. Experiment runners can</span>
@@ -773,13 +773,13 @@
 
 <span class="sd">        logging:</span>
 <span class="sd">          root_dir: experiments/&lt;project&gt;/outputs/&lt;tag&gt;/&lt;timestamp&gt;/runs/&lt;...&gt;/logs</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">cfg</span> <span class="o">=</span> <span class="n">full_config</span> <span class="ow">or</span> <span class="p">{}</span>
-    <span class="n">logging_cfg</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;logging&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">logging_cfg</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"logging"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="n">root</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">logging_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;root_dir&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">logging_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;log_root&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">logging_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;log_dir&quot;</span><span class="p">)</span>
+        <span class="n">logging_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"root_dir"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">logging_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"log_root"</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">logging_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"log_dir"</span><span class="p">)</span>
         <span class="ow">or</span> <span class="n">default</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="p">:</span>
@@ -800,7 +800,7 @@
         <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tag_model</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">run_timestamp</span><span class="p">:</span>
         <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run_timestamp</span><span class="p">)</span>
-    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;seed_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"seed_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="o">*</span><span class="n">parts</span><span class="p">)</span>
 
 
@@ -812,9 +812,9 @@
     <span class="n">seed</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">run_timestamp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">log_root</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;logs&quot;</span><span class="p">,</span>
+    <span class="n">log_root</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"logs"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the filesystem path for log artifacts.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Build the filesystem path for log artifacts."""</span>
 
     <span class="k">return</span> <span class="n">_build_run_directory</span><span class="p">(</span>
         <span class="n">log_root</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">,</span> <span class="n">tag_model</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">run_timestamp</span>
@@ -827,24 +827,24 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">clear_seed_directories</span><span class="p">(</span>
     <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Clear existing seed directories for both logs and plots to ensure clean state.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        environment_name: Name of the environment (e.g., &quot;Hospital&quot;, &quot;PersonalAssistant&quot;)</span>
+<span class="sd">        environment_name: Name of the environment (e.g., "Hospital", "PersonalAssistant")</span>
 <span class="sd">        seed: Seed value for the current run</span>
 <span class="sd">        full_config: Full configuration dictionary containing all simulation settings</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Get tag_model subdirectory</span>
     <span class="n">tag_model</span> <span class="o">=</span> <span class="n">get_tag_model_subdir</span><span class="p">(</span><span class="n">full_config</span><span class="p">)</span>
 
     <span class="c1"># Clear logs directory for this seed</span>
     <span class="n">logs_seed_dir</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">get_log_root_dir</span><span class="p">(</span><span class="n">full_config</span><span class="p">)</span> <span class="o">/</span> <span class="n">environment_name</span> <span class="o">/</span> <span class="n">tag_model</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;seed_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">get_log_root_dir</span><span class="p">(</span><span class="n">full_config</span><span class="p">)</span> <span class="o">/</span> <span class="n">environment_name</span> <span class="o">/</span> <span class="n">tag_model</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"seed_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">logs_seed_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">logs_seed_dir</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cleared logs directory: </span><span class="si">{</span><span class="n">logs_seed_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Cleared logs directory: </span><span class="si">{</span><span class="n">logs_seed_dir</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
 
 
 
@@ -856,7 +856,7 @@
     <span class="n">agent_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">vllm_runtime</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Create and return the appropriate LLM client based on provider configuration.</span>
 
 <span class="sd">    Args:</span>
@@ -868,96 +868,96 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If provider is unknown</span>
 <span class="sd">        NotImplementedError: If vllm provider is selected (currently not implemented)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">provider</span> <span class="o">=</span> <span class="n">_normalize_provider_name</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">,</span> <span class="s2">&quot;vllm&quot;</span><span class="p">))</span>
+<span class="sd">    """</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">_normalize_provider_name</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"provider"</span><span class="p">,</span> <span class="s2">"vllm"</span><span class="p">))</span>
 
-    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;openai&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"openai"</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.openai_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAIClient</span>
 
         <span class="n">client</span> <span class="o">=</span> <span class="n">OpenAIClient</span><span class="p">()</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;foundry&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"foundry"</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.foundry_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">FoundryClient</span>
 
-        <span class="n">foundry_cfg</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">&quot;foundry&quot;</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span>
+        <span class="n">foundry_cfg</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">"foundry"</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span>
         <span class="n">client</span> <span class="o">=</span> <span class="n">FoundryClient</span><span class="p">(</span>
             <span class="n">project_endpoint</span><span class="o">=</span><span class="n">_resolve_optional_value</span><span class="p">(</span>
                 <span class="n">foundry_cfg</span><span class="p">,</span>
-                <span class="n">direct_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;project_endpoint&quot;</span><span class="p">,</span> <span class="s2">&quot;endpoint&quot;</span><span class="p">,</span> <span class="s2">&quot;base_url&quot;</span><span class="p">],</span>
+                <span class="n">direct_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">"project_endpoint"</span><span class="p">,</span> <span class="s2">"endpoint"</span><span class="p">,</span> <span class="s2">"base_url"</span><span class="p">],</span>
                 <span class="n">env_var_keys</span><span class="o">=</span><span class="p">[</span>
-                    <span class="s2">&quot;project_endpoint_env_var&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;endpoint_env_var&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;base_url_env_var&quot;</span><span class="p">,</span>
+                    <span class="s2">"project_endpoint_env_var"</span><span class="p">,</span>
+                    <span class="s2">"endpoint_env_var"</span><span class="p">,</span>
+                    <span class="s2">"base_url_env_var"</span><span class="p">,</span>
                 <span class="p">],</span>
             <span class="p">),</span>
             <span class="n">api_key</span><span class="o">=</span><span class="n">_resolve_optional_secret</span><span class="p">(</span>
                 <span class="n">foundry_cfg</span><span class="p">,</span>
-                <span class="n">direct_key</span><span class="o">=</span><span class="s2">&quot;api_key&quot;</span><span class="p">,</span>
-                <span class="n">env_var_key</span><span class="o">=</span><span class="s2">&quot;api_key_env_var&quot;</span><span class="p">,</span>
+                <span class="n">direct_key</span><span class="o">=</span><span class="s2">"api_key"</span><span class="p">,</span>
+                <span class="n">env_var_key</span><span class="o">=</span><span class="s2">"api_key_env_var"</span><span class="p">,</span>
             <span class="p">),</span>
-            <span class="n">auth_mode</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auth_mode&quot;</span><span class="p">),</span>
-            <span class="n">entra_scope</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;entra_scope&quot;</span><span class="p">),</span>
-            <span class="n">timeout</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
-            <span class="n">base_model</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;base_model&quot;</span><span class="p">),</span>
-            <span class="n">api_style</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_style&quot;</span><span class="p">),</span>
+            <span class="n">auth_mode</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"auth_mode"</span><span class="p">),</span>
+            <span class="n">entra_scope</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"entra_scope"</span><span class="p">),</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"request_timeout"</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
+            <span class="n">base_model</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"base_model"</span><span class="p">),</span>
+            <span class="n">api_style</span><span class="o">=</span><span class="n">foundry_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"api_style"</span><span class="p">),</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;grok&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"grok"</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.grok_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrokClient</span>
 
-        <span class="n">grok_cfg</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">&quot;grok&quot;</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span>
+        <span class="n">grok_cfg</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">"grok"</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span>
         <span class="n">client</span> <span class="o">=</span> <span class="n">GrokClient</span><span class="p">(</span>
             <span class="n">api_key</span><span class="o">=</span><span class="n">_resolve_optional_secret</span><span class="p">(</span>
                 <span class="n">grok_cfg</span><span class="p">,</span>
-                <span class="n">direct_key</span><span class="o">=</span><span class="s2">&quot;api_key&quot;</span><span class="p">,</span>
-                <span class="n">env_var_key</span><span class="o">=</span><span class="s2">&quot;api_key_env_var&quot;</span><span class="p">,</span>
+                <span class="n">direct_key</span><span class="o">=</span><span class="s2">"api_key"</span><span class="p">,</span>
+                <span class="n">env_var_key</span><span class="o">=</span><span class="s2">"api_key_env_var"</span><span class="p">,</span>
             <span class="p">),</span>
-            <span class="n">api_key_env_var</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">grok_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key_env_var&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;GROK_API_KEY&quot;</span><span class="p">),</span>
+            <span class="n">api_key_env_var</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">grok_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"api_key_env_var"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"GROK_API_KEY"</span><span class="p">),</span>
             <span class="n">base_url</span><span class="o">=</span><span class="n">_resolve_optional_value</span><span class="p">(</span>
                 <span class="n">grok_cfg</span><span class="p">,</span>
-                <span class="n">direct_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;base_url&quot;</span><span class="p">,</span> <span class="s2">&quot;endpoint&quot;</span><span class="p">],</span>
-                <span class="n">env_var_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;base_url_env_var&quot;</span><span class="p">,</span> <span class="s2">&quot;endpoint_env_var&quot;</span><span class="p">],</span>
+                <span class="n">direct_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">"base_url"</span><span class="p">,</span> <span class="s2">"endpoint"</span><span class="p">],</span>
+                <span class="n">env_var_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">"base_url_env_var"</span><span class="p">,</span> <span class="s2">"endpoint_env_var"</span><span class="p">],</span>
             <span class="p">),</span>
-            <span class="n">timeout</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">grok_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">,</span> <span class="mi">3600</span><span class="p">)),</span>
-            <span class="n">base_model</span><span class="o">=</span><span class="n">grok_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;base_model&quot;</span><span class="p">),</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">grok_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"request_timeout"</span><span class="p">,</span> <span class="mi">3600</span><span class="p">)),</span>
+            <span class="n">base_model</span><span class="o">=</span><span class="n">grok_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"base_model"</span><span class="p">),</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;anthropic&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"anthropic"</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.anthropic_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnthropicClient</span>
 
         <span class="n">client</span> <span class="o">=</span> <span class="n">AnthropicClient</span><span class="p">()</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;gemini&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"gemini"</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.gemini_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeminiClient</span>
 
         <span class="n">client</span> <span class="o">=</span> <span class="n">GeminiClient</span><span class="p">()</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;together&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"together"</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.together_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">TogetherClient</span>
 
-        <span class="n">together_cfg</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;together&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-        <span class="n">base_url</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">together_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;base_url&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;https://api.together.xyz/v1&quot;</span><span class="p">)</span>
-        <span class="n">request_timeout</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">together_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">,</span> <span class="mi">60</span><span class="p">))</span>
-        <span class="n">api_key</span> <span class="o">=</span> <span class="n">together_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key&quot;</span><span class="p">)</span>
+        <span class="n">together_cfg</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"together"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">base_url</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">together_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"base_url"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"https://api.together.xyz/v1"</span><span class="p">)</span>
+        <span class="n">request_timeout</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">together_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"request_timeout"</span><span class="p">,</span> <span class="mi">60</span><span class="p">))</span>
+        <span class="n">api_key</span> <span class="o">=</span> <span class="n">together_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"api_key"</span><span class="p">)</span>
         <span class="n">client</span> <span class="o">=</span> <span class="n">TogetherClient</span><span class="p">(</span>
             <span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">,</span> <span class="n">request_timeout</span><span class="o">=</span><span class="n">request_timeout</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;fireworks&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"fireworks"</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.llm.clients.fireworks_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">FireworksClient</span>
 
-        <span class="n">fireworks_cfg</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fireworks&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">fireworks_cfg</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"fireworks"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="n">base_url</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
-            <span class="n">fireworks_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;base_url&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;https://api.fireworks.ai/inference/v1&quot;</span>
+            <span class="n">fireworks_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"base_url"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"https://api.fireworks.ai/inference/v1"</span>
         <span class="p">)</span>
-        <span class="n">request_timeout</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fireworks_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">,</span> <span class="mi">60</span><span class="p">))</span>
-        <span class="n">api_key</span> <span class="o">=</span> <span class="n">fireworks_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key&quot;</span><span class="p">)</span>
+        <span class="n">request_timeout</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fireworks_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"request_timeout"</span><span class="p">,</span> <span class="mi">60</span><span class="p">))</span>
+        <span class="n">api_key</span> <span class="o">=</span> <span class="n">fireworks_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"api_key"</span><span class="p">)</span>
         <span class="n">client</span> <span class="o">=</span> <span class="n">FireworksClient</span><span class="p">(</span>
             <span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">,</span> <span class="n">request_timeout</span><span class="o">=</span><span class="n">request_timeout</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;vllm&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"vllm"</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">vllm_runtime</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;vLLM runtime is required to initialize vLLM clients&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"vLLM runtime is required to initialize vLLM clients"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">agent_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;agent_name must be provided when using vLLM provider&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"agent_name must be provided when using vLLM provider"</span><span class="p">)</span>
         <span class="n">client</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">vllm_runtime</span><span class="o">.</span><span class="n">create_client</span><span class="p">(</span><span class="n">agent_name</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Unknown provider: </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">. Must be one of: openai, foundry, grok, anthropic, gemini, together, fireworks, vllm&quot;</span>
+            <span class="sa">f</span><span class="s2">"Unknown provider: </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">. Must be one of: openai, foundry, grok, anthropic, gemini, together, fireworks, vllm"</span>
         <span class="p">)</span>
 
     <span class="n">configure_client_external_mcp</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span>
@@ -968,15 +968,15 @@
 <div class="viewcode-block" id="configure_client_external_mcp">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.configure_client_external_mcp">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">configure_client_external_mcp</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach optional external MCP server configuration to a client instance.&quot;&quot;&quot;</span>
-    <span class="n">configure</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s2">&quot;configure_external_mcp&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">"""Attach optional external MCP server configuration to a client instance."""</span>
+    <span class="n">configure</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s2">"configure_external_mcp"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">configure</span><span class="p">):</span>
         <span class="n">configure</span><span class="p">(</span><span class="n">llm_config</span><span class="p">)</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_environment_registry</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the mapping of implemented environment class names -&gt; classes.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return the mapping of implemented environment class names -&gt; classes."""</span>
     <span class="c1"># Import here to avoid circular dependencies / heavy imports at module import time.</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.environments.dcops.personal_assistant</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
         <span class="n">PersonalAssistantEnvironment</span><span class="p">,</span>
@@ -987,6 +987,9 @@
     <span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.environments.dcops.hospital</span><span class="w"> </span><span class="kn">import</span> <span class="n">HospitalEnvironment</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.environments.dcops.jira_ticket</span><span class="w"> </span><span class="kn">import</span> <span class="n">JiraTicketEnvironment</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.environments.dcops.is_this_seat_taken</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">IsThisSeatTakenEnvironment</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">return</span> <span class="p">{</span>
         <span class="n">MeetingSchedulingEnvironment</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">MeetingSchedulingEnvironment</span><span class="p">,</span>
@@ -994,13 +997,14 @@
         <span class="n">SmartGridEnvironment</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">SmartGridEnvironment</span><span class="p">,</span>
         <span class="n">HospitalEnvironment</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">HospitalEnvironment</span><span class="p">,</span>
         <span class="n">JiraTicketEnvironment</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">JiraTicketEnvironment</span><span class="p">,</span>
+        <span class="n">IsThisSeatTakenEnvironment</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">IsThisSeatTakenEnvironment</span><span class="p">,</span>
     <span class="p">}</span>
 
 
 <div class="viewcode-block" id="get_implemented_environment_names">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.get_implemented_environment_names">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_implemented_environment_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the list of supported `environment.name` values.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return the list of supported `environment.name` values."""</span>
     <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">_get_environment_registry</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
 
 
@@ -1009,8 +1013,8 @@
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.create_environment">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">create_environment</span><span class="p">(</span>
     <span class="n">protocol</span><span class="p">,</span> <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">tool_logger</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;AbstractEnvironment&quot;</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"AbstractEnvironment"</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Create environment instance based on name.</span>
 
 <span class="sd">    Args:</span>
@@ -1024,13 +1028,13 @@
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If environment name is unknown</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">environments</span> <span class="o">=</span> <span class="n">_get_environment_registry</span><span class="p">()</span>
     <span class="n">env_cls</span> <span class="o">=</span> <span class="n">environments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">environment_name</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">env_cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Unknown environment.name=</span><span class="si">{</span><span class="n">environment_name</span><span class="si">!r}</span><span class="s2">. &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Expected one of: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">environments</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+            <span class="sa">f</span><span class="s2">"Unknown environment.name=</span><span class="si">{</span><span class="n">environment_name</span><span class="si">!r}</span><span class="s2">. "</span>
+            <span class="sa">f</span><span class="s2">"Expected one of: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">environments</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">!r}</span><span class="s2">."</span>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">env_cls</span><span class="p">(</span><span class="n">protocol</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">tool_logger</span><span class="p">)</span></div>
 
@@ -1039,7 +1043,7 @@
 <div class="viewcode-block" id="get_model_name">
 <a class="viewcode-back" href="../../api/utils.html#terrarium.utils.get_model_name">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_model_name</span><span class="p">(</span><span class="n">provider</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Extract model name based on provider from LLM configuration.</span>
 
 <span class="sd">    Args:</span>
@@ -1052,51 +1056,51 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If provider is unknown</span>
 <span class="sd">        NotImplementedError: If vllm provider is selected (currently not implemented)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Extract model name based on provider</span>
     <span class="n">provider</span> <span class="o">=</span> <span class="n">_normalize_provider_name</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;openai&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;openai&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;gpt-4o&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;foundry&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">&quot;foundry&quot;</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown-foundry-model&quot;</span>
+    <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"openai"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"openai"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"gpt-4o"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"foundry"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">"foundry"</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown-foundry-model"</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;grok&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">&quot;grok&quot;</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown-grok-model&quot;</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"grok"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="s2">"grok"</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown-grok-model"</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;anthropic&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;anthropic&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;claude-sonnet-4-5&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;gemini&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gemini&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;gemini-2.0-flash-exp&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;together&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;together&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown-together-model&quot;</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"anthropic"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"anthropic"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"claude-sonnet-4-5"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"gemini"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"gemini"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="s2">"gemini-2.0-flash-exp"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"together"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"together"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown-together-model"</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;fireworks&quot;</span><span class="p">:</span>
-        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fireworks&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown-fireworks-model&quot;</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"fireworks"</span><span class="p">:</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"fireworks"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"model"</span><span class="p">,</span> <span class="s2">"unknown-fireworks-model"</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;vllm&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">"vllm"</span><span class="p">:</span>
         <span class="n">model_name</span> <span class="o">=</span> <span class="n">_get_vllm_model_name</span><span class="p">(</span><span class="n">llm_config</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown provider: </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown provider: </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">model_name</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">get_generation_params</span><span class="p">(</span><span class="n">llm_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-    <span class="n">provider</span> <span class="o">=</span> <span class="n">_normalize_provider_name</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">_normalize_provider_name</span><span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"provider"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
     <span class="n">provider_block</span> <span class="o">=</span> <span class="n">_get_provider_block</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="n">llm_config</span><span class="p">)</span>
 
-    <span class="n">raw_params</span> <span class="o">=</span> <span class="n">provider_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">provider_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;generation&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">raw_params</span> <span class="o">=</span> <span class="n">provider_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"params"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">provider_block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"generation"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">{}</span>
 
     <span class="c1"># Never leak model identifiers into request params</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">raw_params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;model&quot;</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">raw_params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">"model"</span><span class="p">}</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">configure_logging</span><span class="p">(</span><span class="n">level</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1106,40 +1110,40 @@
 
     <span class="k">if</span> <span class="n">level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">level</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
-            <span class="n">logging</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;TERRARIUM_LOG_LEVEL&quot;</span><span class="p">,</span> <span class="s2">&quot;INFO&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
+            <span class="n">logging</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"TERRARIUM_LOG_LEVEL"</span><span class="p">,</span> <span class="s2">"INFO"</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">isatty</span><span class="p">():</span>
         <span class="n">colors</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[36m&quot;</span><span class="p">,</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[32m&quot;</span><span class="p">,</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[33m&quot;</span><span class="p">,</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[31m&quot;</span><span class="p">,</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[1;31m&quot;</span><span class="p">,</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span> <span class="s2">"</span><span class="se">\033</span><span class="s2">[36m"</span><span class="p">,</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">:</span> <span class="s2">"</span><span class="se">\033</span><span class="s2">[32m"</span><span class="p">,</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">:</span> <span class="s2">"</span><span class="se">\033</span><span class="s2">[33m"</span><span class="p">,</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span> <span class="s2">"</span><span class="se">\033</span><span class="s2">[31m"</span><span class="p">,</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span> <span class="s2">"</span><span class="se">\033</span><span class="s2">[1;31m"</span><span class="p">,</span>
         <span class="p">}</span>
-        <span class="n">reset</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[0m&quot;</span>
+        <span class="n">reset</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\033</span><span class="s2">[0m"</span>
 
         <span class="k">class</span><span class="w"> </span><span class="nc">_ColorFormatter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">):</span>
             <span class="k">def</span><span class="w"> </span><span class="nf">format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">LogRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
-                <span class="n">record</span><span class="o">.</span><span class="n">log_color</span> <span class="o">=</span> <span class="n">colors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">log_color</span> <span class="o">=</span> <span class="n">colors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">levelno</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
                 <span class="n">record</span><span class="o">.</span><span class="n">reset</span> <span class="o">=</span> <span class="n">reset</span>
                 <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 
         <span class="n">handler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">()</span>
         <span class="n">handler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span>
             <span class="n">_ColorFormatter</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">%(log_color)s%(levelname)-8s%(reset)s</span><span class="s2"> | </span><span class="si">%(log_color)s%(message)s%(reset)s</span><span class="s2">&quot;</span>
+                <span class="s2">"</span><span class="si">%(log_color)s%(levelname)-8s%(reset)s</span><span class="s2"> | </span><span class="si">%(log_color)s%(message)s%(reset)s</span><span class="s2">"</span>
             <span class="p">)</span>
         <span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">handler</span><span class="p">],</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
-            <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;[</span><span class="si">%(levelname)s</span><span class="s2">]: </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"[</span><span class="si">%(levelname)s</span><span class="s2">]: </span><span class="si">%(message)s</span><span class="s2">"</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;httpx&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;httpcore&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;mcp.client.streamable_http&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"httpx"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"httpcore"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"mcp.client.streamable_http"</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
 </pre></div>
         </article>
       </div>

@@ -297,11 +297,11 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_iter_tools_modules</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
     <span class="n">modules</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;terrarium/environments/**/*_tools.py&quot;</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"terrarium/environments/**/*_tools.py"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"."</span><span class="p">):</span>
             <span class="k">continue</span>
-        <span class="n">rel</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rel</span><span class="o">.</span><span class="n">parts</span><span class="p">))</span>
+        <span class="n">rel</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"."</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rel</span><span class="o">.</span><span class="n">parts</span><span class="p">))</span>
     <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">modules</span><span class="p">))</span>
 
 
@@ -316,20 +316,20 @@
             <span class="n">module</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_path</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="c1"># Best-effort discovery: ignore modules that fail to import so one</span>
-            <span class="c1"># optional dependency doesn&#39;t break unrelated environments.</span>
+            <span class="c1"># optional dependency doesn't break unrelated environments.</span>
             <span class="k">continue</span>
 
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="n">module</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
                 <span class="k">continue</span>
             <span class="c1"># Only include classes defined in this module (skip re-exports).</span>
-            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;__module__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="n">module</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">"__module__"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="n">module</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span>
                 <span class="k">continue</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;Tools&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"Tools"</span><span class="p">):</span>
                 <span class="k">continue</span>
 
             <span class="n">_TOOL_CLASS_BY_NAME</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span>
-            <span class="n">env_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">Environment&quot;</span>
+            <span class="n">env_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">Environment"</span>
             <span class="n">_TOOL_CLASS_BY_ENV_NAME</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">env_name</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
 
     <span class="n">_DISCOVERED</span> <span class="o">=</span> <span class="kc">True</span>
@@ -338,28 +338,28 @@
 <div class="viewcode-block" id="get_environment_tools_class">
 <a class="viewcode-back" href="../../../api/tools.html#terrarium.tools.environment.get_environment_tools_class">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_environment_tools_class</span><span class="p">(</span><span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Type</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the Tools class for a given environment name.</span>
+<span class="w">    </span><span class="sd">"""Resolve the Tools class for a given environment name.</span>
 
 <span class="sd">    Convention: `{Foo}Environment` -&gt; `{Foo}Tools` in a `terrarium.environments`</span>
 <span class="sd">    `*_tools.py` module.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">_discover_tools</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">environment_name</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">EnvironmentToolsNotFoundError</span><span class="p">(</span><span class="s2">&quot;environment_name is required&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">EnvironmentToolsNotFoundError</span><span class="p">(</span><span class="s2">"environment_name is required"</span><span class="p">)</span>
 
     <span class="n">direct</span> <span class="o">=</span> <span class="n">_TOOL_CLASS_BY_ENV_NAME</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">environment_name</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">direct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">direct</span>
 
-    <span class="k">if</span> <span class="n">environment_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;Environment&quot;</span><span class="p">):</span>
-        <span class="n">tools_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">environment_name</span><span class="p">[:</span><span class="o">-</span><span class="mi">11</span><span class="p">]</span><span class="si">}</span><span class="s2">Tools&quot;</span>
+    <span class="k">if</span> <span class="n">environment_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"Environment"</span><span class="p">):</span>
+        <span class="n">tools_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">environment_name</span><span class="p">[:</span><span class="o">-</span><span class="mi">11</span><span class="p">]</span><span class="si">}</span><span class="s2">Tools"</span>
         <span class="n">by_name</span> <span class="o">=</span> <span class="n">_TOOL_CLASS_BY_NAME</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tools_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">by_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">by_name</span>
 
     <span class="k">raise</span> <span class="n">EnvironmentToolsNotFoundError</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;No Tools class found for environment </span><span class="si">{</span><span class="n">environment_name</span><span class="si">!r}</span><span class="s2">. &quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;Known environments: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_TOOL_CLASS_BY_ENV_NAME</span><span class="p">))</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(none)&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="sa">f</span><span class="s2">"No Tools class found for environment </span><span class="si">{</span><span class="n">environment_name</span><span class="si">!r}</span><span class="s2">. "</span>
+        <span class="sa">f</span><span class="s2">"Known environments: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_TOOL_CLASS_BY_ENV_NAME</span><span class="p">))</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'(none)'</span><span class="si">}</span><span class="s2">"</span>
     <span class="p">)</span></div>
 
 
@@ -369,7 +369,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">instantiate_environment_tools</span><span class="p">(</span>
     <span class="n">environment_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">blackboard_manager</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">environment</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Instantiate the tools handler for an environment.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Instantiate the tools handler for an environment."""</span>
     <span class="bp">cls</span> <span class="o">=</span> <span class="n">get_environment_tools_class</span><span class="p">(</span><span class="n">environment_name</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">blackboard_manager</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="n">environment</span><span class="p">)</span>

@@ -283,14 +283,14 @@
 <a class="viewcode-back" href="../../../api/networks.html#terrarium.networks.base.CommunicationNetwork">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CommunicationNetwork</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A NetworkX-backed communication network.</span>
+<span class="w">    </span><span class="sd">"""A NetworkX-backed communication network.</span>
 
 <span class="sd">    Convention used across Terrarium:</span>
 
 <span class="sd">    - Nodes are agent names (strings).</span>
 <span class="sd">    - Edges are potential pairwise connections; blackboard channels are derived</span>
 <span class="sd">      from this graph via `channel_groups()`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="c1"># These are set in the constructor of subclasses</span>
     <span class="n">graph</span><span class="p">:</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span>
@@ -299,21 +299,21 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;graph must be a networkx.Graph, got: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"graph must be a networkx.Graph, got: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span><span class="si">!r}</span><span class="s2">"</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">consolidate_channels_enabled</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                <span class="s2">&quot;consolidate_channels_enabled must be a bool, &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;got: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">consolidate_channels_enabled</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="s2">"consolidate_channels_enabled must be a bool, "</span>
+                <span class="sa">f</span><span class="s2">"got: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">consolidate_channels_enabled</span><span class="p">)</span><span class="si">!r}</span><span class="s2">"</span>
             <span class="p">)</span>
 
         <span class="n">nodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Network nodes must be agent name strings.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Network nodes must be agent name strings."</span><span class="p">)</span>
 
         <span class="n">self_loops</span> <span class="o">=</span> <span class="p">[(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">edges</span> <span class="k">if</span> <span class="n">u</span> <span class="o">==</span> <span class="n">v</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">self_loops</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Self-loop edges are not supported: </span><span class="si">{</span><span class="n">self_loops</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Self-loop edges are not supported: </span><span class="si">{</span><span class="n">self_loops</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
@@ -330,23 +330,23 @@
 <div class="viewcode-block" id="CommunicationNetwork.validate_agents">
 <a class="viewcode-back" href="../../../api/networks.html#terrarium.networks.base.CommunicationNetwork.validate_agents">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">validate_agents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_names</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate that the network nodes match the given agent names.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Validate that the network nodes match the given agent names."""</span>
         <span class="n">expected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span>
         <span class="n">actual</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">expected</span> <span class="o">!=</span> <span class="n">actual</span><span class="p">:</span>
             <span class="n">missing</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">expected</span> <span class="o">-</span> <span class="n">actual</span><span class="p">)</span>
             <span class="n">extra</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">actual</span> <span class="o">-</span> <span class="n">expected</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;CommunicationNetwork nodes must match environment agent_names. &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Missing=</span><span class="si">{</span><span class="n">missing</span><span class="si">!r}</span><span class="s2">, extra=</span><span class="si">{</span><span class="n">extra</span><span class="si">!r}</span><span class="s2">.&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;This is likely an error in the environment logic.&quot;</span>
+                <span class="s2">"CommunicationNetwork nodes must match environment agent_names. "</span>
+                <span class="sa">f</span><span class="s2">"Missing=</span><span class="si">{</span><span class="n">missing</span><span class="si">!r}</span><span class="s2">, extra=</span><span class="si">{</span><span class="n">extra</span><span class="si">!r}</span><span class="s2">."</span>
+                <span class="sa">f</span><span class="s2">"This is likely an error in the environment logic."</span>
             <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CommunicationNetwork.consolidate_channels">
 <a class="viewcode-back" href="../../../api/networks.html#terrarium.networks.base.CommunicationNetwork.consolidate_channels">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">consolidate_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a greedy clique-based channel cover as communication channels.</span>
+<span class="w">        </span><span class="sd">"""Return a greedy clique-based channel cover as communication channels.</span>
 
 <span class="sd">        Example: A complete graph with n nodes/agents --&gt; one channel/blackboard with all n agents.</span>
 
@@ -366,8 +366,8 @@
 <span class="sd">        - Clique selection is greedy: pick the largest clique each iteration.</span>
 <span class="sd">        - Clique channels are vertex-disjoint, but connectivity edges added at the end</span>
 <span class="sd">          may cause some agents to participate in multiple channels.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;_terrarium_consolidated_channels&quot;</span>
+<span class="sd">        """</span>
+        <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">"_terrarium_consolidated_channels"</span>
         <span class="n">cached</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cached</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cached</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">cached</span>  <span class="c1"># type: ignore[return-value]</span>
@@ -399,12 +399,12 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_channel_connectivity</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">channels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Ensure the *channel graph* is connected (or as connected as possible) by</span>
 <span class="sd">        adding a small number of pairwise channels.</span>
 
 <span class="sd">        A channel graph has nodes=channels and edges if two channels share a participant.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># Normalize channels and build quick lookup for existing pair channels.</span>
         <span class="n">normalized</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">pair_edges</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
@@ -477,7 +477,7 @@
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_comp_sort_key</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
             <span class="c1"># Stable ordering for the merge loop.</span>
-            <span class="n">first</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">c</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">first</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">c</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">c</span> <span class="k">else</span> <span class="s2">""</span>
             <span class="k">return</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="n">first</span><span class="p">)</span>
 
         <span class="n">components</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">_comp_sort_key</span><span class="p">)</span>
@@ -550,7 +550,7 @@
 <div class="viewcode-block" id="CommunicationNetwork.channel_groups">
 <a class="viewcode-back" href="../../../api/networks.html#terrarium.networks.base.CommunicationNetwork.channel_groups">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">channel_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return communication channel groups (blackboard participants) for this network.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return communication channel groups (blackboard participants) for this network."""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">consolidate_channels_enabled</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">consolidate_channels</span><span class="p">()</span>
 
@@ -564,22 +564,22 @@
 <div class="viewcode-block" id="CommunicationNetwork.save_plot">
 <a class="viewcode-back" href="../../../api/networks.html#terrarium.networks.base.CommunicationNetwork.save_plot">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save a PNG visualization of this network graph to the given path.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Save a PNG visualization of this network graph to the given path."""</span>
         <span class="n">out_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="n">out_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span>
 
-            <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s2">&quot;Agg&quot;</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s2">"Agg"</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="s2">&quot;Plotting requires matplotlib. Install it or disable plotting.&quot;</span>
+                <span class="s2">"Plotting requires matplotlib. Install it or disable plotting."</span>
             <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">switch_backend</span><span class="p">(</span><span class="s2">&quot;Agg&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">switch_backend</span><span class="p">(</span><span class="s2">"Agg"</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="k">pass</span>
 
@@ -603,10 +603,10 @@
         <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
         <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;(nodes=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">, edges=</span><span class="si">{</span><span class="n">graph</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span><span class="si">}</span><span class="s2">, channels=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="sa">f</span><span class="s2">"(nodes=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">, edges=</span><span class="si">{</span><span class="n">graph</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span><span class="si">}</span><span class="s2">, channels=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
         <span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">"off"</span><span class="p">)</span>
 
         <span class="n">pos</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">spring_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
 
@@ -661,7 +661,7 @@
                 <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span>
                 <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
                 <span class="n">edgelist</span><span class="o">=</span><span class="n">remaining_edges</span><span class="p">,</span>
-                <span class="n">edge_color</span><span class="o">=</span><span class="s2">&quot;#9ca3af&quot;</span><span class="p">,</span>
+                <span class="n">edge_color</span><span class="o">=</span><span class="s2">"#9ca3af"</span><span class="p">,</span>
                 <span class="n">width</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
                 <span class="n">alpha</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
             <span class="p">)</span>
@@ -689,13 +689,13 @@
             <span class="p">)</span>
 
         <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_nodes</span><span class="p">(</span>
-            <span class="n">graph</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="n">node_size</span><span class="p">,</span> <span class="n">node_color</span><span class="o">=</span><span class="s2">&quot;#93c5fd&quot;</span>
+            <span class="n">graph</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="n">node_size</span><span class="p">,</span> <span class="n">node_color</span><span class="o">=</span><span class="s2">"#93c5fd"</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">with_labels</span><span class="p">:</span>
             <span class="n">nx</span><span class="o">.</span><span class="n">draw_networkx_labels</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">font_size</span><span class="o">=</span><span class="n">font_size</span><span class="p">)</span>
 
         <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">"tight"</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">out_path</span></div>
 </div>

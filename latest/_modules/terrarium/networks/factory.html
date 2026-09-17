@@ -289,7 +289,7 @@
     <span class="n">agent_names</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CommunicationNetwork</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a CommunicationNetwork from config.</span>
+<span class="w">    </span><span class="sd">"""Build a CommunicationNetwork from config.</span>
 
 <span class="sd">    Supported config keys:</span>
 
@@ -302,34 +302,34 @@
 <span class="sd">    - `communication_network.rewire_prob` (watts_strogatz; float in [0, 1])</span>
 <span class="sd">    - `communication_network.m` (barabasi_albert; int in [1, num_agents-1])</span>
 <span class="sd">    - random graph seed is taken from `simulation.seed` for random graph families</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">cfg</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;communication_network&quot;</span><span class="p">]</span>
+<span class="sd">    """</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"communication_network"</span><span class="p">]</span>
     <span class="n">agents</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">agent_names</span><span class="p">)</span>
-    <span class="n">topology</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;topology&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="n">consolidate_channels</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;consolidate_channels&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">topology</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s2">"topology"</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">consolidate_channels</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"consolidate_channels"</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">consolidate_channels</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;communication_network.consolidate_channels must be a boolean&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"communication_network.consolidate_channels must be a boolean"</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">&quot;complete&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">"complete"</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">CompleteNetwork</span><span class="p">(</span><span class="n">agents</span><span class="p">,</span> <span class="n">consolidate_channels</span><span class="o">=</span><span class="n">consolidate_channels</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">&quot;path&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">"path"</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">PathNetwork</span><span class="p">(</span><span class="n">agents</span><span class="p">,</span> <span class="n">consolidate_channels</span><span class="o">=</span><span class="n">consolidate_channels</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">&quot;star&quot;</span><span class="p">:</span>
-        <span class="n">center</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;center&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">"star"</span><span class="p">:</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"center"</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">center</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
             <span class="n">center</span> <span class="o">=</span> <span class="n">agents</span><span class="p">[</span><span class="n">center</span><span class="p">]</span>
         <span class="n">center_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">center</span><span class="p">)</span> <span class="k">if</span> <span class="n">center</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">StarNetwork</span><span class="p">(</span>
             <span class="n">agents</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">center_name</span><span class="p">,</span> <span class="n">consolidate_channels</span><span class="o">=</span><span class="n">consolidate_channels</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">&quot;erdos_renyi&quot;</span><span class="p">:</span>
-        <span class="n">edge_prob</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;edge_prob&quot;</span><span class="p">])</span>
-        <span class="n">seed_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">][</span><span class="s2">&quot;seed&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">"erdos_renyi"</span><span class="p">:</span>
+        <span class="n">edge_prob</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s2">"edge_prob"</span><span class="p">])</span>
+        <span class="n">seed_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">"simulation"</span><span class="p">][</span><span class="s2">"seed"</span><span class="p">])</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">edge_prob</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">edge_prob</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;communication_network.edge_prob must be a float in [0, 1], got: </span><span class="si">{</span><span class="n">edge_prob</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">"communication_network.edge_prob must be a float in [0, 1], got: </span><span class="si">{</span><span class="n">edge_prob</span><span class="si">!r}</span><span class="s2">"</span>
         <span class="p">)</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">seed_int</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;simulation.seed must be an integer, got: </span><span class="si">{</span><span class="n">seed_int</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">"simulation.seed must be an integer, got: </span><span class="si">{</span><span class="n">seed_int</span><span class="si">!r}</span><span class="s2">"</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">ErdosRenyiNetwork</span><span class="p">(</span>
             <span class="n">agents</span><span class="p">,</span>
@@ -337,15 +337,15 @@
             <span class="n">seed</span><span class="o">=</span><span class="n">seed_int</span><span class="p">,</span>
             <span class="n">consolidate_channels</span><span class="o">=</span><span class="n">consolidate_channels</span><span class="p">,</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">&quot;watts_strogatz&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">"watts_strogatz"</span><span class="p">:</span>
         <span class="c1"># Parameter aliases: allow both snake_case and more descriptive keys.</span>
-        <span class="n">k</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;k&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;nearest_neighbors&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_neighbors&quot;</span><span class="p">)))</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rewire_prob&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rewiring_prob&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;beta&quot;</span><span class="p">)))</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"k"</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"nearest_neighbors"</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"num_neighbors"</span><span class="p">)))</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"rewire_prob"</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"rewiring_prob"</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"beta"</span><span class="p">)))</span>
         <span class="k">if</span> <span class="n">k</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">p</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;watts_strogatz requires communication_network.k and communication_network.rewire_prob&quot;</span>
+                <span class="s2">"watts_strogatz requires communication_network.k and communication_network.rewire_prob"</span>
             <span class="p">)</span>
-        <span class="n">seed_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">][</span><span class="s2">&quot;seed&quot;</span><span class="p">])</span>
+        <span class="n">seed_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">"simulation"</span><span class="p">][</span><span class="s2">"seed"</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">WattsStrogatzNetwork</span><span class="p">(</span>
             <span class="n">agents</span><span class="p">,</span>
             <span class="n">k</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">),</span>
@@ -353,11 +353,11 @@
             <span class="n">seed</span><span class="o">=</span><span class="n">seed_int</span><span class="p">,</span>
             <span class="n">consolidate_channels</span><span class="o">=</span><span class="n">consolidate_channels</span><span class="p">,</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">&quot;barabasi_albert&quot;</span><span class="p">:</span>
-        <span class="n">m</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;edges_per_node&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_edges_to_attach&quot;</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">topology</span> <span class="o">==</span> <span class="s2">"barabasi_albert"</span><span class="p">:</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"m"</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"edges_per_node"</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"num_edges_to_attach"</span><span class="p">)))</span>
         <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;barabasi_albert requires communication_network.m&quot;</span><span class="p">)</span>
-        <span class="n">seed_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">][</span><span class="s2">&quot;seed&quot;</span><span class="p">])</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"barabasi_albert requires communication_network.m"</span><span class="p">)</span>
+        <span class="n">seed_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">"simulation"</span><span class="p">][</span><span class="s2">"seed"</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">BarabasiAlbertNetwork</span><span class="p">(</span>
             <span class="n">agents</span><span class="p">,</span>
             <span class="n">m</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">),</span>
@@ -366,8 +366,8 @@
         <span class="p">)</span>
 
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-        <span class="s2">&quot;Unknown communication_network topology: &quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">topology</span><span class="si">!r}</span><span class="s2">. Supported: complete, path, star, erdos_renyi, watts_strogatz, barabasi_albert.&quot;</span>
+        <span class="s2">"Unknown communication_network topology: "</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">topology</span><span class="si">!r}</span><span class="s2">. Supported: complete, path, star, erdos_renyi, watts_strogatz, barabasi_albert."</span>
     <span class="p">)</span></div>
 
 </pre></div>

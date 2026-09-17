@@ -288,10 +288,10 @@
 
 <span class="n">discovery</span> <span class="o">=</span> <span class="n">ToolsetDiscovery</span><span class="p">()</span>
 
-<span class="n">planning_tools</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get_tools_for_blackboard</span><span class="p">(</span><span class="s2">&quot;planning&quot;</span><span class="p">)</span>
+<span class="n">planning_tools</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get_tools_for_blackboard</span><span class="p">(</span><span class="s2">"planning"</span><span class="p">)</span>
 <span class="n">execution_tools</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get_tools_for_environment</span><span class="p">(</span>
-    <span class="s2">&quot;MeetingSchedulingEnvironment&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;execution&quot;</span><span class="p">,</span>
+    <span class="s2">"MeetingSchedulingEnvironment"</span><span class="p">,</span>
+    <span class="s2">"execution"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -299,13 +299,13 @@
 <h2>Blackboard Tools<a class="headerlink" href="#blackboard-tools" title="Link to this heading">¶</a></h2>
 <p>The main blackboard tool is <code class="docutils literal notranslate"><span class="pre">post_message</span></code>. It is available during planning and writes an event to a blackboard the agent can access.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">communication_protocol</span><span class="o">.</span><span class="n">blackboard_handle_tool_call</span><span class="p">(</span>
-    <span class="s2">&quot;post_message&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;agent_0&quot;</span><span class="p">,</span>
+    <span class="s2">"post_message"</span><span class="p">,</span>
+    <span class="s2">"agent_0"</span><span class="p">,</span>
     <span class="p">{</span>
-        <span class="s2">&quot;blackboard_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;I can cover this task if agent_1 takes the backup task.&quot;</span><span class="p">,</span>
+        <span class="s2">"blackboard_id"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"message"</span><span class="p">:</span> <span class="s2">"I can cover this task if agent_1 takes the backup task."</span><span class="p">,</span>
     <span class="p">},</span>
-    <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+    <span class="n">phase</span><span class="o">=</span><span class="s2">"planning"</span><span class="p">,</span>
     <span class="n">iteration</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -322,34 +322,34 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="n">environment</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tools</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">!=</span> <span class="s2">&quot;execution&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">!=</span> <span class="s2">"execution"</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="p">{</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;assign_package&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Assign a package to a warehouse agent.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;package_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">},</span>
-                            <span class="s2">&quot;agent_message&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">},</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"assign_package"</span><span class="p">,</span>
+                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Assign a package to a warehouse agent."</span><span class="p">,</span>
+                    <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                        <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"package_id"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">},</span>
+                            <span class="s2">"agent_message"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">},</span>
                         <span class="p">},</span>
-                        <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;package_id&quot;</span><span class="p">],</span>
+                        <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"package_id"</span><span class="p">],</span>
                     <span class="p">},</span>
                 <span class="p">},</span>
             <span class="p">}</span>
         <span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tool_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;assign_package&quot;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"assign_package"</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">handle_tool_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_name</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">iteration</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">!=</span> <span class="s2">&quot;assign_package&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Unknown tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignments</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s2">&quot;package_id&quot;</span><span class="p">]</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="s2">&quot;assigned_to&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">!=</span> <span class="s2">"assign_package"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Unknown tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignments</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s2">"package_id"</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"assigned_to"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Place the class in an environment <code class="docutils literal notranslate"><span class="pre">*_tools.py</span></code> module under <code class="docutils literal notranslate"><span class="pre">terrarium/environments/...</span></code>. Discovery imports those modules and maps the tool class to the environment class name.</p>

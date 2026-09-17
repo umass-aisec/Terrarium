@@ -280,11 +280,11 @@
 <div class="viewcode-block" id="MeetingSchedulingPrompts">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.meeting_scheduling.meeting_scheduling_prompts.MeetingSchedulingPrompts">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeetingSchedulingPrompts</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Prompt builder for the CoLLAB v2 MeetingScheduling environment.</span>
 
 <span class="sd">    Agents decide attendance intervals for each meeting they participate in.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">AbstractEnvironment</span><span class="p">,</span> <span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prompt_logger</span> <span class="o">=</span> <span class="n">PromptLogger</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">env</span><span class="o">.</span><span class="n">current_seed</span><span class="p">,</span> <span class="n">full_config</span><span class="p">)</span>
@@ -293,20 +293,20 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">tool_instruction_data</span> <span class="o">=</span> <span class="n">build_vllm_tool_instructions</span><span class="p">(</span>
             <span class="n">full_config</span><span class="p">,</span>
             <span class="n">execution_tool_lines</span><span class="o">=</span><span class="p">[</span>
-                <span class="s2">&quot;- attend_meeting(meeting_id: str, interval: str): &quot;</span>
-                <span class="s2">&quot;Choose your attendance interval for a meeting you participate in. &quot;</span>
-                <span class="s2">&quot;interval must be &#39;skip&#39; or &#39;join-leave&#39; (e.g., &#39;3-5&#39;).&quot;</span>
+                <span class="s2">"- attend_meeting(meeting_id: str, interval: str): "</span>
+                <span class="s2">"Choose your attendance interval for a meeting you participate in. "</span>
+                <span class="s2">"interval must be 'skip' or 'join-leave' (e.g., '3-5')."</span>
             <span class="p">],</span>
-            <span class="n">planning_header</span><span class="o">=</span><span class="s2">&quot;Planning phase tools (blackboard coordination only):&quot;</span><span class="p">,</span>
-            <span class="n">execution_header</span><span class="o">=</span><span class="s2">&quot;Execution phase tools (blackboard + attendance decisions):&quot;</span><span class="p">,</span>
+            <span class="n">planning_header</span><span class="o">=</span><span class="s2">"Planning phase tools (blackboard coordination only):"</span><span class="p">,</span>
+            <span class="n">execution_header</span><span class="o">=</span><span class="s2">"Execution phase tools (blackboard + attendance decisions):"</span><span class="p">,</span>
             <span class="n">system_note</span><span class="o">=</span><span class="p">(</span>
-                <span class="s2">&quot;Planning: only blackboard tools are permitted.</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="s2">&quot;Execution: attend_meeting becomes available in addition to blackboard tools.&quot;</span>
+                <span class="s2">"Planning: only blackboard tools are permitted.</span><span class="se">\n</span><span class="s2">"</span>
+                <span class="s2">"Execution: attend_meeting becomes available in addition to blackboard tools."</span>
             <span class="p">),</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_system_prompt</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">base_prompt</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;You are participating in a meeting attendance coordination task.</span>
+        <span class="n">base_prompt</span> <span class="o">=</span> <span class="s2">"""You are participating in a meeting attendance coordination task.</span>
 
 <span class="s2">PHASES:</span>
 <span class="s2">- Planning Phase: Use blackboards to discuss which meetings to attend and for how long. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible.</span>
@@ -315,7 +315,7 @@
 <span class="s2">RULES:</span>
 <span class="s2">- You may only decide attendance for meetings you participate in.</span>
 <span class="s2">- Each meeting has a fixed window [start, end). Your interval must lie within that window.</span>
-<span class="s2">- Use &#39;skip&#39; only if attending is impractical or low value.</span>
+<span class="s2">- Use 'skip' only if attending is impractical or low value.</span>
 <span class="s2">- For SOFT meetings, overlapping with others yields higher reward.</span>
 <span class="s2">- For STRICT meetings, attending the full window yields the best reward.</span>
 <span class="s2">- Avoid overlapping attendance across two meetings that conflict in time.</span>
@@ -326,11 +326,11 @@
 <span class="s2">- OVERLAP PENALTY (same agent, different meetings): -1 per overlapping time slot between two meetings you attend.</span>
 <span class="s2">- Coordination rewards only materialize once the relevant other agents also commit their intervals.</span>
 
-<span class="s2">Your goal is to maximise the overall reward by coordinating with other agents.&quot;&quot;&quot;</span>
+<span class="s2">Your goal is to maximise the overall reward by coordinating with other agents."""</span>
 
-        <span class="n">system_text</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tool_instruction_data</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">)</span>
+        <span class="n">system_text</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tool_instruction_data</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"system"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">system_text</span><span class="p">:</span>
-            <span class="n">base_prompt</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">TOOL CALLING REQUIREMENTS:</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">system_text</span>
+            <span class="n">base_prompt</span> <span class="o">+=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">TOOL CALLING REQUIREMENTS:</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">system_text</span>
         <span class="k">return</span> <span class="n">base_prompt</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_user_prompt</span><span class="p">(</span>
@@ -347,9 +347,9 @@
                 <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span>
                 <span class="n">system_prompt</span><span class="o">=</span><span class="n">system_prompt</span><span class="p">,</span>
                 <span class="n">user_prompt</span><span class="o">=</span><span class="n">user_prompt</span><span class="p">,</span>
-                <span class="n">phase</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
-                <span class="n">iteration</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iteration&quot;</span><span class="p">),</span>
-                <span class="n">round_num</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;planning_round&quot;</span><span class="p">),</span>
+                <span class="n">phase</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phase"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">),</span>
+                <span class="n">iteration</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"iteration"</span><span class="p">),</span>
+                <span class="n">round_num</span><span class="o">=</span><span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"planning_round"</span><span class="p">),</span>
             <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">user_prompt</span>
@@ -366,78 +366,78 @@
         <span class="n">agent_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
         <span class="n">blackboard_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-        <span class="n">iteration</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iteration&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">phase</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phase"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+        <span class="n">iteration</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"iteration"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
         <span class="n">context_parts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;=== TURN INFORMATION ===&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;Phase: </span><span class="si">{</span><span class="n">phase</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;Iteration: </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;You are agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="s2">"=== TURN INFORMATION ==="</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"Phase: </span><span class="si">{</span><span class="n">phase</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"Iteration: </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"You are agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="s2">""</span><span class="p">,</span>
         <span class="p">]</span>
 
         <span class="c1"># Agent-specific instruction from CoLLAB instance if available</span>
-        <span class="n">instruction</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;explanations&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_name</span><span class="p">)</span>
+        <span class="n">instruction</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="s2">"explanations"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">instruction</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">instruction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">agent_instruction</span><span class="p">(</span><span class="n">agent_name</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="n">instruction</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">instruction</span><span class="p">:</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== YOUR INSTRUCTIONS ===&quot;</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== YOUR INSTRUCTIONS ==="</span><span class="p">)</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">instruction</span><span class="p">)</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
-        <span class="n">agent_vars</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agent_variables&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[</span>
+        <span class="n">agent_vars</span> <span class="o">=</span> <span class="n">agent_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"agent_variables"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[</span>
             <span class="n">var</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">agent_variables</span><span class="p">(</span><span class="n">agent_name</span><span class="p">)</span>
         <span class="p">]</span>
 
-        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== YOUR MEETINGS ===&quot;</span><span class="p">)</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== YOUR MEETINGS ==="</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">var_name</span> <span class="ow">in</span> <span class="n">agent_vars</span><span class="p">:</span>
-            <span class="n">meeting_id</span> <span class="o">=</span> <span class="n">var_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;__&quot;</span> <span class="ow">in</span> <span class="n">var_name</span> <span class="k">else</span> <span class="n">var_name</span>
+            <span class="n">meeting_id</span> <span class="o">=</span> <span class="n">var_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"__"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="s2">"__"</span> <span class="ow">in</span> <span class="n">var_name</span> <span class="k">else</span> <span class="n">var_name</span>
             <span class="n">meeting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_meeting</span><span class="p">(</span><span class="n">meeting_id</span><span class="p">)</span>
             <span class="n">current_choice</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">assignment</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var_name</span><span class="p">)</span>
-            <span class="n">status</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;CHOSEN: </span><span class="si">{</span><span class="n">current_choice</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">current_choice</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;PENDING&quot;</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"CHOSEN: </span><span class="si">{</span><span class="n">current_choice</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">current_choice</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">"PENDING"</span>
             <span class="k">if</span> <span class="n">meeting</span><span class="p">:</span>
                 <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">meeting_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">meeting_type</span><span class="si">}</span><span class="s2">) &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;window [</span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">start</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">end</span><span class="si">}</span><span class="s2">) participants &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">meeting</span><span class="o">.</span><span class="n">participants</span><span class="p">)</span><span class="si">}</span><span class="s2"> :: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">meeting_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">meeting_type</span><span class="si">}</span><span class="s2">) "</span>
+                    <span class="sa">f</span><span class="s2">"window [</span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">start</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">meeting</span><span class="o">.</span><span class="n">end</span><span class="si">}</span><span class="s2">) participants "</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">meeting</span><span class="o">.</span><span class="n">participants</span><span class="p">)</span><span class="si">}</span><span class="s2"> :: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">meeting_id</span><span class="si">}</span><span class="s2"> :: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- </span><span class="si">{</span><span class="n">meeting_id</span><span class="si">}</span><span class="s2"> :: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">assignment</span><span class="p">:</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== CURRENT JOINT ATTENDANCE (for coordination) ===&quot;</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== CURRENT JOINT ATTENDANCE (for coordination) ==="</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">assignment</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">blackboard_context</span><span class="p">:</span>
-            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;=== BLACKBOARD COMMUNICATIONS ===&quot;</span><span class="p">)</span>
+            <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"=== BLACKBOARD COMMUNICATIONS ==="</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">bb_id</span><span class="p">,</span> <span class="n">content</span> <span class="ow">in</span> <span class="n">blackboard_context</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">content</span> <span class="ow">and</span> <span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
-                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Blackboard </span><span class="si">{</span><span class="n">bb_id</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Blackboard </span><span class="si">{</span><span class="n">bb_id</span><span class="si">}</span><span class="s2">:"</span><span class="p">)</span>
                     <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
-                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;planning&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"planning"</span><span class="p">:</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="s2">&quot;=== CURRENT PHASE: PLANNING ===&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;Use blackboards to coordinate intervals with others before committing.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="s2">"=== CURRENT PHASE: PLANNING ==="</span><span class="p">,</span>
+                    <span class="s2">"Use blackboards to coordinate intervals with others before committing."</span><span class="p">,</span>
+                    <span class="s2">""</span><span class="p">,</span>
                 <span class="p">]</span>
             <span class="p">)</span>
-        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;execution&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"execution"</span><span class="p">:</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="s2">&quot;=== CURRENT PHASE: EXECUTION ===&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;Commit your final attendance intervals using attend_meeting. You MUST call attend_meeting during execution.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;Only call attend_meeting for meetings listed in YOUR MEETINGS above.&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="s2">"=== CURRENT PHASE: EXECUTION ==="</span><span class="p">,</span>
+                    <span class="s2">"Commit your final attendance intervals using attend_meeting. You MUST call attend_meeting during execution."</span><span class="p">,</span>
+                    <span class="s2">"Only call attend_meeting for meetings listed in YOUR MEETINGS above."</span><span class="p">,</span>
+                    <span class="s2">""</span><span class="p">,</span>
                 <span class="p">]</span>
             <span class="p">)</span>
 
@@ -445,13 +445,13 @@
         <span class="k">if</span> <span class="n">phase_instructions</span><span class="p">:</span>
             <span class="n">context_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="s2">&quot;=== TOOL CALLING FORMAT ===&quot;</span><span class="p">,</span>
+                    <span class="s2">"=== TOOL CALLING FORMAT ==="</span><span class="p">,</span>
                     <span class="n">phase_instructions</span><span class="p">,</span>
-                    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="s2">""</span><span class="p">,</span>
                 <span class="p">]</span>
             <span class="p">)</span>
 
-        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">context_parts</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">context_parts</span><span class="p">)</span></div>
 
 </pre></div>
         </article>

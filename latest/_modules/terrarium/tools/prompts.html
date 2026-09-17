@@ -270,7 +270,7 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.tools.prompts</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Utilities for injecting tool-calling instructions into prompts. Used only for vLLM provider.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Utilities for injecting tool-calling instructions into prompts. Used only for vLLM provider."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -280,65 +280,65 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_model_info</span>
 
 <span class="n">DEFAULT_PLANNING_TOOL_LINES</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;- post_message(message: str, blackboard_id?: int): Broadcast updates to collaborators.&quot;</span><span class="p">,</span>
+    <span class="s2">"- post_message(message: str, blackboard_id?: int): Broadcast updates to collaborators."</span><span class="p">,</span>
 <span class="p">]</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_needs_tool_instructions</span><span class="p">(</span><span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="n">llm_config</span> <span class="o">=</span> <span class="p">(</span><span class="n">full_config</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;vllm&quot;</span>
+    <span class="n">llm_config</span> <span class="o">=</span> <span class="p">(</span><span class="n">full_config</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"llm"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">llm_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"provider"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"vllm"</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_format_hint</span><span class="p">(</span><span class="n">full_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">model_label</span> <span class="o">=</span> <span class="p">(</span><span class="n">extract_model_info</span><span class="p">(</span><span class="n">full_config</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="k">if</span> <span class="s2">&quot;qwen3&quot;</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">&quot;qwen 3&quot;</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
+    <span class="n">model_label</span> <span class="o">=</span> <span class="p">(</span><span class="n">extract_model_info</span><span class="p">(</span><span class="n">full_config</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">"qwen3"</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">"qwen 3"</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
         <span class="c1"># Reference: https://qwen.readthedocs.io/en/latest/getting_started/concepts.html</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s1">&#39;Follow the Qwen3 Hermes-style template: list tool schemas inside &lt;tools&gt;&lt;/tools&gt;, emit each call as &lt;tool_call&gt;{&quot;name&quot;:...,&quot;arguments&quot;:{...}}&lt;/tool_call&gt;, &#39;</span>
-            <span class="s2">&quot;and echo tool outputs under &lt;tool_response&gt;. Do not mix prose outside those tags until tool calls finish.&quot;</span>
+            <span class="s1">'Follow the Qwen3 Hermes-style template: list tool schemas inside &lt;tools&gt;&lt;/tools&gt;, emit each call as &lt;tool_call&gt;{"name":...,"arguments":{...}}&lt;/tool_call&gt;, '</span>
+            <span class="s2">"and echo tool outputs under &lt;tool_response&gt;. Do not mix prose outside those tags until tool calls finish."</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="s2">&quot;qwen&quot;</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"qwen"</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s1">&#39;Wrap every tool invocation inside &lt;tool_call&gt;{&quot;name&quot;:...,&quot;arguments&quot;:{...}}&lt;/tool_call&gt; blocks and avoid plain text outside those tags. &#39;</span>
-            <span class="s1">&#39;Example: &lt;tool_call&gt;{&quot;name&quot;:&quot;post_message&quot;,&quot;arguments&quot;:{&quot;message&quot;:&quot;Checking slot 4?&quot;,&quot;blackboard_id&quot;:2}}&lt;/tool_call&gt;.&#39;</span>
+            <span class="s1">'Wrap every tool invocation inside &lt;tool_call&gt;{"name":...,"arguments":{...}}&lt;/tool_call&gt; blocks and avoid plain text outside those tags. '</span>
+            <span class="s1">'Example: &lt;tool_call&gt;{"name":"post_message","arguments":{"message":"Checking slot 4?","blackboard_id":2}}&lt;/tool_call&gt;.'</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="s2">&quot;mistral&quot;</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"mistral"</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
         <span class="c1"># Reference: https://docs.mistral.ai/capabilities/function_calling/</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s1">&#39;Return only JSON tool_calls using the standard `{&quot;type&quot;:&quot;function&quot;,&quot;function&quot;:{&quot;name&quot;:...,&quot;arguments&quot;:{...}}}` schema so vLLM can parse them. &#39;</span>
-            <span class="s2">&quot;Never add narration outside that JSON blob and keep every argument valid per the provided JSON schema.&quot;</span>
+            <span class="s1">'Return only JSON tool_calls using the standard `{"type":"function","function":{"name":...,"arguments":{...}}}` schema so vLLM can parse them. '</span>
+            <span class="s2">"Never add narration outside that JSON blob and keep every argument valid per the provided JSON schema."</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="s2">&quot;gpt-oss&quot;</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">&quot;gptoss&quot;</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"gpt-oss"</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">"gptoss"</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
         <span class="c1"># Reference: https://github.com/openai/harmony</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;Use the Harmony prompt format: emit tool calls inside `&lt;|start|&gt;assistant&lt;|message|&gt;&lt;|channel|&gt;commentary ... &lt;|end|&gt;` and include only JSON such as &quot;</span>
-            <span class="s1">&#39;{&quot;tool_calls&quot;:[{&quot;type&quot;:&quot;function&quot;,&quot;function&quot;:{&quot;name&quot;:...,&quot;arguments&quot;:{...}}}]}. No free-form prose outside Harmony tags.&#39;</span>
+            <span class="s2">"Use the Harmony prompt format: emit tool calls inside `&lt;|start|&gt;assistant&lt;|message|&gt;&lt;|channel|&gt;commentary ... &lt;|end|&gt;` and include only JSON such as "</span>
+            <span class="s1">'{"tool_calls":[{"type":"function","function":{"name":...,"arguments":{...}}}]}. No free-form prose outside Harmony tags.'</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="s2">&quot;glm&quot;</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"glm"</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
         <span class="c1"># Reference: https://hwcoder.top/Tool-Call-Format</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;Produce native GLM tool envelopes: `&lt;tool_call&gt;function_name&lt;arg_key&gt;param&lt;/arg_key&gt;&lt;arg_value&gt;value&lt;/arg_value&gt;...&lt;/tool_call&gt;` for each invocation and &quot;</span>
-            <span class="s2">&quot;report tool outputs via `&lt;observation&gt;{...}&lt;/observation&gt;` with zero extra narration.&quot;</span>
+            <span class="s2">"Produce native GLM tool envelopes: `&lt;tool_call&gt;function_name&lt;arg_key&gt;param&lt;/arg_key&gt;&lt;arg_value&gt;value&lt;/arg_value&gt;...&lt;/tool_call&gt;` for each invocation and "</span>
+            <span class="s2">"report tool outputs via `&lt;observation&gt;{...}&lt;/observation&gt;` with zero extra narration."</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="s2">&quot;deepseek&quot;</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"deepseek"</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
         <span class="c1"># Reference: https://api-docs.deepseek.com/</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;Respond with OpenAI-compatible JSON tool calls (tool_calls array with type=function/function.name/function.arguments) because DeepSeek&#39;s API mirrors that wire format. &quot;</span>
-            <span class="s2">&quot;Keep everything machine-parsable JSON and avoid text outside the payload.&quot;</span>
+            <span class="s2">"Respond with OpenAI-compatible JSON tool calls (tool_calls array with type=function/function.name/function.arguments) because DeepSeek's API mirrors that wire format. "</span>
+            <span class="s2">"Keep everything machine-parsable JSON and avoid text outside the payload."</span>
         <span class="p">)</span>
-    <span class="k">if</span> <span class="s2">&quot;kimi&quot;</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">&quot;moonshot&quot;</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">&quot;k2&quot;</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"kimi"</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">"moonshot"</span> <span class="ow">in</span> <span class="n">model_label</span> <span class="ow">or</span> <span class="s2">"k2"</span> <span class="ow">in</span> <span class="n">model_label</span><span class="p">:</span>
         <span class="c1"># Reference: https://github.com/MoonshotAI/Kimi-K2</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s1">&#39;Invoke tools exactly the way Kimi K2 expects: supply the `tools=[{&quot;type&quot;:&quot;function&quot;,...}]` metadata and reply only with tool_calls JSON &#39;</span>
-            <span class="s2">&quot;(each entry has `function.name`, `function.arguments`, and `tool_call_id`) before waiting for tool outputs.&quot;</span>
+            <span class="s1">'Invoke tools exactly the way Kimi K2 expects: supply the `tools=[{"type":"function",...}]` metadata and reply only with tool_calls JSON '</span>
+            <span class="s2">"(each entry has `function.name`, `function.arguments`, and `tool_call_id`) before waiting for tool outputs."</span>
         <span class="p">)</span>
 
     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-        <span class="s2">&quot;Tool prompts are using the generic function-call format; consider adding a model-specific branch for better reliability.&quot;</span><span class="p">,</span>
+        <span class="s2">"Tool prompts are using the generic function-call format; consider adding a model-specific branch for better reliability."</span><span class="p">,</span>
         <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="c1"># Reference: https://gorilla.cs.berkeley.edu/blogs/17_bfcl_v4_prompt_variation.html</span>
-    <span class="k">return</span> <span class="s1">&#39;Respond with a Python list containing only function calls, e.g. [post_message(message=&quot;Checking slot 4?&quot;, blackboard_id=2)].&#39;</span>
+    <span class="k">return</span> <span class="s1">'Respond with a Python list containing only function calls, e.g. [post_message(message="Checking slot 4?", blackboard_id=2)].'</span>
 
 
 <div class="viewcode-block" id="build_vllm_tool_instructions">
@@ -348,11 +348,11 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">execution_tool_lines</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">system_note</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">planning_header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Planning phase tools (coordination only):&quot;</span><span class="p">,</span>
-    <span class="n">execution_header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Execution phase tools:&quot;</span><span class="p">,</span>
+    <span class="n">planning_header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"Planning phase tools (coordination only):"</span><span class="p">,</span>
+    <span class="n">execution_header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"Execution phase tools:"</span><span class="p">,</span>
     <span class="n">planning_tool_lines</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return formatted tool-instruction blocks (planning/execution/system).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return formatted tool-instruction blocks (planning/execution/system)."""</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">_needs_tool_instructions</span><span class="p">(</span><span class="n">full_config</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">{}</span>
@@ -360,12 +360,12 @@
     <span class="n">planning_lines</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">planning_tool_lines</span> <span class="ow">or</span> <span class="n">DEFAULT_PLANNING_TOOL_LINES</span><span class="p">)</span>
     <span class="n">format_hint</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">_build_format_hint</span><span class="p">(</span><span class="n">full_config</span><span class="p">)</span>
-        <span class="o">+</span> <span class="s2">&quot; Always ensure argument names exactly match the tool schema.&quot;</span>
+        <span class="o">+</span> <span class="s2">" Always ensure argument names exactly match the tool schema."</span>
     <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_render_block</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">lines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">header</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">body</span><span class="si">}</span><span class="se">\n</span><span class="s2">FORMAT:</span><span class="se">\n</span><span class="si">{</span><span class="n">format_hint</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">header</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">body</span><span class="si">}</span><span class="se">\n</span><span class="s2">FORMAT:</span><span class="se">\n</span><span class="si">{</span><span class="n">format_hint</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="n">planning_block</span> <span class="o">=</span> <span class="n">_render_block</span><span class="p">(</span><span class="n">planning_header</span><span class="p">,</span> <span class="n">planning_lines</span><span class="p">)</span>
 
@@ -373,14 +373,14 @@
     <span class="n">execution_block</span> <span class="o">=</span> <span class="n">_render_block</span><span class="p">(</span><span class="n">execution_header</span><span class="p">,</span> <span class="n">exec_lines</span><span class="p">)</span>
 
     <span class="n">default_system</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;Planning: only blackboard tools are available.</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="s2">&quot;Execution: the environment-specific tools listed above become available in addition to blackboard tools.&quot;</span>
+        <span class="s2">"Planning: only blackboard tools are available.</span><span class="se">\n</span><span class="s2">"</span>
+        <span class="s2">"Execution: the environment-specific tools listed above become available in addition to blackboard tools."</span>
     <span class="p">)</span>
 
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;planning&quot;</span><span class="p">:</span> <span class="n">planning_block</span><span class="p">,</span>
-        <span class="s2">&quot;execution&quot;</span><span class="p">:</span> <span class="n">execution_block</span><span class="p">,</span>
-        <span class="s2">&quot;system&quot;</span><span class="p">:</span> <span class="n">system_note</span> <span class="ow">or</span> <span class="n">default_system</span><span class="p">,</span>
+        <span class="s2">"planning"</span><span class="p">:</span> <span class="n">planning_block</span><span class="p">,</span>
+        <span class="s2">"execution"</span><span class="p">:</span> <span class="n">execution_block</span><span class="p">,</span>
+        <span class="s2">"system"</span><span class="p">:</span> <span class="n">system_note</span> <span class="ow">or</span> <span class="n">default_system</span><span class="p">,</span>
     <span class="p">}</span></div>
 
 
@@ -389,8 +389,8 @@
     <span class="n">instruction_map</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span> <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">instruction_map</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">instruction_map</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">phase</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">""</span>
+    <span class="k">return</span> <span class="n">instruction_map</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">phase</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="s2">""</span><span class="p">)</span>
 </pre></div>
         </article>
       </div>

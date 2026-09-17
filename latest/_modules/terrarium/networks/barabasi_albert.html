@@ -282,7 +282,7 @@
 <div class="viewcode-block" id="BarabasiAlbertNetwork">
 <a class="viewcode-back" href="../../../api/networks.html#terrarium.networks.barabasi_albert.BarabasiAlbertNetwork">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BarabasiAlbertNetwork</span><span class="p">(</span><span class="n">CommunicationNetwork</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Barabasi-Albert preferential attachment communication network.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Barabasi-Albert preferential attachment communication network."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -304,7 +304,7 @@
         <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">m_int</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;communication_network.m must be 0 when num_agents == 1&quot;</span>
+                    <span class="s2">"communication_network.m must be 0 when num_agents == 1"</span>
                 <span class="p">)</span>
             <span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
             <span class="n">g</span><span class="o">.</span><span class="n">add_nodes_from</span><span class="p">(</span><span class="n">agents</span><span class="p">)</span>
@@ -312,10 +312,10 @@
             <span class="k">return</span>
 
         <span class="k">if</span> <span class="n">m_int</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;communication_network.m must be &gt;= 1&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"communication_network.m must be &gt;= 1"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">m_int</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;communication_network.m must be &lt; num_agents (m=</span><span class="si">{</span><span class="n">m_int</span><span class="si">}</span><span class="s2">, n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="sa">f</span><span class="s2">"communication_network.m must be &lt; num_agents (m=</span><span class="si">{</span><span class="n">m_int</span><span class="si">}</span><span class="s2">, n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">)"</span>
             <span class="p">)</span>
 
         <span class="n">g_idx</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">barabasi_albert_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">m_int</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>

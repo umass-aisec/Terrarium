@@ -270,12 +270,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.environments.dcops.smart_grid.smartgrid_tools</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">SmartGrid Tools Module (CoLLAB v2)</span>
 
 <span class="sd">Handles tool execution for the SmartGrid environment, specifically the</span>
 <span class="sd">assign_source action for assigning machines to shared renewable sources.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span>
 
@@ -290,32 +290,32 @@
 <div class="viewcode-block" id="SmartGridTools.get_tool_names">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.smart_grid.smartgrid_tools.SmartGridTools.get_tool_names">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tool_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;assign_source&quot;</span><span class="p">}</span></div>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"assign_source"</span><span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="SmartGridTools.get_tools">
 <a class="viewcode-back" href="../../../../../api/tools.html#terrarium.environments.dcops.smart_grid.smartgrid_tools.SmartGridTools.get_tools">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_tools</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
-        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;execution&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">"execution"</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;assign_source&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Assign one of your machines to a renewable source you can use.&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-                            <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                <span class="s2">&quot;machine_id&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
-                                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;ID of a machine you own (e.g., machine_001).&quot;</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"function"</span><span class="p">,</span>
+                    <span class="s2">"function"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"assign_source"</span><span class="p">,</span>
+                        <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Assign one of your machines to a renewable source you can use."</span><span class="p">,</span>
+                        <span class="s2">"parameters"</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+                            <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">"machine_id"</span><span class="p">:</span> <span class="p">{</span>
+                                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span>
+                                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"ID of a machine you own (e.g., machine_001)."</span><span class="p">,</span>
                                 <span class="p">},</span>
-                                <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
-                                    <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Renewable source ID from your available sources list.&quot;</span><span class="p">,</span>
+                                <span class="s2">"source_id"</span><span class="p">:</span> <span class="p">{</span>
+                                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">,</span>
+                                    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Renewable source ID from your available sources list."</span><span class="p">,</span>
                                 <span class="p">},</span>
                             <span class="p">},</span>
-                            <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;machine_id&quot;</span><span class="p">,</span> <span class="s2">&quot;source_id&quot;</span><span class="p">],</span>
+                            <span class="s2">"required"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"machine_id"</span><span class="p">,</span> <span class="s2">"source_id"</span><span class="p">],</span>
                         <span class="p">},</span>
                     <span class="p">},</span>
                 <span class="p">}</span>
@@ -334,56 +334,56 @@
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Environment not initialized for tools&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"Environment not initialized for tools"</span><span class="p">}</span>
 
         <span class="n">machines</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">machine_id</span><span class="p">,</span> <span class="n">machine</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">machines</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">var_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">machine_id</span><span class="p">)</span>
             <span class="n">machines</span><span class="p">[</span><span class="n">machine_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;owner&quot;</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">owner</span><span class="p">,</span>
-                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
-                <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">start</span><span class="p">,</span>
-                <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">end</span><span class="p">,</span>
-                <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">machine_powers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">machine_id</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)),</span>
-                <span class="s2">&quot;allowed_sources&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">var_spec</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span> <span class="k">if</span> <span class="n">var_spec</span> <span class="k">else</span> <span class="p">[],</span>
+                <span class="s2">"owner"</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">owner</span><span class="p">,</span>
+                <span class="s2">"label"</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                <span class="s2">"start"</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">start</span><span class="p">,</span>
+                <span class="s2">"end"</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">end</span><span class="p">,</span>
+                <span class="s2">"power"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">machine_powers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">machine_id</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)),</span>
+                <span class="s2">"allowed_sources"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">var_spec</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span> <span class="k">if</span> <span class="n">var_spec</span> <span class="k">else</span> <span class="p">[],</span>
             <span class="p">}</span>
 
         <span class="n">assignment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span>
         <span class="n">agent_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">agent_names</span>
 
         <span class="k">if</span> <span class="n">agent_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">agent_names</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Agent </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">}</span>
 
-        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;assign_source&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Unknown action type: </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;action&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"action"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"assign_source"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Unknown action type: </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'action'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
 
-        <span class="n">machine_id</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;machine_id&quot;</span><span class="p">)</span>
-        <span class="n">source_id</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_id&quot;</span><span class="p">)</span>
+        <span class="n">machine_id</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"machine_id"</span><span class="p">)</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"source_id"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">machine_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;machine_id is required&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"machine_id is required"</span><span class="p">}</span>
         <span class="k">if</span> <span class="n">source_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;source_id is required&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="s2">"source_id is required"</span><span class="p">}</span>
 
         <span class="k">if</span> <span class="n">machine_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">machines</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">}</span>
 
         <span class="n">machine</span> <span class="o">=</span> <span class="n">machines</span><span class="p">[</span><span class="n">machine_id</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;owner&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">agent_name</span><span class="p">:</span>
-            <span class="n">owned</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">mid</span> <span class="k">for</span> <span class="n">mid</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">machines</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;owner&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">agent_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"owner"</span><span class="p">)</span> <span class="o">!=</span> <span class="n">agent_name</span><span class="p">:</span>
+            <span class="n">owned</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">mid</span> <span class="k">for</span> <span class="n">mid</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">machines</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"owner"</span><span class="p">)</span> <span class="o">==</span> <span class="n">agent_name</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2"> is not owned by </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">. Owned machines: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">owned</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span>
+                <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2"> is not owned by </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">. Owned machines: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">owned</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'None'</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="k">if</span> <span class="n">machine_id</span> <span class="ow">in</span> <span class="n">assignment</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2"> already assigned&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2"> already assigned"</span><span class="p">}</span>
 
-        <span class="n">allowed_sources</span> <span class="o">=</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;allowed_sources&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">allowed_sources</span> <span class="o">=</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"allowed_sources"</span><span class="p">,</span> <span class="p">[])</span>
         <span class="k">if</span> <span class="n">source_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">allowed_sources</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;retry&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;source_id </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> not allowed for machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;suggestions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Choose from: </span><span class="si">{</span><span class="n">allowed_sources</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">],</span>
+                <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"retry"</span><span class="p">,</span>
+                <span class="s2">"reason"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"source_id </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> not allowed for machine </span><span class="si">{</span><span class="n">machine_id</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="s2">"suggestions"</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"Choose from: </span><span class="si">{</span><span class="n">allowed_sources</span><span class="si">}</span><span class="s2">"</span><span class="p">],</span>
             <span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">[</span><span class="n">machine_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_id</span>
@@ -391,20 +391,20 @@
         <span class="n">total_vars</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">variables</span><span class="p">)</span>
         <span class="n">total_assigned</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">)</span>
         <span class="n">result_dict</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;agent&quot;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
-            <span class="s2">&quot;machine&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">machine_id</span><span class="p">,</span>
-                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">),</span>
-                <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">),</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;end&quot;</span><span class="p">)],</span>
-                <span class="s2">&quot;power&quot;</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;power&quot;</span><span class="p">),</span>
+            <span class="s2">"agent"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+            <span class="s2">"machine"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"id"</span><span class="p">:</span> <span class="n">machine_id</span><span class="p">,</span>
+                <span class="s2">"label"</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"label"</span><span class="p">),</span>
+                <span class="s2">"window"</span><span class="p">:</span> <span class="p">[</span><span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"start"</span><span class="p">),</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"end"</span><span class="p">)],</span>
+                <span class="s2">"power"</span><span class="p">:</span> <span class="n">machine</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"power"</span><span class="p">),</span>
             <span class="p">},</span>
-            <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
-            <span class="s2">&quot;total_assigned&quot;</span><span class="p">:</span> <span class="n">total_assigned</span><span class="p">,</span>
-            <span class="s2">&quot;remaining_machines&quot;</span><span class="p">:</span> <span class="n">total_vars</span> <span class="o">-</span> <span class="n">total_assigned</span><span class="p">,</span>
-            <span class="s2">&quot;joint_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
+            <span class="s2">"source_id"</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s2">"total_assigned"</span><span class="p">:</span> <span class="n">total_assigned</span><span class="p">,</span>
+            <span class="s2">"remaining_machines"</span><span class="p">:</span> <span class="n">total_vars</span> <span class="o">-</span> <span class="n">total_assigned</span><span class="p">,</span>
+            <span class="s2">"joint_reward"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">joint_reward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignment</span><span class="p">),</span>
         <span class="p">}</span>
 
-        <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result_dict</span><span class="p">}</span>
+        <span class="n">execution_result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"result"</span><span class="p">:</span> <span class="n">result_dict</span><span class="p">}</span>
 
         <span class="k">if</span> <span class="n">log_to_blackboards</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">blackboard_manager</span><span class="o">.</span><span class="n">log_action_to_blackboards</span><span class="p">(</span>
@@ -424,17 +424,17 @@
         <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">!=</span> <span class="s2">&quot;assign_source&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;SmartGrid environment does not support tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">tool_name</span> <span class="o">!=</span> <span class="s2">"assign_source"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"SmartGrid environment does not support tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
 
-        <span class="n">machine_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;machine_id&quot;</span><span class="p">)</span>
-        <span class="n">source_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_id&quot;</span><span class="p">)</span>
+        <span class="n">machine_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"machine_id"</span><span class="p">)</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"source_id"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">machine_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;machine_id is required for assign_source&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"machine_id is required for assign_source"</span><span class="p">}</span>
         <span class="k">if</span> <span class="n">source_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;source_id is required for assign_source&quot;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"source_id is required for assign_source"</span><span class="p">}</span>
 
-        <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;assign_source&quot;</span><span class="p">,</span> <span class="s2">&quot;machine_id&quot;</span><span class="p">:</span> <span class="n">machine_id</span><span class="p">,</span> <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">}</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"assign_source"</span><span class="p">,</span> <span class="s2">"machine_id"</span><span class="p">:</span> <span class="n">machine_id</span><span class="p">,</span> <span class="s2">"source_id"</span><span class="p">:</span> <span class="n">source_id</span><span class="p">}</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span>
             <span class="n">agent_name</span><span class="p">,</span>
             <span class="n">action</span><span class="p">,</span>

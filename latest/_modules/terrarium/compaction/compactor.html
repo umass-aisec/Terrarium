@@ -271,18 +271,61 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for terrarium.compaction.compactor</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">FrozenSet</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Tuple</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">terrarium.core.blackboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_blackboard_events_for_prompt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
-<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;matplotlib&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
-<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;openai&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
-<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;httpx&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
-<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;httpcore&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+
+<span class="n">MECHANISMS</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"baseline"</span><span class="p">,</span>
+    <span class="s2">"anchored"</span><span class="p">,</span>
+    <span class="s2">"extractive"</span><span class="p">,</span>
+    <span class="s2">"eviction"</span><span class="p">,</span>
+    <span class="s2">"query_conditioned"</span><span class="p">,</span>
+    <span class="s2">"structured"</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Event kinds the "eviction" mechanism drops outright before summarizing.</span>
+<span class="c1"># Physical actions (move/settle/stand) are already visible to every agent</span>
+<span class="c1"># directly through their own environment state each turn (see "WHAT YOU</span>
+<span class="c1"># KNOW" in the system prompt) — the blackboard's action_executed log is</span>
+<span class="c1"># redundant for negotiation history, so it's the one class of event that's</span>
+<span class="c1"># safe to delete rather than paraphrase.</span>
+<span class="n">DEFAULT_EVICT_KINDS</span><span class="p">:</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"action_executed"</span><span class="p">})</span>
+
+<span class="c1"># Keyword markers the "extractive" mechanism uses to flag a communication</span>
+<span class="c1"># event as high-signal (a number or a commitment word) and therefore worth</span>
+<span class="c1"># keeping verbatim instead of folding into the abstractive summary.</span>
+<span class="n">_EXTRACTIVE_MARKERS</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"agree"</span><span class="p">,</span> <span class="s2">"deal"</span><span class="p">,</span> <span class="s2">"promise"</span><span class="p">,</span> <span class="s2">"commit"</span><span class="p">,</span> <span class="s2">"accept"</span><span class="p">,</span> <span class="s2">"confirm"</span><span class="p">,</span> <span class="s2">"will "</span><span class="p">,</span>
+<span class="p">)</span>
+
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_count_tokens</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
     <span class="c1"># Cheap heuristic instead of using a full tokenizer</span>
     <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">//</span> <span class="mi">4</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_high_signal</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"payload"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">lowered</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">content</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">m</span> <span class="ow">in</span> <span class="n">lowered</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_EXTRACTIVE_MARKERS</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_split_pinned</span><span class="p">(</span><span class="n">events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">pin_context_events</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pin_context_events</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[],</span> <span class="n">events</span>
+    <span class="n">pinned</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"kind"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"context"</span><span class="p">]</span>
+    <span class="n">compactable</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"kind"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"context"</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">pinned</span><span class="p">,</span> <span class="n">compactable</span>
+
 
 <div class="viewcode-block" id="compact_events">
 <a class="viewcode-back" href="../../../api/compaction.html#terrarium.compaction.compactor.compact_events">[docs]</a>
@@ -290,50 +333,279 @@
     <span class="n">events</span><span class="p">,</span>
     <span class="n">llm_client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">model_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">token_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="n">keep_recent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">token_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3000</span><span class="p">,</span>
+    <span class="n">keep_recent</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">mechanism</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"baseline"</span><span class="p">,</span>
+    <span class="n">pin_context_events</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">evict_kinds</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">extract_limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">compaction_logger</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">agent_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">blackboard_id</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">iteration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">formatted</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
-    <span class="n">token_count</span> <span class="o">=</span> <span class="n">_count_tokens</span><span class="p">(</span><span class="n">formatted</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Compact a blackboard's event history into prompt text.</span>
 
-    <span class="k">if</span> <span class="n">llm_client</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">model_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">token_count</span> <span class="o">&lt;=</span> <span class="n">token_threshold</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compaction skipped: </span><span class="si">{</span><span class="n">token_count</span><span class="si">}</span><span class="s2"> tokens (threshold=</span><span class="si">{</span><span class="n">token_threshold</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[NON-COMPACTED PROMPT]</span><span class="se">\n</span><span class="si">{</span><span class="n">formatted</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="sd">    `mechanism` selects how the aged-out portion of history is compressed</span>
+<span class="sd">    once the token budget is exceeded (see MECHANISMS). `pin_context_events`</span>
+<span class="sd">    is an orthogonal modifier, not a mechanism of its own: it holds every</span>
+<span class="sd">    `kind == "context"` event (channel-purpose / standing-rule messages</span>
+<span class="sd">    posted once when a blackboard is created) out of whichever mechanism is</span>
+<span class="sd">    active, so it can never be paraphrased or evicted away once it ages past</span>
+<span class="sd">    `keep_recent`. mechanism="baseline", pin_context_events=False reproduces</span>
+<span class="sd">    the original behavior exactly (control group).</span>
+
+<span class="sd">    `cache`, if provided, is a mutable dict the caller owns (one per</span>
+<span class="sd">    blackboard) used by mechanism="anchored" to carry its running summary</span>
+<span class="sd">    across calls instead of re-summarizing the whole history every turn.</span>
+<span class="sd">    Ignored by every other mechanism.</span>
+
+<span class="sd">    `params` are generation params for the summarizer request, such as</span>
+<span class="sd">    `max_tokens` and `temperature`. `max_tokens` defaults to 500.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">mechanism</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">MECHANISMS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown compaction mechanism '</span><span class="si">{</span><span class="n">mechanism</span><span class="si">}</span><span class="s2">'. Known: </span><span class="si">{</span><span class="n">MECHANISMS</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">technique</span> <span class="o">=</span> <span class="n">mechanism</span> <span class="o">+</span> <span class="p">(</span><span class="s2">"+pinned_context"</span> <span class="k">if</span> <span class="n">pin_context_events</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">events</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+
+    <span class="n">pinned</span><span class="p">,</span> <span class="n">compactable</span> <span class="o">=</span> <span class="n">_split_pinned</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">pin_context_events</span><span class="p">)</span>
+    <span class="n">pinned_text</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">pinned</span><span class="p">)</span> <span class="k">if</span> <span class="n">pinned</span> <span class="k">else</span> <span class="s2">""</span>
+    <span class="n">formatted</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+    <span class="n">compactable_formatted</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">compactable</span><span class="p">)</span>
+    <span class="n">token_count</span> <span class="o">=</span> <span class="n">_count_tokens</span><span class="p">(</span><span class="n">compactable_formatted</span><span class="p">)</span>
+
+    <span class="n">old</span> <span class="o">=</span> <span class="n">compactable</span><span class="p">[:</span><span class="o">-</span><span class="n">keep_recent</span><span class="p">]</span> <span class="k">if</span> <span class="n">keep_recent</span> <span class="k">else</span> <span class="n">compactable</span>
+    <span class="k">if</span> <span class="n">llm_client</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">model_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">token_count</span> <span class="o">&lt;=</span> <span class="n">token_threshold</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">old</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Compaction skipped: </span><span class="si">{</span><span class="n">token_count</span><span class="si">}</span><span class="s2"> tokens (threshold=</span><span class="si">{</span><span class="n">token_threshold</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"[NON-COMPACTED PROMPT]</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">formatted</span><span class="p">)</span>
+        <span class="c1"># Non-compacted path already contains pinned events in natural order,</span>
+        <span class="c1"># so no separate section is needed — mechanism/pinning only change</span>
+        <span class="c1"># behavior once compaction actually triggers.</span>
+        <span class="n">_log</span><span class="p">(</span>
+            <span class="n">compaction_logger</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span> <span class="n">blackboard_id</span><span class="o">=</span><span class="n">blackboard_id</span><span class="p">,</span>
+            <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span> <span class="n">technique</span><span class="o">=</span><span class="n">technique</span><span class="p">,</span> <span class="n">triggered</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">token_count</span><span class="o">=</span><span class="n">token_count</span><span class="p">,</span> <span class="n">token_threshold</span><span class="o">=</span><span class="n">token_threshold</span><span class="p">,</span>
+            <span class="n">pre_text</span><span class="o">=</span><span class="n">formatted</span><span class="p">,</span> <span class="n">post_text</span><span class="o">=</span><span class="n">formatted</span><span class="p">,</span> <span class="n">pinned_text</span><span class="o">=</span><span class="n">pinned_text</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">formatted</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compaction triggered: </span><span class="si">{</span><span class="n">token_count</span><span class="si">}</span><span class="s2"> tokens exceeds </span><span class="si">{</span><span class="n">token_threshold</span><span class="si">}</span><span class="s2">, summarizing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">keep_recent</span><span class="si">}</span><span class="s2"> events&quot;</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[PRE-COMPACTION PROMPT]</span><span class="se">\n</span><span class="si">{</span><span class="n">formatted</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Compaction triggered: </span><span class="si">{</span><span class="n">token_count</span><span class="si">}</span><span class="s2"> tokens exceeds </span><span class="si">{</span><span class="n">token_threshold</span><span class="si">}</span><span class="s2">, summarizing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="si">}</span><span class="s2"> events (mechanism=</span><span class="si">{</span><span class="n">mechanism</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"[PRE-COMPACTION PROMPT]</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">formatted</span><span class="p">)</span>
 
-    <span class="n">old</span> <span class="o">=</span> <span class="n">events</span><span class="p">[:</span><span class="o">-</span><span class="n">keep_recent</span><span class="p">]</span>
-    <span class="n">recent</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="o">-</span><span class="n">keep_recent</span><span class="p">:]</span>
-    <span class="n">old_text</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">old</span><span class="p">)</span>
-    <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize</span><span class="p">(</span><span class="n">old_text</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
+    <span class="n">recent</span> <span class="o">=</span> <span class="n">compactable</span><span class="p">[</span><span class="o">-</span><span class="n">keep_recent</span><span class="p">:]</span> <span class="k">if</span> <span class="n">keep_recent</span> <span class="k">else</span> <span class="p">[]</span>
     <span class="n">recent_text</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">recent</span><span class="p">)</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[Summary of earlier conversation]</span><span class="se">\n</span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">[Recent messages]</span><span class="se">\n</span><span class="si">{</span><span class="n">recent_text</span><span class="si">}</span><span class="s2">&quot;</span>
-    
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[COMPACTED PROMPT]</span><span class="se">\n</span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">request</span> <span class="o">=</span> <span class="n">_summary_request</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+
+    <span class="n">extractive_text</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="n">mechanism</span> <span class="o">==</span> <span class="s2">"baseline"</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize</span><span class="p">(</span><span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">old</span><span class="p">),</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">mechanism</span> <span class="o">==</span> <span class="s2">"anchored"</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize_anchored</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">cache</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">mechanism</span> <span class="o">==</span> <span class="s2">"eviction"</span><span class="p">:</span>
+        <span class="n">kinds</span> <span class="o">=</span> <span class="n">evict_kinds</span> <span class="k">if</span> <span class="n">evict_kinds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">DEFAULT_EVICT_KINDS</span>
+        <span class="n">kept</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">old</span> <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"kind"</span><span class="p">)</span> <span class="ow">in</span> <span class="n">kinds</span><span class="p">)]</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize</span><span class="p">(</span><span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">kept</span><span class="p">),</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">mechanism</span> <span class="o">==</span> <span class="s2">"extractive"</span><span class="p">:</span>
+        <span class="n">summary</span><span class="p">,</span> <span class="n">extractive_text</span> <span class="o">=</span> <span class="n">_summarize_extractive</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">extract_limit</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">mechanism</span> <span class="o">==</span> <span class="s2">"query_conditioned"</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize_query_conditioned</span><span class="p">(</span>
+            <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">old</span><span class="p">),</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">phase</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">mechanism</span> <span class="o">==</span> <span class="s2">"structured"</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize_structured</span><span class="p">(</span><span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">old</span><span class="p">),</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="n">sections</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">pinned_text</span><span class="p">:</span>
+        <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[Standing context]</span><span class="se">\n</span><span class="si">{</span><span class="n">pinned_text</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[Summary of earlier conversation]</span><span class="se">\n</span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">extractive_text</span><span class="p">:</span>
+        <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[Notable events kept verbatim]</span><span class="se">\n</span><span class="si">{</span><span class="n">extractive_text</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[Recent messages]</span><span class="se">\n</span><span class="si">{</span><span class="n">recent_text</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sections</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"[COMPACTED PROMPT]</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+    <span class="n">_log</span><span class="p">(</span>
+        <span class="n">compaction_logger</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span> <span class="n">blackboard_id</span><span class="o">=</span><span class="n">blackboard_id</span><span class="p">,</span>
+        <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span> <span class="n">technique</span><span class="o">=</span><span class="n">technique</span><span class="p">,</span> <span class="n">triggered</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">token_count</span><span class="o">=</span><span class="n">token_count</span><span class="p">,</span> <span class="n">token_threshold</span><span class="o">=</span><span class="n">token_threshold</span><span class="p">,</span>
+        <span class="n">pre_text</span><span class="o">=</span><span class="n">formatted</span><span class="p">,</span> <span class="n">post_text</span><span class="o">=</span><span class="n">result</span><span class="p">,</span> <span class="n">pinned_text</span><span class="o">=</span><span class="n">pinned_text</span><span class="p">,</span>
+        <span class="n">summary_text</span><span class="o">=</span><span class="n">summary</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="k">return</span> <span class="n">result</span></div>
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_summarize</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">prompt</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;Summarize this agent conversation in 3-5 bullet points. &quot;</span>
-        <span class="s2">&quot;Be extremely concise — one short sentence per bullet. &quot;</span>
-        <span class="s2">&quot;No headers, no bold, no markdown formatting, no caveats about missing data. &quot;</span>
-        <span class="s2">&quot;Only include actual decisions, time slots, and commitments. &quot;</span>
-        <span class="s2">&quot;If nothing was decided, write only: &#39;No decisions made.&#39;</span><span class="se">\n\n</span><span class="s2">&quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_log</span><span class="p">(</span><span class="n">compaction_logger</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">compaction_logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">compaction_logger</span><span class="o">.</span><span class="n">log_compaction</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Compaction logging failed"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="n">_MAX_SUMMARY_TOKENS</span> <span class="o">=</span> <span class="mi">500</span>
+
+<span class="c1"># Shared by the bullet-style mechanisms so the instruction can't drift between them.</span>
+<span class="n">_BULLET_RULES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"Summarize this agent conversation in 3-5 bullet points. "</span>
+    <span class="s2">"Be extremely concise — one short sentence per bullet. "</span>
+    <span class="s2">"No headers, no bold, no markdown formatting, no caveats about missing data. "</span>
+    <span class="s2">"Only include actual decisions, time slots, and commitments. "</span>
+    <span class="s2">"If nothing was decided, write only: 'No decisions made.'</span><span class="se">\n\n</span><span class="s2">"</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summary_request</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Request params for the summarizer. Like BaseAgent, the token limit is sent</span>
+<span class="sd">    under every key the clients read, since each client reads a different one."""</span>
+    <span class="n">configured</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">params</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">"model"</span><span class="p">}</span>
+    <span class="n">max_tokens</span> <span class="o">=</span> <span class="n">configured</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"max_tokens"</span><span class="p">,</span> <span class="n">_MAX_SUMMARY_TOKENS</span><span class="p">)</span>
+    <span class="n">request</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"max_completion_tokens"</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
+        <span class="s2">"max_output_tokens"</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
+        <span class="s2">"max_tokens"</span><span class="p">:</span> <span class="n">max_tokens</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">configured</span><span class="p">)</span>
+    <span class="n">request</span><span class="p">[</span><span class="s2">"model"</span><span class="p">]</span> <span class="o">=</span> <span class="n">model_name</span>
+    <span class="k">return</span> <span class="n">request</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ask</span><span class="p">(</span><span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">system_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Single place every mechanism goes through to call the summarizer model."""</span>
     <span class="n">context</span> <span class="o">=</span> <span class="n">llm_client</span><span class="o">.</span><span class="n">init_context</span><span class="p">(</span>
-        <span class="n">system_prompt</span><span class="o">=</span><span class="s2">&quot;You are a helpful assistant that summarizes agent conversations concisely.&quot;</span><span class="p">,</span>
-        <span class="n">user_prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+        <span class="n">system_prompt</span><span class="o">=</span><span class="n">system_prompt</span><span class="p">,</span>
+        <span class="n">user_prompt</span><span class="o">=</span><span class="n">user_prompt</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">summary</span> <span class="o">=</span> <span class="n">llm_client</span><span class="o">.</span><span class="n">generate_response</span><span class="p">(</span>
         <span class="nb">input</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
-        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">},</span>
+        <span class="n">params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">request</span><span class="p">),</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">summary</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">_ask</span><span class="p">(</span>
+        <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">"You are a helpful assistant that summarizes agent conversations concisely."</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">_BULLET_RULES</span><span class="si">}{</span><span class="n">text</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_incremental</span><span class="p">(</span><span class="n">previous_summary</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Fold new events into an existing summary instead of re-summarizing everything."""</span>
+    <span class="n">prompt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">"You maintain a running summary of an ongoing agent conversation. "</span>
+        <span class="s2">"Update the EXISTING SUMMARY by folding in the NEW MESSAGES below it. "</span>
+        <span class="s2">"Keep the result 3-5 bullet points, one short sentence each. "</span>
+        <span class="s2">"No headers, no bold, no markdown formatting. "</span>
+        <span class="s2">"Only decisions, time slots, and commitments — drop anything that's now stale or superseded. "</span>
+        <span class="s2">"Don't restate facts from the existing summary that haven't changed; just carry them forward silently.</span><span class="se">\n\n</span><span class="s2">"</span>
+        <span class="sa">f</span><span class="s2">"EXISTING SUMMARY:</span><span class="se">\n</span><span class="si">{</span><span class="n">previous_summary</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">NEW MESSAGES:</span><span class="se">\n</span><span class="si">{</span><span class="n">new_text</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_ask</span><span class="p">(</span>
+        <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">"You are a helpful assistant that maintains a running summary of an agent conversation."</span><span class="p">,</span>
+        <span class="n">prompt</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_anchored</span><span class="p">(</span><span class="n">old_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Incremental/anchored summarization: reuse the cached summary and fold in</span>
+<span class="sd">    only events that arrived since the last compaction call for this</span>
+<span class="sd">    blackboard, instead of re-summarizing the whole history every turn.</span>
+<span class="sd">    Falls back to a fresh summarize if no cache was supplied (e.g. a caller</span>
+<span class="sd">    that doesn't maintain per-blackboard state), or on the first call.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_summarize</span><span class="p">(</span><span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">old_events</span><span class="p">),</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="n">previous_summary</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"summary"</span><span class="p">)</span>
+    <span class="n">summarized_count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"summarized_count"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">previous_summary</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">old_events</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">summarized_count</span><span class="p">:</span>
+        <span class="n">new_events</span> <span class="o">=</span> <span class="n">old_events</span><span class="p">[</span><span class="n">summarized_count</span><span class="p">:]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">new_events</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">previous_summary</span>
+        <span class="n">new_text</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">new_events</span><span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize_incremental</span><span class="p">(</span><span class="n">previous_summary</span><span class="p">,</span> <span class="n">new_text</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize</span><span class="p">(</span><span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">old_events</span><span class="p">),</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="n">cache</span><span class="p">[</span><span class="s2">"summary"</span><span class="p">]</span> <span class="o">=</span> <span class="n">summary</span>
+    <span class="n">cache</span><span class="p">[</span><span class="s2">"summarized_count"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">old_events</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">summary</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_extractive</span><span class="p">(</span>
+    <span class="n">old_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">extract_limit</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Extractive-then-abstractive: keep events that look like commitments or</span>
+<span class="sd">    contain numbers verbatim (up to extract_limit, oldest-first), summarize</span>
+<span class="sd">    only the residue abstractly. Sidesteps the numeric/temporal fidelity loss</span>
+<span class="sd">    that pure summarization causes, at the cost of only being as good as the</span>
+<span class="sd">    keyword heuristic in _is_high_signal.</span>
+<span class="sd">    """</span>
+    <span class="n">high_signal</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">old_events</span> <span class="k">if</span> <span class="n">_is_high_signal</span><span class="p">(</span><span class="n">e</span><span class="p">)][:</span><span class="n">extract_limit</span><span class="p">]</span>
+    <span class="n">high_signal_ids</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">high_signal</span><span class="p">}</span>
+    <span class="n">residue</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">old_events</span> <span class="k">if</span> <span class="nb">id</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">high_signal_ids</span><span class="p">]</span>
+
+    <span class="n">extractive_text</span> <span class="o">=</span> <span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">high_signal</span><span class="p">)</span> <span class="k">if</span> <span class="n">high_signal</span> <span class="k">else</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="n">residue</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">_summarize</span><span class="p">(</span><span class="n">format_blackboard_events_for_prompt</span><span class="p">(</span><span class="n">residue</span><span class="p">),</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="s2">"No decisions made."</span>
+    <span class="k">return</span> <span class="n">summary</span><span class="p">,</span> <span class="n">extractive_text</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_query_conditioned</span><span class="p">(</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">agent_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">phase</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Condition the summary on who's about to read it, so the compressor</span>
+<span class="sd">    isn't blind to what the summary will actually be used for."""</span>
+    <span class="n">reader_note</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="n">agent_name</span><span class="p">:</span>
+        <span class="n">reader_note</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"This summary will be read by </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">if</span> <span class="n">phase</span><span class="p">:</span>
+            <span class="n">reader_note</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">", who is about to act during the </span><span class="si">{</span><span class="n">phase</span><span class="si">}</span><span class="s2"> phase"</span>
+        <span class="n">reader_note</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="s2">". Prioritize facts most relevant to their next decision — their own "</span>
+            <span class="s2">"commitments, requests directed at them, and unresolved asks — over "</span>
+            <span class="s2">"facts that only concern other agents.</span><span class="se">\n\n</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_ask</span><span class="p">(</span>
+        <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">"You are a helpful assistant that summarizes agent conversations concisely for a specific reader."</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">reader_note</span><span class="si">}{</span><span class="n">_BULLET_RULES</span><span class="si">}{</span><span class="n">text</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_structured</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Force the summary into labeled slots instead of free-text bullets, so</span>
+<span class="sd">    numeric/temporal facts (identifiers, time steps) have a dedicated place to</span>
+<span class="sd">    survive rather than getting paraphrased away."""</span>
+    <span class="n">prompt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">"Summarize this agent conversation into these labeled sections. One short "</span>
+        <span class="s2">"line per item. Omit a section entirely if it has nothing in it. No other "</span>
+        <span class="s2">"text, no markdown formatting beyond the labels below.</span><span class="se">\n\n</span><span class="s2">"</span>
+        <span class="s2">"DECISIONS: finalized agreements</span><span class="se">\n</span><span class="s2">"</span>
+        <span class="s2">"COMMITMENTS: promises made — who, to whom, and any condition attached</span><span class="se">\n</span><span class="s2">"</span>
+        <span class="s2">"OPEN REQUESTS: asks that haven't been resolved yet</span><span class="se">\n</span><span class="s2">"</span>
+        <span class="s2">"STATE FACTS: specific identifiers, positions, quantities, or counts mentioned</span><span class="se">\n\n</span><span class="s2">"</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_ask</span><span class="p">(</span>
+        <span class="n">llm_client</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">"You are a helpful assistant that summarizes agent conversations into a fixed structured format."</span><span class="p">,</span>
+        <span class="n">prompt</span><span class="p">,</span>
+    <span class="p">)</span>
 </pre></div>
         </article>
       </div>
