@@ -55,6 +55,7 @@ __all__ = [
     "SmartGridEnvironment",
     "JiraTicketEnvironment",
     "HospitalEnvironment",
+    "IsThisSeatTakenEnvironment",
 ]
 
 _LAZY_ATTRS = {
@@ -63,6 +64,7 @@ _LAZY_ATTRS = {
     "SmartGridEnvironment": ".smart_grid.smart_grid_env:SmartGridEnvironment",
     "JiraTicketEnvironment": ".jira_ticket.jira_ticket_env:JiraTicketEnvironment",
     "HospitalEnvironment": ".hospital.hospital_env:HospitalEnvironment",
+    "IsThisSeatTakenEnvironment": ".is_this_seat_taken.is_this_seat_taken_env:IsThisSeatTakenEnvironment",
 }
 
 

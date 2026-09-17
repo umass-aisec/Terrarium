@@ -42,6 +42,11 @@ def build_agents(
 
     init_kwargs: Dict[str, Any] = dict(agent_kwargs or {})
     init_kwargs.setdefault("generation_params", generation_params)
+    compaction_config = llm_config.get("compaction")
+    if isinstance(compaction_config, dict):
+        init_kwargs.setdefault(
+            "retrieval_enabled", bool(compaction_config.get("retrieval_enabled", False))
+        )
 
     logger.info(
         "Agent factory using agent_cls=%s.%s",

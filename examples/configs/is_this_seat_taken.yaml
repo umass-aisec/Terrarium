@@ -1,0 +1,47 @@
+simulation:
+  max_iterations: 10
+  max_planning_rounds: 1
+  max_conversation_steps: 3
+  seed: 42
+  tags:
+    - baseline
+    - persona_none
+environment:
+  name: IsThisSeatTakenEnvironment
+  assignment_filling: false
+  # Social seating scenario for MAS coordination research.
+  scenario_type: airplane
+  cols: 6
+  rows: 3
+  empty_seat_buffer: 1
+  group_move_penalty: 0.1
+  move_cost: -0.5
+  social_action_cost: -0.3
+  request_pressure: 0.4
+  complaint_pressure: 0.9
+communication_network:
+  # Keep the run small and cheap: five agents, one shared planning channel.
+  topology: complete
+  num_agents: 5
+  consolidate_channels: true
+llm:
+  # Microsoft Foundry for live testing.
+  provider: foundry
+  foundry:
+    # Prefer setting the actual endpoint and deployment/model in .env or here.
+    # If your Foundry deployment name differs from the underlying model family,
+    # set base_model so Terrarium keeps tool-calling flags aligned.
+    model: gpt-5.4-nano
+    # base_model: gpt-5.4-nano
+    params:
+      max_tokens: 256
+      temperature: 0.2
+  # Use a cheaper model for blackboard compaction so agent turns stay on GPT-5.4 nano.
+  compaction:
+    provider: foundry
+    foundry:
+      model: gpt-5.4-nano
+      # base_model: gpt-4.1-mini-2025-04-14
+      params:
+        max_tokens: 128
+        temperature: 0.0

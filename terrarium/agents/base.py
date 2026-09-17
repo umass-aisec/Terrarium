@@ -27,6 +27,7 @@ class BaseAgent:
         trajectory_logger: Optional[Any] = None,
         environment_name: str = "",
         generation_params: Optional[Dict[str, Any]] = None,
+        retrieval_enabled: bool = False,
     ):
         """
         Initialize an Agent.
@@ -40,6 +41,8 @@ class BaseAgent:
             trajectory_logger: Logger for agent reasoning trajectories
             environment_name: Environment name (prefer passing environment.__class__.__name__)
             generation_params: Generation parameters specific to the provider/model (e.g., temperature, top_p)
+            retrieval_enabled: Whether this agent can call `recall()` to search the full,
+                uncompacted blackboard history — the retrieval-backed compaction modifier.
         """
         self.name = name
         self.model_name = model_name
@@ -50,6 +53,7 @@ class BaseAgent:
         # Used for tool discovery and error messages; should be the class environment name
         self.environment_name = environment_name
         self.toolset_discovery = ToolsetDiscovery()
+        self.retrieval_enabled = retrieval_enabled
         self.client = client
 
         # Agent context for logging (set via set_meta_context)
@@ -196,7 +200,9 @@ class BaseAgent:
             }
             available_env_tools.discard(None)
             all_env_tools = self.toolset_discovery.get_env_tool_names(env_name)
-            blackboard_tool_names = self.toolset_discovery.get_blackboard_tool_names()
+            blackboard_tool_names = self.toolset_discovery.get_blackboard_tool_names(
+                env_name, retrieval_enabled=self.retrieval_enabled
+            )
             external_tool_names = await self.client.get_external_tool_names()
 
             handler = None
@@ -354,7 +360,7 @@ class BaseAgent:
             self.current_phase,
         )
         blackboard_tools = self.toolset_discovery.get_tools_for_blackboard(
-            self.current_phase
+            self.current_phase, self.environment_name, retrieval_enabled=self.retrieval_enabled
         )
         external_tools = await self.client.get_external_tools()
         combined_tools = env_tools + blackboard_tools + external_tools

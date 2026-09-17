@@ -16,6 +16,7 @@ __all__ = [
     "SmartGridEnvironment",
     "JiraTicketEnvironment",
     "HospitalEnvironment",
+    "IsThisSeatTakenEnvironment",
 ]
 
 _LAZY_ATTRS = {
@@ -25,6 +26,7 @@ _LAZY_ATTRS = {
     "SmartGridEnvironment": ".dcops:SmartGridEnvironment",
     "JiraTicketEnvironment": ".dcops:JiraTicketEnvironment",
     "HospitalEnvironment": ".dcops:HospitalEnvironment",
+    "IsThisSeatTakenEnvironment": ".dcops:IsThisSeatTakenEnvironment",
 }
 
 
