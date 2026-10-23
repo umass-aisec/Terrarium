@@ -4,6 +4,18 @@ title: Release Notes
 
 # Release Notes
 
+## v0.2.1 - 2026-10-23
+
+Terrarium v0.2.1 is a bug-fix release that restores how long an agent's turn lasts.
+
+### Fixed
+
+- In v0.2.0, any successful environment tool call ended the agent's turn, including read-only lookups such as the Hospital environment's `get_job_queue`. An agent that checked its queue could not act on what it saw in the same turn. A turn now ends only after a committed action, as in v0.1.x.
+
+### Upgrading
+
+- Environment tools signal a committed action with `"action_committed": True` in their result; the shipped DCOP environments already do. Add it to custom tools whose calls should end the agent's turn, and leave it out of read-only tools. `BaseAgent` strips the key, so models never see it.
+
 ## v0.2.0 - 2026-06-08
 
 Terrarium v0.2.0 focuses on making the project easier to install, understand, and extend. The release adds a proper documentation site, clearer examples, broader provider support, and more explicit runtime modules for agents, tools, environments, and logs.

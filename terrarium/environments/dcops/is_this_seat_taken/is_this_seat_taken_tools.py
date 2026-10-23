@@ -6,6 +6,13 @@ PLANNING_SOCIAL_ACTIONS = frozenset({"request_move", "complain"})
 EXECUTION_PHYSICAL_ACTIONS = frozenset({"move", "settle", "stand"})
 
 
+def _mark_committed(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Flag a successful action so BaseAgent ends the turn (see docs/components/tools.md)."""
+    if isinstance(result, dict) and result.get("status") == "success":
+        return {**result, "action_committed": True}
+    return result
+
+
 class IsThisSeatTakenTools:
     # Agents may open their own private channels (create_channel) during planning.
     supports_private_channels = True
@@ -177,7 +184,7 @@ class IsThisSeatTakenTools:
                 if not message:
                     message = self._default_social_message(target_agent, str(tool_name))
                 self._post_social_message(agent_name, message, phase, iteration)
-            return result
+            return _mark_committed(result)
 
         if tool_name not in EXECUTION_PHYSICAL_ACTIONS:
             return {"error": f"Unknown action type: {tool_name}"}
@@ -193,7 +200,7 @@ class IsThisSeatTakenTools:
                 agent_name, action, result, phase, iteration
             )
 
-        return result
+        return _mark_committed(result)
 
     def handle_tool_call(
         self,

@@ -160,7 +160,8 @@ class PersonalAssistantTools:
                 agent_name, action, execution_result, phase, iteration
             )
 
-        return execution_result
+        # Added after logging, so blackboards record the same result; BaseAgent strips it.
+        return {**execution_result, "action_committed": True}
 
     def handle_tool_call(
         self,

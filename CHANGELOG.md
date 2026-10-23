@@ -25,6 +25,14 @@ All notable changes to this project are documented in this file.
 - `OpenAIClient` treats `gpt-5.5` as temperature-restricted, so temperature is not sent for it.
 - `IsThisSeatTakenEnvironment` is added to the environment registry and the `terrarium.environments` namespaces.
 
+## [v0.2.1] - 2026-10-23
+
+### Fixed
+- An agent's turn no longer ends after a read-only environment tool call (e.g., Hospital `get_job_queue` and `find_available_slots`). Since v0.2.0, any successful environment tool call ended the turn; it now ends only when the tool reports a committed action, restoring the v0.1.x behavior. Tools that return `state_updates` (the v0.1.x convention) still end the turn.
+
+### Changed
+- Environment tools mark a committed action with `"action_committed": True` in their result. The shipped DCOP tools set it on successful actions, and `BaseAgent` removes it before the result reaches the model. Custom tools whose calls should end the agent's turn must set it (see `docs/components/tools.md`).
+
 ## [v0.2.0] - 2026-06-08
 
 ### Added
