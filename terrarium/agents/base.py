@@ -243,8 +243,23 @@ class BaseAgent:
                 and tool_name not in blackboard_tool_names
                 and isinstance(result, dict)
             ):
+                # Only a call that committed an action ends the turn; read-only tools
+                # (e.g. Hospital get_job_queue) let the agent keep reasoning. Tools signal
+                # a commit with `action_committed` (stripped so the model never sees it);
+                # tools written for Terrarium < 0.2 signal it by returning `state_updates`.
+                committed = bool(result.pop("action_committed", False)) or (
+                    "state_updates" in result
+                    or (
+                        isinstance(result.get("result"), dict)
+                        and "state_updates" in result["result"]
+                    )
+                )
                 status = str(result.get("status", "success")).lower()
-                if "error" not in result and status not in {"failed", "error", "retry"}:
+                if (
+                    committed
+                    and "error" not in result
+                    and status not in {"failed", "error", "retry"}
+                ):
                     self._env_state_committed = True
         except Exception as e:
             error_msg = f"Error executing {tool_name}: {e}"

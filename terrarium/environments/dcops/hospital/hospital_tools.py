@@ -184,4 +184,5 @@ class HospitalTools:
             except Exception as e:
                 logger.error(f"Blackboard log failed: {e}")
 
-        return execution_result
+        # Added after logging, so blackboards record the same result; BaseAgent strips it.
+        return {**execution_result, "action_committed": True}

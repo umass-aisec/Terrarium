@@ -79,10 +79,12 @@ class WarehouseTools:
         if tool_name != "assign_package":
             return {"error": f"Unknown tool: {tool_name}"}
         self.environment.assignments[agent_name] = arguments["package_id"]
-        return {"status": "success", "assigned_to": agent_name}
+        return {"status": "success", "assigned_to": agent_name, "action_committed": True}
 ```
 
 Place the class in an environment `*_tools.py` module under `terrarium/environments/...`. Discovery imports those modules and maps the tool class to the environment class name.
+
+An agent's turn ends after a tool call whose result sets `"action_committed": True`; `BaseAgent` removes the key before the result reaches the model. Leave it out for read-only tools (lookups, queries) so the agent can keep reasoning in the same turn. Results that report an error or a `failed`/`error`/`retry` status never end the turn.
 
 ## External MCP Tools
 
