@@ -25,6 +25,9 @@ All notable changes to this project are documented in this file.
 - `OpenAIClient` treats `gpt-5.5` as temperature-restricted, so temperature is not sent for it.
 - `IsThisSeatTakenEnvironment` is added to the environment registry and the `terrarium.environments` namespaces.
 
+### Fixed
+- `uv lock` and `uv sync` resolve again in a source checkout. The `vllm` extra now carries the same Linux x86_64 marker as `all`, since vLLM's CUDA dependencies have no macOS wheels and `required-environments` includes macOS arm64; `uv.lock` is regenerated (#17).
+
 ## [v0.2.1] - 2026-10-23
 
 ### Fixed
