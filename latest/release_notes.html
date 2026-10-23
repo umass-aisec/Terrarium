@@ -282,6 +282,22 @@
         <article role="main" id="furo-main-content">
           <section id="release-notes">
 <h1>Release Notes<a class="headerlink" href="#release-notes" title="Link to this heading">¶</a></h1>
+<section id="v0-2-1-2026-10-23">
+<h2>v0.2.1 - 2026-10-23<a class="headerlink" href="#v0-2-1-2026-10-23" title="Link to this heading">¶</a></h2>
+<p>Terrarium v0.2.1 is a bug-fix release that restores how long an agent’s turn lasts.</p>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>In v0.2.0, any successful environment tool call ended the agent’s turn, including read-only lookups such as the Hospital environment’s <code class="docutils literal notranslate"><span class="pre">get_job_queue</span></code>. An agent that checked its queue could not act on what it saw in the same turn. A turn now ends only after a committed action, as in v0.1.x.</p></li>
+</ul>
+</section>
+<section id="upgrading">
+<h3>Upgrading<a class="headerlink" href="#upgrading" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Environment tools signal a committed action with <code class="docutils literal notranslate"><span class="pre">&quot;action_committed&quot;:</span> <span class="pre">True</span></code> in their result; the shipped DCOP environments already do. Add it to custom tools whose calls should end the agent’s turn, and leave it out of read-only tools. <code class="docutils literal notranslate"><span class="pre">BaseAgent</span></code> strips the key, so models never see it.</p></li>
+</ul>
+</section>
+</section>
 <section id="v0-2-0-2026-06-08">
 <h2>v0.2.0 - 2026-06-08<a class="headerlink" href="#v0-2-0-2026-06-08" title="Link to this heading">¶</a></h2>
 <p>Terrarium v0.2.0 focuses on making the project easier to install, understand, and extend. The release adds a proper documentation site, clearer examples, broader provider support, and more explicit runtime modules for agents, tools, environments, and logs.</p>
@@ -381,6 +397,11 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Release Notes</a><ul>
+<li><a class="reference internal" href="#v0-2-1-2026-10-23">v0.2.1 - 2026-10-23</a><ul>
+<li><a class="reference internal" href="#fixed">Fixed</a></li>
+<li><a class="reference internal" href="#upgrading">Upgrading</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#v0-2-0-2026-06-08">v0.2.0 - 2026-06-08</a><ul>
 <li><a class="reference internal" href="#documentation">Documentation</a></li>
 <li><a class="reference internal" href="#runtime-structure">Runtime Structure</a></li>
@@ -400,7 +421,7 @@
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=1be0d999"></script>
+</div><script src="_static/documentation_options.js?v=7f2f09dd"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>

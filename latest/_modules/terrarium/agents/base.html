@@ -520,8 +520,23 @@
                 <span class="ow">and</span> <span class="n">tool_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">blackboard_tool_names</span>
                 <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
             <span class="p">):</span>
+                <span class="c1"># Only a call that committed an action ends the turn; read-only tools</span>
+                <span class="c1"># (e.g. Hospital get_job_queue) let the agent keep reasoning. Tools signal</span>
+                <span class="c1"># a commit with `action_committed` (stripped so the model never sees it);</span>
+                <span class="c1"># tools written for Terrarium &lt; 0.2 signal it by returning `state_updates`.</span>
+                <span class="n">committed</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"action_committed"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span> <span class="ow">or</span> <span class="p">(</span>
+                    <span class="s2">"state_updates"</span> <span class="ow">in</span> <span class="n">result</span>
+                    <span class="ow">or</span> <span class="p">(</span>
+                        <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"result"</span><span class="p">),</span> <span class="nb">dict</span><span class="p">)</span>
+                        <span class="ow">and</span> <span class="s2">"state_updates"</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">"result"</span><span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
                 <span class="n">status</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"status"</span><span class="p">,</span> <span class="s2">"success"</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-                <span class="k">if</span> <span class="s2">"error"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">result</span> <span class="ow">and</span> <span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">,</span> <span class="s2">"retry"</span><span class="p">}:</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">committed</span>
+                    <span class="ow">and</span> <span class="s2">"error"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">result</span>
+                    <span class="ow">and</span> <span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"failed"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">,</span> <span class="s2">"retry"</span><span class="p">}</span>
+                <span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_env_state_committed</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Error executing </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
@@ -799,7 +814,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=1be0d999"></script>
+</div><script src="../../../_static/documentation_options.js?v=7f2f09dd"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>

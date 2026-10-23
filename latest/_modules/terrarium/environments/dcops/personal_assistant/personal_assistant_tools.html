@@ -442,7 +442,8 @@
                 <span class="n">agent_name</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">execution_result</span><span class="p">,</span> <span class="n">phase</span><span class="p">,</span> <span class="n">iteration</span>
             <span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">execution_result</span></div>
+        <span class="c1"># Added after logging, so blackboards record the same result; BaseAgent strips it.</span>
+        <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">execution_result</span><span class="p">,</span> <span class="s2">"action_committed"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="PersonalAssistantTools.handle_tool_call">
@@ -523,7 +524,7 @@
       
     </aside>
   </div>
-</div><script src="../../../../../_static/documentation_options.js?v=1be0d999"></script>
+</div><script src="../../../../../_static/documentation_options.js?v=7f2f09dd"></script>
     <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/scripts/furo.js?v=46bd48cc"></script>

@@ -469,7 +469,8 @@
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Blackboard log failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">execution_result</span></div>
+        <span class="c1"># Added after logging, so blackboards record the same result; BaseAgent strips it.</span>
+        <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">execution_result</span><span class="p">,</span> <span class="s2">"action_committed"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span></div>
 </div>
 
 </pre></div>
@@ -504,7 +505,7 @@
       
     </aside>
   </div>
-</div><script src="../../../../../_static/documentation_options.js?v=1be0d999"></script>
+</div><script src="../../../../../_static/documentation_options.js?v=7f2f09dd"></script>
     <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/scripts/furo.js?v=46bd48cc"></script>

@@ -349,10 +349,11 @@
         <span class="k">if</span> <span class="n">tool_name</span> <span class="o">!=</span> <span class="s2">"assign_package"</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Unknown tool: </span><span class="si">{</span><span class="n">tool_name</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">assignments</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s2">"package_id"</span><span class="p">]</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"assigned_to"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"assigned_to"</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span> <span class="s2">"action_committed"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Place the class in an environment <code class="docutils literal notranslate"><span class="pre">*_tools.py</span></code> module under <code class="docutils literal notranslate"><span class="pre">terrarium/environments/...</span></code>. Discovery imports those modules and maps the tool class to the environment class name.</p>
+<p>An agent’s turn ends after a tool call whose result sets <code class="docutils literal notranslate"><span class="pre">&quot;action_committed&quot;:</span> <span class="pre">True</span></code>; <code class="docutils literal notranslate"><span class="pre">BaseAgent</span></code> removes the key before the result reaches the model. Leave it out for read-only tools (lookups, queries) so the agent can keep reasoning in the same turn. Results that report an error or a <code class="docutils literal notranslate"><span class="pre">failed</span></code>/<code class="docutils literal notranslate"><span class="pre">error</span></code>/<code class="docutils literal notranslate"><span class="pre">retry</span></code> status never end the turn.</p>
 </section>
 <section id="external-mcp-tools">
 <h2>External MCP Tools<a class="headerlink" href="#external-mcp-tools" title="Link to this heading">¶</a></h2>
@@ -445,7 +446,7 @@
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=1be0d999"></script>
+</div><script src="../_static/documentation_options.js?v=7f2f09dd"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
