@@ -211,6 +211,7 @@ class HospitalEnvironment(AbstractEnvironment):
         logger.info(f"SCHEDULE [{agent_id}]: Patient {p_id} @ {start}.")
 
         if p_id not in self.patients: return
+        if self.patient_states[p_id]["scheduled_steps"].get(step_idx) is not None: return
 
         patient = self.patients[p_id]
         if step_idx >= len(patient["pathway"]): return
