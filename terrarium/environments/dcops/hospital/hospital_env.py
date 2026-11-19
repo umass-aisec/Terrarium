@@ -242,7 +242,11 @@ class HospitalEnvironment(AbstractEnvironment):
         min_start = patient["arrival_time"]
         if step_idx > 0:
             prev = self.patient_states[p_id]["scheduled_steps"].get(step_idx - 1)
-            if not prev: return 
+            if not prev:
+                raise ScheduleRequestError(
+                    f"{p_id} step {step_idx} cannot be scheduled before step "
+                    f"{step_idx - 1} (steps must be scheduled in order)"
+                )
             prev_h = self.agents_map[prev["agent"]]["hospital"]
             curr_h = agent_info["hospital"]
             penalty = self.transfer_penalty_hours if prev_h != curr_h else 0
