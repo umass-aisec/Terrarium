@@ -17,7 +17,7 @@ One test class per criterion, each with the same four checks: direct raise,
 tool-level failure without commit, no state mutation, and a successful retry.
 Covered so far: unknown patient_id; step_index beyond the pathway (including
 negative indices); agent does not offer the required service; skipped step
-(step N before step N-1).
+(step N before step N-1); start_time below the minimum start.
 
 Missing resources is intentionally NOT covered here: that case still commits
 (the step is booked and a -300/item penalty is recorded), it must not become
@@ -326,6 +326,85 @@ class TestSkippedStep(unittest.TestCase):
         self.assertEqual(retried.get("status"), "success")
         self.assertTrue(retried.get("action_committed"))
         self.assertIn(1, env.patient_states[p_id]["scheduled_steps"])
+
+
+class TestStartBelowMinimum(unittest.TestCase):
+    """Case 5: start_time below the minimum start (arrival / prev end + penalty)."""
+
+    def test_process_schedule_request_raises(self):
+        env, _ = _make_env()
+        p_id, patient = _first_triage_patient(env)
+        arrival = int(patient["arrival_time"])
+        with self.assertRaises(ScheduleRequestError) as ctx:
+            env._process_schedule_request(
+                "General_Hospital_Triage",
+                {"patient_id": p_id, "step_index": 0, "start_time": arrival - 1},
+            )
+        self.assertIn(str(arrival), str(ctx.exception))
+
+    def test_tool_call_fails_without_committing(self):
+        env, tools = _make_env()
+        p_id, patient = _first_triage_patient(env)
+        arrival = int(patient["arrival_time"])
+        result = _schedule(tools, "General_Hospital_Triage", p_id, 0, arrival - 1)
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertIn(str(arrival), result.get("reason", ""))
+        self.assertNotIn("action_committed", result)
+
+    def test_rejected_call_mutates_no_state(self):
+        env, tools = _make_env()
+        agent = "General_Hospital_Triage"
+        p_id, patient = _first_triage_patient(env)
+
+        schedule_before = copy.deepcopy(env.schedule[agent])
+        inventory_before = copy.deepcopy(env.inventory)
+        patient_states_before = copy.deepcopy(env.patient_states)
+        reward_before = env.get_final_summary()["joint_reward"]
+
+        result = _schedule(tools, agent, p_id, 0, int(patient["arrival_time"]) - 1)
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertEqual(env.schedule[agent], schedule_before)
+        self.assertEqual(env.inventory, inventory_before)
+        self.assertEqual(env.patient_states, patient_states_before)
+        self.assertEqual(env.get_final_summary()["joint_reward"], reward_before)
+
+    def test_agent_can_retry_after_failure(self):
+        env, tools = _make_env()
+        agent = "General_Hospital_Triage"
+        p_id, patient = _first_triage_patient(env)
+        arrival = int(patient["arrival_time"])
+
+        failed = _schedule(tools, agent, p_id, 0, arrival - 1)
+        self.assertEqual(failed.get("status"), "failed")
+        self.assertNotIn("action_committed", failed)
+
+        retried = _schedule(tools, agent, p_id, 0, arrival)
+        self.assertEqual(retried.get("status"), "success")
+        self.assertTrue(retried.get("action_committed"))
+        self.assertIn(p_id, env.schedule[agent].get(arrival, []))
+
+    def test_step_after_previous_end_is_enforced(self):
+        """The minimum also covers the previous step's end time (same hospital)."""
+        env, tools = _make_env()
+        p_id, patient = _first_triage_patient(env)
+        arrival = int(patient["arrival_time"])
+        dur0 = patient["pathway"][0]["duration"]
+        step1_service = patient["pathway"][1]["service"]
+        agent1 = f"General_Hospital_{step1_service}"
+
+        first = _schedule(tools, "General_Hospital_Triage", p_id, 0, arrival)
+        self.assertEqual(first.get("status"), "success")
+
+        # One hour before step 0 ends is still below the minimum for step 1.
+        too_early = arrival + dur0 - 1
+        result = _schedule(tools, agent1, p_id, 1, too_early)
+        self.assertEqual(result.get("status"), "failed")
+        self.assertNotIn("action_committed", result)
+
+        ok = _schedule(tools, agent1, p_id, 1, arrival + dur0)
+        self.assertEqual(ok.get("status"), "success")
 
 
 if __name__ == "__main__":
