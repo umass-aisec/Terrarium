@@ -224,7 +224,11 @@ class HospitalEnvironment(AbstractEnvironment):
             )
 
         patient = self.patients[p_id]
-        if step_idx >= len(patient["pathway"]): return
+        if step_idx < 0 or step_idx >= len(patient["pathway"]):
+            raise ScheduleRequestError(
+                f"{p_id} has no step_index {step_idx}: pathway has "
+                f"{len(patient['pathway'])} steps (valid: 0..{len(patient['pathway']) - 1})"
+            )
         
         target_step = patient["pathway"][step_idx]
         agent_info = self.agents_map[agent_id]
