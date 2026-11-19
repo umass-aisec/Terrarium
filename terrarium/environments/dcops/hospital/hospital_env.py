@@ -260,7 +260,11 @@ class HospitalEnvironment(AbstractEnvironment):
             
         dur = target_step["duration"]
         for t in range(start, start + dur):
-            if t >= self.max_time_horizon: return
+            if t >= self.max_time_horizon:
+                raise ScheduleRequestError(
+                    f"{p_id} step {step_idx} starting at {start} with duration {dur} "
+                    f"exceeds the time horizon {self.max_time_horizon} (reaches t={t})"
+                )
             if len(self.schedule[agent_id].get(t, [])) >= agent_info["capacity"]:
                 raise ScheduleRequestError(
                     f"{agent_id} is at full capacity ({agent_info['capacity']}) at time {t}; "
