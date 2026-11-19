@@ -17,7 +17,9 @@ One test class per criterion, each with the same four checks: direct raise,
 tool-level failure without commit, no state mutation, and a successful retry.
 Covered so far: unknown patient_id; step_index beyond the pathway (including
 negative indices); agent does not offer the required service; skipped step
-(step N before step N-1); start_time below the minimum start.
+(step N before step N-1); start_time below the minimum start; department at
+full capacity at time t. Also pins the deliberate exclusion: missing resources
+still commit (booked + -300/item penalty), they are NOT a validation error.
 
 Missing resources is intentionally NOT covered here: that case still commits
 (the step is booked and a -300/item penalty is recorded), it must not become
@@ -405,6 +407,125 @@ class TestStartBelowMinimum(unittest.TestCase):
 
         ok = _schedule(tools, agent1, p_id, 1, arrival + dur0)
         self.assertEqual(ok.get("status"), "success")
+
+
+class TestCapacityFull(unittest.TestCase):
+    """Case 6: the department is already at full capacity at time t."""
+
+    # Triage has capacity 4 and duration 1, so a 5th booking at the same
+    # time slot on one Triage unit must be rejected.
+    def _fill_triage(self, env, tools, agent, p_ids, t):
+        for p_id in p_ids:
+            result = _schedule(tools, agent, p_id, 0, t)
+            self.assertEqual(result.get("status"), "success", f"setup booking {p_id}")
+
+    def test_process_schedule_request_raises(self):
+        env, tools = _make_env(seed=7, num_patients=6)
+        agent = "General_Hospital_Triage"
+        p_ids = list(env.patients.keys())
+        t = max(int(p["arrival_time"]) for p in env.patients.values())
+
+        self._fill_triage(env, tools, agent, p_ids[:4], t)
+        with self.assertRaises(ScheduleRequestError) as ctx:
+            env._process_schedule_request(
+                agent, {"patient_id": p_ids[4], "step_index": 0, "start_time": t}
+            )
+        self.assertIn(str(t), str(ctx.exception))
+
+    def test_tool_call_fails_without_committing(self):
+        env, tools = _make_env(seed=7, num_patients=6)
+        agent = "General_Hospital_Triage"
+        p_ids = list(env.patients.keys())
+        t = max(int(p["arrival_time"]) for p in env.patients.values())
+
+        self._fill_triage(env, tools, agent, p_ids[:4], t)
+        result = _schedule(tools, agent, p_ids[4], 0, t)
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertIn(str(t), result.get("reason", ""))
+        self.assertNotIn("action_committed", result)
+
+    def test_rejected_call_mutates_no_state(self):
+        env, tools = _make_env(seed=7, num_patients=6)
+        agent = "General_Hospital_Triage"
+        p_ids = list(env.patients.keys())
+        t = max(int(p["arrival_time"]) for p in env.patients.values())
+
+        self._fill_triage(env, tools, agent, p_ids[:4], t)
+        schedule_before = copy.deepcopy(env.schedule[agent])
+        inventory_before = copy.deepcopy(env.inventory)
+        failures_before = dict(env.resource_failures)
+        patient_states_before = copy.deepcopy(env.patient_states)
+        reward_before = env.get_final_summary()["joint_reward"]
+
+        result = _schedule(tools, agent, p_ids[4], 0, t)
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertEqual(env.schedule[agent], schedule_before)
+        self.assertEqual(env.inventory, inventory_before)
+        self.assertEqual(env.resource_failures, failures_before)
+        self.assertEqual(env.patient_states, patient_states_before)
+        self.assertEqual(env.get_final_summary()["joint_reward"], reward_before)
+
+    def test_agent_can_retry_after_failure(self):
+        env, tools = _make_env(seed=7, num_patients=6)
+        agent = "General_Hospital_Triage"
+        p_ids = list(env.patients.keys())
+        t = max(int(p["arrival_time"]) for p in env.patients.values())
+
+        self._fill_triage(env, tools, agent, p_ids[:4], t)
+        failed = _schedule(tools, agent, p_ids[4], 0, t)
+        self.assertEqual(failed.get("status"), "failed")
+        self.assertNotIn("action_committed", failed)
+
+        # Same patient, one hour later: capacity is free again, commits.
+        retried = _schedule(tools, agent, p_ids[4], 0, t + 1)
+        self.assertEqual(retried.get("status"), "success")
+        self.assertTrue(retried.get("action_committed"))
+        self.assertIn(p_ids[4], env.schedule[agent].get(t + 1, []))
+
+
+class TestMissingResourcesStillCommits(unittest.TestCase):
+    """Exclusion pinned by the spec: lack of resources is NOT a failure.
+
+    A schedule_patient that passes all validation checks but finds no
+    inventory must still commit: the step is booked, the tool reports
+    success with action_committed, and a -300/item penalty is recorded.
+    """
+
+    def test_missing_resources_commits_and_penalizes(self):
+        env, tools = _make_env()
+        agent = "General_Hospital_Triage"
+        hospital = "General_Hospital"
+        p_id, patient = _first_triage_patient(env)
+        start = int(patient["arrival_time"])
+
+        # Drain exactly what Triage consumes so the booking finds nothing.
+        costs = env.consumption_map["Triage"]
+        for res in costs:
+            env.inventory[hospital][res] = 0
+        failures_before = dict(env.resource_failures)
+
+        result = _schedule(tools, agent, p_id, 0, start)
+
+        self.assertEqual(result.get("status"), "success")
+        self.assertTrue(result.get("action_committed"))
+        self.assertEqual(env.patient_states[p_id]["scheduled_steps"][0]["agent"], agent)
+        self.assertIn(p_id, env.schedule[agent].get(start, []))
+
+        # Penalty recorded: one failure per missing resource type, and the
+        # patient-level failure log mentions the step.
+        missing = list(costs.keys())
+        for res in missing:
+            self.assertEqual(
+                env.resource_failures[res],
+                failures_before[res] + 1,
+                f"expected one recorded failure for {res}",
+            )
+        failures = env.patient_states[p_id]["resource_failures"]
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]["step"], 0)
+        self.assertEqual(sorted(failures[0]["missing"]), sorted(missing))
 
 
 if __name__ == "__main__":
