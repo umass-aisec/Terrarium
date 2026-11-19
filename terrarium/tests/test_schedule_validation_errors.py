@@ -18,8 +18,9 @@ tool-level failure without commit, no state mutation, and a successful retry.
 Covered so far: unknown patient_id; step_index beyond the pathway (including
 negative indices); agent does not offer the required service; skipped step
 (step N before step N-1); start_time below the minimum start; department at
-full capacity at time t. Also pins the deliberate exclusion: missing resources
-still commit (booked + -300/item penalty), they are NOT a validation error.
+full capacity at time t; booking reaching t >= max_time_horizon. Also pins
+the deliberate exclusion: missing resources still commit (booked + -300/item
+penalty), they are NOT a validation error.
 
 Missing resources is intentionally NOT covered here: that case still commits
 (the step is booked and a -300/item penalty is recorded), it must not become
@@ -526,6 +527,85 @@ class TestMissingResourcesStillCommits(unittest.TestCase):
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["step"], 0)
         self.assertEqual(sorted(failures[0]["missing"]), sorted(missing))
+
+
+class TestBeyondTimeHorizon(unittest.TestCase):
+    """Case 7: the booking would reach t >= max_time_horizon."""
+
+    def test_process_schedule_request_raises(self):
+        env, _ = _make_env()
+        p_id, patient = _first_triage_patient(env)
+        agent = "General_Hospital_Triage"
+        for bad_start in (env.max_time_horizon, env.max_time_horizon + 50):
+            with self.assertRaises(ScheduleRequestError, msg=f"start={bad_start}"):
+                env._process_schedule_request(
+                    agent, {"patient_id": p_id, "step_index": 0, "start_time": bad_start}
+                )
+
+    def test_tool_call_fails_without_committing(self):
+        env, tools = _make_env()
+        p_id, patient = _first_triage_patient(env)
+        result = _schedule(tools, "General_Hospital_Triage", p_id, 0, env.max_time_horizon)
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertIn(str(env.max_time_horizon), result.get("reason", ""))
+        self.assertNotIn("action_committed", result)
+
+    def test_rejected_call_mutates_no_state(self):
+        env, tools = _make_env()
+        agent = "General_Hospital_Triage"
+        p_id, patient = _first_triage_patient(env)
+
+        schedule_before = copy.deepcopy(env.schedule[agent])
+        inventory_before = copy.deepcopy(env.inventory)
+        patient_states_before = copy.deepcopy(env.patient_states)
+        reward_before = env.get_final_summary()["joint_reward"]
+
+        result = _schedule(tools, agent, p_id, 0, env.max_time_horizon)
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertEqual(env.schedule[agent], schedule_before)
+        self.assertEqual(env.inventory, inventory_before)
+        self.assertEqual(env.patient_states, patient_states_before)
+        self.assertEqual(env.get_final_summary()["joint_reward"], reward_before)
+
+    def test_agent_can_retry_after_failure(self):
+        env, tools = _make_env()
+        agent = "General_Hospital_Triage"
+        p_id, patient = _first_triage_patient(env)
+
+        failed = _schedule(tools, agent, p_id, 0, env.max_time_horizon)
+        self.assertEqual(failed.get("status"), "failed")
+        self.assertNotIn("action_committed", failed)
+
+        # One hour earlier fits inside the horizon and commits.
+        retried = _schedule(tools, agent, p_id, 0, env.max_time_horizon - 1)
+        self.assertEqual(retried.get("status"), "success")
+        self.assertTrue(retried.get("action_committed"))
+        self.assertIn(p_id, env.schedule[agent].get(env.max_time_horizon - 1, []))
+
+    def test_duration_spanning_past_horizon_is_rejected(self):
+        """start < horizon but start + duration crosses it (e.g. a 24h Ward)."""
+        env, tools = _make_env(seed=7, num_patients=8)
+        # seed 7: Patient_0 has pathway [Triage(1), Ward(24)], arrival 4.
+        p_id = "Patient_0"
+        patient = env.patients[p_id]
+        self.assertEqual(patient["pathway"][1]["service"], "Ward")
+        self.assertGreater(patient["pathway"][1]["duration"], 1)
+
+        start0 = int(patient["arrival_time"])
+        first = _schedule(tools, "General_Hospital_Triage", p_id, 0, start0)
+        self.assertEqual(first.get("status"), "success")
+
+        # start = horizon - 1 passes the min-start check but the 24h stay
+        # reaches t = horizon and beyond.
+        ward_agent = "General_Hospital_Ward"
+        start1 = env.max_time_horizon - 1
+        result = _schedule(tools, ward_agent, p_id, 1, start1)
+        self.assertEqual(result.get("status"), "failed")
+        self.assertIn(str(env.max_time_horizon), result.get("reason", ""))
+        self.assertNotIn("action_committed", result)
+        self.assertNotIn(1, env.patient_states[p_id]["scheduled_steps"])
 
 
 if __name__ == "__main__":
