@@ -21,6 +21,7 @@ class TerrariumSmokeTests(unittest.TestCase):
         self.assertIn("AbstractClient", llm.__all__)
         self.assertIn("VLLMProviderRuntime", llm.__all__)
         self.assertIn("GrokClient", clients.__all__)
+        self.assertIn("OpenAICompatibleClient", clients.__all__)
         self.assertNotIn("AzureOpenAIClient", clients.__all__)
 
     def test_environment_tool_discovery_uses_terrarium_namespace(self):
@@ -58,6 +59,10 @@ class TerrariumSmokeTests(unittest.TestCase):
     def test_provider_alias_xai_maps_to_grok(self):
         cfg = {"grok": {"model": "grok-4-1-fast-reasoning"}}
         self.assertEqual(get_model_name("xai", cfg), "grok-4-1-fast-reasoning")
+
+    def test_provider_alias_openai_dash_compatible_maps_to_openai_compatible(self):
+        cfg = {"openai_compatible": {"model": "my-local-model"}}
+        self.assertEqual(get_model_name("openai-compatible", cfg), "my-local-model")
 
     def test_xai_provider_block_works_for_generation_params(self):
         cfg = {
