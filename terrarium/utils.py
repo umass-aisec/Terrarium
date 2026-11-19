@@ -32,6 +32,8 @@ def _normalize_provider_name(provider: Any) -> str:
         "xai": "grok",
         "x_ai": "grok",
         "official_grok": "grok",
+        "openai-compatible": "openai_compatible",
+        "openai_compat": "openai_compatible",
     }
     return aliases.get(normalized, normalized)
 
@@ -418,6 +420,10 @@ def extract_model_info(full_config: Dict[str, Any]) -> str:
         model_name = llm_config.get("together", {}).get("model", "unknown")
     elif provider == "fireworks":
         model_name = llm_config.get("fireworks", {}).get("model", "unknown")
+    elif provider == "openai_compatible":
+        model_name = _get_provider_block("openai_compatible", llm_config).get(
+            "model", "unknown"
+        )
     elif provider == "vllm":
         model_name = _get_vllm_model_name(llm_config)
     else:
@@ -556,7 +562,7 @@ def get_client_instance(
         llm_config: LLM configuration dictionary containing provider and provider-specific settings
 
     Returns:
-        Instantiated client (OpenAI/Foundry/Grok/Anthropic/Gemini/Together/Fireworks/VLLM)
+        Instantiated client (OpenAI/Foundry/Grok/Anthropic/Gemini/Together/Fireworks/OpenAI-compatible/VLLM)
 
     Raises:
         ValueError: If provider is unknown
@@ -642,6 +648,32 @@ def get_client_instance(
         client = FireworksClient(
             base_url=base_url, api_key=api_key, request_timeout=request_timeout
         )
+    elif provider == "openai_compatible":
+        from terrarium.llm.clients.openai_compatible_client import (
+            OpenAICompatibleClient,
+        )
+
+        compatible_cfg = _get_provider_block("openai_compatible", llm_config)
+        client = OpenAICompatibleClient(
+            api_key=_resolve_optional_secret(
+                compatible_cfg,
+                direct_key="api_key",
+                env_var_key="api_key_env_var",
+            ),
+            api_key_env_var=str(
+                compatible_cfg.get("api_key_env_var") or "OPENAI_COMPATIBLE_API_KEY"
+            ),
+            base_url=_resolve_optional_value(
+                compatible_cfg,
+                direct_keys=["base_url", "endpoint"],
+                env_var_keys=["base_url_env_var", "endpoint_env_var"],
+            ),
+            base_url_env_var=str(
+                compatible_cfg.get("base_url_env_var") or "OPENAI_COMPATIBLE_BASE_URL"
+            ),
+            timeout=float(compatible_cfg.get("request_timeout", 30)),
+            base_model=compatible_cfg.get("base_model"),
+        )
     elif provider == "vllm":
         if not vllm_runtime:
             raise ValueError("vLLM runtime is required to initialize vLLM clients")
@@ -650,7 +682,7 @@ def get_client_instance(
         client, _ = vllm_runtime.create_client(agent_name)
     else:
         raise ValueError(
-            f"Unknown provider: {provider}. Must be one of: openai, foundry, grok, anthropic, gemini, together, fireworks, vllm"
+            f"Unknown provider: {provider}. Must be one of: openai, foundry, grok, anthropic, gemini, together, fireworks, openai_compatible, vllm"
         )
 
     configure_client_external_mcp(client, llm_config)
@@ -728,7 +760,7 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
     Extract model name based on provider from LLM configuration.
 
     Args:
-        provider: LLM provider name (openai, foundry, anthropic, gemini, together, fireworks, vllm)
+        provider: LLM provider name (openai, foundry, grok, anthropic, gemini, together, fireworks, openai_compatible, vllm)
         llm_config: LLM configuration dictionary
 
     Returns:
@@ -762,6 +794,10 @@ def get_model_name(provider: str, llm_config: Dict[str, Any]) -> str:
     elif provider == "fireworks":
         model_name = llm_config.get("fireworks", {}).get(
             "model", "unknown-fireworks-model"
+        )
+    elif provider == "openai_compatible":
+        model_name = _get_provider_block("openai_compatible", llm_config).get(
+            "model", "unknown-openai-compatible-model"
         )
     elif provider == "vllm":
         model_name = _get_vllm_model_name(llm_config)
