@@ -252,7 +252,11 @@ class HospitalEnvironment(AbstractEnvironment):
             penalty = self.transfer_penalty_hours if prev_h != curr_h else 0
             min_start = max(min_start, prev["end_time"] + penalty)
             
-        if start < min_start: return
+        if start < min_start:
+            raise ScheduleRequestError(
+                f"start_time {start} is before the minimum start {min_start} "
+                f"for {p_id} step {step_idx}"
+            )
             
         dur = target_step["duration"]
         for t in range(start, start + dur):
