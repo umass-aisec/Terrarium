@@ -9,6 +9,10 @@ from .hospital_prompts import HospitalPrompts
 
 logger = logging.getLogger(__name__)
 
+class ScheduleRequestError(ValueError):
+    """Raised when a schedule_patient request is rejected (validation failure)."""
+    pass
+
 class HospitalEnvironment(AbstractEnvironment):
     def __init__(self, communication_protocol, config, tool_logger):
         self.full_config = config
