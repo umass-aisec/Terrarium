@@ -233,7 +233,11 @@ class HospitalEnvironment(AbstractEnvironment):
         target_step = patient["pathway"][step_idx]
         agent_info = self.agents_map[agent_id]
         
-        if agent_info["service"] != target_step["service"]: return
+        if agent_info["service"] != target_step["service"]:
+            raise ScheduleRequestError(
+                f"{agent_id} provides '{agent_info['service']}' but {p_id} step {step_idx} "
+                f"requires '{target_step['service']}'"
+            )
         
         min_start = patient["arrival_time"]
         if step_idx > 0:
