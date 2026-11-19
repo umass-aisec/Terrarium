@@ -16,7 +16,7 @@ can retry. Concretely, for each validation failure:
 One test class per criterion, each with the same four checks: direct raise,
 tool-level failure without commit, no state mutation, and a successful retry.
 Covered so far: unknown patient_id; step_index beyond the pathway (including
-negative indices).
+negative indices); agent does not offer the required service.
 
 Missing resources is intentionally NOT covered here: that case still commits
 (the step is booked and a -300/item penalty is recorded), it must not become
@@ -200,6 +200,65 @@ class TestStepIndexBeyondPathway(unittest.TestCase):
         self.assertEqual(retried.get("status"), "success")
         self.assertTrue(retried.get("action_committed"))
         self.assertIn(0, env.patient_states[p_id]["scheduled_steps"])
+
+
+class TestServiceMismatch(unittest.TestCase):
+    """Case 3: agent does not offer the service needed for that step."""
+
+    def test_process_schedule_request_raises(self):
+        env, _ = _make_env()
+        p_id, _ = _first_triage_patient(env)
+        # Step 0 of every pathway is Triage; a Surgery unit must be rejected.
+        with self.assertRaises(ScheduleRequestError) as ctx:
+            env._process_schedule_request(
+                "General_Hospital_Surgery",
+                {"patient_id": p_id, "step_index": 0, "start_time": 0},
+            )
+        self.assertIn("Surgery", str(ctx.exception))
+        self.assertIn("Triage", str(ctx.exception))
+
+    def test_tool_call_fails_without_committing(self):
+        env, tools = _make_env()
+        p_id, patient = _first_triage_patient(env)
+        result = _schedule(tools, "General_Hospital_Surgery", p_id, 0, int(patient["arrival_time"]))
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertIn("Surgery", result.get("reason", ""))
+        self.assertNotIn("action_committed", result)
+
+    def test_rejected_call_mutates_no_state(self):
+        env, tools = _make_env()
+        agent = "General_Hospital_Surgery"
+        p_id, patient = _first_triage_patient(env)
+
+        schedule_before = copy.deepcopy(env.schedule[agent])
+        inventory_before = copy.deepcopy(env.inventory)
+        patient_states_before = copy.deepcopy(env.patient_states)
+        reward_before = env.get_final_summary()["joint_reward"]
+
+        result = _schedule(tools, agent, p_id, 0, int(patient["arrival_time"]))
+
+        self.assertEqual(result.get("status"), "failed")
+        self.assertEqual(env.schedule[agent], schedule_before)
+        self.assertEqual(env.inventory, inventory_before)
+        self.assertEqual(env.patient_states, patient_states_before)
+        self.assertEqual(env.get_final_summary()["joint_reward"], reward_before)
+
+    def test_agent_can_retry_after_failure(self):
+        env, tools = _make_env()
+        p_id, patient = _first_triage_patient(env)
+        start = int(patient["arrival_time"])
+
+        failed = _schedule(tools, "General_Hospital_Surgery", p_id, 0, start)
+        self.assertEqual(failed.get("status"), "failed")
+
+        retried = _schedule(tools, "General_Hospital_Triage", p_id, 0, start)
+        self.assertEqual(retried.get("status"), "success")
+        self.assertTrue(retried.get("action_committed"))
+        self.assertEqual(
+            env.patient_states[p_id]["scheduled_steps"][0]["agent"],
+            "General_Hospital_Triage",
+        )
 
 
 if __name__ == "__main__":
