@@ -6,7 +6,7 @@ that records the kwargs it is called with.
 """
 
 import unittest
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from terrarium.communication_protocols.sequential import SequentialCommunicationProtocol
 from terrarium.core.blackboard import Megaboard
@@ -72,9 +72,8 @@ class ResolvePhasesTests(unittest.TestCase):
             {"phases": [{"name": "x", "rounds": "many"}]},
         ]
         for simulation_config in bad_configs:
-            with self.subTest(simulation_config=simulation_config):
-                with self.assertRaises(ValueError):
-                    resolve_phases(simulation_config)
+            with self.subTest(simulation_config=simulation_config), self.assertRaises(ValueError):
+                resolve_phases(simulation_config)
 
     def test_non_dict_simulation_config_raises(self):
         with self.assertRaises(ValueError):
@@ -133,22 +132,23 @@ class BlackboardToolsetFallbackTests(unittest.TestCase):
         self.assertIn("create_channel", channel_env)
 
 
-class PhaseToolInstructionFallbackTests(unittest.TestCase):
-    INSTRUCTION_MAP = {"planning": "PLAN-BLOCK", "execution": "EXEC-BLOCK"}
+_INSTRUCTION_MAP = {"planning": "PLAN-BLOCK", "execution": "EXEC-BLOCK"}
 
+
+class PhaseToolInstructionFallbackTests(unittest.TestCase):
     def test_known_phases_are_case_insensitive(self):
         self.assertEqual(
-            get_phase_tool_instructions(self.INSTRUCTION_MAP, "planning"), "PLAN-BLOCK"
+            get_phase_tool_instructions(_INSTRUCTION_MAP, "planning"), "PLAN-BLOCK"
         )
         self.assertEqual(
-            get_phase_tool_instructions(self.INSTRUCTION_MAP, "Execution"), "EXEC-BLOCK"
+            get_phase_tool_instructions(_INSTRUCTION_MAP, "Execution"), "EXEC-BLOCK"
         )
 
     def test_unknown_phase_falls_back_to_execution_block(self):
         for phase in ("critique", "review", None, ""):
             with self.subTest(phase=phase):
                 self.assertEqual(
-                    get_phase_tool_instructions(self.INSTRUCTION_MAP, phase),
+                    get_phase_tool_instructions(_INSTRUCTION_MAP, phase),
                     "EXEC-BLOCK",
                 )
 
