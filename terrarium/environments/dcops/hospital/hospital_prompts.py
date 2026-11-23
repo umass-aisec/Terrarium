@@ -49,7 +49,15 @@ AGENT REWARDS (IMPORTANT):
         # --- DYNAMIC BLACKBOARD ID DETECTION ---
         available_boards = list(blackboard_context.keys())
         main_board_id = available_boards[0] if available_boards else "0"
-        
+
+        # --- Format Blackboard (shared by ALL roles, incl. Resource_Provisioner) ---
+        bb_str = f"=== BLACKBOARD (ID: {main_board_id}) ===\n"
+        if blackboard_context:
+            for ch, msg in blackboard_context.items():
+                bb_str += f"[{ch}]\n{msg}\n"
+        else:
+            bb_str += "(No new messages)\n"
+
         # --- Provisioner Logic ---
         if agent_name == "Resource_Provisioner":
             inv = agent_context.get("inventory_snapshot", {})
@@ -124,6 +132,7 @@ Your Goal: Zero Failures, Zero Waste, Maximize Rewards.
 === AGENT STATUS: {agent_name}
 Role: Logistics Provisioner
 {cost_table_str}
+{bb_str}
 {instruction}
 """
 
@@ -149,13 +158,6 @@ Role: Logistics Provisioner
                     f"       Duration: {job['duration']}h | Earliest Start: {job['earliest_start_time']}\n"
                 )
             queue_str += "==============================================\n"
-
-        bb_str = f"=== BLACKBOARD (ID: {main_board_id}) ===\n"
-        if blackboard_context:
-            for ch, msg in blackboard_context.items():
-                bb_str += f"[{ch}]\n{msg}\n"
-        else:
-            bb_str += "(No new messages)\n"
 
         phase = agent_context.get('phase', 'unknown')
         iteration = agent_context.get('iteration', 0)
