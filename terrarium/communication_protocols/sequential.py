@@ -11,6 +11,7 @@ from terrarium.tools.environment import (
     EnvironmentToolsNotFoundError,
     instantiate_environment_tools,
 )
+from terrarium.tools.gates import blocked_response, tool_blocked
 from terrarium.core.logger import BlackboardLogger
 from terrarium.compaction import compact_events, CompactionLogger
 from terrarium.utils import get_client_instance, get_generation_params, get_model_name
@@ -180,6 +181,8 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         phase: Optional[str] = None,
         iteration: Optional[int] = None,
     ) -> Dict[str, Any]:
+        if tool_blocked(self.environment, tool_name, phase):
+            return blocked_response(tool_name, phase)
         response = self.megaboard.handle_tool_call(
             tool_name, agent_name, arguments, phase, iteration
         )
