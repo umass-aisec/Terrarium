@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any, Dict, List, Optional, Set
 
 from terrarium.tools.environment import (
@@ -61,10 +62,18 @@ class ToolsetDiscovery:
         Whether an environment lets agents open their own private channels.
 
         Environments opt in by setting `supports_private_channels = True` on
-        their Tools class; the channel machinery itself is environment-agnostic.
+        their Tools class, or by setting `allow_agent_channels: true` under
+        `environment` in the run config; the channel machinery itself is
+        environment-agnostic.
         """
         tools = self._get_tools_instance(environment_name)
-        return bool(getattr(tools, "supports_private_channels", False))
+        if bool(getattr(tools, "supports_private_channels", False)):
+            return True
+        environment = getattr(tools, "environment", None)
+        env_config = getattr(environment, "env_config", None)
+        if isinstance(env_config, Mapping):
+            return env_config.get("allow_agent_channels") is True
+        return False
 
     def get_blackboard_tool_names(
         self, environment_name: str = "", retrieval_enabled: bool = False
