@@ -27,6 +27,7 @@ quickstart
 
 components/agents
 components/environments
+components/personas
 components/communication
 components/networks
 components/tools
