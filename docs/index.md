@@ -30,6 +30,7 @@ components/environments
 components/communication
 components/networks
 components/tools
+components/phase_tool_gating
 components/llm
 components/attacks
 components/logging
