@@ -5,6 +5,8 @@ import inspect
 from pathlib import Path
 from typing import Any, Dict, Optional, Type
 
+from terrarium.tools.gates import blocked_response, tool_blocked
+
 
 class EnvironmentToolsNotFoundError(LookupError):
     pass
@@ -13,6 +15,47 @@ class EnvironmentToolsNotFoundError(LookupError):
 _DISCOVERED = False
 _TOOL_CLASS_BY_ENV_NAME: Dict[str, Type[Any]] = {}
 _TOOL_CLASS_BY_NAME: Dict[str, Type[Any]] = {}
+_GATED_TOOLS_CLASS_CACHE: Dict[Type[Any], Type[Any]] = {}
+
+
+def _gated_tools_class(cls: Type[Any]) -> Type[Any]:
+    """Subclass of a tools class whose ``handle_tool_call`` enforces phase gating.
+
+    The subclass keeps the original class name/module so existing type checks
+    (``type(tools).__name__``, ``isinstance``) keep working. ``handle_tool_call``
+    checks ``environment.blocked_tools`` for the current phase and returns a
+    blocked result without executing the tool.
+    """
+    cached = _GATED_TOOLS_CLASS_CACHE.get(cls)
+    if cached is not None:
+        return cached
+    base_handle_tool_call = getattr(cls, "handle_tool_call", None)
+    if base_handle_tool_call is None:
+        _GATED_TOOLS_CLASS_CACHE[cls] = cls
+        return cls
+
+    class PhaseGatedTools(cls):
+        _terrarium_phase_gated = True
+
+        def handle_tool_call(
+            self,
+            tool_name: str,
+            agent_name: str,
+            arguments: Dict[str, Any],
+            phase: Optional[str] = None,
+            iteration: Optional[int] = None,
+        ) -> Any:
+            if tool_blocked(getattr(self, "environment", None), tool_name, phase):
+                return blocked_response(tool_name, phase)
+            return base_handle_tool_call(
+                self, tool_name, agent_name, arguments, phase, iteration
+            )
+
+    PhaseGatedTools.__name__ = cls.__name__
+    PhaseGatedTools.__qualname__ = cls.__qualname__
+    PhaseGatedTools.__module__ = cls.__module__
+    _GATED_TOOLS_CLASS_CACHE[cls] = PhaseGatedTools
+    return PhaseGatedTools
 
 
 def _project_root() -> Path:
@@ -89,8 +132,8 @@ def get_environment_tools_class(environment_name: str) -> Type[Any]:
 def instantiate_environment_tools(
     environment_name: str, blackboard_manager: Any, environment: Any = None
 ) -> Any:
-    """Instantiate the tools handler for an environment."""
-    cls = get_environment_tools_class(environment_name)
+    """Instantiate the tools handler for an environment, with per-phase gating."""
+    cls = _gated_tools_class(get_environment_tools_class(environment_name))
     try:
         return cls(blackboard_manager, environment=environment)
     except TypeError:
