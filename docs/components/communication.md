@@ -29,40 +29,34 @@ communication_protocol.bind_environment(environment)
 
 ## Protocol
 
-`SequentialCommunicationProtocol` currently runs simple protocol: all agents plan, then all agents execute for one iteration of the simulation. During planning, agents can write messages to blackboards. During execution, agents use environment tools to commit task actions.
+`SequentialCommunicationProtocol` runs a config-driven phase sequence: by default all agents plan (for `max_planning_rounds` rounds), then all agents execute, once per iteration. During planning, agents can write messages to blackboards. During execution, agents use environment tools to commit task actions. The sequence is driven by `simulation.phases` (see [Quick Start](../quickstart.md#simulation)) and every turn goes through the generic `agent_turn`:
 
 ```python
-for planning_round in range(1, max_planning_rounds + 1):
-    for agent in environment.agents:
-        agent_context = environment.build_agent_context(
-            agent.name,
-            phase="planning",
-            iteration=iteration,
-            planning_round=planning_round,
-        )
-        await communication_protocol.agent_planning_turn(
-            agent,
-            agent.name,
-            agent_context,
-            environment,
-            iteration,
-            planning_round,
-        )
+phases = resolve_phases(config["simulation"])
+# default: [{"name": "planning", "rounds": max_planning_rounds or 1},
+#           {"name": "execution", "rounds": 1}]
 
-for agent in environment.agents:
-    agent_context = environment.build_agent_context(
-        agent.name,
-        phase="execution",
-        iteration=iteration,
-    )
-    await communication_protocol.agent_execution_turn(
-        agent,
-        agent.name,
-        agent_context,
-        environment,
-        iteration,
-    )
+for phase in phases:
+    for round_num in range(1, phase["rounds"] + 1):
+        for agent in environment.agents:
+            agent_context = environment.build_agent_context(
+                agent.name,
+                phase=phase["name"],
+                iteration=iteration,
+                planning_round=round_num,
+            )
+            await communication_protocol.agent_turn(
+                agent,
+                agent.name,
+                agent_context,
+                environment,
+                iteration,
+                phase=phase["name"],
+                round_num=round_num,
+            )
 ```
+
+`agent_planning_turn`/`agent_execution_turn` remain available as thin wrappers around `agent_turn` with the fixed `"planning"`/`"execution"` phase. Custom phase names get sensible defaults: the planning (blackboard-only) toolset and the execution tool instructions.
 
 The important boundary is that the protocol does not score actions. It decides turn order and routes tools. The environment decides whether an action was useful.
 

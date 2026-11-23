@@ -45,13 +45,34 @@ simulation:
   tags:
     - baseline
   note: "Short description for this run"
+  # Optional: explicit phase sequence (overrides max_planning_rounds)
+  phases:
+    - name: planning
+      rounds: 1
+    - name: execution
+      rounds: 1
 ```
 
 - `max_iterations`: maximum environment iterations/steps where a *step constitutes as all agents taking an action in the environment*.
-- `max_planning_rounds`: number of planning rounds before execution round (dependent on the communication protocol).
+- `max_planning_rounds`: number of planning rounds before execution round (dependent on the communication protocol). Only required when `phases` is absent.
 - `max_conversation_steps`: maximum LLM/tool loop steps per agent turn.
 - `seed`: random seed for reproducible environment and network generation.
 - `tags` and `note`: optional metadata used for experiment tracking.
+- `phases`: optional list of `{name: str, rounds: int}` entries run in order each iteration; every agent takes a turn per round via the generic `protocol.agent_turn(..., phase=name, round_num=round)`. When absent, resolves to `[{"name": "planning", "rounds": max_planning_rounds or 1}, {"name": "execution", "rounds": 1}]`. Custom phase names are supported: unknown phases get the planning (blackboard-only) toolset and the execution tool instructions.
+
+```yaml
+# Example: an extra critique round between planning and execution
+simulation:
+  max_iterations: 1
+  seed: 42
+  phases:
+    - name: planning
+      rounds: 2
+    - name: critique
+      rounds: 1
+    - name: execution
+      rounds: 1
+```
 
 ## Environment
 
