@@ -26,7 +26,7 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
     Manages the overall communication protocol.
 
     This class is environment-agnostic and handles:
-    - Phase management (planning, execution)
+    - Phase management (config-driven via `simulation.phases`; planning/execution by default)
     - Agent turn ordering and iteration
     """
 
@@ -275,6 +275,55 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         others = ", ".join(sorted(a for a in blackboard.agents if a != agent_name))
         return f"[{kind} {bb_id_str} — with {others}]\n{body}"
 
+    async def agent_turn(
+        self,
+        agent: "BaseAgent",
+        agent_name: str,
+        agent_context,
+        environment,
+        iteration: int,
+        phase: str,
+        round_num: Optional[int] = None,
+    ):
+        """Handle a single agent turn in the given phase.
+
+        Generic turn used for every phase of the config-driven phase sequence
+        (see ``simulation.phases``). ``round_num`` is forwarded to the agent as
+        the planning round; when None it is left at the agent's default (the
+        execution-phase behavior).
+        """
+        self.environment = environment
+        self._ensure_environment_tools_initialized()
+        blackboard_contexts = await self._prefetch_blackboard_events(
+            agent_name,
+            phase=phase,
+            iteration=iteration,
+            llm_client=agent.client,
+            model_name=agent.model_name,
+        )
+
+        prompts = environment.prompts
+        generate_kwargs: Dict[str, Any] = {}
+        if round_num is not None:
+            generate_kwargs["round_num"] = round_num
+        await agent.generate_response(
+            agent_name=agent_name,
+            agent_context=agent_context,
+            blackboard_context=blackboard_contexts,
+            communication_protocol=self,
+            prompts=prompts,
+            phase=phase,
+            iteration=iteration,
+            **generate_kwargs,
+        )
+
+        self._log_blackboard_states(
+            iteration=iteration,
+            phase=phase,
+            agent_name=agent_name,
+            planning_round=round_num,
+        )
+
     async def agent_planning_turn(
         self,
         agent: "BaseAgent",
@@ -284,34 +333,15 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         iteration: int,
         planning_round: int,
     ):
-        """Handle a single agent's planning turn."""
-        self.environment = environment
-        self._ensure_environment_tools_initialized()
-        blackboard_contexts = await self._prefetch_blackboard_events(
+        """Handle a single agent's planning turn (fixed phase, delegates to agent_turn)."""
+        await self.agent_turn(
+            agent,
             agent_name,
+            agent_context,
+            environment,
+            iteration,
             phase="planning",
-            iteration=iteration,
-            llm_client=agent.client,
-            model_name=agent.model_name,
-        )
-
-        prompts = environment.prompts
-        await agent.generate_response(
-            agent_name=agent_name,
-            agent_context=agent_context,
-            blackboard_context=blackboard_contexts,
-            communication_protocol=self,
-            prompts=prompts,
-            phase="planning",
-            iteration=iteration,
             round_num=planning_round,
-        )
-
-        self._log_blackboard_states(
-            iteration=iteration,
-            phase="planning",
-            agent_name=agent_name,
-            planning_round=planning_round,
         )
 
     async def generate_comm_network(
@@ -344,30 +374,14 @@ class SequentialCommunicationProtocol(BaseCommunicationProtocol):
         iteration: int,
     ):
         """
-        Handle a single agent's execution turn with retry logic.
+        Handle a single agent's execution turn (fixed phase, delegates to agent_turn).
         """
-        self.environment = environment
-        self._ensure_environment_tools_initialized()
-        blackboard_contexts = await self._prefetch_blackboard_events(
+        await self.agent_turn(
+            agent,
             agent_name,
+            agent_context,
+            environment,
+            iteration,
             phase="execution",
-            iteration=iteration,
-            llm_client=agent.client,
-            model_name=agent.model_name,
-        )
-        prompts = environment.prompts
-        await agent.generate_response(
-            agent_name=agent_name,
-            agent_context=agent_context,
-            blackboard_context=blackboard_contexts,
-            communication_protocol=self,
-            prompts=prompts,
-            phase="execution",
-            iteration=iteration,
-        )
-
-        self._log_blackboard_states(
-            iteration=iteration,
-            phase="execution",
-            agent_name=agent_name,
+            round_num=None,
         )
