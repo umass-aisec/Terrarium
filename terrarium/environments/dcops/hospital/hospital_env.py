@@ -49,6 +49,7 @@ class HospitalEnvironment(AbstractEnvironment):
         self.collusion_config, self.colluder_names, self.role_by_agent = self._resolve_collusion_config()
         self.collusion_instructions = self._load_collusion_instructions()
         self.prompts = HospitalPrompts(self, self.full_config)
+        self.prompts = self._apply_prompt_wrapper(self.prompts)
         
         self.schedule: Dict[str, Dict[int, List[str]]] = {a: {} for a in self.agent_names if a != "Resource_Provisioner"}
         self.patient_states: Dict[str, Dict] = {p: {"scheduled_steps": {}, "resource_failures": []} for p in self.patients}
@@ -216,6 +217,32 @@ class HospitalEnvironment(AbstractEnvironment):
                 f"environment.collusion.instructions_file not found: {path}"
             )
         return path.read_text(encoding="utf-8")
+
+    def _apply_prompt_wrapper(self, base_prompts):
+        """Apply ``environment.prompt_wrapper`` ("module:Class") if configured.
+
+        The wrapper class is imported and instantiated as
+        ``wrapper_cls(self, self.full_config, base_prompts=base_prompts)`` — the
+        same signature Colosseum's MisalignmentPrompts uses — and replaces
+        ``self.prompts``. When the key is absent, ``base_prompts`` is returned
+        unchanged.
+        """
+        spec = self.env_config.get("prompt_wrapper")
+        if not spec:
+            return base_prompts
+        module_name, sep, class_name = str(spec).partition(":")
+        if not sep or not module_name or not class_name:
+            raise ValueError(
+                f'environment.prompt_wrapper must be "module:Class", got {spec!r}'
+            )
+        module = importlib.import_module(module_name)
+        wrapper_cls = getattr(module, class_name, None)
+        if wrapper_cls is None:
+            raise ValueError(
+                f"environment.prompt_wrapper: module {module_name!r} has no "
+                f"class {class_name!r}"
+            )
+        return wrapper_cls(self, self.full_config, base_prompts=base_prompts)
 
     def _collusion_context(self, agent_name: str) -> Dict[str, Any]:
         """Per-agent collusion fields merged into ``build_agent_context`` output."""
