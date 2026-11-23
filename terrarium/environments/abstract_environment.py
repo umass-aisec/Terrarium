@@ -44,6 +44,8 @@ class AbstractEnvironment(ABC):
     # Standard attributes - environments should initialize these in __init__()
     communication_network: CommunicationNetwork
     network_blackboards: Dict[frozenset[str], int]
+    secret_blackboard_ids: Dict[frozenset[str], int]
+    secret_channel_by_agent: Dict[str, int]
     agent_names: List[str]
     blackboard_logger: Optional[BlackboardLogger] = None
     prompt_logger: Optional[PromptLogger] = None
@@ -157,6 +159,58 @@ class AbstractEnvironment(ABC):
                 blackboard_id,
                 ", ".join(participants),
             )
+
+        # Create designated secret channels from `environment.secret_channels`.
+        self.secret_blackboard_ids = {}
+        self.secret_channel_by_agent = {}
+        for entry in self._get_secret_channel_entries():
+            members = [str(member) for member in entry.get("members", [])]
+            unknown = sorted(set(members) - set(agent_names))
+            if not members or unknown:
+                raise ValueError(
+                    f"{self.__class__.__name__}: secret_channels entry has invalid members "
+                    f"{members!r} (unknown: {unknown}); known agents: {sorted(agent_names)}"
+                )
+            seed = entry.get("context")
+            context = (
+                str(seed)
+                if isinstance(seed, str) and seed.strip()
+                else self.format_blackboard_context(members, base_context)
+            )
+            blackboard_id = await protocol.generate_comm_network(
+                members,
+                context,
+                template={"private_channel": True, "visibility": "secret"},
+            )
+            self.secret_blackboard_ids[frozenset(members)] = blackboard_id
+            for member in members:
+                self.secret_channel_by_agent[member] = blackboard_id
+            logger.info(
+                "Created secret channel blackboard %s for members={%s}",
+                blackboard_id,
+                ", ".join(members),
+            )
+
+    def _get_secret_channel_entries(self) -> List[Mapping[str, Any]]:
+        """Return validated `environment.secret_channels` config entries (default: none)."""
+        env_config = getattr(self, "env_config", None)
+        if not isinstance(env_config, Mapping):
+            return []
+        entries = env_config.get("secret_channels") or []
+        if not isinstance(entries, (list, tuple)):
+            raise ValueError(
+                f"{self.__class__.__name__}: environment.secret_channels must be a list of "
+                "{members: [agent names], context: optional seed text} entries"
+            )
+        validated = []
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                raise ValueError(
+                    f"{self.__class__.__name__}: each environment.secret_channels entry must be a "
+                    f"mapping with 'members', got {entry!r}"
+                )
+            validated.append(entry)
+        return validated
 
     def get_agent_names(self) -> List[str]:
         """
