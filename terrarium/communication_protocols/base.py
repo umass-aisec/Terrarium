@@ -63,6 +63,20 @@ class BaseCommunicationProtocol(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def agent_turn(
+        self,
+        agent: "BaseAgent",
+        agent_name: str,
+        agent_context: Any,
+        environment: Any,
+        iteration: int,
+        phase: str,
+        round_num: Optional[int] = None,
+    ) -> None:
+        """Handle a single agent turn in the given phase (generic, config-driven)."""
+        raise NotImplementedError
+
+    @abstractmethod
     async def agent_planning_turn(
         self,
         agent: "BaseAgent",
