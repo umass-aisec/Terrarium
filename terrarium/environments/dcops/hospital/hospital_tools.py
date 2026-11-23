@@ -1,6 +1,8 @@
 from typing import Dict, List, Any, Optional, Set
 import logging
 
+from terrarium.tools.gates import tool_blocked
+
 logger = logging.getLogger(__name__)
 
 class HospitalTools:
@@ -109,7 +111,15 @@ class HospitalTools:
                 },
             })
 
-        return tools
+        # Withhold schemas for tools blocked in this phase via
+        # environment.blocked_tools (e.g. "*" blocks all env tools).
+        return [
+            tool
+            for tool in tools
+            if not tool_blocked(
+                self.environment, tool.get("function", {}).get("name"), phase
+            )
+        ]
 
     def handle_tool_call(
         self,
