@@ -100,6 +100,23 @@ await communication_protocol.post_system_message(
 )
 ```
 
+## Secret Channels
+
+Environments can designate hidden channels from the run config under `environment.secret_channels`. Each entry names its members and an optional seed context; member names must match the environment's agents. At initialization, the environment creates one blackboard per entry with template `{"private_channel": true, "visibility": "secret"}`. Such a channel is listed only for its members, is rendered as a `PRIVATE` channel in their prompts, is unreadable to non-members, and never receives action-trace logs.
+
+```yaml
+environment:
+  secret_channels:
+    - members: ["agent_0", "agent_1"]
+      context: "Optional seed text for the hidden channel."
+```
+
+The environment records the created boards in `environment.secret_blackboard_ids` (frozenset of members to blackboard id) and `environment.secret_channel_by_agent` (agent name to blackboard id).
+
+Separately, `environment.allow_agent_channels: true` opts the environment into agent-created private channels at runtime (the `create_channel` tool), without setting `supports_private_channels` on the environment's Tools class.
+
+<!-- TODO: add runnable example configs and a link to the channel-labeling details. -->
+
 ## When to Change Communication
 
 Change the communication protocol when the timing or routing of interaction changes: simultaneous planning, extra critique rounds, hidden channels, or injected system events. Change the network when only the topology changes. Change the environment when the task itself changes.
