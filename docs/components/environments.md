@@ -99,3 +99,22 @@ An environment normally has two companion modules:
 Those files let the environment stay focused on state and scoring while the tool layer handles action schemas and execution.
 
 See the [Environments API](../api/environments.md) for generated reference details.
+
+## Hospital Collusion Configuration (skeleton)
+
+`HospitalEnvironment` supports a native, config-driven collusion block under `environment` (TODO: link the full collusion-via-tools guide once written):
+
+```yaml
+environment:
+  name: HospitalEnvironment
+  collusion:
+    enabled: true
+    members: ["General_Hospital_Surgery", "Resource_Provisioner"]  # or {indices: [0, 2]} resolved against env.agent_names
+    strategy: "covert"                    # free-form label, echoed into context/prompts
+    instructions_file: "examples/configs/hospital_collusion_instructions.txt"  # text rendered to adversaries only; relative paths resolve against the config file's directory
+  prompt_wrapper: "my_package.my_prompts:MisalignmentPrompts"  # optional "module:Class" prompt decorator
+```
+
+- TODO: document the per-agent context keys added by `build_agent_context` — `role` (`adversary`/`cooperative`), `coalition_members`, `collusion_strategy`, `collusion_instructions`, `secret_blackboard_id`.
+- TODO: document `HospitalPrompts.get_coalition_instructions` — renders the instructions-file text only for adversaries, appended to the end of the user prompt; prompts are unchanged when collusion is disabled/absent.
+- TODO: document `environment.prompt_wrapper` — `wrapper_cls(env, full_config, base_prompts=...)` replaces `env.prompts` natively (signature-compatible with Colosseum's `MisalignmentPrompts`).
