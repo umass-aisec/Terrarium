@@ -1,12 +1,15 @@
 from typing import Dict, Any
 
+from terrarium.personas import build_persona_prompt
+
 class HospitalPrompts:
     def __init__(self, env, config):
         self.env = env
         self.config = config
+        self.persona_by_agent = getattr(env, "persona_by_agent", {})
 
-    def get_system_prompt(self) -> str:
-        return """You are a Hospital Agent in a distributed simulation.
+    def get_system_prompt(self, agent_name: str = "") -> str:
+        base = """You are a Hospital Agent in a distributed simulation.
 
 ROLES:
 1. **Department Scheduler**: You manage a specific department (e.g., Surgery, Triage).
@@ -43,6 +46,12 @@ AGENT REWARDS (IMPORTANT):
   - Transfer rewards: +15/unit credited to the agent who executes a rewarded hospital→hospital transfer (if present).
 
 *Priority: Complete the schedule efficiently.*"""
+
+        persona = self.persona_by_agent.get(agent_name)
+        if persona is not None:
+            base = build_persona_prompt(persona, base)
+
+        return base
 
     def get_user_prompt(self, agent_name: str, agent_context: Dict[str, Any], blackboard_context: Dict[str, Any]) -> str:
         
