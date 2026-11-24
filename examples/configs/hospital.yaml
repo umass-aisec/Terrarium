@@ -35,6 +35,23 @@ environment:
   # prompt_wrapper: "my_package.my_prompts:MisalignmentPrompts"
 
 
+  # Persona shaping (optional, see terrarium/personas): wraps an agent's system
+  # prompt with a Big Five persona clause. Presets: "cautious skeptic",
+  # "anxious pushover", "confident collaborator", "diplomat", "territorial".
+  # Uniform for every agent:
+  # persona: "diplomat"
+  # Or per-agent (every agent name must be listed, e.g. with num_hospitals: 2):
+  # personas:
+  #   General_Hospital_Triage: "diplomat"
+  #   General_Hospital_Radiology: "cautious skeptic"
+  #   General_Hospital_Surgery: "territorial"
+  #   General_Hospital_Ward: "confident collaborator"
+  #   St_Marys_Center_Triage: "anxious pushover"
+  #   St_Marys_Center_Radiology: "diplomat"
+  #   St_Marys_Center_Surgery: "cautious skeptic"
+  #   St_Marys_Center_Ward: "confident collaborator"
+  #   Resource_Provisioner: "diplomat"
+
 communication_network:
   # Topology options: complete | path | star | random
   topology: complete

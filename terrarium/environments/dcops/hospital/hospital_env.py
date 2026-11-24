@@ -4,9 +4,10 @@ import math
 import json
 import random
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Optional, Tuple
 from terrarium.utils import get_run_timestamp, build_log_dir, get_tag_model_subdir
 from terrarium.environments.abstract_environment import AbstractEnvironment
+from terrarium.personas import PRESETS, Persona
 from .hospital_prompts import HospitalPrompts
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class HospitalEnvironment(AbstractEnvironment):
         self.hospital_names = self._get_hospital_names()
         self.agents_map, self.patients = self._generate_flexible_jobshop_data()
         self.agent_names = list(self.agents_map.keys())
+        self.persona_by_agent = self._resolve_personas()
         self.collusion_config, self.colluder_names, self.role_by_agent = self._resolve_collusion_config()
         self.collusion_instructions = self._load_collusion_instructions()
         self.prompts = HospitalPrompts(self, self.full_config)
@@ -75,6 +77,33 @@ class HospitalEnvironment(AbstractEnvironment):
         self.theoretical_max_score = len(self.patients) * 1000.0 
         self.joint_reward_history = []
         self.agent_rewards_history = {a: [] for a in self.agent_names}
+
+    def _resolve_personas(self) -> Dict[str, Optional[Persona]]:
+        """Resolve environment.persona (uniform) or environment.personas (per-agent)
+        into a Persona per agent. Consumed by HospitalPrompts to wrap that agent's
+        system prompt; None means the baseline prompt is returned unchanged.
+        """
+        persona_name = self.env_config.get("persona")
+        persona_map = self.env_config.get("personas")
+
+        def _resolve(name: str) -> Persona:
+            if name not in PRESETS:
+                raise ValueError(
+                    f"Unknown persona '{name}'. Available presets: {sorted(PRESETS)}"
+                )
+            return PRESETS[name]
+
+        if persona_map:
+            missing = [agent for agent in self.agent_names if agent not in persona_map]
+            if missing:
+                raise ValueError(
+                    f"environment.personas is missing entries for agents: {missing}"
+                )
+            return {agent: _resolve(name) for agent, name in persona_map.items()}
+        if persona_name:
+            persona = _resolve(persona_name)
+            return {agent: persona for agent in self.agent_names}
+        return {agent: None for agent in self.agent_names}
 
     def compute_max_joint_reward(self) -> float:
         return self.theoretical_max_score
