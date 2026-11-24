@@ -281,6 +281,10 @@
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
+<span class="k">class</span><span class="w"> </span><span class="nc">ScheduleRequestError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Raised when a schedule_patient request is rejected (validation failure)."""</span>
+    <span class="k">pass</span>
+
 <div class="viewcode-block" id="HospitalEnvironment">
 <a class="viewcode-back" href="../../../../../api/environments.html#terrarium.environments.dcops.hospital.hospital_env.HospitalEnvironment">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HospitalEnvironment</span><span class="p">(</span><span class="n">AbstractEnvironment</span><span class="p">):</span>
@@ -488,6 +492,12 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"SCHEDULE [</span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">]: Patient </span><span class="si">{</span><span class="n">p_id</span><span class="si">}</span><span class="s2"> @ </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">p_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">:</span> <span class="k">return</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">p_id</span><span class="p">][</span><span class="s2">"scheduled_steps"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step_idx</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">prev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patient_states</span><span class="p">[</span><span class="n">p_id</span><span class="p">][</span><span class="s2">"scheduled_steps"</span><span class="p">][</span><span class="n">step_idx</span><span class="p">]</span>
+            <span class="k">raise</span> <span class="n">ScheduleRequestError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">p_id</span><span class="si">}</span><span class="s2"> step </span><span class="si">{</span><span class="n">step_idx</span><span class="si">}</span><span class="s2"> already scheduled by </span><span class="si">{</span><span class="n">prev</span><span class="p">[</span><span class="s1">'agent'</span><span class="p">]</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"at [</span><span class="si">{</span><span class="n">prev</span><span class="p">[</span><span class="s1">'start_time'</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">prev</span><span class="p">[</span><span class="s1">'end_time'</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span>
+            <span class="p">)</span>
 
         <span class="n">patient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patients</span><span class="p">[</span><span class="n">p_id</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">step_idx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">patient</span><span class="p">[</span><span class="s2">"pathway"</span><span class="p">]):</span> <span class="k">return</span>
