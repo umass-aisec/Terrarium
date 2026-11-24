@@ -562,7 +562,10 @@ class Megaboard:
         iteration: Optional[int] = None,
     ) -> None:
         """
-        Log an action to all blackboards that the agent belongs to.
+        Log an action to all non-secret blackboards that the agent belongs to.
+
+        Blackboards whose template marks them as `visibility: "secret"` never
+        receive action traces.
 
         Args:
             agent_name: Name of the agent performing the action
@@ -571,9 +574,11 @@ class Megaboard:
             phase: Current simulation phase (planning/execution)
             iteration: Current iteration number
         """
-        # Find all blackboards the agent belongs to
+        # Find all blackboards the agent belongs to, excluding secret channels
         agent_blackboards = []
         for i, blackboard in enumerate(self.blackboards):
+            if blackboard.template.get("visibility") == "secret":
+                continue
             if agent_name in blackboard.agents:
                 agent_blackboards.append(i)
 
