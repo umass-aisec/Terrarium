@@ -59,7 +59,7 @@ communication_network:
   consolidate_channels: true
 
 llm:
-  # Provider: "openai", "foundry", "anthropic", "gemini", "together", "fireworks", or "vllm"
+  # Provider: "openai", "foundry", "anthropic", "gemini", "together", "fireworks", "openai_compatible", or "vllm"
   # Switched to "openai" (GPT-4o) as scheduling requires high arithmetic precision
   provider: "openai"
   # Optional external MCP servers (discovered as extra tools per client):
@@ -101,6 +101,18 @@ llm:
     model: moonshotai/Kimi-K2-Instruct-0905
     params:
       max_tokens: 2000
+      temperature: 0.7
+
+  # Any OpenAI-compatible endpoint; base URL + API key default to the
+  # OPENAI_COMPATIBLE_BASE_URL / OPENAI_COMPATIBLE_API_KEY env vars in .env
+  # (override per-key here via base_url / api_key or *_env_var names).
+  openai_compatible:
+    model: "<model_name_served_by_your_endpoint>"
+    # base_url: "https://my-gateway.example.com/v1"
+    # api_key_env_var: "OPENAI_COMPATIBLE_API_KEY"
+    # base_url_env_var: "OPENAI_COMPATIBLE_BASE_URL"
+    params:
+      max_tokens: 1024
       temperature: 0.7
 
   vllm:

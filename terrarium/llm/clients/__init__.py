@@ -14,6 +14,7 @@ __all__ = [
     "GeminiClient",
     "GrokClient",
     "OpenAIClient",
+    "OpenAICompatibleClient",
     "TogetherClient",
     "VLLMClient",
 ]
@@ -27,6 +28,7 @@ _LAZY_ATTRS = {
     "GeminiClient": ".gemini_client:GeminiClient",
     "GrokClient": ".grok_client:GrokClient",
     "OpenAIClient": ".openai_client:OpenAIClient",
+    "OpenAICompatibleClient": ".openai_compatible_client:OpenAICompatibleClient",
     "TogetherClient": ".together_client:TogetherClient",
     "VLLMClient": ".vllm_client:VLLMClient",
 }
