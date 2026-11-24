@@ -30,6 +30,7 @@ from terrarium.utils import (
     get_model_name,
     build_vllm_runtime,
     get_generation_params,
+    resolve_phases,
 )
 import asyncio
 from terrarium.attacks import (
@@ -130,7 +131,7 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
             protocol_attack = CommunicationProtocolPoisoningAttack(args.poison_payload)
 
         max_iterations = config["simulation"].get("max_iterations", 1)
-        max_planning_rounds = config["simulation"].get("max_planning_rounds", 1)
+        phases = resolve_phases(config["simulation"])
         try:
             with logging_redirect_tqdm():
                 # Main iteration
@@ -140,19 +141,15 @@ async def run_simulation(config: Dict[str, Any]) -> bool:
                         logging.info(f"Environment requested simulation stop at iteration {current_iteration}")
                         break
 
-                    # Planning Phase
-                    for planning_round in tqdm(range(1, max_planning_rounds + 1), desc="  Planning", position=1, leave=False, ncols=80):
-                        # Use consistent agent order for this iteration
-                        for agent in tqdm(environment.agents, desc="       Agents", position=2, leave=False, ncols=80):
-                            agent_context = environment.build_agent_context(agent.name, phase="planning", iteration=iteration, planning_round=planning_round)
-                            await communication_protocol.agent_planning_turn(agent, agent.name, agent_context, environment, iteration, planning_round)
-
-                    # Execution Phase
-                    with tqdm(total=1, desc="  Execution", position=1, leave=False, ncols=80) as pbar:
-                        for agent in tqdm(environment.agents, desc="       Agents", position=2, leave=False, ncols=80):
-                            agent_context = environment.build_agent_context(agent.name, phase="execution", iteration=iteration)
-                            await communication_protocol.agent_execution_turn(agent, agent.name, agent_context, environment, iteration)
-                        pbar.update(1)
+                    # Config-driven phase sequence (default: planning, then execution)
+                    for phase in phases:
+                        phase_name = phase["name"]
+                        phase_rounds = phase["rounds"]
+                        for round_num in tqdm(range(1, phase_rounds + 1), desc=f"  {phase_name.capitalize()}", position=1, leave=False, ncols=80):
+                            # Use consistent agent order for this iteration
+                            for agent in tqdm(environment.agents, desc="       Agents", position=2, leave=False, ncols=80):
+                                agent_context = environment.build_agent_context(agent.name, phase=phase_name, iteration=iteration, planning_round=round_num)
+                                await communication_protocol.agent_turn(agent, agent.name, agent_context, environment, iteration, phase=phase_name, round_num=round_num)
 
                     environment.log_iteration_summary(current_iteration)
                 environment.generate_final_summary()

@@ -115,4 +115,7 @@ def get_phase_tool_instructions(
 ) -> str:
     if not instruction_map:
         return ""
-    return instruction_map.get((phase or "").lower(), "")
+    # Unknown (custom) phases fall back to the execution instruction block.
+    return instruction_map.get((phase or "").lower()) or instruction_map.get(
+        "execution", ""
+    )

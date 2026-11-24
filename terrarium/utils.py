@@ -187,6 +187,85 @@ def prepare_simulation_config(base_config: Dict[str, Any], seed: int) -> Dict[st
     return sim_config
 
 
+def _coerce_phase_rounds(value: Any, index: int) -> int:
+    """Coerce a `simulation.phases[i].rounds` entry to a positive int."""
+    if isinstance(value, bool):
+        rounds = None
+    elif isinstance(value, int):
+        rounds = value
+    elif isinstance(value, str) and value.strip().isdigit():
+        rounds = int(value.strip())
+    else:
+        rounds = None
+    if rounds is None or rounds < 1:
+        raise ValueError(
+            f"simulation.phases[{index}].rounds must be a positive integer, got {value!r}"
+        )
+    return rounds
+
+
+def resolve_phases(simulation_config: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Resolve the phase sequence a simulation runs per iteration.
+
+    Reads ``simulation.phases`` — a list of ``{"name": str, "rounds": int}`` entries
+    executed in order, each running ``rounds`` rounds over all agents. When the key
+    is absent, falls back to the legacy hardcoded sequence derived from
+    ``simulation.max_planning_rounds``:
+    ``[{"name": "planning", "rounds": max_planning_rounds or 1},
+       {"name": "execution", "rounds": 1}]``.
+
+    Args:
+        simulation_config: The ``simulation`` section of a run config
+
+    Returns:
+        List of ``{"name": str, "rounds": int}`` dicts in run order
+
+    Raises:
+        ValueError: If ``simulation.phases`` is present but malformed
+    """
+    if simulation_config is None:
+        simulation_config = {}
+    elif not isinstance(simulation_config, dict):
+        raise ValueError(
+            f"simulation config must be a mapping, got {simulation_config!r}"
+        )
+    raw_phases = simulation_config.get("phases")
+    if raw_phases is None:
+        planning_rounds = int(simulation_config.get("max_planning_rounds") or 1)
+        return [
+            {"name": "planning", "rounds": planning_rounds},
+            {"name": "execution", "rounds": 1},
+        ]
+
+    if not isinstance(raw_phases, list) or not raw_phases:
+        raise ValueError(
+            "simulation.phases must be a non-empty list of "
+            f"{{'name': str, 'rounds': int}} entries, got {raw_phases!r}"
+        )
+
+    phases: List[Dict[str, Any]] = []
+    for index, entry in enumerate(raw_phases):
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"simulation.phases[{index}] must be a mapping with 'name' and "
+                f"'rounds', got {entry!r}"
+            )
+        name = entry.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(
+                f"simulation.phases[{index}].name must be a non-empty string, "
+                f"got {name!r}"
+            )
+        phases.append(
+            {
+                "name": name.strip(),
+                "rounds": _coerce_phase_rounds(entry.get("rounds"), index),
+            }
+        )
+    return phases
+
+
 def validate_config(config: Dict[str, Any]) -> None:
     """
     Validate configuration structure and required fields.
@@ -205,8 +284,11 @@ def validate_config(config: Dict[str, Any]) -> None:
     if missing_sections:
         raise ValueError(f"Config missing required sections: {missing_sections}")
 
-    # Validate simulation section
-    required_sim_keys = ["max_iterations", "max_planning_rounds", "seed"]
+    # Validate simulation section. max_planning_rounds is only required when the
+    # phase sequence is not given explicitly via simulation.phases.
+    required_sim_keys = ["max_iterations", "seed"]
+    if "phases" not in config["simulation"]:
+        required_sim_keys.insert(1, "max_planning_rounds")
     missing_sim_keys = [
         key for key in required_sim_keys if key not in config["simulation"]
     ]
@@ -214,6 +296,8 @@ def validate_config(config: Dict[str, Any]) -> None:
         raise ValueError(
             f"Simulation section missing required keys: {missing_sim_keys}"
         )
+    # Fail fast on malformed phase entries instead of at run time.
+    resolve_phases(config["simulation"])
 
     # Validate communication_network section
     required_comm_keys = ["topology", "num_agents"]

@@ -85,9 +85,14 @@ class ToolsetDiscovery:
     def get_tools_for_blackboard(
         self, phase: str, environment_name: str = "", retrieval_enabled: bool = False
     ) -> List[Dict[str, Any]]:
-        """Get blackboard specific tools for the given phase. This is different from Environment tools."""
+        """Get blackboard specific tools for the given phase. This is different from Environment tools.
+
+        The execution phase gets no blackboard tools. Planning — and any other
+        (custom) phase from `simulation.phases` — gets the planning tool set, so
+        unknown phases default to blackboard-only tooling instead of none.
+        """
         # Add phase-specific tools
-        if phase == "planning":
+        if (phase or "").lower() != "execution":
             planning_tools = [
                 {
                     "type": "function",
