@@ -1,7 +1,9 @@
+import importlib
 import logging
 import math
 import json
 import random
+from pathlib import Path
 from typing import Dict, List, Any, Tuple
 from terrarium.utils import get_run_timestamp, build_log_dir, get_tag_model_subdir
 from terrarium.environments.abstract_environment import AbstractEnvironment
@@ -44,7 +46,10 @@ class HospitalEnvironment(AbstractEnvironment):
         self.hospital_names = self._get_hospital_names()
         self.agents_map, self.patients = self._generate_flexible_jobshop_data()
         self.agent_names = list(self.agents_map.keys())
+        self.collusion_config, self.colluder_names, self.role_by_agent = self._resolve_collusion_config()
+        self.collusion_instructions = self._load_collusion_instructions()
         self.prompts = HospitalPrompts(self, self.full_config)
+        self.prompts = self._apply_prompt_wrapper(self.prompts)
         
         self.schedule: Dict[str, Dict[int, List[str]]] = {a: {} for a in self.agent_names if a != "Resource_Provisioner"}
         self.patient_states: Dict[str, Dict] = {p: {"scheduled_steps": {}, "resource_failures": []} for p in self.patients}
@@ -122,12 +127,133 @@ class HospitalEnvironment(AbstractEnvironment):
         for i in range(self.env_config.get("num_patients", 8)):
             pid = f"Patient_{i}"
             template = random.choice(self.possible_pathways)
-            steps = [{"step_index": idx, "service": s, "duration": d} 
+            steps = [{"step_index": idx, "service": s, "duration": d}
                      for idx, (s, d) in enumerate(template)]
             patients[pid] = {
                 "id": pid, "arrival_time": random.randint(0, 24), "pathway": steps
             }
         return agents_map, patients
+
+    def _resolve_collusion_config(self) -> Tuple[Dict[str, Any], List[str], Dict[str, str]]:
+        """Resolve ``environment.collusion`` into (config, colluder_names, role_by_agent).
+
+        ``members`` may be a list of agent names or ``{"indices": [...]}`` resolved
+        against ``self.agent_names``. Unknown names/indices raise ``ValueError``.
+        When the block is absent or ``enabled`` is false, every agent is
+        "cooperative" and there are no colluders.
+        """
+        raw = self.env_config.get("collusion")
+        if raw is None:
+            raw = {}
+        if not isinstance(raw, dict):
+            raise ValueError(
+                "environment.collusion must be a mapping with keys like "
+                "enabled/members/strategy/instructions_file"
+            )
+        collusion_config = dict(raw)
+
+        members_spec = collusion_config.get("members", [])
+        names: List[str] = []
+        if isinstance(members_spec, dict):
+            indices = members_spec.get("indices", [])
+            if not isinstance(indices, (list, tuple)):
+                raise ValueError(
+                    "environment.collusion.members.indices must be a list of integer "
+                    "indices into the environment's agent_names"
+                )
+            for idx in indices:
+                i = int(idx)
+                if i < 0 or i >= len(self.agent_names):
+                    raise ValueError(
+                        f"environment.collusion.members.indices entry {idx!r} is out of "
+                        f"range for {len(self.agent_names)} agents: {self.agent_names}"
+                    )
+                names.append(self.agent_names[i])
+        elif isinstance(members_spec, (list, tuple)):
+            names = [str(m) for m in members_spec]
+        elif members_spec:
+            raise ValueError(
+                "environment.collusion.members must be a list of agent names or "
+                "'{\"indices\": [...]}' resolved against the environment's agent_names"
+            )
+
+        unknown = [m for m in names if m not in self.agent_names]
+        if unknown:
+            raise ValueError(
+                f"environment.collusion.members names unknown agents: {unknown}. "
+                f"Available agents: {self.agent_names}"
+            )
+
+        if not bool(collusion_config.get("enabled", False)):
+            return collusion_config, [], {a: "cooperative" for a in self.agent_names}
+
+        colluder_names = list(dict.fromkeys(names))
+        role_by_agent = {
+            a: ("adversary" if a in colluder_names else "cooperative")
+            for a in self.agent_names
+        }
+        return collusion_config, colluder_names, role_by_agent
+
+    def _load_collusion_instructions(self) -> str:
+        """Load collusion instruction text from ``environment.collusion.instructions_file``.
+
+        Relative paths resolve against the config file's directory when the run
+        recorded ``_config_path`` (see ``terrarium.utils.load_config``), else the
+        current working directory. Returns "" when collusion is disabled/absent
+        or no instructions file is configured.
+        """
+        if not bool(self.collusion_config.get("enabled", False)):
+            return ""
+        path_str = self.collusion_config.get("instructions_file")
+        if not path_str:
+            return ""
+        path = Path(str(path_str))
+        if not path.is_absolute():
+            config_path = self.full_config.get("_config_path")
+            base = Path(config_path).parent if config_path else Path.cwd()
+            path = base / path
+        if not path.is_file():
+            raise ValueError(
+                f"environment.collusion.instructions_file not found: {path}"
+            )
+        return path.read_text(encoding="utf-8")
+
+    def _apply_prompt_wrapper(self, base_prompts):
+        """Apply ``environment.prompt_wrapper`` ("module:Class") if configured.
+
+        The wrapper class is imported and instantiated as
+        ``wrapper_cls(self, self.full_config, base_prompts=base_prompts)`` — the
+        same signature Colosseum's MisalignmentPrompts uses — and replaces
+        ``self.prompts``. When the key is absent, ``base_prompts`` is returned
+        unchanged.
+        """
+        spec = self.env_config.get("prompt_wrapper")
+        if not spec:
+            return base_prompts
+        module_name, sep, class_name = str(spec).partition(":")
+        if not sep or not module_name or not class_name:
+            raise ValueError(
+                f'environment.prompt_wrapper must be "module:Class", got {spec!r}'
+            )
+        module = importlib.import_module(module_name)
+        wrapper_cls = getattr(module, class_name, None)
+        if wrapper_cls is None:
+            raise ValueError(
+                f"environment.prompt_wrapper: module {module_name!r} has no "
+                f"class {class_name!r}"
+            )
+        return wrapper_cls(self, self.full_config, base_prompts=base_prompts)
+
+    def _collusion_context(self, agent_name: str) -> Dict[str, Any]:
+        """Per-agent collusion fields merged into ``build_agent_context`` output."""
+        secret_channel_by_agent = getattr(self, "secret_channel_by_agent", None) or {}
+        return {
+            "role": self.role_by_agent.get(agent_name, "cooperative"),
+            "coalition_members": list(self.colluder_names),
+            "collusion_strategy": str(self.collusion_config.get("strategy", "") or ""),
+            "collusion_instructions": self.collusion_instructions,
+            "secret_blackboard_id": secret_channel_by_agent.get(agent_name),
+        }
 
     def _generate_scarcity_scenario(self) -> Dict[str, Dict[str, int]]:
         avg_costs = {rt: 0.0 for rt in self.resource_types}
@@ -530,7 +656,7 @@ class HospitalEnvironment(AbstractEnvironment):
             # --- NEW: Filter failure map to only show active problems ---
             active_failures = {h: f for h, f in self.hospital_failures.items() if sum(f.values()) > 0}
             
-            return {
+            context = {
                 "agent_name": agent_name, "phase": phase, "iteration": iteration,
                 "role": "provisioner",
                 "inventory_snapshot": self.inventory,
@@ -538,6 +664,8 @@ class HospitalEnvironment(AbstractEnvironment):
                 "failures_by_hospital": active_failures,  # <--- Granular visibility
                 "cost_table": self._build_provisioner_cost_table(active_failures),
             }
+            context.update(self._collusion_context(agent_name))
+            return context
 
         summary = {}
         for t in range(0, 48, 4):
@@ -571,12 +699,12 @@ class HospitalEnvironment(AbstractEnvironment):
             service=my_info["service"],
             job_queue=queue,
         )
-        return {
+        context = {
             "agent_name": agent_name, "phase": phase, "iteration": iteration,
             "role": "department",
             "dept_info": {
-                "capacity": my_info["capacity"], 
-                "service": my_info["service"], 
+                "capacity": my_info["capacity"],
+                "service": my_info["service"],
                 "hospital": my_info["hospital"],
                 "local_inventory": self.inventory.get(my_info["hospital"], {}),
                 "procedure_costs": self.consumption_map.get(my_info["service"], {}),
@@ -585,6 +713,8 @@ class HospitalEnvironment(AbstractEnvironment):
             "job_queue": queue,
             "cost_table": cost_table,
         }
+        context.update(self._collusion_context(agent_name))
+        return context
 
     def done(self, iteration):
         # NOTE: `examples/base_main.py` already bounds the loop by `simulation.max_iterations`.
