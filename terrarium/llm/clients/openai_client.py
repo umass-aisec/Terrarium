@@ -23,6 +23,36 @@ class _StreamRejectedError(RuntimeError):
     """The endpoint rejected a streaming request outright (see _STREAM_REJECT_STATUSES)."""
 
 
+class _StreamTerminatedEarlyError(RuntimeError):
+    """The SSE stream closed before any terminal response event (transient drop; retryable)."""
+
+
+class _StreamFailedError(RuntimeError):
+    """The stream delivered ``response.failed`` / ``error`` instead of a usable response.
+
+    ``retryable`` marks provider-side failures (server errors, rate limits) that
+    are worth retrying; deterministic client errors (bad request, context length,
+    content filter) are not.
+    """
+
+    def __init__(self, message: str, *, retryable: bool = True):
+        super().__init__(message)
+        self.retryable = retryable
+
+
+# Error codes from a ``response.failed`` / ``error`` event that indicate a
+# deterministic client-side problem rather than a transient provider failure.
+_STREAM_FAILED_NON_RETRYABLE_HINTS = (
+    "invalid",
+    "bad_request",
+    "context_length",
+    "max_tokens",
+    "content_filter",
+    "safety",
+    "unsupported",
+)
+
+
 class OpenAIClient(AbstractClient):
     """
     Client for using OpenAI API for LLM agents.
@@ -34,7 +64,9 @@ class OpenAIClient(AbstractClient):
     request the SDK read timeout silently caps *total generation time* for
     long-thinking reasoning models; with SSE the timeout only fires when the
     connection is genuinely idle between chunks. The ``Response`` object from
-    the ``response.completed`` event is returned, so downstream ``get_usage`` /
+    the terminal stream event (``response.completed``, or
+    ``response.incomplete`` when the endpoint ends the stream that way, e.g.
+    on max-output truncation) is returned, so downstream ``get_usage`` /
     ``process_tool_calls`` / ``output_text`` handling is unchanged. Endpoints
     that reject streaming (400/404/405/422/501) fall back to a blocking call.
 
@@ -416,24 +448,72 @@ class OpenAIClient(AbstractClient):
             raise last_exc
         raise RuntimeError("OpenAI retries exhausted without exception")  # pragma: no cover
 
+    def _handle_stream_event(self, event: Any) -> Any:
+        """
+        Inspect one SSE event; return the finished Response for terminal events
+        that carry a usable response, raise for failure events, and return
+        ``None`` for intermediate events.
+
+        Some OpenAI-compatible gateways (e.g. OpenRouter) terminate the stream
+        with ``response.incomplete`` when the output budget is exhausted instead
+        of ``response.completed``; the partial Response is still usable (any
+        completed tool calls are in ``output``), so it is returned with a
+        warning rather than treated as an error.
+        """
+        etype = getattr(event, "type", None)
+        if etype == "response.completed":
+            return event.response
+        if etype == "response.incomplete":
+            response = getattr(event, "response", None)
+            details = self._get_item_field(response, "incomplete_details")
+            reason = self._get_item_field(details, "reason")
+            logger.warning(
+                "OpenAI stream ended with response.incomplete (reason=%s); returning the partial response",
+                reason,
+            )
+            return response
+        if etype in {"response.failed", "error"}:
+            error = getattr(event, "error", None)
+            if error is None:
+                error = self._get_item_field(getattr(event, "response", None), "error")
+            code = self._get_item_field(error, "code")
+            message = self._get_item_field(error, "message") or str(error) if error is not None else "unknown"
+            code_str = str(code or "")
+            retryable = not any(
+                hint in code_str.lower() for hint in _STREAM_FAILED_NON_RETRYABLE_HINTS
+            )
+            raise _StreamFailedError(
+                f"OpenAI stream delivered a {etype} event (code={code}): {message}",
+                retryable=retryable,
+            )
+        return None
+
     def _responses_create_streaming_with_retries(self, api_params: Dict[str, Any]) -> Any:
         """
-        Create a streaming (SSE) request and return the completed Response.
+        Create a streaming (SSE) request and return the terminal Response.
 
         ``api_params`` must already carry ``stream=True``. The event stream is
         consumed inside the retry wrapper, so mid-stream connection/timeout/5xx
         errors retry with backoff. Returns the ``Response`` object from the
-        ``response.completed`` event. Raises :class:`_StreamRejectedError` when
-        the endpoint rejects streaming outright.
+        ``response.completed`` event (or from ``response.incomplete`` when the
+        endpoint ends the stream that way, e.g. on max-output truncation).
+        Raises :class:`_StreamRejectedError` when the endpoint rejects streaming
+        outright. A stream that closes with no terminal event at all, or that
+        fails via ``response.failed``/``error`` with a transient code, is retried
+        with backoff.
         """
         last_exc: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
             try:
                 event_stream = self.client.responses.create(**api_params)
                 for event in event_stream:
-                    if getattr(event, "type", None) == "response.completed":
-                        return event.response
-                raise RuntimeError("OpenAI stream ended without a response.completed event")
+                    response = self._handle_stream_event(event)
+                    if response is not None:
+                        return response
+                raise _StreamTerminatedEarlyError(
+                    "OpenAI stream ended without a terminal response event "
+                    "(response.completed / response.incomplete / response.failed)"
+                )
             except Exception as exc:
                 last_exc = exc
                 status = self._status_code(exc)
@@ -441,7 +521,12 @@ class OpenAIClient(AbstractClient):
                     raise _StreamRejectedError(
                         f"OpenAI endpoint rejected the streaming request (HTTP {status}): {exc}"
                     ) from exc
-                should_retry, retry_after = self._should_retry(exc)
+                if isinstance(exc, _StreamTerminatedEarlyError):
+                    should_retry, retry_after = True, None
+                elif isinstance(exc, _StreamFailedError):
+                    should_retry, retry_after = exc.retryable, None
+                else:
+                    should_retry, retry_after = self._should_retry(exc)
                 if not should_retry or attempt >= self._max_retries:
                     raise
                 logger.warning(
