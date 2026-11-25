@@ -13,6 +13,45 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
+# Client-error statuses that mean "this endpoint will not serve a streaming
+# request" rather than "this request is malformed". Only these trigger the
+# fallback to the blocking transport; 408/409/429 and 5xx stay retryable.
+_STREAM_REJECT_STATUSES = {400, 404, 405, 422, 501}
+
+
+class _StreamRejectedError(RuntimeError):
+    """The endpoint rejected a streaming request outright (see _STREAM_REJECT_STATUSES)."""
+
+
+class _StreamTerminatedEarlyError(RuntimeError):
+    """The SSE stream closed before any terminal response event (transient drop; retryable)."""
+
+
+class _StreamFailedError(RuntimeError):
+    """The stream delivered ``response.failed`` / ``error`` instead of a usable response.
+
+    ``retryable`` marks provider-side failures (server errors, rate limits) that
+    are worth retrying; deterministic client errors (bad request, context length,
+    content filter) are not.
+    """
+
+    def __init__(self, message: str, *, retryable: bool = True):
+        super().__init__(message)
+        self.retryable = retryable
+
+
+# Error codes from a ``response.failed`` / ``error`` event that indicate a
+# deterministic client-side problem rather than a transient provider failure.
+_STREAM_FAILED_NON_RETRYABLE_HINTS = (
+    "invalid",
+    "bad_request",
+    "context_length",
+    "max_tokens",
+    "content_filter",
+    "safety",
+    "unsupported",
+)
+
 
 class OpenAIClient(AbstractClient):
     """
@@ -21,10 +60,26 @@ class OpenAIClient(AbstractClient):
     This module provides a client for using OpenAI models via their Responses API.
     Supports tool use, multi-turn conversations, and various OpenAI models.
 
-    Retries use exponential backoff for transient errors such as timeouts,
-    connection errors, 408/409/429 responses, and 5xx responses.
+    Streaming (SSE) is enabled by default (``stream=True``). With a blocking
+    request the SDK read timeout silently caps *total generation time* for
+    long-thinking reasoning models; with SSE the timeout only fires when the
+    connection is genuinely idle between chunks. The ``Response`` object from
+    the terminal stream event (``response.completed``, or
+    ``response.incomplete`` when the endpoint ends the stream that way, e.g.
+    on max-output truncation) is returned, so downstream ``get_usage`` /
+    ``process_tool_calls`` / ``output_text`` handling is unchanged. Endpoints
+    that reject streaming (400/404/405/422/501) fall back to a blocking call.
 
-    Environment variables:
+    When ``strip_reasoning_content`` is true (default), ``reasoning`` items are
+    dropped from the request input only; the agent's context/trajectory keeps
+    them for logging.
+
+    Retries use exponential backoff for transient errors such as timeouts,
+    connection errors, 408/409/429 responses, and 5xx responses. Retry settings
+    resolve in order: constructor kwargs (fed from the ``openai`` config block)
+    -> ``<env_prefix>_*`` environment variables -> defaults.
+
+    Environment variables (with the default ``env_prefix="OPENAI"``):
 
     - ``OPENAI_MAX_RETRIES`` (default: 6)
     - ``OPENAI_RETRY_INITIAL_S`` (default: 0.5)
@@ -32,7 +87,17 @@ class OpenAIClient(AbstractClient):
     - ``OPENAI_RETRY_MULTIPLIER`` (default: 2)
     - ``OPENAI_RETRY_JITTER`` (default: 0.1)
     """
-    
+
+    # Streaming is the default for the OpenAI provider itself. Subclasses
+    # (Foundry, Grok, ...) keep the blocking transport unless they opt in by
+    # passing ``stream=True`` or setting this attribute back to True, so their
+    # behavior is unchanged.
+    _stream_default: bool = True
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        cls._stream_default = False
+
     def __init__(
         self,
         *,
@@ -40,9 +105,17 @@ class OpenAIClient(AbstractClient):
         api_key_env_var: str = "OPENAI_API_KEY",
         base_url: Optional[str] = None,
         default_query: Optional[Dict[str, Any]] = None,
-        timeout: float = 30.0,
+        timeout: float = 180.0,
         provider_name: str = "OpenAI",
         capability_model: Optional[str] = None,
+        stream: Optional[bool] = None,
+        strip_reasoning_content: bool = True,
+        max_retries: Optional[int] = None,
+        retry_initial_s: Optional[float] = None,
+        retry_max_s: Optional[float] = None,
+        retry_multiplier: Optional[float] = None,
+        retry_jitter: Optional[float] = None,
+        env_prefix: str = "OPENAI",
     ):
         load_dotenv(override=True)
         self.api_key = api_key or os.getenv(api_key_env_var)
@@ -63,14 +136,23 @@ class OpenAIClient(AbstractClient):
         self._capability_model = (
             str(capability_model).strip() if capability_model else None
         )
+        self.stream = self._stream_default if stream is None else bool(stream)
+        self.strip_reasoning_content = bool(strip_reasoning_content)
 
         # Retry/backoff settings (sync; this client is called from async code paths).
-        self._max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "6"))
-        self._backoff_initial_s = float(os.getenv("OPENAI_RETRY_INITIAL_S", "0.5"))
-        self._backoff_max_s = float(os.getenv("OPENAI_RETRY_MAX_S", "20"))
-        self._backoff_multiplier = float(os.getenv("OPENAI_RETRY_MULTIPLIER", "2"))
+        # Resolution order: explicit constructor arg -> <env_prefix>_* env var -> default.
+        self._env_prefix = str(env_prefix or "OPENAI")
+        self._max_retries = self._resolve_retry_setting("MAX_RETRIES", max_retries, 6, int)
+        self._backoff_initial_s = self._resolve_retry_setting("RETRY_INITIAL_S", retry_initial_s, 0.5, float)
+        self._backoff_max_s = self._resolve_retry_setting("RETRY_MAX_S", retry_max_s, 20, float)
+        self._backoff_multiplier = self._resolve_retry_setting("RETRY_MULTIPLIER", retry_multiplier, 2, float)
         # Jitter is a fraction (0.0–1.0) applied as (1±jitter) to the base delay.
-        self._backoff_jitter = float(os.getenv("OPENAI_RETRY_JITTER", "0.1"))
+        self._backoff_jitter = self._resolve_retry_setting("RETRY_JITTER", retry_jitter, 0.1, float)
+
+    def _resolve_retry_setting(self, suffix: str, override: Optional[Any], default: Any, cast: Any) -> Any:
+        if override is not None:
+            return cast(override)
+        return cast(os.getenv(f"{self._env_prefix}_{suffix}", str(default)))
 
     def _has_temperature_restrictions(self, model_name: str) -> bool:
         """Check if the model has temperature restrictions (only supports default)."""
@@ -235,11 +317,18 @@ class OpenAIClient(AbstractClient):
 
         return None
 
-    @classmethod
-    def _sanitize_response_input(cls, items: List[Any]) -> List[Any]:
+    def _sanitize_response_input(self, items: List[Any]) -> List[Any]:
         sanitized_items: List[Any] = []
         for item in items:
-            sanitized_item = cls._sanitize_response_input_item(item)
+            # Request-only strip: never re-inject prior-turn reasoning items
+            # (chain-of-thought) into the prompt. The agent's context keeps
+            # them for logging; only this request copy drops them.
+            if (
+                self.strip_reasoning_content
+                and self._get_item_field(item, "type") == "reasoning"
+            ):
+                continue
+            sanitized_item = self._sanitize_response_input_item(item)
             if sanitized_item is not None:
                 sanitized_items.append(sanitized_item)
         return sanitized_items
@@ -359,6 +448,123 @@ class OpenAIClient(AbstractClient):
             raise last_exc
         raise RuntimeError("OpenAI retries exhausted without exception")  # pragma: no cover
 
+    def _handle_stream_event(self, event: Any) -> Any:
+        """
+        Inspect one SSE event; return the finished Response for terminal events
+        that carry a usable response, raise for failure events, and return
+        ``None`` for intermediate events.
+
+        Some OpenAI-compatible gateways (e.g. OpenRouter) terminate the stream
+        with ``response.incomplete`` when the output budget is exhausted instead
+        of ``response.completed``; the partial Response is still usable (any
+        completed tool calls are in ``output``), so it is returned with a
+        warning rather than treated as an error.
+        """
+        etype = getattr(event, "type", None)
+        if etype == "response.completed":
+            return event.response
+        if etype == "response.incomplete":
+            response = getattr(event, "response", None)
+            details = self._get_item_field(response, "incomplete_details")
+            reason = self._get_item_field(details, "reason")
+            logger.warning(
+                "OpenAI stream ended with response.incomplete (reason=%s); returning the partial response",
+                reason,
+            )
+            return response
+        if etype in {"response.failed", "error"}:
+            error = getattr(event, "error", None)
+            if error is None:
+                error = self._get_item_field(getattr(event, "response", None), "error")
+            code = self._get_item_field(error, "code")
+            message = self._get_item_field(error, "message") or str(error) if error is not None else "unknown"
+            code_str = str(code or "")
+            retryable = not any(
+                hint in code_str.lower() for hint in _STREAM_FAILED_NON_RETRYABLE_HINTS
+            )
+            raise _StreamFailedError(
+                f"OpenAI stream delivered a {etype} event (code={code}): {message}",
+                retryable=retryable,
+            )
+        return None
+
+    def _responses_create_streaming_with_retries(self, api_params: Dict[str, Any]) -> Any:
+        """
+        Create a streaming (SSE) request and return the terminal Response.
+
+        ``api_params`` must already carry ``stream=True``. The event stream is
+        consumed inside the retry wrapper, so mid-stream connection/timeout/5xx
+        errors retry with backoff. Returns the ``Response`` object from the
+        ``response.completed`` event (or from ``response.incomplete`` when the
+        endpoint ends the stream that way, e.g. on max-output truncation).
+        Raises :class:`_StreamRejectedError` when the endpoint rejects streaming
+        outright. A stream that closes with no terminal event at all, or that
+        fails via ``response.failed``/``error`` with a transient code, is retried
+        with backoff.
+        """
+        last_exc: Optional[Exception] = None
+        for attempt in range(self._max_retries + 1):
+            try:
+                event_stream = self.client.responses.create(**api_params)
+                for event in event_stream:
+                    response = self._handle_stream_event(event)
+                    if response is not None:
+                        return response
+                raise _StreamTerminatedEarlyError(
+                    "OpenAI stream ended without a terminal response event "
+                    "(response.completed / response.incomplete / response.failed)"
+                )
+            except Exception as exc:
+                last_exc = exc
+                status = self._status_code(exc)
+                if status in _STREAM_REJECT_STATUSES:
+                    raise _StreamRejectedError(
+                        f"OpenAI endpoint rejected the streaming request (HTTP {status}): {exc}"
+                    ) from exc
+                if isinstance(exc, _StreamTerminatedEarlyError):
+                    should_retry, retry_after = True, None
+                elif isinstance(exc, _StreamFailedError):
+                    should_retry, retry_after = exc.retryable, None
+                else:
+                    should_retry, retry_after = self._should_retry(exc)
+                if not should_retry or attempt >= self._max_retries:
+                    raise
+                logger.warning(
+                    "OpenAI streaming request failed (attempt %s/%s, status=%s): %s; backing off and retrying",
+                    attempt + 1,
+                    self._max_retries + 1,
+                    status,
+                    str(exc),
+                )
+                self._sleep_backoff(attempt, retry_after=retry_after)
+        if last_exc is not None:  # pragma: no cover
+            raise last_exc
+        raise RuntimeError("OpenAI streaming retries exhausted without exception")  # pragma: no cover
+
+    def _responses_create_with_stream_fallback(self, api_params: Dict[str, Any]) -> Any:
+        """
+        Streaming call with the fallback ladder for stream-rejecting endpoints.
+
+        On a stream-reject status ({400, 404, 405, 422, 501}): retry once
+        without ``stream``, then fall back to a plain blocking call (which
+        keeps the normal retry policy).
+        """
+        try:
+            return self._responses_create_streaming_with_retries(api_params)
+        except _StreamRejectedError as exc:
+            logger.warning(
+                "%s; retrying once without stream, then falling back to a blocking call",
+                exc,
+            )
+        blocking_params = {k: v for k, v in api_params.items() if k != "stream"}
+        try:
+            return self.client.responses.create(**blocking_params)
+        except Exception as exc:
+            logger.warning(
+                "Non-streaming retry failed (%s); issuing a plain blocking call", exc
+            )
+            return self._responses_create_with_retries(blocking_params)
+
     def generate_response(
         self,
         input: List[Any],
@@ -425,7 +631,13 @@ class OpenAIClient(AbstractClient):
             # Remove tools parameter if empty to avoid API errors
             api_params.pop("tools", None)
 
-        response = self._responses_create_with_retries(api_params)
+        if self.stream:
+            # SSE streaming: the SDK timeout then applies per-read between
+            # chunks (idle-time semantics) instead of capping total generation.
+            api_params["stream"] = True
+            response = self._responses_create_with_stream_fallback(api_params)
+        else:
+            response = self._responses_create_with_retries(api_params)
 
         """
         The valid output types from response.output include:
