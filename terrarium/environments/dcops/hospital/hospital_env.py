@@ -214,7 +214,8 @@ class HospitalEnvironment(AbstractEnvironment):
         
         logger.info(f"SCHEDULE [{agent_id}]: Patient {p_id} @ {start}.")
 
-        if p_id not in self.patients: return
+        if p_id not in self.patients: 
+            raise ScheduleRequestError(f"Unknown patient_id: {p_id}")
         if self.patient_states[p_id]["scheduled_steps"].get(step_idx) is not None:
             prev = self.patient_states[p_id]["scheduled_steps"][step_idx]
             raise ScheduleRequestError(
@@ -223,28 +224,52 @@ class HospitalEnvironment(AbstractEnvironment):
             )
 
         patient = self.patients[p_id]
-        if step_idx >= len(patient["pathway"]): return
+        if step_idx < 0 or step_idx >= len(patient["pathway"]):
+            raise ScheduleRequestError(
+                f"{p_id} has no step_index {step_idx}: pathway has "
+                f"{len(patient['pathway'])} steps (valid: 0..{len(patient['pathway']) - 1})"
+            )
         
         target_step = patient["pathway"][step_idx]
         agent_info = self.agents_map[agent_id]
         
-        if agent_info["service"] != target_step["service"]: return
+        if agent_info["service"] != target_step["service"]:
+            raise ScheduleRequestError(
+                f"{agent_id} provides '{agent_info['service']}' but {p_id} step {step_idx} "
+                f"requires '{target_step['service']}'"
+            )
         
         min_start = patient["arrival_time"]
         if step_idx > 0:
             prev = self.patient_states[p_id]["scheduled_steps"].get(step_idx - 1)
-            if not prev: return 
+            if not prev:
+                raise ScheduleRequestError(
+                    f"{p_id} step {step_idx} cannot be scheduled before step "
+                    f"{step_idx - 1} (steps must be scheduled in order)"
+                )
             prev_h = self.agents_map[prev["agent"]]["hospital"]
             curr_h = agent_info["hospital"]
             penalty = self.transfer_penalty_hours if prev_h != curr_h else 0
             min_start = max(min_start, prev["end_time"] + penalty)
             
-        if start < min_start: return
+        if start < min_start:
+            raise ScheduleRequestError(
+                f"start_time {start} is before the minimum start {min_start} "
+                f"for {p_id} step {step_idx}"
+            )
             
         dur = target_step["duration"]
         for t in range(start, start + dur):
-            if t >= self.max_time_horizon: return
-            if len(self.schedule[agent_id].get(t, [])) >= agent_info["capacity"]: return
+            if t >= self.max_time_horizon:
+                raise ScheduleRequestError(
+                    f"{p_id} step {step_idx} starting at {start} with duration {dur} "
+                    f"exceeds the time horizon {self.max_time_horizon} (reaches t={t})"
+                )
+            if len(self.schedule[agent_id].get(t, [])) >= agent_info["capacity"]:
+                raise ScheduleRequestError(
+                    f"{agent_id} is at full capacity ({agent_info['capacity']}) at time {t}; "
+                    f"cannot fit {p_id} step {step_idx} starting at {start}"
+                )
             
         hospital = agent_info["hospital"]
         service = agent_info["service"]
