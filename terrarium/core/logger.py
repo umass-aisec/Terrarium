@@ -886,7 +886,7 @@ class AgentTrajectoryLogger:
     Logger for capturing agent reasoning and tool call trajectories.
 
     Logs the internal decision-making process of agents including:
-    - Reasoning text (from response.output_text)
+    - Reasoning text (from reasoning output items, falling back to response.output_text)
     - Tool calls with parameters
     - Organized by agent → iteration → phase → trajectory steps
     """
@@ -942,7 +942,8 @@ class AgentTrajectoryLogger:
             trajectory_dict: Dictionary of trajectory steps with keys like "step_1", "step_2"
                 Each step contains:
                 - tools: List of tool calls formatted as "{tool_name} -- {parameters}"
-                - reasoning: Reasoning text (from response.output_text)
+                - reasoning: Reasoning text (from reasoning output items, falling back
+                  to response.output_text)
             round_num: Round number (for planning phase only, None for execution)
         """
         try:

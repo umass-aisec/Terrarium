@@ -86,6 +86,36 @@ class BaseAgent:
 
         return {k: v for k, v in diagnostics.items() if v is not None}
 
+    @staticmethod
+    def _extract_reasoning_text(response: Any) -> str:
+        """
+        Extract text from ``reasoning`` items in a Responses-API-style output.
+
+        Handles both OpenAI-style reasoning items (``summary`` parts of type
+        ``summary_text``) and gateway-style ones (``content`` parts of type
+        ``reasoning_text``, e.g. OpenRouter). Returns "" when the response
+        carries no reasoning items.
+        """
+        def _field(obj: Any, name: str) -> Any:
+            if isinstance(obj, dict):
+                return obj.get(name)
+            return getattr(obj, name, None)
+
+        def _part_text(part: Any) -> str:
+            text = _field(part, "text")
+            return text if isinstance(text, str) else ""
+
+        chunks = []
+        for item in _field(response, "output") or []:
+            if _field(item, "type") != "reasoning":
+                continue
+            for part_list_name in ("summary", "content"):
+                parts = _field(item, part_list_name) or []
+                text = "".join(_part_text(part) for part in parts)
+                if text:
+                    chunks.append(text)
+        return "\n".join(chunks)
+
     def _build_generation_params(self, tool_set) -> Dict[str, Any]:
         """
         Merge generic generation defaults with provider-specific params.
@@ -415,7 +445,7 @@ class BaseAgent:
         trajectory_dict: Dict[str, Any] = {}
         conversation_steps = 1
         trajectory_dict["step_1"] = {
-            "reasoning": response_str,
+            "reasoning": self._extract_reasoning_text(response) or response_str,
             **self._build_response_diagnostics(response),
         }
 
@@ -458,7 +488,7 @@ class BaseAgent:
                 current_response = response
                 conversation_steps += 1
                 trajectory_dict[f"step_{conversation_steps}"] = {
-                    "reasoning": response_str,
+                    "reasoning": self._extract_reasoning_text(response) or response_str,
                     **self._build_response_diagnostics(response),
                 }
             except Exception as e:
