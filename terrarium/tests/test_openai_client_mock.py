@@ -521,6 +521,147 @@ class OpenAIClientMockTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(calls[0]["stream"], True)
         self.assertIs(calls[1]["stream"], True)
 
+    def test_stream_incomplete_returns_partial_response_without_retry(self):
+        # OpenRouter ends the stream with response.incomplete when the output
+        # budget is exhausted; the partial response must be returned as-is.
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        partial = SimpleNamespace(
+            output=[],
+            output_text="",
+            incomplete_details=SimpleNamespace(reason="max_output_tokens"),
+        )
+        events = [
+            SimpleNamespace(type="response.created", response=SimpleNamespace()),
+            SimpleNamespace(type="response.incomplete", response=partial),
+        ]
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.next_response = events
+
+            context = client.init_context("system", "user")
+            with self.assertLogs("terrarium.llm.clients.openai_client", level="WARNING"):
+                response, response_str = client.generate_response(
+                    input=context,
+                    params={"model": "gpt-5-nano"},
+                )
+
+        self.assertIs(response, partial)
+        self.assertEqual(response_str, "")
+        self.assertEqual(len(sdk_instance.responses.calls), 1)
+
+    def test_stream_silent_end_is_retried(self):
+        # A stream that closes with no terminal event is a transient drop and
+        # must be retried instead of raising immediately.
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="after-drop")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.queued = [
+                _FakeEventStream(events=[SimpleNamespace(type="response.created")]),
+                [SimpleNamespace(type="response.completed", response=fake_response)],
+            ]
+
+            context = client.init_context("system", "user")
+            with patch("time.sleep"):
+                response, response_str = client.generate_response(
+                    input=context,
+                    params={"model": "gpt-5-nano"},
+                )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "after-drop")
+        self.assertEqual(len(sdk_instance.responses.calls), 2)
+
+    def test_stream_silent_end_raises_after_retries_exhausted(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient(max_retries=2)
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.queued = [
+                _FakeEventStream(events=[SimpleNamespace(type="response.created")]),
+                _FakeEventStream(events=[]),
+                _FakeEventStream(events=[]),
+            ]
+
+            context = client.init_context("system", "user")
+            with patch("time.sleep"):
+                with self.assertRaises(module._StreamTerminatedEarlyError):
+                    client.generate_response(
+                        input=context,
+                        params={"model": "gpt-5-nano"},
+                    )
+
+        self.assertEqual(len(sdk_instance.responses.calls), 3)
+
+    def test_stream_failed_event_with_transient_code_is_retried(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="after-failed")
+        failed_event = SimpleNamespace(
+            type="response.failed",
+            response=SimpleNamespace(
+                error=SimpleNamespace(code="server_error", message="provider exploded")
+            ),
+        )
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.queued = [
+                [failed_event],
+                [SimpleNamespace(type="response.completed", response=fake_response)],
+            ]
+
+            context = client.init_context("system", "user")
+            with patch("time.sleep"):
+                response, response_str = client.generate_response(
+                    input=context,
+                    params={"model": "gpt-5-nano"},
+                )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "after-failed")
+        self.assertEqual(len(sdk_instance.responses.calls), 2)
+
+    def test_stream_failed_event_with_client_error_is_not_retried(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        failed_event = SimpleNamespace(
+            type="response.failed",
+            response=SimpleNamespace(
+                error=SimpleNamespace(
+                    code="context_length_exceeded", message="too long"
+                )
+            ),
+        )
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.queued = [ [failed_event] ]
+
+            context = client.init_context("system", "user")
+            with patch("time.sleep"):
+                with self.assertRaises(module._StreamFailedError):
+                    client.generate_response(
+                        input=context,
+                        params={"model": "gpt-5-nano"},
+                    )
+
+        self.assertEqual(len(sdk_instance.responses.calls), 1)
+
     def test_retry_config_env_vars_override_defaults(self):
         module = _import_openai_client_with_mocks()
         OpenAIClient = module.OpenAIClient
