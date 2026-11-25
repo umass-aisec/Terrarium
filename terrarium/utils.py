@@ -567,7 +567,17 @@ def get_client_instance(
     if provider == "openai":
         from terrarium.llm.clients.openai_client import OpenAIClient
 
-        client = OpenAIClient()
+        openai_cfg = _get_provider_block("openai", llm_config)
+        client = OpenAIClient(
+            timeout=float(openai_cfg.get("request_timeout", 180)),
+            stream=bool(openai_cfg.get("stream", True)),
+            strip_reasoning_content=bool(openai_cfg.get("strip_reasoning_content", True)),
+            max_retries=openai_cfg.get("max_retries"),
+            retry_initial_s=openai_cfg.get("retry_initial_s"),
+            retry_max_s=openai_cfg.get("retry_max_s"),
+            retry_multiplier=openai_cfg.get("retry_multiplier"),
+            retry_jitter=openai_cfg.get("retry_jitter"),
+        )
     elif provider == "foundry":
         from terrarium.llm.clients.foundry_client import FoundryClient
 

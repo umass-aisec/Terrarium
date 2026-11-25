@@ -7,16 +7,42 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 
+class _FakeEventStream:
+    """Iterable SSE event stream; raises ``error`` once ``events`` are consumed."""
+
+    def __init__(self, events=(), error=None):
+        self._events = list(events)
+        self._error = error
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._events:
+            return self._events.pop(0)
+        if self._error is not None:
+            raise self._error
+        raise StopIteration
+
+
 class _FakeResponsesAPI:
     def __init__(self):
         self.calls = []
         self.next_response = None
+        self.queued = []
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        if isinstance(self.next_response, Exception):
-            raise self.next_response
-        return self.next_response
+        item = self.queued.pop(0) if self.queued else self.next_response
+        if isinstance(item, Exception):
+            raise item
+        if kwargs.get("stream"):
+            if isinstance(item, list):
+                return iter(item)
+            if isinstance(item, _FakeEventStream):
+                return item
+            return iter([SimpleNamespace(type="response.completed", response=item)])
+        return item
 
 
 class _FakeOpenAI:
@@ -198,7 +224,7 @@ class OpenAIClientMockTests(unittest.IsolatedAsyncioTestCase):
         fake_response = SimpleNamespace(output=[], output_text="")
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
-            client = OpenAIClient()
+            client = OpenAIClient(strip_reasoning_content=False)
             sdk_instance = _FakeOpenAI.instances[-1]
             sdk_instance.responses.next_response = fake_response
 
@@ -325,6 +351,298 @@ class OpenAIClientMockTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tools_executed, 0)
         self.assertEqual(updated_context, context)
         self.assertEqual(step_tools, [])
+
+    def test_defaults_stream_strip_and_timeout(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            for key in (
+                "OPENAI_MAX_RETRIES",
+                "OPENAI_RETRY_INITIAL_S",
+                "OPENAI_RETRY_MAX_S",
+                "OPENAI_RETRY_MULTIPLIER",
+                "OPENAI_RETRY_JITTER",
+            ):
+                os.environ.pop(key, None)
+            client = OpenAIClient()
+
+        self.assertTrue(client.stream)
+        self.assertTrue(client.strip_reasoning_content)
+        self.assertEqual(_FakeOpenAI.instances[-1].timeout, 180.0)
+        self.assertEqual(client._max_retries, 6)
+        self.assertEqual(client._backoff_initial_s, 0.5)
+        self.assertEqual(client._backoff_max_s, 20.0)
+        self.assertEqual(client._backoff_multiplier, 2.0)
+        self.assertEqual(client._backoff_jitter, 0.1)
+
+    def test_generate_response_streams_and_returns_completed_response(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(
+            output=[
+                SimpleNamespace(
+                    type="message",
+                    content=[SimpleNamespace(type="output_text", text="streamed-text")],
+                )
+            ],
+            output_text="streamed-text",
+        )
+        events = [
+            SimpleNamespace(type="response.created", response=SimpleNamespace()),
+            SimpleNamespace(type="response.completed", response=fake_response),
+        ]
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.next_response = events
+
+            context = client.init_context("system", "user")
+            response, response_str = client.generate_response(
+                input=context,
+                params={"model": "gpt-5-nano"},
+            )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "streamed-text")
+        self.assertEqual(len(sdk_instance.responses.calls), 1)
+        self.assertIs(sdk_instance.responses.calls[0]["stream"], True)
+
+    def test_generate_response_stream_disabled_uses_blocking_call(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="blocking-text")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient(stream=False)
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.next_response = fake_response
+
+            context = client.init_context("system", "user")
+            response, response_str = client.generate_response(
+                input=context,
+                params={"model": "gpt-5-nano"},
+            )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "blocking-text")
+        self.assertNotIn("stream", sdk_instance.responses.calls[0])
+
+    def _status_error(self, status_code):
+        exc = Exception(f"HTTP {status_code}")
+        exc.status_code = status_code
+        return exc
+
+    def test_stream_reject_falls_back_to_blocking_call(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="fallback-text")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.queued = [
+                self._status_error(400),
+                fake_response,
+            ]
+
+            context = client.init_context("system", "user")
+            response, response_str = client.generate_response(
+                input=context,
+                params={"model": "gpt-5-nano"},
+            )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "fallback-text")
+        calls = sdk_instance.responses.calls
+        self.assertEqual(len(calls), 2)
+        self.assertIs(calls[0]["stream"], True)
+        self.assertNotIn("stream", calls[1])
+
+    def test_stream_reject_ladder_ends_in_blocking_call_with_retries(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="ladder-text")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.queued = [
+                self._status_error(422),   # stream rejected
+                self._status_error(429),   # single non-streaming retry fails (retryable)
+                fake_response,             # plain blocking call succeeds
+            ]
+
+            context = client.init_context("system", "user")
+            with patch("time.sleep"):
+                response, response_str = client.generate_response(
+                    input=context,
+                    params={"model": "gpt-5-nano"},
+                )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "ladder-text")
+        calls = sdk_instance.responses.calls
+        self.assertEqual(len(calls), 3)
+        self.assertIs(calls[0]["stream"], True)
+        self.assertNotIn("stream", calls[1])
+        self.assertNotIn("stream", calls[2])
+
+    def test_mid_stream_error_is_retried(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="retried-text")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.queued = [
+                _FakeEventStream(error=self._status_error(503)),
+                [SimpleNamespace(type="response.completed", response=fake_response)],
+            ]
+
+            context = client.init_context("system", "user")
+            with patch("time.sleep"):
+                response, response_str = client.generate_response(
+                    input=context,
+                    params={"model": "gpt-5-nano"},
+                )
+
+        self.assertIs(response, fake_response)
+        self.assertEqual(response_str, "retried-text")
+        calls = sdk_instance.responses.calls
+        self.assertEqual(len(calls), 2)
+        self.assertIs(calls[0]["stream"], True)
+        self.assertIs(calls[1]["stream"], True)
+
+    def test_retry_config_env_vars_override_defaults(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        with patch.dict(
+            os.environ,
+            {
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_MAX_RETRIES": "9",
+                "OPENAI_RETRY_INITIAL_S": "1.5",
+                "OPENAI_RETRY_MAX_S": "30",
+                "OPENAI_RETRY_MULTIPLIER": "3",
+                "OPENAI_RETRY_JITTER": "0.25",
+            },
+        ):
+            client = OpenAIClient()
+
+        self.assertEqual(client._max_retries, 9)
+        self.assertEqual(client._backoff_initial_s, 1.5)
+        self.assertEqual(client._backoff_max_s, 30.0)
+        self.assertEqual(client._backoff_multiplier, 3.0)
+        self.assertEqual(client._backoff_jitter, 0.25)
+
+    def test_retry_config_constructor_args_beat_env_vars(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        with patch.dict(
+            os.environ,
+            {
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_MAX_RETRIES": "9",
+                "OPENAI_RETRY_JITTER": "0.9",
+            },
+        ):
+            client = OpenAIClient(max_retries=3, retry_jitter=0.05, retry_max_s=99)
+
+        self.assertEqual(client._max_retries, 3)
+        self.assertEqual(client._backoff_jitter, 0.05)
+        self.assertEqual(client._backoff_max_s, 99.0)
+
+    def test_retry_config_env_prefix(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        with patch.dict(
+            os.environ,
+            {
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_MAX_RETRIES": "9",
+                "CUSTOM_MAX_RETRIES": "4",
+                "CUSTOM_RETRY_INITIAL_S": "2.5",
+            },
+        ):
+            client = OpenAIClient(env_prefix="CUSTOM")
+
+        self.assertEqual(client._max_retries, 4)
+        self.assertEqual(client._backoff_initial_s, 2.5)
+        self.assertEqual(client._backoff_max_s, 20.0)
+
+    def test_generate_response_strips_reasoning_items_by_default(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient()
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.next_response = fake_response
+
+            client.generate_response(
+                input=[
+                    {"type": "message", "role": "user", "content": "user"},
+                    SimpleNamespace(
+                        type="reasoning",
+                        id="rs_123",
+                        summary=[],
+                        status="completed",
+                    ),
+                    SimpleNamespace(
+                        type="message",
+                        role="assistant",
+                        id="msg_123",
+                        status="completed",
+                        content=[],
+                    ),
+                ],
+                params={"model": "gpt-5-nano"},
+            )
+
+        call = sdk_instance.responses.calls[0]
+        self.assertEqual(len(call["input"]), 2)
+        self.assertNotIn("reasoning", [item["type"] for item in call["input"]])
+
+    def test_generate_response_keeps_reasoning_items_when_strip_disabled(self):
+        module = _import_openai_client_with_mocks()
+        OpenAIClient = module.OpenAIClient
+
+        fake_response = SimpleNamespace(output=[], output_text="")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            client = OpenAIClient(strip_reasoning_content=False)
+            sdk_instance = _FakeOpenAI.instances[-1]
+            sdk_instance.responses.next_response = fake_response
+
+            client.generate_response(
+                input=[
+                    {"type": "message", "role": "user", "content": "user"},
+                    SimpleNamespace(
+                        type="reasoning",
+                        id="rs_123",
+                        summary=[],
+                        status="completed",
+                    ),
+                ],
+                params={"model": "gpt-5-nano"},
+            )
+
+        call = sdk_instance.responses.calls[0]
+        self.assertEqual(len(call["input"]), 2)
+        self.assertEqual(call["input"][1]["type"], "reasoning")
 
 
 if __name__ == "__main__":
